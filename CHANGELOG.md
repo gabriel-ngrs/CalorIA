@@ -15,6 +15,8 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Estrutura completa de pastas do projeto (backend/, frontend/, docs/)
 - `.gitignore` cobrindo Python, Node.js/Next.js, Docker, IDEs e variáveis de ambiente
 - `.env.example` com todas as variáveis necessárias documentadas
+- `docker-compose.yml` com todos os serviços para produção local
+- `docker-compose.dev.yml` com hot reload para backend e frontend, portas expostas para desenvolvimento
 
 ---
 

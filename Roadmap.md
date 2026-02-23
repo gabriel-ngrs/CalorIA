@@ -17,17 +17,17 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Inicializar git e fazer primeiro commit
 
 ### 0.2 Docker Compose
-- [ ] Criar `docker-compose.yml` (produção local)
-- [ ] Criar `docker-compose.dev.yml` (desenvolvimento com hot reload)
-- [ ] Serviço PostgreSQL 16 com volume persistente
-- [ ] Serviço Redis 7 com volume persistente
-- [ ] Serviço Evolution API com volume para sessão WhatsApp
-- [ ] Serviço backend (FastAPI)
-- [ ] Serviço frontend (Next.js)
-- [ ] Serviço celery_worker
-- [ ] Serviço celery_beat
-- [ ] Rede compartilhada entre serviços
-- [ ] Health checks para postgres e redis
+- [x] Criar `docker-compose.yml` (produção local)
+- [x] Criar `docker-compose.dev.yml` (desenvolvimento com hot reload)
+- [x] Serviço PostgreSQL 16 com volume persistente
+- [x] Serviço Redis 7 com volume persistente
+- [x] Serviço Evolution API com volume para sessão WhatsApp
+- [x] Serviço backend (FastAPI)
+- [x] Serviço frontend (Next.js)
+- [x] Serviço celery_worker
+- [x] Serviço celery_beat
+- [x] Rede compartilhada entre serviços
+- [x] Health checks para postgres e redis
 
 ### 0.3 Backend — Projeto Base
 - [ ] `pyproject.toml` com dependências (FastAPI, SQLAlchemy, Celery, etc.)
