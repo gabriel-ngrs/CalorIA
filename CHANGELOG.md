@@ -41,6 +41,10 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - POST /api/v1/telegram/webhook (receber updates em produção)
 - Bot inicia em modo polling no lifespan do FastAPI (dev); webhook disponível para produção
 - User model: campos telegram_chat_id e whatsapp_number (preparação para ambos os canais)
+- Bot WhatsApp via Evolution API: sender.py, handlers.py (comandos !prefix), webhook.py
+- WhatsAppService: vincula número por token, normaliza JID do WhatsApp
+- Confirmação de refeição via resposta "sim/não" com estado Redis (TTL 5 min)
+- POST /api/v1/whatsapp/link-token e POST /api/v1/whatsapp/webhook
 
 ---
 

@@ -199,31 +199,31 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: mesmas funcionalidades do Telegram via WhatsApp.
 
 ### 4.1 Setup Evolution API
-- [ ] Evolution API rodando via Docker Compose
-- [ ] Configurar instância WhatsApp no Evolution API
+- [x] Evolution API rodando via Docker Compose
+- [ ] Configurar instância WhatsApp no Evolution API (requer QR Code manual)
 - [ ] Escanear QR Code e persistir sessão em volume Docker
-- [ ] Configurar webhook apontando para o backend (`/api/v1/webhooks/whatsapp`)
-- [ ] Handler de reconexão automática em caso de queda
+- [x] Configurar webhook apontando para o backend (`POST /api/v1/whatsapp/webhook`)
+- [ ] Handler de reconexão automática em caso de queda (futuro)
 
 ### 4.2 Webhook Handler
-- [ ] `bots/whatsapp/webhook.py` — receber e processar eventos do Evolution API
-- [ ] `POST /api/v1/webhooks/whatsapp` — endpoint do webhook com validação de assinatura
-- [ ] Roteador de tipos de mensagem: texto, imagem, áudio (futuro)
-- [ ] Identificar sender e vincular ao usuário do banco
-- [ ] `bots/whatsapp/sender.py` — enviar mensagens via Evolution API REST
+- [x] `bots/whatsapp/webhook.py` — receber e processar eventos da Evolution API
+- [x] `POST /api/v1/whatsapp/webhook` — endpoint do webhook (background task)
+- [x] Roteador de tipos de mensagem: texto, imagem
+- [x] Identificar sender e vincular ao usuário do banco
+- [x] `bots/whatsapp/sender.py` — enviar mensagens via Evolution API REST
 
 ### 4.3 Comandos e Fluxos
-- [ ] Mesmo conjunto de comandos do Telegram (prefixados com `!` ou via palavras-chave)
-- [ ] `!ajuda`, `!hoje`, `!resumo`, `!peso`, `!agua`, `!humor`
-- [ ] Registro de refeição por texto livre
-- [ ] Registro de refeição por foto
-- [ ] Fluxo de confirmação com botões interativos (WhatsApp Buttons)
-- [ ] Mensagens de lista para exibir histórico
+- [x] Mesmo conjunto de comandos do Telegram (prefixados com `!`)
+- [x] `!ajuda`, `!hoje`, `!resumo`, `!peso`, `!agua`, `!humor`
+- [x] Registro de refeição por texto livre
+- [x] Registro de refeição por foto
+- [x] Fluxo de confirmação: resposta "sim/não" (estado no Redis, TTL 5 min)
+- [x] Histórico via `!historico`
 
 ### 4.4 Vinculação de Conta
-- [ ] Usuário gera token no dashboard → envia `!conectar <token>` no WhatsApp
-- [ ] Salvar número WhatsApp no perfil do usuário
-- [ ] Suporte a múltiplos canais (mesmo usuário pode usar Telegram + WhatsApp)
+- [x] Usuário gera token no dashboard → envia `!conectar TOKEN` no WhatsApp
+- [x] Salvar número WhatsApp no perfil do usuário
+- [x] Suporte a múltiplos canais (mesmo usuário pode usar Telegram + WhatsApp)
 
 ---
 
@@ -413,7 +413,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 1 | Modelos e API Base | `[x]` |
 | 2 | Integração com IA (Gemini) | `[x]` |
 | 3 | Bot Telegram | `[x]` |
-| 4 | Bot WhatsApp (Evolution API) | `[ ]` |
+| 4 | Bot WhatsApp (Evolution API) | `[x]` |
 | 5 | Frontend Dashboard | `[ ]` |
 | 6 | Notificações e Lembretes | `[ ]` |
 | 7 | Insights Avançados de IA | `[ ]` |
