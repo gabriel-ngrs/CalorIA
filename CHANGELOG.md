@@ -24,6 +24,10 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Modelos SQLAlchemy 2.x: User, UserProfile, Meal, MealItem, WeightLog, HydrationLog, MoodLog, Reminder, AIConversation
 - Schemas Pydantic v2 para todos os domínios incluindo schemas de dashboard agregados
 - Autenticação JWT: register, login, refresh (com blacklist Redis), logout, /me
+- TDEE automático via Harris-Benedict + GET/PUT /users/me/profile
+- CRUD completo de refeições com itens aninhados e daily-summary
+- Logs de peso, hidratação e humor com endpoints REST
+- Dashboard: /today, /weekly, /macros-chart, /weight-chart
 
 ---
 

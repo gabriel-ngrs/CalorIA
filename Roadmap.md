@@ -85,28 +85,28 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] `GET /api/v1/auth/me` — dados do usuário autenticado
 
 ### 1.4 API — Usuário e Perfil
-- [ ] `GET /api/v1/users/me/profile` — buscar perfil
-- [ ] `PUT /api/v1/users/me/profile` — atualizar perfil (peso, altura, metas)
-- [ ] Cálculo automático de TDEE (Total Daily Energy Expenditure) via fórmula Harris-Benedict
+- [x] `GET /api/v1/users/me/profile` — buscar perfil
+- [x] `PUT /api/v1/users/me/profile` — atualizar perfil (peso, altura, metas)
+- [x] Cálculo automático de TDEE (Total Daily Energy Expenditure) via fórmula Harris-Benedict
 
 ### 1.5 API — Refeições
-- [ ] `GET /api/v1/meals` — listar refeições (filtro por data, tipo)
-- [ ] `POST /api/v1/meals` — criar refeição manualmente
-- [ ] `GET /api/v1/meals/{id}` — detalhes de uma refeição
-- [ ] `PUT /api/v1/meals/{id}` — editar refeição
-- [ ] `DELETE /api/v1/meals/{id}` — deletar refeição
-- [ ] `GET /api/v1/meals/daily-summary` — resumo do dia (total calorias, macros)
+- [x] `GET /api/v1/meals` — listar refeições (filtro por data, tipo)
+- [x] `POST /api/v1/meals` — criar refeição manualmente
+- [x] `GET /api/v1/meals/{id}` — detalhes de uma refeição
+- [x] `PUT /api/v1/meals/{id}` — editar refeição
+- [x] `DELETE /api/v1/meals/{id}` — deletar refeição
+- [x] `GET /api/v1/meals/daily-summary` — resumo do dia (total calorias, macros)
 
 ### 1.6 API — Demais Logs
-- [ ] `POST /api/v1/weight` + `GET /api/v1/weight` — registro e histórico de peso
-- [ ] `POST /api/v1/hydration` + `GET /api/v1/hydration/today` — registro e resumo de água
-- [ ] `POST /api/v1/mood` + `GET /api/v1/mood` — registro e histórico de humor
+- [x] `POST /api/v1/weight` + `GET /api/v1/weight` — registro e histórico de peso
+- [x] `POST /api/v1/hydration` + `GET /api/v1/hydration/today` — registro e resumo de água
+- [x] `POST /api/v1/mood` + `GET /api/v1/mood` — registro e histórico de humor
 
 ### 1.7 API — Dashboard
-- [ ] `GET /api/v1/dashboard/today` — resumo completo do dia
-- [ ] `GET /api/v1/dashboard/weekly` — resumo da semana (médias, totais)
-- [ ] `GET /api/v1/dashboard/macros-chart` — dados para gráfico de macros (últimos N dias)
-- [ ] `GET /api/v1/dashboard/weight-chart` — dados para gráfico de evolução de peso
+- [x] `GET /api/v1/dashboard/today` — resumo completo do dia
+- [x] `GET /api/v1/dashboard/weekly` — resumo da semana (médias, totais)
+- [x] `GET /api/v1/dashboard/macros-chart` — dados para gráfico de macros (últimos N dias)
+- [x] `GET /api/v1/dashboard/weight-chart` — dados para gráfico de evolução de peso
 
 ---
 
@@ -413,7 +413,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | Fase | Nome | Status |
 |---|---|---|
 | 0 | Setup e Fundação | `[x]` |
-| 1 | Modelos e API Base | `[~]` |
+| 1 | Modelos e API Base | `[x]` |
 | 2 | Integração com IA (Gemini) | `[ ]` |
 | 3 | Bot Telegram | `[ ]` |
 | 4 | Bot WhatsApp (Evolution API) | `[ ]` |
