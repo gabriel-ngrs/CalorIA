@@ -12,6 +12,9 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### Adicionado
 - Documentação inicial do projeto: CLAUDE.md, Roadmap.md, Prompt.md, README.md, CHANGELOG.md
 - Plano completo de desenvolvimento em 9 fases no Roadmap.md
+- Estrutura completa de pastas do projeto (backend/, frontend/, docs/)
+- `.gitignore` cobrindo Python, Node.js/Next.js, Docker, IDEs e variáveis de ambiente
+- `.env.example` com todas as variáveis necessárias documentadas
 
 ---
 

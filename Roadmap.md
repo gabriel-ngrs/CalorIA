@@ -11,10 +11,10 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: ambiente de desenvolvimento funcionando, estrutura do projeto criada.
 
 ### 0.1 Estrutura do Repositório
-- [ ] Criar estrutura de pastas (`backend/`, `frontend/`, `docs/`)
-- [ ] Criar `.gitignore` (Python, Node, .env, __pycache__, .next, etc.)
-- [ ] Criar `.env.example` com todas as variáveis necessárias
-- [ ] Inicializar git e fazer primeiro commit
+- [x] Criar estrutura de pastas (`backend/`, `frontend/`, `docs/`)
+- [x] Criar `.gitignore` (Python, Node, .env, __pycache__, .next, etc.)
+- [x] Criar `.env.example` com todas as variáveis necessárias
+- [x] Inicializar git e fazer primeiro commit
 
 ### 0.2 Docker Compose
 - [ ] Criar `docker-compose.yml` (produção local)
@@ -412,7 +412,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 | Fase | Nome | Status |
 |---|---|---|
-| 0 | Setup e Fundação | `[ ]` |
+| 0 | Setup e Fundação | `[~]` |
 | 1 | Modelos e API Base | `[ ]` |
 | 2 | Integração com IA (Gemini) | `[ ]` |
 | 3 | Bot Telegram | `[ ]` |
