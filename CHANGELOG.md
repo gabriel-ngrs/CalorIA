@@ -28,6 +28,11 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - CRUD completo de refeições com itens aninhados e daily-summary
 - Logs de peso, hidratação e humor com endpoints REST
 - Dashboard: /today, /weekly, /macros-chart, /weight-chart
+- GeminiClient: retry exponencial, cache Redis 7 dias por hash SHA-256, logging de tokens
+- MealParser: análise de texto em JSON estruturado com confidence por item
+- VisionParser: análise de fotos via base64 com gemini-1.5-pro
+- InsightsGenerator: insights diário/semanal, Q&A nutricional e sugestão de refeição
+- Endpoints /ai/analyze-meal, /analyze-photo, /insights, /suggest-meal
 
 ---
 

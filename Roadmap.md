@@ -115,36 +115,36 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: IA analisando refeições via texto e foto.
 
 ### 2.1 Configuração Gemini
-- [ ] `services/ai/gemini_client.py` — cliente Gemini com retry e rate limit handling
-- [ ] Configurar modelos: `gemini-1.5-flash` (texto) e `gemini-1.5-pro` (visão/fotos)
-- [ ] Cache Redis para respostas de alimentos frequentes (TTL 7 dias)
-- [ ] Logging de tokens utilizados para monitorar free tier
+- [x] `services/ai/gemini_client.py` — cliente Gemini com retry e rate limit handling
+- [x] Configurar modelos: `gemini-1.5-flash` (texto) e `gemini-1.5-pro` (visão/fotos)
+- [x] Cache Redis para respostas de alimentos frequentes (TTL 7 dias)
+- [x] Logging de tokens utilizados para monitorar free tier
 
 ### 2.2 Análise de Texto
-- [ ] `services/ai/meal_parser.py` — parsear descrição de refeição em JSON estruturado
-- [ ] Prompt engineering para extração de alimentos, quantidades e estimativa de macros
-- [ ] Prompt com contexto do usuário (metas calóricas, alimentos frequentes)
-- [ ] Tratar ambiguidades ("um prato de arroz") com estimativas calibradas
-- [ ] Retornar JSON: `[{food_name, quantity, unit, calories, protein, carbs, fat, confidence}]`
+- [x] `services/ai/meal_parser.py` — parsear descrição de refeição em JSON estruturado
+- [x] Prompt engineering para extração de alimentos, quantidades e estimativa de macros
+- [x] Prompt com contexto do usuário (metas calóricas, alimentos frequentes)
+- [x] Tratar ambiguidades ("um prato de arroz") com estimativas calibradas
+- [x] Retornar JSON: `[{food_name, quantity, unit, calories, protein, carbs, fat, confidence}]`
 
 ### 2.3 Análise de Foto
-- [ ] `services/ai/vision_parser.py` — analisar imagem de prato/alimento
-- [ ] Prompt para identificar alimentos visíveis na foto e estimar porções
-- [ ] Retornar mesmo formato JSON da análise de texto
-- [ ] Fallback: se confiança baixa, solicitar confirmação ao usuário
+- [x] `services/ai/vision_parser.py` — analisar imagem de prato/alimento
+- [x] Prompt para identificar alimentos visíveis na foto e estimar porções
+- [x] Retornar mesmo formato JSON da análise de texto
+- [x] Fallback: se confiança baixa, solicitar confirmação ao usuário
 
 ### 2.4 Geração de Insights
-- [ ] `services/ai/insights_generator.py` — gerar insights personalizados
-- [ ] Insight diário: análise do dia alimentar (o que foi bom, o que melhorar)
-- [ ] Insight semanal: padrões identificados, tendências de peso x alimentação
-- [ ] Sugestões de refeições baseadas no histórico e metas
-- [ ] Resposta conversacional para perguntas livres sobre nutrição
+- [x] `services/ai/insights_generator.py` — gerar insights personalizados
+- [x] Insight diário: análise do dia alimentar (o que foi bom, o que melhorar)
+- [x] Insight semanal: padrões identificados, tendências de peso x alimentação
+- [x] Sugestões de refeições baseadas no histórico e metas
+- [x] Resposta conversacional para perguntas livres sobre nutrição
 
 ### 2.5 Endpoint de Análise
-- [ ] `POST /api/v1/ai/analyze-meal` — analisar descrição e retornar itens estruturados
-- [ ] `POST /api/v1/ai/analyze-photo` — analisar foto (base64) e retornar itens
-- [ ] `POST /api/v1/ai/insights` — gerar insight (tipo: daily/weekly/question)
-- [ ] `GET /api/v1/ai/suggest-meal` — sugerir refeição com base no histórico
+- [x] `POST /api/v1/ai/analyze-meal` — analisar descrição e retornar itens estruturados
+- [x] `POST /api/v1/ai/analyze-photo` — analisar foto (base64) e retornar itens
+- [x] `POST /api/v1/ai/insights` — gerar insight (tipo: daily/weekly/question)
+- [x] `GET /api/v1/ai/suggest-meal` — sugerir refeição com base no histórico
 
 ---
 
@@ -414,7 +414,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 |---|---|---|
 | 0 | Setup e Fundação | `[x]` |
 | 1 | Modelos e API Base | `[x]` |
-| 2 | Integração com IA (Gemini) | `[ ]` |
+| 2 | Integração com IA (Gemini) | `[x]` |
 | 3 | Bot Telegram | `[ ]` |
 | 4 | Bot WhatsApp (Evolution API) | `[ ]` |
 | 5 | Frontend Dashboard | `[ ]` |
