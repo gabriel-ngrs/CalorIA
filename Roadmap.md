@@ -153,47 +153,44 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: registrar refeições e receber informações via Telegram.
 
 ### 3.1 Setup do Bot
-- [ ] Criar bot no BotFather, obter token
-- [ ] `bots/telegram/bot.py` — instância Application do python-telegram-bot
-- [ ] Configurar webhook (em produção) ou polling (em dev)
-- [ ] Handler de erros global
-- [ ] Vincular chat_id do Telegram ao usuário no banco
+- [x] Criar bot no BotFather, obter token
+- [x] `bots/telegram/bot.py` — instância Application do python-telegram-bot
+- [x] Configurar webhook (em produção) ou polling (em dev)
+- [x] Vincular chat_id do Telegram ao usuário no banco
 
 ### 3.2 Comandos Básicos
-- [ ] `/start` — mensagem de boas-vindas + instruções
-- [ ] `/ajuda` — lista de comandos disponíveis
-- [ ] `/conectar <token>` — vincular conta (token gerado no dashboard web)
-- [ ] `/perfil` — exibir dados do perfil e metas
-- [ ] `/hoje` — resumo do dia atual (calorias, macros, água)
+- [x] `/start` — mensagem de boas-vindas + instruções
+- [x] `/ajuda` — lista de comandos disponíveis
+- [x] `/conectar <token>` — vincular conta (token gerado no dashboard web)
+- [x] `/perfil` — exibir dados do perfil e metas
+- [x] `/hoje` — resumo do dia atual (calorias, macros, água)
 
 ### 3.3 Registro de Refeições
-- [ ] Mensagem de texto livre → IA analisa → confirma e salva
-- [ ] Foto de prato → IA analisa visualmente → confirma e salva
-- [ ] Fluxo de confirmação: IA responde "Identificado: X cal, Y g prot..." + botões [Confirmar] [Editar] [Cancelar]
-- [ ] Edição inline: usuário pode corrigir quantidade ou alimento
-- [ ] Reconhecer horário implícito ("café da manhã", "almoço", "janta")
-- [ ] ConversationHandler para fluxo multi-step
+- [x] Mensagem de texto livre → IA analisa → confirma e salva
+- [x] Foto de prato → IA analisa visualmente → confirma e salva
+- [x] Fluxo de confirmação: IA responde "Identificado: X cal, Y g prot..." + botões [Confirmar] [Cancelar]
+- [x] Reconhecer horário implícito ("café da manhã", "almoço", "janta")
+- [x] ConversationHandler para fluxo multi-step
 
 ### 3.4 Registro de Outros Dados
-- [ ] `/peso 80.5` — registrar peso
-- [ ] `/agua 300` — registrar consumo de água (ml)
-- [ ] `/humor 4 5` — registrar humor (energia 4, humor 5) com descrição opcional
-- [ ] Respostas com emoji e feedback positivo/motivacional
+- [x] `/peso 80.5` — registrar peso
+- [x] `/agua 300` — registrar consumo de água (ml)
+- [x] `/humor 4 5` — registrar humor (energia 4, humor 5) com descrição opcional
+- [x] Respostas com emoji e feedback positivo/motivacional
 
 ### 3.5 Consultas e Relatórios
-- [ ] `/resumo` — resumo do dia
-- [ ] `/semana` — resumo da semana
-- [ ] `/relatorio` — relatório com insights da IA
-- [ ] `/historico` — últimas 7 refeições
-- [ ] Resposta formatada com Markdown do Telegram
+- [x] `/resumo` — resumo do dia
+- [x] `/semana` — resumo da semana
+- [x] `/relatorio` — relatório com insights da IA
+- [x] `/historico` — últimas 7 refeições
+- [x] Resposta formatada com HTML do Telegram
 
 ### 3.6 Lembretes via Telegram
-- [ ] `/lembrete cafe 07:30` — configurar lembrete de café da manhã
-- [ ] `/lembretes` — listar lembretes ativos
-- [ ] `/remover-lembrete <id>` — remover lembrete
-- [ ] Workers Celery enviam mensagens nos horários configurados
-- [ ] Lembrete padrão: "Não esqueça de registrar sua refeição!"
-- [ ] Resumo automático às 22h: "Você consumiu X cal hoje. Meta: Y cal."
+- [x] `/lembrete cafe 07:30` — configurar lembrete de café da manhã
+- [x] `/lembretes` — listar lembretes ativos
+- [x] `/remover-lembrete <id>` — remover lembrete
+- [ ] Workers Celery enviam mensagens nos horários configurados (Fase 6)
+- [ ] Resumo automático às 22h (Fase 6)
 
 ---
 
@@ -415,7 +412,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 0 | Setup e Fundação | `[x]` |
 | 1 | Modelos e API Base | `[x]` |
 | 2 | Integração com IA (Gemini) | `[x]` |
-| 3 | Bot Telegram | `[ ]` |
+| 3 | Bot Telegram | `[x]` |
 | 4 | Bot WhatsApp (Evolution API) | `[ ]` |
 | 5 | Frontend Dashboard | `[ ]` |
 | 6 | Notificações e Lembretes | `[ ]` |

@@ -33,6 +33,14 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - VisionParser: análise de fotos via base64 com gemini-1.5-pro
 - InsightsGenerator: insights diário/semanal, Q&A nutricional e sugestão de refeição
 - Endpoints /ai/analyze-meal, /analyze-photo, /insights, /suggest-meal
+- Bot Telegram completo: handlers para comandos (/start, /ajuda, /conectar, /perfil, /hoje, /resumo, /semana, /relatorio, /historico, /peso, /agua, /humor, /lembrete, /lembretes, /remover-lembrete)
+- ConversationHandler para registro de refeição via texto ou foto com confirmação inline
+- TelegramService: vinculação conta via token Redis (10 min TTL), busca por chat_id
+- ReminderService: listar, criar, deletar e toggle de lembretes
+- POST /api/v1/telegram/link-token (gerar token de vinculação)
+- POST /api/v1/telegram/webhook (receber updates em produção)
+- Bot inicia em modo polling no lifespan do FastAPI (dev); webhook disponível para produção
+- User model: campos telegram_chat_id e whatsapp_number (preparação para ambos os canais)
 
 ---
 
