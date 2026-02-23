@@ -19,6 +19,8 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - `docker-compose.dev.yml` com hot reload para backend e frontend, portas expostas para desenvolvimento
 - Projeto base do backend: pyproject.toml, Dockerfile multi-stage, Alembic, ruff, mypy
 - Módulos core: config (Settings), database (engine async), security (JWT + bcrypt), deps (get_db)
+- Projeto base do frontend: Next.js 14, shadcn/ui, TanStack Query v5, next-auth v4, Recharts, axios
+- Providers com QueryClientProvider e SessionProvider, cliente axios com interceptor de autenticação
 
 ---
 

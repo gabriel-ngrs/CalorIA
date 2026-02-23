@@ -42,12 +42,12 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Configurar **ruff** e **mypy** (`pyproject.toml`)
 
 ### 0.4 Frontend — Projeto Base
-- [ ] `npx create-next-app@latest` com TypeScript, Tailwind, App Router
-- [ ] Instalar e configurar **shadcn/ui**
-- [ ] Instalar **TanStack Query**, **next-auth**, **Recharts**, **axios**
-- [ ] `Dockerfile` para o frontend
-- [ ] Estrutura de pastas: `app/`, `components/ui/`, `components/dashboard/`, `lib/`, `types/`
-- [ ] Configurar variáveis de ambiente Next.js
+- [x] `npx create-next-app@latest` com TypeScript, Tailwind, App Router
+- [x] Instalar e configurar **shadcn/ui**
+- [x] Instalar **TanStack Query**, **next-auth**, **Recharts**, **axios**
+- [x] `Dockerfile` para o frontend
+- [x] Estrutura de pastas: `app/`, `components/ui/`, `components/dashboard/`, `lib/`, `types/`
+- [x] Configurar variáveis de ambiente Next.js
 
 ---
 
@@ -412,7 +412,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 | Fase | Nome | Status |
 |---|---|---|
-| 0 | Setup e Fundação | `[~]` |
+| 0 | Setup e Fundação | `[x]` |
 | 1 | Modelos e API Base | `[ ]` |
 | 2 | Integração com IA (Gemini) | `[ ]` |
 | 3 | Bot Telegram | `[ ]` |
