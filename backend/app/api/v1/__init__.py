@@ -9,6 +9,7 @@ from app.api.v1.mood import router as mood_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.telegram import router as telegram_router
+from app.api.v1.whatsapp import router as whatsapp_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -20,3 +21,4 @@ router.include_router(mood_router)
 router.include_router(dashboard_router)
 router.include_router(ai_router)
 router.include_router(telegram_router)
+router.include_router(whatsapp_router)
