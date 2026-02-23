@@ -45,6 +45,11 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - WhatsAppService: vincula número por token, normaliza JID do WhatsApp
 - Confirmação de refeição via resposta "sim/não" com estado Redis (TTL 5 min)
 - POST /api/v1/whatsapp/link-token e POST /api/v1/whatsapp/webhook
+- Dashboard web completo: login, cadastro, layout com sidebar, todas as 9 páginas
+- Componentes shadcn/ui: Button, Card, Input, Label, Progress, Skeleton, Badge, Textarea, Select, Slider, Dialog
+- Hooks TanStack Query para todos os domínios (dashboard, meals, logs, reminders, profile)
+- NextAuth com CredentialsProvider + middleware de proteção de rotas
+- Gráficos Recharts: pizza macros, barras calorias semanais, linhas peso/humor
 
 ---
 

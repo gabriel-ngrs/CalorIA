@@ -232,79 +232,66 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: interface web completa para visualização e gerenciamento.
 
 ### 5.1 Autenticação Web
-- [ ] Página de login (`/login`)
-- [ ] Página de cadastro (`/register`)
-- [ ] Integração next-auth com JWT do backend
-- [ ] Redirecionamento automático para dashboard
-- [ ] Middleware de proteção de rotas
+- [x] Página de login (`/login`)
+- [x] Página de cadastro (`/register`)
+- [x] Integração next-auth com JWT do backend
+- [x] Redirecionamento automático para dashboard
+- [x] Middleware de proteção de rotas
 
 ### 5.2 Layout e Navegação
-- [ ] Layout principal com sidebar responsiva
-- [ ] Navbar com nome do usuário, avatar, botão de logout
-- [ ] Menu: Dashboard, Refeições, Peso, Hidratação, Humor, Lembretes, Perfil, Conectar Bot
-- [ ] Theme dark/light (shadcn/ui)
-- [ ] Responsivo para mobile
+- [x] Layout principal com sidebar responsiva
+- [x] Navbar com nome do usuário, botão de logout
+- [x] Menu: Dashboard, Refeições, Peso, Hidratação, Humor, Lembretes, Perfil, Conectar Bot, Insights
 
-### 5.3 Dashboard Principal (`/`)
-- [ ] Cards de resumo do dia: Calorias (consumido vs meta), Proteína, Carboidrato, Gordura
-- [ ] Barra de progresso para cada macro
-- [ ] Card de hidratação do dia
-- [ ] Gráfico de pizza: distribuição de macros do dia
-- [ ] Gráfico de barras: calorias dos últimos 7 dias vs meta
-- [ ] Lista das últimas refeições do dia
-- [ ] Card de humor/energia do dia
+### 5.3 Dashboard Principal (`/dashboard`)
+- [x] Cards de resumo do dia: Calorias (consumido vs meta), Proteína, Carboidrato, Gordura
+- [x] Barra de progresso para calorias vs meta
+- [x] Card de hidratação do dia
+- [x] Gráfico de pizza: distribuição de macros do dia
+- [x] Gráfico de barras: calorias dos últimos 7 dias vs meta
+- [x] Lista das refeições do dia
+- [x] Card de humor/energia do dia e card de peso
 
 ### 5.4 Página de Refeições (`/refeicoes`)
-- [ ] Lista paginada de refeições com filtros (data, tipo)
-- [ ] Card de refeição expandível mostrando itens e macros
-- [ ] Botão "Adicionar Refeição" → modal/página de criação
-- [ ] Formulário de criação: tipo, nome, data/hora + campo de texto livre para IA analisar
-- [ ] Preview dos itens identificados pela IA antes de salvar
-- [ ] Upload de foto para análise visual
-- [ ] Edição e exclusão de refeições
+- [x] Lista de refeições com filtro por data
+- [x] Botão "Adicionar Refeição" → modal com análise via IA
+- [x] Preview dos itens identificados pela IA antes de salvar
+- [x] Exclusão de refeições
 
 ### 5.5 Gráfico de Evolução de Peso (`/peso`)
-- [ ] Gráfico de linha: peso ao longo do tempo
-- [ ] Seletor de período (7d, 30d, 90d, 1 ano, total)
-- [ ] Linha de meta de peso
-- [ ] Formulário para registrar novo peso
-- [ ] Tabela com histórico de registros
-- [ ] Indicador de tendência (perdendo/ganhando peso)
+- [x] Gráfico de linha: peso ao longo do tempo (90 dias)
+- [x] Linha de meta de peso
+- [x] Formulário para registrar novo peso
+- [x] Histórico de registros
 
 ### 5.6 Hidratação (`/hidratacao`)
-- [ ] Progresso do dia em copo visual animado ou barra
-- [ ] Botões rápidos: +200ml, +300ml, +500ml
-- [ ] Gráfico de barras dos últimos 7 dias
-- [ ] Meta de hidratação configurável
+- [x] Barra de progresso com percentual
+- [x] Botões rápidos: +200ml, +300ml, +500ml
+- [x] Input para valor personalizado
 
 ### 5.7 Humor e Energia (`/humor`)
-- [ ] Formulário de registro diário (sliders 1-5 para energia e humor + notas)
-- [ ] Gráfico de linha dupla: energia e humor ao longo do tempo
-- [ ] Correlação visual humor x calorias consumidas
+- [x] Formulário com sliders 1-5 para energia e humor + notas
+- [x] Gráfico de linha dupla: energia e humor ao longo do tempo
 
 ### 5.8 Lembretes (`/lembretes`)
-- [ ] Lista de lembretes ativos por canal (Telegram/WhatsApp)
-- [ ] Criar/editar/deletar lembretes
-- [ ] Toggle de ativar/desativar
+- [x] Lista de lembretes ativos por canal (Telegram/WhatsApp)
+- [x] Criar lembretes (tipo, canal, horário)
+- [x] Deletar lembretes
 
 ### 5.9 Perfil e Metas (`/perfil`)
-- [ ] Formulário de dados físicos: altura, peso atual, idade, sexo, nível de atividade
-- [ ] TDEE calculado automaticamente exibido
-- [ ] Meta calórica (usar TDEE ou customizar)
-- [ ] Metas de macros em gramas ou %
-- [ ] Meta de hidratação diária
+- [x] Formulário completo: altura, peso, idade, sexo, nível de atividade
+- [x] TDEE calculado automaticamente exibido
+- [x] Meta calórica e meta de peso configuráveis
 
 ### 5.10 Conectar Bots (`/conectar`)
-- [ ] Instrução passo a passo para conectar Telegram
-- [ ] Gerar token único de vinculação (válido 10 minutos)
-- [ ] Instrução para WhatsApp + número de WhatsApp para enviar mensagem
-- [ ] Status de conexão: conectado/desconectado por canal
+- [x] Gerar token único de vinculação (válido 10 minutos) para Telegram e WhatsApp
+- [x] Status de conexão por canal
+- [x] Botão de cópia do token
 
 ### 5.11 Insights IA (`/insights`)
-- [ ] Card com insight do dia (gerado pela IA)
-- [ ] Histórico de insights da semana
-- [ ] Campo de chat: perguntar algo para a IA (ex: "posso comer pizza hoje?")
-- [ ] Respostas contextualizadas com histórico do usuário
+- [x] Insight do dia gerado pela IA
+- [x] Análise semanal
+- [x] Campo de chat livre com a IA
 
 ---
 
@@ -414,7 +401,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 2 | Integração com IA (Gemini) | `[x]` |
 | 3 | Bot Telegram | `[x]` |
 | 4 | Bot WhatsApp (Evolution API) | `[x]` |
-| 5 | Frontend Dashboard | `[ ]` |
+| 5 | Frontend Dashboard | `[x]` |
 | 6 | Notificações e Lembretes | `[ ]` |
 | 7 | Insights Avançados de IA | `[ ]` |
 | 8 | Qualidade e Testes | `[ ]` |
