@@ -12,9 +12,8 @@ from alembic import context
 from app.core.config import settings
 from app.core.database import Base  # noqa: F401
 
-# Importar modelos aqui para que sejam detectados pelo autogenerate.
-# Adicionar imports conforme os modelos forem criados na Fase 1.1:
-# from app.models import user, meal, meal_item  # noqa: F401
+# Importar todos os modelos para que sejam detectados pelo autogenerate
+import app.models  # noqa: F401
 
 config = context.config
 

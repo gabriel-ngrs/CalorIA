@@ -1,0 +1,23 @@
+# Importar todos os modelos nesta ordem para garantir que o Base.metadata
+# esteja populado corretamente para o Alembic autogenerate.
+from app.models.user import User
+from app.models.profile import UserProfile
+from app.models.meal import Meal
+from app.models.meal_item import MealItem
+from app.models.weight_log import WeightLog
+from app.models.hydration_log import HydrationLog
+from app.models.mood_log import MoodLog
+from app.models.reminder import Reminder
+from app.models.ai_conversation import AIConversation
+
+__all__ = [
+    "User",
+    "UserProfile",
+    "Meal",
+    "MealItem",
+    "WeightLog",
+    "HydrationLog",
+    "MoodLog",
+    "Reminder",
+    "AIConversation",
+]
