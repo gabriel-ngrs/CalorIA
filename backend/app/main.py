@@ -9,9 +9,15 @@ from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Startup: inicializações futuras (conexão Redis, etc.)
+    # Startup: inicia bot Telegram em modo polling (dev)
+    if settings.TELEGRAM_BOT_TOKEN:
+        from app.bots.telegram.bot import start_polling
+        await start_polling()
     yield
-    # Shutdown: limpeza de recursos
+    # Shutdown: encerra bot Telegram
+    if settings.TELEGRAM_BOT_TOKEN:
+        from app.bots.telegram.bot import stop_polling
+        await stop_polling()
 
 
 app = FastAPI(

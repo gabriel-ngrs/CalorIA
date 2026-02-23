@@ -30,6 +30,12 @@ class User(Base):
     calorie_goal: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weight_goal: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    telegram_chat_id: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, unique=True, index=True
+    )
+    whatsapp_number: Mapped[str | None] = mapped_column(
+        String(30), nullable=True, unique=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
