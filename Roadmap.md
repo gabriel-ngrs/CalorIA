@@ -56,33 +56,33 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: banco de dados modelado, autenticação funcionando, CRUD básico.
 
 ### 1.1 Modelos de Banco de Dados
-- [ ] `models/user.py` — User (id, email, name, password_hash, weight_goal, calorie_goal, created_at)
-- [ ] `models/profile.py` — UserProfile (height, current_weight, age, sex, activity_level, tdee_calculated)
-- [ ] `models/meal.py` — Meal (id, user_id, name, meal_type: breakfast/lunch/dinner/snack, date, source: manual/telegram/whatsapp, notes)
-- [ ] `models/meal_item.py` — MealItem (id, meal_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber, raw_input)
-- [ ] `models/weight_log.py` — WeightLog (id, user_id, weight_kg, date, notes)
-- [ ] `models/hydration_log.py` — HydrationLog (id, user_id, amount_ml, date, time)
-- [ ] `models/mood_log.py` — MoodLog (id, user_id, date, energy_level 1-5, mood_level 1-5, notes)
-- [ ] `models/reminder.py` — Reminder (id, user_id, type, time, days_of_week, active, channel: telegram/whatsapp)
-- [ ] `models/ai_conversation.py` — AIConversation (id, user_id, channel, external_chat_id, messages JSON, created_at)
-- [ ] Criar migração inicial com Alembic
+- [x] `models/user.py` — User (id, email, name, password_hash, weight_goal, calorie_goal, created_at)
+- [x] `models/profile.py` — UserProfile (height, current_weight, age, sex, activity_level, tdee_calculated)
+- [x] `models/meal.py` — Meal (id, user_id, name, meal_type: breakfast/lunch/dinner/snack, date, source: manual/telegram/whatsapp, notes)
+- [x] `models/meal_item.py` — MealItem (id, meal_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber, raw_input)
+- [x] `models/weight_log.py` — WeightLog (id, user_id, weight_kg, date, notes)
+- [x] `models/hydration_log.py` — HydrationLog (id, user_id, amount_ml, date, time)
+- [x] `models/mood_log.py` — MoodLog (id, user_id, date, energy_level 1-5, mood_level 1-5, notes)
+- [x] `models/reminder.py` — Reminder (id, user_id, type, time, days_of_week, active, channel: telegram/whatsapp)
+- [x] `models/ai_conversation.py` — AIConversation (id, user_id, channel, external_chat_id, messages JSON, created_at)
+- [x] Criar migração inicial com Alembic
 
 ### 1.2 Schemas Pydantic
-- [ ] Schemas para User (Create, Update, Response, Login)
-- [ ] Schemas para Meal + MealItem (Create, Update, Response, com items aninhados)
-- [ ] Schemas para WeightLog (Create, Response)
-- [ ] Schemas para HydrationLog (Create, Response)
-- [ ] Schemas para MoodLog (Create, Response)
-- [ ] Schemas para Reminder (Create, Update, Response)
-- [ ] Schemas para Dashboard (aggregated data)
+- [x] Schemas para User (Create, Update, Response, Login)
+- [x] Schemas para Meal + MealItem (Create, Update, Response, com items aninhados)
+- [x] Schemas para WeightLog (Create, Response)
+- [x] Schemas para HydrationLog (Create, Response)
+- [x] Schemas para MoodLog (Create, Response)
+- [x] Schemas para Reminder (Create, Update, Response)
+- [x] Schemas para Dashboard (aggregated data)
 
 ### 1.3 Autenticação
-- [ ] `POST /api/v1/auth/register` — cadastro de usuário
-- [ ] `POST /api/v1/auth/login` — login, retorna JWT access + refresh token
-- [ ] `POST /api/v1/auth/refresh` — renovar access token
-- [ ] `POST /api/v1/auth/logout` — invalidar refresh token (Redis blacklist)
-- [ ] Middleware de autenticação via Bearer token
-- [ ] `GET /api/v1/auth/me` — dados do usuário autenticado
+- [x] `POST /api/v1/auth/register` — cadastro de usuário
+- [x] `POST /api/v1/auth/login` — login, retorna JWT access + refresh token
+- [x] `POST /api/v1/auth/refresh` — renovar access token
+- [x] `POST /api/v1/auth/logout` — invalidar refresh token (Redis blacklist)
+- [x] Middleware de autenticação via Bearer token
+- [x] `GET /api/v1/auth/me` — dados do usuário autenticado
 
 ### 1.4 API — Usuário e Perfil
 - [ ] `GET /api/v1/users/me/profile` — buscar perfil
@@ -413,7 +413,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | Fase | Nome | Status |
 |---|---|---|
 | 0 | Setup e Fundação | `[x]` |
-| 1 | Modelos e API Base | `[ ]` |
+| 1 | Modelos e API Base | `[~]` |
 | 2 | Integração com IA (Gemini) | `[ ]` |
 | 3 | Bot Telegram | `[ ]` |
 | 4 | Bot WhatsApp (Evolution API) | `[ ]` |

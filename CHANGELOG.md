@@ -21,6 +21,9 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Módulos core: config (Settings), database (engine async), security (JWT + bcrypt), deps (get_db)
 - Projeto base do frontend: Next.js 14, shadcn/ui, TanStack Query v5, next-auth v4, Recharts, axios
 - Providers com QueryClientProvider e SessionProvider, cliente axios com interceptor de autenticação
+- Modelos SQLAlchemy 2.x: User, UserProfile, Meal, MealItem, WeightLog, HydrationLog, MoodLog, Reminder, AIConversation
+- Schemas Pydantic v2 para todos os domínios incluindo schemas de dashboard agregados
+- Autenticação JWT: register, login, refresh (com blacklist Redis), logout, /me
 
 ---
 
