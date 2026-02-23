@@ -31,9 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers serão incluídos aqui conforme as fases avançam:
-# from app.api.v1 import router as api_v1_router
-# app.include_router(api_v1_router, prefix="/api/v1")
+from app.api.v1 import router as api_v1_router
+
+app.include_router(api_v1_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["health"])
