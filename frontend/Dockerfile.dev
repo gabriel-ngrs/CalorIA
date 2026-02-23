@@ -1,0 +1,20 @@
+# =============================================================================
+# CalorIA Frontend — Dockerfile.dev (desenvolvimento com hot reload)
+# =============================================================================
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Instalar dependências antes de copiar o código (cache layer)
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# O código fonte é montado via volume no docker-compose.dev.yml
+# COPY . .  ← não necessário aqui
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
