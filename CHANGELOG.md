@@ -17,6 +17,8 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - `.env.example` com todas as variáveis necessárias documentadas
 - `docker-compose.yml` com todos os serviços para produção local
 - `docker-compose.dev.yml` com hot reload para backend e frontend, portas expostas para desenvolvimento
+- Projeto base do backend: pyproject.toml, Dockerfile multi-stage, Alembic, ruff, mypy
+- Módulos core: config (Settings), database (engine async), security (JWT + bcrypt), deps (get_db)
 
 ---
 

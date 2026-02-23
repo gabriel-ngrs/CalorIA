@@ -30,16 +30,16 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Health checks para postgres e redis
 
 ### 0.3 Backend — Projeto Base
-- [ ] `pyproject.toml` com dependências (FastAPI, SQLAlchemy, Celery, etc.)
-- [ ] `Dockerfile` para o backend (multi-stage build)
-- [ ] Estrutura de pastas: `app/api/`, `app/core/`, `app/models/`, `app/schemas/`, `app/services/`, `app/workers/`, `app/bots/`
-- [ ] `app/main.py` — instância FastAPI com CORS, lifespan, routers
-- [ ] `app/core/config.py` — Settings com Pydantic BaseSettings
-- [ ] `app/core/database.py` — Engine async PostgreSQL, sessão async
-- [ ] `app/core/security.py` — JWT encode/decode, hash de senhas
-- [ ] `app/core/deps.py` — Dependências FastAPI (get_db, get_current_user)
-- [ ] Configurar **Alembic** para migrações
-- [ ] Configurar **ruff** e **mypy** (`pyproject.toml`)
+- [x] `pyproject.toml` com dependências (FastAPI, SQLAlchemy, Celery, etc.)
+- [x] `Dockerfile` para o backend (multi-stage build)
+- [x] Estrutura de pastas: `app/api/`, `app/core/`, `app/models/`, `app/schemas/`, `app/services/`, `app/workers/`, `app/bots/`
+- [x] `app/main.py` — instância FastAPI com CORS, lifespan, routers
+- [x] `app/core/config.py` — Settings com Pydantic BaseSettings
+- [x] `app/core/database.py` — Engine async PostgreSQL, sessão async
+- [x] `app/core/security.py` — JWT encode/decode, hash de senhas
+- [x] `app/core/deps.py` — Dependências FastAPI (get_db, get_current_user)
+- [x] Configurar **Alembic** para migrações
+- [x] Configurar **ruff** e **mypy** (`pyproject.toml`)
 
 ### 0.4 Frontend — Projeto Base
 - [ ] `npx create-next-app@latest` com TypeScript, Tailwind, App Router
