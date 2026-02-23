@@ -26,7 +26,14 @@
     "clsx": "^2",
     "tailwind-merge": "^2",
     "tailwindcss-animate": "^1",
-    "lucide-react": "^0.460.0"
+    "lucide-react": "^0.460.0",
+
+    "@radix-ui/react-slot": "^1",
+    "@radix-ui/react-label": "^2",
+    "@radix-ui/react-progress": "^1",
+    "@radix-ui/react-select": "^2",
+    "@radix-ui/react-slider": "^1",
+    "@radix-ui/react-dialog": "^1"
   },
   "devDependencies": {
     "typescript": "^5",
