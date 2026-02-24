@@ -13,6 +13,10 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - `workers/tasks/reports.py`: tasks `send_daily_summaries` (22h) e `send_weekly_reports` (domingo 20h) com insights gerados pelo Gemini
 - `workers/tasks/maintenance.py`: tasks `cleanup_old_conversations` (remove conversas > 90 dias) e `recalculate_tdee` (recalcula TDEE mensal quando peso mudou ≥ 2 kg)
 - Beat schedule do Celery atualizado com entrada `recalculate-tdee-monthly` (dia 1 de cada mês às 4h)
+- `services/ai/pattern_analyzer.py`: PatternAnalyzer que agrega refeições + humor dos últimos N dias e usa Gemini para identificar padrões (horários, frequência, correlação com humor)
+- `services/ai/insights_generator.py`: três novos métodos — `nutritional_alerts()` (detecta deficiências recorrentes com severidade), `goal_adjustment_suggestion()` (compara tendência de peso com meta e sugere ajuste calórico), `monthly_report()` (relatório mensal com score de aderência, melhor/pior semana e análise da IA)
+- `schemas/ai.py`: novos schemas EatingPattern, NutritionalAlert, NutritionalAlertsResponse, GoalAdjustmentSuggestion, WeekSummary, MonthlyReport
+- Novos endpoints: GET /api/v1/ai/patterns, /nutritional-alerts, /goal-adjustment, /monthly-report
 
 - Documentação inicial do projeto: CLAUDE.md, Roadmap.md, Prompt.md, README.md, CHANGELOG.md
 - Plano completo de desenvolvimento em 9 fases no Roadmap.md

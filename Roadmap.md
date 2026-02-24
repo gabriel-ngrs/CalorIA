@@ -328,19 +328,19 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: IA aprendendo padrões e gerando recomendações personalizadas.
 
 ### 7.1 Análise de Padrões
-- [ ] Identificar horários de refeição habituais
-- [ ] Detectar padrões: dias que come mais/menos, correlação com humor
-- [ ] Identificar alimentos mais consumidos e frequência
+- [x] Identificar horários de refeição habituais
+- [x] Detectar padrões: dias que come mais/menos, correlação com humor
+- [x] Identificar alimentos mais consumidos e frequência
 
 ### 7.2 Recomendações Personalizadas
-- [ ] Sugestão de refeições baseada em preferências e histórico
-- [ ] Alertas de deficiências nutricionais recorrentes
-- [ ] Sugestão de ajuste de metas baseada na tendência real de peso
+- [x] Sugestão de refeições baseada em preferências e histórico
+- [x] Alertas de deficiências nutricionais recorrentes
+- [x] Sugestão de ajuste de metas baseada na tendência real de peso
 
 ### 7.3 Relatórios Ricos
-- [ ] Relatório mensal em PDF (futuro) ou mensagem longa formatada
-- [ ] "Mês em revisão": melhor semana, pior semana, progresso vs meta
-- [ ] Score de aderência à dieta (% de dias dentro da meta)
+- [x] Relatório mensal em PDF (futuro) ou mensagem longa formatada
+- [x] "Mês em revisão": melhor semana, pior semana, progresso vs meta
+- [x] Score de aderência à dieta (% de dias dentro da meta)
 
 ---
 
@@ -403,6 +403,6 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 4 | Bot WhatsApp (Evolution API) | `[x]` |
 | 5 | Frontend Dashboard | `[x]` |
 | 6 | Notificações e Lembretes | `[x]` |
-| 7 | Insights Avançados de IA | `[ ]` |
+| 7 | Insights Avançados de IA | `[x]` |
 | 8 | Qualidade e Testes | `[ ]` |
 | 9 | Preparação para Escala | `[ ]` |

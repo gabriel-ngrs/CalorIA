@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -60,3 +61,68 @@ class MealSuggestion(BaseModel):
     meal_type: str
     estimated_calories: float
     items: list[SuggestedMealItem]
+
+
+# ── Fase 7 — Insights Avançados ───────────────────────────────────────────────
+
+
+class EatingPattern(BaseModel):
+    """Resultado da análise de padrões alimentares dos últimos N dias."""
+
+    analysis: str
+    frequent_foods: list[str]
+    days_analyzed: int
+
+
+class NutritionalAlert(BaseModel):
+    """Alerta sobre deficiência nutricional recorrente."""
+
+    nutrient: str
+    average_daily: float
+    recommended_min: float
+    unit: str
+    severity: Literal["low", "medium", "high"]
+
+
+class NutritionalAlertsResponse(BaseModel):
+    alerts: list[NutritionalAlert]
+    analysis: str
+    days_analyzed: int
+
+
+class GoalAdjustmentSuggestion(BaseModel):
+    """Sugestão de ajuste de metas com base na tendência real de peso."""
+
+    current_calorie_goal: int | None
+    suggested_calorie_goal: int | None
+    current_weight_goal: float | None
+    weight_trend_kg_per_week: float | None
+    adjustment_recommended: bool
+    suggestion: str
+
+
+class WeekSummary(BaseModel):
+    """Resumo de uma semana dentro do relatório mensal."""
+
+    week_number: int
+    start_date: date
+    end_date: date
+    avg_calories: float
+    days_logged: int
+    adherence_pct: float
+
+
+class MonthlyReport(BaseModel):
+    """Relatório mensal completo com score de aderência e análise da IA."""
+
+    month: int
+    year: int
+    total_days_logged: int
+    adherence_score: float
+    avg_daily_calories: float
+    avg_daily_protein: float
+    avg_daily_carbs: float
+    avg_daily_fat: float
+    best_week: WeekSummary
+    worst_week: WeekSummary
+    analysis: str

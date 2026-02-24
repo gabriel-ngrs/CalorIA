@@ -8,16 +8,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.deps import get_current_user_id, get_db
 from app.schemas.ai import (
+    EatingPattern,
+    GoalAdjustmentSuggestion,
     InsightRequest,
     InsightResponse,
     MealAnalysisRequest,
     MealAnalysisResponse,
     MealSuggestion,
+    MonthlyReport,
+    NutritionalAlertsResponse,
     PhotoAnalysisRequest,
 )
 from app.services.ai.gemini_client import get_gemini_client
 from app.services.ai.insights_generator import InsightsGenerator
 from app.services.ai.meal_parser import MealParser
+from app.services.ai.pattern_analyzer import PatternAnalyzer
 from app.services.ai.vision_parser import VisionParser
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -114,4 +119,87 @@ async def suggest_meal(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar sugestão: {exc}",
+        )
+
+
+# ── Fase 7 — Insights Avançados ───────────────────────────────────────────────
+
+
+@router.get("/patterns", response_model=EatingPattern)
+async def eating_patterns(
+    days: int = Query(default=30, ge=7, le=90),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
+) -> EatingPattern:
+    """Analisa padrões alimentares dos últimos N dias (7-90)."""
+    client = get_gemini_client()
+    try:
+        return await PatternAnalyzer(client, db).analyze_eating_patterns(user_id, days)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erro ao analisar padrões: {exc}",
+        )
+
+
+@router.get("/nutritional-alerts", response_model=NutritionalAlertsResponse)
+async def nutritional_alerts(
+    days: int = Query(default=14, ge=7, le=30),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
+) -> NutritionalAlertsResponse:
+    """Detecta deficiências nutricionais recorrentes nos últimos N dias."""
+    client = get_gemini_client()
+    try:
+        return await InsightsGenerator(client, db).nutritional_alerts(user_id, days)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erro ao verificar alertas nutricionais: {exc}",
+        )
+
+
+@router.get("/goal-adjustment", response_model=GoalAdjustmentSuggestion)
+async def goal_adjustment(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
+) -> GoalAdjustmentSuggestion:
+    """Sugere ajuste de metas com base na tendência real de peso dos últimos 30 dias."""
+    client = get_gemini_client()
+    try:
+        return await InsightsGenerator(client, db).goal_adjustment_suggestion(user_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erro ao gerar sugestão de ajuste: {exc}",
+        )
+
+
+@router.get("/monthly-report", response_model=MonthlyReport)
+async def monthly_report(
+    month: int = Query(default=None, ge=1, le=12),
+    year: int = Query(default=None, ge=2020),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
+) -> MonthlyReport:
+    """Gera relatório mensal com score de aderência e análise semanal.
+
+    Padrão: mês e ano atuais se não informados.
+    """
+    today = date.today()
+    report_month = month or today.month
+    report_year = year or today.year
+    client = get_gemini_client()
+    try:
+        return await InsightsGenerator(client, db).monthly_report(
+            user_id, report_month, report_year
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erro ao gerar relatório mensal: {exc}",
         )
