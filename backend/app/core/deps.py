@@ -21,11 +21,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> int:
-    """Valida o Bearer token e retorna o user_id.
-
-    O helper get_current_user (retornando o objeto User completo)
-    será adicionado na Fase 1.1, após a criação do modelo User.
-    """
+    """Valida o Bearer token e retorna o user_id."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token inválido ou expirado",

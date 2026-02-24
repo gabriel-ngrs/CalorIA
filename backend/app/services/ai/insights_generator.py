@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, timedelta
 
@@ -138,10 +139,13 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
   ]
 }}"""
 
-        import json
         raw = await self._client.generate_text(prompt, use_cache=False)
         raw = raw.strip().strip("```json").strip("```").strip()
-        data = json.loads(raw)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            logger.error("Gemini retornou JSON inválido para sugestão de refeição: %s", raw[:200])
+            raise ValueError("A IA não conseguiu gerar uma sugestão válida.") from exc
 
         return MealSuggestion(
             name=data["name"],

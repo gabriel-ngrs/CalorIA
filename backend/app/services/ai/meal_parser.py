@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.utils import extract_json_from_ai_response
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +45,6 @@ def _build_prompt(description: str, user_context: str) -> str:
     return f"{system}\n\nDescrição da refeição: {description}"
 
 
-def _extract_json_from_response(text: str) -> list[dict]:  # type: ignore[type-arg]
-    """Extrai lista JSON da resposta do Gemini, tolerante a markdown."""
-    text = text.strip()
-    # Remove blocos ```json ... ``` ou ``` ... ```
-    text = re.sub(r"```(?:json)?\s*", "", text)
-    text = re.sub(r"```\s*", "", text)
-    text = text.strip()
-    return json.loads(text)  # type: ignore[return-value]
-
-
 class MealParser:
     def __init__(self, client: GeminiClient) -> None:
         self._client = client
@@ -68,7 +58,7 @@ class MealParser:
 
         try:
             raw = await self._client.generate_text(prompt, use_cache=True)
-            data = _extract_json_from_response(raw)
+            data = extract_json_from_ai_response(raw)
         except json.JSONDecodeError as exc:
             logger.error("Gemini retornou JSON inválido para análise de texto: %s", exc)
             raise ValueError("A IA não conseguiu analisar a descrição da refeição.") from exc

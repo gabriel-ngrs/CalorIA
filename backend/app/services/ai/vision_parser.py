@@ -3,10 +3,10 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import re
 
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.utils import extract_json_from_ai_response
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,6 @@ Regras:
 _CONFIDENCE_THRESHOLD = 0.6
 
 
-def _extract_json_from_response(text: str) -> list[dict]:  # type: ignore[type-arg]
-    text = text.strip()
-    text = re.sub(r"```(?:json)?\s*", "", text)
-    text = re.sub(r"```\s*", "", text)
-    return json.loads(text.strip())  # type: ignore[return-value]
-
-
 class VisionParser:
     def __init__(self, client: GeminiClient) -> None:
         self._client = client
@@ -61,7 +54,7 @@ class VisionParser:
             raw = await self._client.generate_with_image(
                 _VISION_PROMPT, image_bytes, mime_type
             )
-            data = _extract_json_from_response(raw)
+            data = extract_json_from_ai_response(raw)
         except json.JSONDecodeError as exc:
             logger.error("Gemini retornou JSON inválido para análise de imagem: %s", exc)
             raise ValueError("A IA não conseguiu analisar a imagem da refeição.") from exc

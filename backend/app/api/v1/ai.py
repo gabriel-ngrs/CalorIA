@@ -24,6 +24,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 def _require_gemini() -> None:
+    """Dependência FastAPI: garante que GEMINI_API_KEY está configurada."""
     if not settings.GEMINI_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -36,9 +37,9 @@ async def analyze_meal(
     data: MealAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
 ) -> MealAnalysisResponse:
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
-    _require_gemini()
     client = get_gemini_client()
     try:
         return await MealParser(client).parse(
@@ -53,9 +54,9 @@ async def analyze_meal(
 async def analyze_photo(
     data: PhotoAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
+    _: None = Depends(_require_gemini),
 ) -> MealAnalysisResponse:
     """Analisa foto de refeição (base64) e retorna itens nutricionais."""
-    _require_gemini()
     client = get_gemini_client()
     try:
         return await VisionParser(client).parse_base64(
@@ -72,9 +73,9 @@ async def generate_insight(
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
 ) -> InsightResponse:
     """Gera insight personalizado: diário, semanal ou resposta a uma pergunta."""
-    _require_gemini()
     if data.type == "question" and not data.question:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -103,9 +104,9 @@ async def suggest_meal(
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_gemini),
 ) -> MealSuggestion:
     """Sugere uma refeição com base no histórico e calorias restantes do dia."""
-    _require_gemini()
     client = get_gemini_client()
     try:
         return await InsightsGenerator(client, db).suggest_meal(user_id, today)

@@ -65,15 +65,16 @@ class GeminiClient:
         try:
             async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
                 return await r.get(key)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Falha ao ler cache Gemini (Redis): %s", exc)
             return None
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
             async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
                 await r.setex(key, _CACHE_TTL, value)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Falha ao gravar cache Gemini (Redis): %s", exc)
 
     async def _generate_with_retry(
         self,

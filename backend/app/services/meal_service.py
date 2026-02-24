@@ -37,7 +37,7 @@ class MealService:
             query = query.where(Meal.meal_type == meal_type)
 
         result = await self.db.execute(query)
-        return list(result.scalars().all())
+        return result.scalars().all()  # type: ignore[return-value]
 
     async def create_meal(self, user_id: int, data: MealCreate) -> Meal:
         meal = Meal(

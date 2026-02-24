@@ -9,10 +9,10 @@ from app.schemas.reminder import ReminderCreate
 
 class ReminderService:
     def __init__(self, db: AsyncSession) -> None:
-        self._db = db
+        self.db = db
 
     async def list(self, user_id: int) -> list[Reminder]:
-        result = await self._db.execute(
+        result = await self.db.execute(
             select(Reminder)
             .where(Reminder.user_id == user_id)
             .order_by(Reminder.time)
@@ -28,13 +28,13 @@ class ReminderService:
             channel=data.channel,
             message=data.message,
         )
-        self._db.add(reminder)
-        await self._db.commit()
-        await self._db.refresh(reminder)
+        self.db.add(reminder)
+        await self.db.commit()
+        await self.db.refresh(reminder)
         return reminder
 
     async def delete(self, user_id: int, reminder_id: int) -> bool:
-        result = await self._db.execute(
+        result = await self.db.execute(
             select(Reminder).where(
                 Reminder.id == reminder_id,
                 Reminder.user_id == user_id,
@@ -43,12 +43,12 @@ class ReminderService:
         reminder = result.scalar_one_or_none()
         if not reminder:
             return False
-        await self._db.delete(reminder)
-        await self._db.commit()
+        await self.db.delete(reminder)
+        await self.db.commit()
         return True
 
     async def toggle(self, user_id: int, reminder_id: int) -> Reminder | None:
-        result = await self._db.execute(
+        result = await self.db.execute(
             select(Reminder).where(
                 Reminder.id == reminder_id,
                 Reminder.user_id == user_id,
@@ -58,6 +58,6 @@ class ReminderService:
         if not reminder:
             return None
         reminder.active = not reminder.active
-        await self._db.commit()
-        await self._db.refresh(reminder)
+        await self.db.commit()
+        await self.db.refresh(reminder)
         return reminder
