@@ -16,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import api from "@/lib/api";
-import { Sparkles } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -48,44 +47,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Orbes decorativos de fundo */}
-      <div
-        className="absolute top-1/3 -right-28 w-72 h-72 rounded-full opacity-18 animate-float"
-        style={{
-          background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)",
-          filter: "blur(40px)",
-        }}
-      />
-      <div
-        className="absolute bottom-1/3 -left-20 w-56 h-56 rounded-full opacity-14 animate-float"
-        style={{
-          background: "radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)",
-          filter: "blur(40px)",
-          animationDelay: "1.5s",
-        }}
-      />
-
-      <Card className="w-full max-w-sm animate-scale-in">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <Card className="w-full max-w-sm animate-fade-in">
         <CardHeader className="text-center pb-2">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <div className="h-9 w-9 rounded-xl glass-card flex items-center justify-center glow-primary-sm">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl gradient-text font-bold">Criar conta</CardTitle>
-          <CardDescription>Comece seu diário alimentar</CardDescription>
+          <h1 className="text-2xl font-bold gradient-text mb-1">CalorIA</h1>
+          <CardTitle className="text-base font-medium">Criar conta</CardTitle>
+          <CardDescription>Comece seu diário alimentar hoje</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4 pt-4">
             {error && (
-              <p className="text-sm text-destructive glass border border-destructive/20 px-3 py-2 rounded-xl">
+              <p className="text-sm text-destructive bg-destructive/8 border border-destructive/15 px-3 py-2 rounded-lg">
                 {error}
               </p>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+              <Label htmlFor="name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Nome
               </Label>
               <Input
@@ -97,7 +75,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+              <Label htmlFor="email" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 E-mail
               </Label>
               <Input
@@ -110,7 +88,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+              <Label htmlFor="password" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Senha
               </Label>
               <Input
@@ -127,11 +105,11 @@ export default function RegisterPage() {
 
           <CardFooter className="flex flex-col gap-3 pt-2">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Criando..." : "Criar conta"}
+              {loading ? "Criando conta..." : "Criar conta"}
             </Button>
             <p className="text-sm text-muted-foreground text-center">
               Já tem conta?{" "}
-              <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+              <Link href="/login" className="text-primary font-medium hover:underline">
                 Entrar
               </Link>
             </p>

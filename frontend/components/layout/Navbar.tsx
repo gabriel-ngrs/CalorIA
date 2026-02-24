@@ -2,6 +2,7 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LogOut, User } from "lucide-react";
 
 export function Navbar() {
@@ -10,16 +11,20 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 glass border-b border-[var(--glass-border)]">
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
+        {/* Logo visível apenas no mobile */}
         <span className="font-bold text-lg gradient-text md:hidden">CalorIA</span>
 
-        <div className="ml-auto flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl glass neu-inset-sm">
-            <User className="h-3.5 w-3.5 text-primary" />
-            <span className="text-sm text-foreground/80">
-              {session?.user?.name ?? session?.user?.email}
-            </span>
+        <div className="ml-auto flex items-center gap-2">
+          {/* Usuário */}
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-muted-foreground text-sm">
+            <User className="h-3.5 w-3.5" />
+            <span>{session?.user?.name ?? session?.user?.email}</span>
           </div>
 
+          {/* Toggle de tema */}
+          <ThemeToggle />
+
+          {/* Sair */}
           <Button
             variant="ghost"
             size="sm"
@@ -27,7 +32,7 @@ export function Navbar() {
             className="gap-1.5 text-muted-foreground hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
-            <span className="hidden md:inline">Sair</span>
+            <span className="hidden md:inline text-sm">Sair</span>
           </Button>
         </div>
       </div>

@@ -31,28 +31,16 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside
-      className={cn(
-        "hidden md:flex flex-col w-60 min-h-screen py-6 px-3",
-        "glass border-r border-[var(--glass-border)]",
-        "sticky top-0 h-screen"
-      )}
-    >
+    <aside className="hidden md:flex flex-col w-56 min-h-screen sticky top-0 h-screen glass border-r border-[var(--glass-border)] py-5 px-3">
       {/* Logo */}
-      <div className="mb-8 px-3">
-        <h1 className="text-2xl font-bold gradient-text tracking-tight">CalorIA</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Diário alimentar inteligente</p>
+      <div className="px-2 mb-6">
+        <h1 className="text-xl font-bold gradient-text tracking-tight">CalorIA</h1>
+        <p className="text-[11px] text-muted-foreground mt-0.5">Diário alimentar inteligente</p>
       </div>
 
-      {/* Divisor decorativo */}
-      <div
-        className="mx-3 mb-4 h-px rounded-full"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)",
-        }}
-      />
+      <div className="divider-gradient mx-2 mb-4" />
 
+      {/* Nav */}
       <nav className="flex-1 space-y-0.5">
         {nav.map(({ href, label, icon: Icon }) => {
           const isActive =
@@ -63,45 +51,26 @@ export function Sidebar() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                "transition-all duration-200",
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium",
+                "transition-all duration-150",
                 isActive
-                  ? [
-                      "glass-card text-primary",
-                      "border border-primary/25",
-                      "shadow-[0_0_12px_hsl(var(--primary)/0.15)]",
-                    ]
-                  : [
-                      "text-muted-foreground",
-                      "hover:glass hover:text-foreground",
-                      "hover:border hover:border-[var(--glass-border)]",
-                    ]
+                  ? "bg-primary/10 text-primary border border-primary/20"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <Icon
-                className={cn(
-                  "h-4 w-4 shrink-0 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground"
-                )}
-              />
+              <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
               {label}
               {isActive && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary glow-primary-sm" />
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Rodapé da sidebar */}
-      <div
-        className="mx-3 mt-4 mb-2 h-px rounded-full"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)",
-        }}
-      />
-      <p className="px-3 text-[10px] text-muted-foreground/50 text-center">
+      {/* Rodapé */}
+      <div className="divider-gradient mx-2 mt-4 mb-3" />
+      <p className="px-2 text-[10px] text-muted-foreground/50 text-center">
         v0.1 · Powered by Gemini
       </p>
     </aside>

@@ -3,102 +3,104 @@
 @tailwind utilities;
 
 @layer base {
+  /* ============================================================
+     LIGHT MODE — padrão
+     Paleta: família #91B7C7–#3D6271 (azul aço)
+     Clean, arejado, whites com acento azul-aço suave
+  ============================================================ */
   :root {
-    /* === Paleta: Azul Aço Claro (Light Mode) ===
-       Baseada em: #91B7C7 · #7CA2B2 · #678D9C · #527787 · #3D6271
-    */
-    --background: 198 28% 93%;
-    --foreground: 197 32% 14%;
+    --background: 198 30% 97%;
+    --foreground: 198 40% 14%;
 
-    --card: 198 28% 93%;
-    --card-foreground: 197 32% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 198 40% 14%;
 
-    --popover: 198 25% 97%;
-    --popover-foreground: 197 32% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 198 40% 14%;
 
-    /* Primary: #527787 — teal médio-escuro */
+    /* Primary: #527787 — azul aço médio, bom contraste em branco */
     --primary: 198 24% 42%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: claro */
-    --secondary: 198 22% 84%;
-    --secondary-foreground: 197 28% 22%;
+    /* Secondary: cinza-azulado suave */
+    --secondary: 198 20% 93%;
+    --secondary-foreground: 198 30% 28%;
 
-    --muted: 198 18% 86%;
-    --muted-foreground: 198 14% 46%;
+    --muted: 198 16% 91%;
+    --muted-foreground: 198 14% 50%;
 
-    /* Accent: laranja quente — o "Calor" de CalorIA */
-    --accent: 28 88% 55%;
+    /* Accent: laranja quente — "Calor" de CalorIA */
+    --accent: 28 88% 54%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 78% 57%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 198 20% 78%;
-    --input: 198 20% 86%;
+    --border: 198 18% 88%;
+    --input: 198 16% 94%;
     --ring: 198 24% 42%;
 
-    --radius: 1rem;
+    --radius: 0.875rem;
 
-    /* --- Neumorfismo (light) --- */
-    --neu-dark: rgba(103, 141, 156, 0.42);
-    --neu-light: rgba(255, 255, 255, 0.96);
-    --neu-dark-sm: rgba(103, 141, 156, 0.28);
-    --neu-light-sm: rgba(255, 255, 255, 0.92);
+    /* --- Neumorfismo light — quase imperceptível, toque de profundidade --- */
+    --neu-dark: rgba(124, 162, 178, 0.22);
+    --neu-light: rgba(255, 255, 255, 0.95);
+    --neu-dark-sm: rgba(124, 162, 178, 0.15);
+    --neu-light-sm: rgba(255, 255, 255, 0.9);
 
-    /* --- Vidro (light) --- */
-    --glass-bg: rgba(255, 255, 255, 0.62);
-    --glass-bg-hover: rgba(255, 255, 255, 0.78);
-    --glass-border: rgba(255, 255, 255, 0.84);
-    --glass-shadow: rgba(103, 141, 156, 0.16);
+    /* --- Vidro light — essencialmente branco limpo --- */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-bg-hover: rgba(255, 255, 255, 0.96);
+    --glass-border: rgba(145, 183, 199, 0.22);
+    --glass-shadow: rgba(82, 119, 135, 0.07);
   }
 
+  /* ============================================================
+     DARK MODE — ativado via toggle
+     Azul aço profundo, mas mais claro que antes
+  ============================================================ */
   .dark {
-    /* === Paleta: Azul Aço Profundo (Dark Mode) ===
-       Mesma família de matiz (~198°), tons muito mais escuros
-    */
-    --background: 198 40% 7%;
-    --foreground: 198 25% 90%;
+    --background: 198 32% 11%;
+    --foreground: 198 18% 90%;
 
-    --card: 198 38% 9%;
-    --card-foreground: 198 22% 88%;
+    --card: 198 30% 13%;
+    --card-foreground: 198 16% 88%;
 
-    --popover: 198 36% 10%;
-    --popover-foreground: 198 22% 88%;
+    --popover: 198 28% 14%;
+    --popover-foreground: 198 16% 88%;
 
-    /* Primary: #91B7C7 iluminado — brilha no escuro */
+    /* Primary: #91B7C7 — o azul mais claro, brilha no escuro */
     --primary: 198 33% 68%;
-    --primary-foreground: 198 40% 7%;
+    --primary-foreground: 198 32% 11%;
 
-    /* Secondary: teal escuro */
-    --secondary: 198 30% 18%;
-    --secondary-foreground: 198 22% 82%;
+    --secondary: 198 26% 19%;
+    --secondary-foreground: 198 18% 80%;
 
-    --muted: 198 28% 14%;
-    --muted-foreground: 198 16% 52%;
+    --muted: 198 22% 16%;
+    --muted-foreground: 198 14% 54%;
 
-    /* Accent: laranja quente — o "Calor" de CalorIA */
-    --accent: 28 88% 58%;
-    --accent-foreground: 198 40% 7%;
+    /* Accent: laranja quente */
+    --accent: 28 88% 60%;
+    --accent-foreground: 198 32% 11%;
 
-    --destructive: 0 65% 48%;
+    --destructive: 0 62% 48%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 198 26% 18%;
-    --input: 198 30% 11%;
+    --border: 198 22% 20%;
+    --input: 198 26% 14%;
     --ring: 198 33% 68%;
 
-    /* --- Neumorfismo (dark) --- */
-    --neu-dark: rgba(0, 0, 0, 0.55);
-    --neu-light: rgba(145, 183, 199, 0.048);
-    --neu-dark-sm: rgba(0, 0, 0, 0.38);
-    --neu-light-sm: rgba(145, 183, 199, 0.032);
+    /* --- Neumorfismo dark --- */
+    --neu-dark: rgba(0, 0, 0, 0.42);
+    --neu-light: rgba(145, 183, 199, 0.045);
+    --neu-dark-sm: rgba(0, 0, 0, 0.28);
+    --neu-light-sm: rgba(145, 183, 199, 0.03);
 
-    /* --- Vidro (dark) --- */
-    --glass-bg: rgba(61, 98, 113, 0.28);
-    --glass-bg-hover: rgba(61, 98, 113, 0.44);
-    --glass-border: rgba(145, 183, 199, 0.16);
-    --glass-shadow: rgba(0, 0, 0, 0.38);
+    /* --- Vidro dark --- */
+    --glass-bg: rgba(55, 90, 105, 0.28);
+    --glass-bg-hover: rgba(55, 90, 105, 0.42);
+    --glass-border: rgba(145, 183, 199, 0.14);
+    --glass-shadow: rgba(0, 0, 0, 0.28);
   }
 }
 
@@ -115,20 +117,20 @@
     @apply text-foreground;
     min-height: 100vh;
     font-feature-settings: "rlig" 1, "calt" 1;
-    /* Light mode gradient — tons de azul aço suave */
+
+    /* Light mode — fundo quase branco com orbes azuis muito suaves */
     background:
-      radial-gradient(ellipse 80% 50% at 12% 8%, hsl(198 40% 82% / 0.32) 0%, transparent 58%),
-      radial-gradient(ellipse 55% 38% at 88% 92%, hsl(28 70% 76% / 0.16) 0%, transparent 52%),
-      linear-gradient(150deg, hsl(198 28% 93%) 0%, hsl(210 25% 95%) 55%, hsl(198 24% 92%) 100%);
+      radial-gradient(ellipse 70% 45% at 100% 0%, hsl(198 35% 88% / 0.45) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 35% at 0% 100%, hsl(198 30% 90% / 0.3) 0%, transparent 50%),
+      hsl(var(--background));
   }
 
   .dark body {
-    /* Dark mode gradient — azul aço profundo */
+    /* Dark mode — fundo teal escuro com profundidade */
     background:
-      radial-gradient(ellipse 65% 42% at 6% 6%, hsl(198 40% 18% / 0.28) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 32% at 94% 94%, hsl(215 45% 16% / 0.24) 0%, transparent 52%),
-      radial-gradient(ellipse 38% 28% at 50% 50%, hsl(198 35% 12% / 0.14) 0%, transparent 70%),
-      linear-gradient(150deg, hsl(198 40% 7%) 0%, hsl(215 42% 8%) 50%, hsl(198 38% 6%) 100%);
+      radial-gradient(ellipse 60% 40% at 8% 5%, hsl(198 38% 20% / 0.2) 0%, transparent 52%),
+      radial-gradient(ellipse 45% 30% at 92% 95%, hsl(215 40% 18% / 0.18) 0%, transparent 50%),
+      hsl(var(--background));
   }
 }
 
@@ -139,32 +141,43 @@
 
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
   }
 
+  /* Card principal — em light mode é branco limpo; em dark é glass */
   .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow:
-      0 4px 24px var(--glass-shadow),
-      0 1px 2px var(--glass-shadow),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      0 1px 3px var(--glass-shadow),
+      0 4px 20px var(--glass-shadow);
+  }
+
+  /* Em light mode, carta é simplesmente branca sem blur pesado */
+  :root .glass-card {
+    background: hsl(var(--card));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid hsl(var(--border));
+    box-shadow:
+      0 1px 4px rgba(82, 119, 135, 0.06),
+      0 4px 20px rgba(82, 119, 135, 0.06);
   }
 
   .glass-hover {
-    transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .glass-hover:hover {
     background: var(--glass-bg-hover);
-    border-color: hsl(var(--primary) / 0.35);
+    border-color: hsl(var(--primary) / 0.3);
     box-shadow:
-      0 8px 32px var(--glass-shadow),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 2px 8px var(--glass-shadow),
+      0 8px 28px var(--glass-shadow);
   }
 
   /* ============================
@@ -173,66 +186,76 @@
 
   .neu-raised {
     box-shadow:
-      8px 8px 20px var(--neu-dark),
-      -6px -6px 16px var(--neu-light);
+      6px 6px 16px var(--neu-dark),
+      -4px -4px 12px var(--neu-light);
   }
 
   .neu-raised-sm {
     box-shadow:
-      4px 4px 10px var(--neu-dark-sm),
-      -3px -3px 8px var(--neu-light-sm);
+      3px 3px 8px var(--neu-dark-sm),
+      -2px -2px 6px var(--neu-light-sm);
   }
 
   .neu-inset {
     box-shadow:
       inset 4px 4px 10px var(--neu-dark),
-      inset -4px -4px 10px var(--neu-light);
+      inset -3px -3px 8px var(--neu-light);
   }
 
   .neu-inset-sm {
     box-shadow:
-      inset 3px 3px 7px var(--neu-dark-sm),
-      inset -2px -2px 6px var(--neu-light-sm);
+      inset 2px 2px 6px var(--neu-dark-sm),
+      inset -2px -2px 5px var(--neu-light-sm);
   }
 
   /* ============================
      GLASS + NEU COMBINADOS
+     (apenas nav/sidebar)
   ============================= */
 
   .glass-neu {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--glass-border);
     box-shadow:
-      0 8px 32px var(--glass-shadow),
-      6px 6px 16px var(--neu-dark),
-      -2px -2px 8px var(--neu-light),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 4px 24px var(--glass-shadow),
+      4px 4px 12px var(--neu-dark),
+      -1px -1px 6px var(--neu-light);
   }
 
   /* ============================
      UTILITÁRIOS VISUAIS
   ============================= */
 
-  /* Gradiente da paleta: #91B7C7 → laranja quente */
+  /* Logo: azul aço claro → laranja quente */
   .gradient-text {
     background: linear-gradient(
       135deg,
-      hsl(198 33% 72%) 0%,
-      hsl(28 88% 64%) 100%
+      hsl(198 24% 42%) 0%,
+      hsl(28 88% 54%) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  /* Gradiente só na paleta azul aço */
+  .dark .gradient-text {
+    background: linear-gradient(
+      135deg,
+      hsl(198 33% 72%) 0%,
+      hsl(28 88% 65%) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
   .gradient-text-primary {
     background: linear-gradient(
       135deg,
       hsl(var(--primary)),
-      hsl(198 33% 78%)
+      hsl(198 33% 72%)
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -241,24 +264,35 @@
 
   .glow-primary {
     box-shadow:
-      0 0 18px hsl(var(--primary) / 0.35),
-      0 0 36px hsl(var(--primary) / 0.15);
+      0 0 14px hsl(var(--primary) / 0.28),
+      0 0 28px hsl(var(--primary) / 0.12);
   }
 
   .glow-accent {
     box-shadow:
-      0 0 18px hsl(var(--accent) / 0.35),
-      0 0 36px hsl(var(--accent) / 0.15);
+      0 0 14px hsl(var(--accent) / 0.28),
+      0 0 28px hsl(var(--accent) / 0.12);
   }
 
   .glow-primary-sm {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.32);
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.28);
   }
 
-  /* Scrollbar customizada */
+  /* Divisor com gradiente da paleta */
+  .divider-gradient {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--primary) / 0.35),
+      transparent
+    );
+  }
+
+  /* Scrollbar */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 4px;
+    height: 4px;
   }
 
   ::-webkit-scrollbar-track {
@@ -266,11 +300,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.38);
+    background: hsl(var(--primary) / 0.3);
     border-radius: 99px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.58);
+    background: hsl(var(--primary) / 0.5);
   }
 }
