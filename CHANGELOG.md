@@ -10,6 +10,16 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Adicionado
+- `backend/tests/conftest.py`: infraestrutura de testes com engine PostgreSQL dedicado, fixtures session-scoped para criação/destruição do schema e fixtures por função para db, test_user, client autenticado e anon_client
+- `backend/tests/unit/`: testes unitários para `security` (JWT, bcrypt), `tdee` (Harris-Benedict), `meal_parser` e `vision_parser` (mock GeminiClient)
+- `backend/tests/integration/`: testes de integração para auth, meals, weight/hydration/mood, users/profile e dashboard
+- `pyproject.toml`: `asyncio_default_fixture_loop_scope = "session"` para suprimir aviso do pytest-asyncio
+- `frontend/jest.config.js`, `jest.setup.ts`, `babel.config.test.js`: configuração Jest para Next.js com suporte a `@/*` path aliases e mock do Recharts
+- `frontend/__tests__/`: testes de componentes (MacroCards, MacroPieChart) e utilitário `cn`
+- `.pre-commit-config.yaml`: hooks ruff (lint + format) para o backend, trailing-whitespace, end-of-file, check-yaml, merge-conflicts, large-files e bloqueio de commits na main
+- `docs/architecture.md`: diagrama da arquitetura, 5 ADRs e fluxo de registro de refeição
+- `docs/setup.md`: guia completo de setup — Docker, backend, frontend, banco de testes, Celery, WhatsApp
+
 - `workers/tasks/reports.py`: tasks `send_daily_summaries` (22h) e `send_weekly_reports` (domingo 20h) com insights gerados pelo Gemini
 - `workers/tasks/maintenance.py`: tasks `cleanup_old_conversations` (remove conversas > 90 dias) e `recalculate_tdee` (recalcula TDEE mensal quando peso mudou ≥ 2 kg)
 - Beat schedule do Celery atualizado com entrada `recalculate-tdee-monthly` (dia 1 de cada mês às 4h)

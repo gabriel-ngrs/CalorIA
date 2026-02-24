@@ -349,27 +349,28 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: cobertura de testes robusta, código limpo, pronto para escalar.
 
 ### 8.1 Testes Backend
-- [ ] Testes unitários para todos os services
-- [ ] Testes unitários para meal_parser e vision_parser (mock Gemini)
-- [ ] Testes de integração para todos os endpoints da API
+- [x] Testes unitários para todos os services
+- [x] Testes unitários para meal_parser e vision_parser (mock Gemini)
+- [x] Testes de integração para todos os endpoints da API
+- [x] Fixtures compartilhadas (usuário de teste, refeições de teste)
 - [ ] Testes de integração para Celery tasks (mock de envio de mensagem)
 - [ ] Cobertura mínima: 80%
-- [ ] Fixtures compartilhadas (usuário de teste, refeições de teste)
 
 ### 8.2 Testes Frontend
-- [ ] Testes de componentes com Testing Library
+- [x] Testes de componentes com Testing Library (MacroCards, MacroPieChart, cn)
+- [x] Setup Jest + Testing Library + mocks (Recharts, CSS)
 - [ ] Testes de hooks customizados
 - [ ] Testes E2E com Playwright (fluxos críticos: login, registrar refeição, ver dashboard)
 
 ### 8.3 Qualidade de Código
-- [ ] CI local: `pre-commit` hooks rodando ruff, mypy, eslint antes de cada commit
+- [x] CI local: `pre-commit` hooks rodando ruff, mypy, eslint antes de cada commit
 - [ ] Corrigir todos os warnings do mypy
 - [ ] Revisar queries N+1 no banco (eager loading onde necessário)
 
 ### 8.4 Documentação Técnica
-- [ ] Documentação da API via Swagger/OpenAPI (automático no FastAPI)
-- [ ] `docs/architecture.md` — decisões de arquitetura e ADRs
-- [ ] `docs/setup.md` — guia completo de setup do zero
+- [x] Documentação da API via Swagger/OpenAPI (automático no FastAPI)
+- [x] `docs/architecture.md` — decisões de arquitetura e ADRs
+- [x] `docs/setup.md` — guia completo de setup do zero
 - [ ] Atualizar README com screenshots do dashboard
 
 ---
