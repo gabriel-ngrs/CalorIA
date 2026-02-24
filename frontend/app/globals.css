@@ -4,48 +4,97 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    /* === Paleta: Sage Claro (Light Mode) === */
+    --background: 138 22% 93%;
+    --foreground: 150 28% 12%;
+
+    --card: 138 22% 93%;
+    --card-foreground: 150 28% 12%;
+
+    --popover: 138 18% 97%;
+    --popover-foreground: 150 28% 12%;
+
+    /* Primary: Verde Floresta */
+    --primary: 142 65% 38%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Sage Suave */
+    --secondary: 138 14% 85%;
+    --secondary-foreground: 150 25% 20%;
+
+    --muted: 138 12% 87%;
+    --muted-foreground: 150 10% 44%;
+
+    /* Accent: Laranja Quente (Calor) */
+    --accent: 28 90% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 138 14% 80%;
+    --input: 138 14% 87%;
+    --ring: 142 65% 38%;
+
+    --radius: 1rem;
+
+    /* --- Neumorfismo (light) --- */
+    --neu-dark: rgba(148, 185, 158, 0.5);
+    --neu-light: rgba(255, 255, 255, 0.95);
+    --neu-dark-sm: rgba(148, 185, 158, 0.35);
+    --neu-light-sm: rgba(255, 255, 255, 0.9);
+
+    /* --- Vidro (light) --- */
+    --glass-bg: rgba(255, 255, 255, 0.62);
+    --glass-bg-hover: rgba(255, 255, 255, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.82);
+    --glass-shadow: rgba(148, 185, 158, 0.18);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* === Paleta: Floresta Profunda (Dark Mode) === */
+    --background: 158 52% 5%;
+    --foreground: 145 15% 90%;
+
+    --card: 158 48% 7%;
+    --card-foreground: 145 15% 90%;
+
+    --popover: 158 45% 8%;
+    --popover-foreground: 145 15% 90%;
+
+    /* Primary: Esmeralda Brilhante */
+    --primary: 142 68% 52%;
+    --primary-foreground: 158 52% 5%;
+
+    /* Secondary: Floresta Escura */
+    --secondary: 158 35% 14%;
+    --secondary-foreground: 145 15% 85%;
+
+    --muted: 158 30% 11%;
+    --muted-foreground: 145 10% 52%;
+
+    /* Accent: Laranja Quente (Calor) */
+    --accent: 28 90% 58%;
+    --accent-foreground: 158 52% 5%;
+
+    --destructive: 0 65% 48%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 158 28% 16%;
+    --input: 158 35% 11%;
+    --ring: 142 68% 52%;
+
+    /* --- Neumorfismo (dark) --- */
+    --neu-dark: rgba(0, 0, 0, 0.55);
+    --neu-light: rgba(74, 222, 128, 0.045);
+    --neu-dark-sm: rgba(0, 0, 0, 0.38);
+    --neu-light-sm: rgba(74, 222, 128, 0.03);
+
+    /* --- Vidro (dark) --- */
+    --glass-bg: rgba(10, 30, 18, 0.52);
+    --glass-bg-hover: rgba(10, 30, 18, 0.68);
+    --glass-border: rgba(74, 222, 128, 0.14);
+    --glass-shadow: rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -53,7 +102,174 @@
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    min-height: 100vh;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Gradiente fundo light mode */
+    background:
+      radial-gradient(ellipse 80% 50% at 10% 10%, hsl(142 50% 75% / 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 90%, hsl(28 80% 70% / 0.14) 0%, transparent 55%),
+      linear-gradient(150deg, hsl(138 22% 91%) 0%, hsl(210 22% 94%) 55%, hsl(138 18% 92%) 100%);
+  }
+
+  .dark body {
+    /* Gradiente fundo dark mode */
+    background:
+      radial-gradient(ellipse 70% 45% at 5% 5%, hsl(142 55% 18% / 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 55% 35% at 95% 95%, hsl(210 60% 15% / 0.28) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, hsl(158 40% 10% / 0.15) 0%, transparent 70%),
+      linear-gradient(150deg, hsl(158 52% 5%) 0%, hsl(218 50% 7%) 50%, hsl(158 48% 5%) 100%);
+  }
+}
+
+@layer components {
+  /* ============================
+     GLASSMORPHISM
+  ============================= */
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 4px 24px var(--glass-shadow),
+      0 1px 2px var(--glass-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-hover {
+    transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .glass-hover:hover {
+    background: var(--glass-bg-hover);
+    border-color: hsl(var(--primary) / 0.28);
+    box-shadow:
+      0 8px 32px var(--glass-shadow),
+      0 2px 4px var(--glass-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  /* ============================
+     NEUMORFISMO
+  ============================= */
+
+  .neu-raised {
+    box-shadow:
+      8px 8px 20px var(--neu-dark),
+      -6px -6px 16px var(--neu-light);
+  }
+
+  .neu-raised-sm {
+    box-shadow:
+      4px 4px 10px var(--neu-dark-sm),
+      -3px -3px 8px var(--neu-light-sm);
+  }
+
+  .neu-inset {
+    box-shadow:
+      inset 4px 4px 10px var(--neu-dark),
+      inset -4px -4px 10px var(--neu-light);
+  }
+
+  .neu-inset-sm {
+    box-shadow:
+      inset 3px 3px 7px var(--neu-dark-sm),
+      inset -2px -2px 6px var(--neu-light-sm);
+  }
+
+  /* ============================
+     COMBINADO: GLASS + NEU
+  ============================= */
+
+  .glass-neu {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 8px 32px var(--glass-shadow),
+      6px 6px 16px var(--neu-dark),
+      -2px -2px 8px var(--neu-light),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* ============================
+     UTILITÁRIOS VISUAIS
+  ============================= */
+
+  .gradient-text {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(142 80% 68%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-primary {
+    box-shadow:
+      0 0 18px hsl(var(--primary) / 0.32),
+      0 0 36px hsl(var(--primary) / 0.14);
+  }
+
+  .glow-accent {
+    box-shadow:
+      0 0 18px hsl(var(--accent) / 0.32),
+      0 0 36px hsl(var(--accent) / 0.14);
+  }
+
+  .glow-primary-sm {
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.28);
+  }
+
+  /* Linha decorativa gradiente */
+  .border-gradient {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--glass-bg), var(--glass-bg)) padding-box,
+      linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--accent) / 0.3)) border-box;
+  }
+
+  /* Scrollbar customizada */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.35);
+    border-radius: 99px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.55);
   }
 }

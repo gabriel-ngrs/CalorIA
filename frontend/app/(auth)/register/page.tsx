@@ -7,8 +7,16 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import api from "@/lib/api";
+import { Sparkles } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,7 +33,6 @@ export default function RegisterPage() {
 
     try {
       await api.post("/api/v1/auth/register", { name, email, password });
-      // Auto-login após cadastro
       const res = await signIn("credentials", { email, password, redirect: false });
       if (res?.error) {
         router.push("/login");
@@ -41,21 +48,46 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Criar conta</CardTitle>
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Orbes decorativos de fundo */}
+      <div
+        className="absolute top-1/3 -right-28 w-72 h-72 rounded-full opacity-18 animate-float"
+        style={{
+          background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)",
+          filter: "blur(40px)",
+        }}
+      />
+      <div
+        className="absolute bottom-1/3 -left-20 w-56 h-56 rounded-full opacity-14 animate-float"
+        style={{
+          background: "radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)",
+          filter: "blur(40px)",
+          animationDelay: "1.5s",
+        }}
+      />
+
+      <Card className="w-full max-w-sm animate-scale-in">
+        <CardHeader className="text-center pb-2">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <div className="h-9 w-9 rounded-xl glass-card flex items-center justify-center glow-primary-sm">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl gradient-text font-bold">Criar conta</CardTitle>
           <CardDescription>Comece seu diário alimentar</CardDescription>
         </CardHeader>
+
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-4">
             {error && (
-              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+              <p className="text-sm text-destructive glass border border-destructive/20 px-3 py-2 rounded-xl">
                 {error}
               </p>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+                Nome
+              </Label>
               <Input
                 id="name"
                 placeholder="Seu nome"
@@ -65,7 +97,9 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
+              <Label htmlFor="email" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+                E-mail
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -76,7 +110,9 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -88,13 +124,14 @@ export default function RegisterPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-3">
+
+          <CardFooter className="flex flex-col gap-3 pt-2">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Criando..." : "Criar conta"}
             </Button>
             <p className="text-sm text-muted-foreground text-center">
               Já tem conta?{" "}
-              <Link href="/login" className="underline text-primary">
+              <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
                 Entrar
               </Link>
             </p>

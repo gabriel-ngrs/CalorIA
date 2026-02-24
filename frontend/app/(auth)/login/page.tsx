@@ -7,7 +7,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,21 +45,46 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">CalorIA</CardTitle>
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Orbes decorativos de fundo */}
+      <div
+        className="absolute top-1/4 -left-32 w-80 h-80 rounded-full opacity-20 animate-float"
+        style={{
+          background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)",
+          filter: "blur(40px)",
+        }}
+      />
+      <div
+        className="absolute bottom-1/4 -right-24 w-64 h-64 rounded-full opacity-15 animate-float"
+        style={{
+          background: "radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)",
+          filter: "blur(40px)",
+          animationDelay: "2s",
+        }}
+      />
+
+      <Card className="w-full max-w-sm animate-scale-in">
+        <CardHeader className="text-center pb-2">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <div className="h-9 w-9 rounded-xl glass-card flex items-center justify-center glow-primary-sm">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+          </div>
+          <CardTitle className="text-3xl gradient-text font-bold">CalorIA</CardTitle>
           <CardDescription>Entre na sua conta</CardDescription>
         </CardHeader>
+
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-4">
             {error && (
-              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+              <p className="text-sm text-destructive glass border border-destructive/20 px-3 py-2 rounded-xl">
                 {error}
               </p>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
+              <Label htmlFor="email" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+                E-mail
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -62,7 +95,9 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-foreground/80 text-xs font-medium uppercase tracking-wide">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -73,13 +108,14 @@ export default function LoginPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-3">
+
+          <CardFooter className="flex flex-col gap-3 pt-2">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </Button>
             <p className="text-sm text-muted-foreground text-center">
               Não tem conta?{" "}
-              <Link href="/register" className="underline text-primary">
+              <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
                 Cadastre-se
               </Link>
             </p>
