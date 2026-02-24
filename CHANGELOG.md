@@ -10,6 +10,10 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Adicionado
+- `workers/tasks/reports.py`: tasks `send_daily_summaries` (22h) e `send_weekly_reports` (domingo 20h) com insights gerados pelo Gemini
+- `workers/tasks/maintenance.py`: tasks `cleanup_old_conversations` (remove conversas > 90 dias) e `recalculate_tdee` (recalcula TDEE mensal quando peso mudou ≥ 2 kg)
+- Beat schedule do Celery atualizado com entrada `recalculate-tdee-monthly` (dia 1 de cada mês às 4h)
+
 - Documentação inicial do projeto: CLAUDE.md, Roadmap.md, Prompt.md, README.md, CHANGELOG.md
 - Plano completo de desenvolvimento em 9 fases no Roadmap.md
 - Estrutura completa de pastas do projeto (backend/, frontend/, docs/)

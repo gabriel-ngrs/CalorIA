@@ -58,4 +58,9 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.tasks.maintenance.cleanup_old_conversations",
         "schedule": crontab(hour=3, minute=0),
     },
+    # Recalcular TDEE mensal — todo dia 1 às 4h
+    "recalculate-tdee-monthly": {
+        "task": "app.workers.tasks.maintenance.recalculate_tdee",
+        "schedule": crontab(hour=4, minute=0, day_of_month=1),
+    },
 }

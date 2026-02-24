@@ -300,26 +300,26 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 > Objetivo: sistema de lembretes e relatórios automáticos funcionando.
 
 ### 6.1 Celery Setup
-- [ ] `workers/celery_app.py` — configuração do Celery com Redis broker
-- [ ] `workers/tasks/` — módulo de tasks
-- [ ] Celery Beat configurado para tarefas periódicas
-- [ ] Logging de tasks (sucesso, falha, retry)
+- [x] `workers/celery_app.py` — configuração do Celery com Redis broker
+- [x] `workers/tasks/` — módulo de tasks
+- [x] Celery Beat configurado para tarefas periódicas
+- [x] Logging de tasks (sucesso, falha, retry)
 
 ### 6.2 Tasks de Lembrete
-- [ ] Task `send_reminder` — enviar lembrete para usuário em canal específico
-- [ ] Celery Beat agenda baseado nos objetos Reminder no banco
-- [ ] Task `schedule_user_reminders` — re-agenda lembretes ao iniciar ou quando Reminder é modificado
-- [ ] Tratamento de falha: retry 3x com backoff exponencial
+- [x] Task `send_reminder` — enviar lembrete para usuário em canal específico
+- [x] Celery Beat agenda baseado nos objetos Reminder no banco
+- [x] Task `schedule_user_reminders` — re-agenda lembretes ao iniciar ou quando Reminder é modificado
+- [x] Tratamento de falha: retry 3x com backoff exponencial
 
 ### 6.3 Tasks de Relatório Automático
-- [ ] Task `daily_summary` — 22h: resumo do dia com motivação da IA
-- [ ] Task `weekly_report` — domingo 20h: relatório semanal completo com insights
-- [ ] Task `hydration_reminder` — lembretes de água ao longo do dia (configurável)
-- [ ] Task `weigh_in_reminder` — lembrete semanal para registrar peso
+- [x] Task `daily_summary` — 22h: resumo do dia com motivação da IA
+- [x] Task `weekly_report` — domingo 20h: relatório semanal completo com insights
+- [x] Task `hydration_reminder` — lembretes de água ao longo do dia (configurável)
+- [x] Task `weigh_in_reminder` — lembrete semanal para registrar peso
 
 ### 6.4 Tasks de Manutenção
-- [ ] Task `cleanup_old_conversations` — limpar histórico de conversas IA > 90 dias
-- [ ] Task `recalculate_tdee` — recalcular TDEE mensal se peso mudou significativamente
+- [x] Task `cleanup_old_conversations` — limpar histórico de conversas IA > 90 dias
+- [x] Task `recalculate_tdee` — recalcular TDEE mensal se peso mudou significativamente
 
 ---
 
@@ -402,7 +402,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 3 | Bot Telegram | `[x]` |
 | 4 | Bot WhatsApp (Evolution API) | `[x]` |
 | 5 | Frontend Dashboard | `[x]` |
-| 6 | Notificações e Lembretes | `[ ]` |
+| 6 | Notificações e Lembretes | `[x]` |
 | 7 | Insights Avançados de IA | `[ ]` |
 | 8 | Qualidade e Testes | `[ ]` |
 | 9 | Preparação para Escala | `[ ]` |
