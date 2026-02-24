@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,16 +35,15 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # --------------------------------------------------------------------------
-    # CORS
+    # CORS — string comma-separated para compatibilidade com pydantic-settings v2
     # --------------------------------------------------------------------------
-    BACKEND_CORS_ORIGINS: list[str] = []
+    BACKEND_CORS_ORIGINS: str = ""
 
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str) and v:
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v or []
+    @property
+    def cors_origins(self) -> list[str]:
+        if not self.BACKEND_CORS_ORIGINS:
+            return []
+        return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
 
     # --------------------------------------------------------------------------
     # Google Gemini API

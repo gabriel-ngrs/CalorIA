@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from datetime import date, datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +46,7 @@ class MealCreate(BaseModel):
 class MealUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     meal_type: MealType | None = None
-    date: date | None = None
+    date: Optional[date] = None
     notes: str | None = None
 
 

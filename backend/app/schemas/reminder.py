@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from datetime import datetime, time
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -25,7 +24,7 @@ class ReminderCreate(BaseModel):
 
 
 class ReminderUpdate(BaseModel):
-    time: time | None = None
+    time: Optional[time] = None
     days_of_week: list[int] | None = None
     active: bool | None = None
     message: str | None = None
