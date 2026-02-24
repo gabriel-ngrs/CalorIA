@@ -39,8 +39,8 @@ const macros = [
     key: "total_fat",
     unit: "g",
     icon: "🫧",
-    color: "#3b82f6",
-    glow: "rgba(59,130,246,0.22)",
+    color: "#7CA2B2",
+    glow: "rgba(124,162,178,0.22)",
   },
 ] as const;
 

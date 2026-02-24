@@ -42,7 +42,17 @@ export default function DashboardPage() {
     );
   }
 
-  if (!dashboard) return null;
+  if (!dashboard) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
+        <span className="text-5xl">🍽️</span>
+        <h2 className="text-xl font-semibold">Nenhum dado para hoje</h2>
+        <p className="text-muted-foreground text-sm max-w-xs">
+          Registre sua primeira refeição pelo Telegram, WhatsApp ou pela página de Refeições.
+        </p>
+      </div>
+    );
+  }
 
   const today = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
