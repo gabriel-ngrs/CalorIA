@@ -71,7 +71,7 @@ export function Sidebar() {
       {/* Rodapé */}
       <div className="divider-gradient mx-2 mt-4 mb-3" />
       <p className="px-2 text-[10px] text-muted-foreground/50 text-center">
-        v0.1 · Powered by Gemini
+        V0.1 Powered by Gabriel Negreiros
       </p>
     </aside>
   );
