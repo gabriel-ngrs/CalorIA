@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
@@ -11,6 +11,13 @@ const api = axios.create({
 // Injeta automaticamente o Bearer token em todas as requisições autenticadas
 api.interceptors.request.use(async (config) => {
   const session = await getSession();
+
+  // Se o refresh falhou, força logout imediato
+  if (session?.error === "RefreshAccessTokenError") {
+    await signOut({ redirect: true, callbackUrl: "/login" });
+    return config;
+  }
+
   if (session?.accessToken) {
     config.headers.Authorization = `Bearer ${session.accessToken}`;
   }

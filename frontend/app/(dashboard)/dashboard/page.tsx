@@ -25,7 +25,7 @@ const MEAL_EMOJIS: Record<MealType, string> = {
 };
 
 export default function DashboardPage() {
-  const { data: dashboard, isLoading } = useDashboardToday();
+  const { data: dashboard, isLoading, isError } = useDashboardToday();
   const { data: macros } = useMacrosChart(7);
   const { data: user } = useMe();
 
@@ -42,7 +42,26 @@ export default function DashboardPage() {
     );
   }
 
-  if (!dashboard) {
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
+        <span className="text-5xl">⚠️</span>
+        <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
+        <p className="text-muted-foreground text-sm max-w-xs">
+          Não foi possível conectar ao servidor. Tente recarregar a página.
+        </p>
+      </div>
+    );
+  }
+
+  const isEmpty =
+    !dashboard ||
+    (dashboard.nutrition.meals_count === 0 &&
+      dashboard.hydration.total_ml === 0 &&
+      !dashboard.mood &&
+      !dashboard.latest_weight);
+
+  if (isEmpty) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
         <span className="text-5xl">🍽️</span>
