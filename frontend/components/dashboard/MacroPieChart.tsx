@@ -48,7 +48,7 @@ export function MacroPieChart({ nutrition }: Props) {
               dataKey="value"
             >
               {data.map((_, i) => (
-                <Cell key={i} fill={COLORS[i + 1]} />
+                <Cell key={i} fill={COLORS[i]} />
               ))}
             </Pie>
             <Tooltip
@@ -61,7 +61,7 @@ export function MacroPieChart({ nutrition }: Props) {
             <span key={d.name} className="flex items-center gap-1">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ background: COLORS[i + 1] }}
+                style={{ background: COLORS[i] }}
               />
               {d.name}
             </span>

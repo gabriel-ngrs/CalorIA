@@ -33,7 +33,11 @@ class TelegramService:
             if not user_id_str:
                 return None
             user = await self.db.get(User, int(user_id_str))
-            if not user:
+            if not user or not user.is_active:
+                return None
+            # Bloqueia se o chat_id já está vinculado a outra conta
+            existing = await self.get_user_by_chat_id(chat_id)
+            if existing and existing.id != user.id:
                 return None
             user.telegram_chat_id = chat_id
             await self.db.commit()

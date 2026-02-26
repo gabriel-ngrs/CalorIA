@@ -36,10 +36,10 @@ export default function LoginPage() {
 
     setLoading(false);
 
-    if (res?.error) {
-      setError("E-mail ou senha inválidos.");
-    } else {
+    if (res?.ok) {
       router.push("/");
+    } else {
+      setError("E-mail ou senha inválidos.");
     }
   }
 

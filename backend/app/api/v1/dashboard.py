@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_id, get_db
-from app.schemas.dashboard import DashboardToday, WeeklySummary, WeightChartPoint
+from app.schemas.dashboard import DashboardToday, WeeklyMacroPoint, WeeklySummary
 from app.schemas.logs import WeightLogResponse
 from app.services.dashboard_service import DashboardService
 from app.services.log_service import WeightService
@@ -32,15 +32,14 @@ async def get_weekly(
     return await DashboardService(db).get_weekly(user_id, end_date)
 
 
-@router.get("/macros-chart", response_model=list[WeightChartPoint])
+@router.get("/macros-chart", response_model=list[WeeklyMacroPoint])
 async def macros_chart(
     days: int = Query(default=7, ge=1, le=90),
     end_date: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> list[WeightChartPoint]:
+) -> list[WeeklyMacroPoint]:
     from datetime import timedelta
-    from app.schemas.dashboard import WeeklyMacroPoint
     from app.services.meal_service import MealService
 
     svc = MealService(db)
@@ -57,7 +56,7 @@ async def macros_chart(
                 fat=summary.total_fat,
             )
         )
-    return result  # type: ignore[return-value]
+    return result
 
 
 @router.get("/weight-chart", response_model=list[WeightLogResponse])

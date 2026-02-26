@@ -54,8 +54,12 @@ export default function RefeicoesPage() {
   const [parsedItems, setParsedItems] = useState<ParsedFoodItem[] | null>(null);
 
   async function handleAnalyze() {
-    const res = await analyzeMeal.mutateAsync(description);
-    setParsedItems(res.items);
+    try {
+      const res = await analyzeMeal.mutateAsync(description);
+      setParsedItems(res.items);
+    } catch {
+      // analyzeMeal.isError fica true — exibido no JSX
+    }
   }
 
   async function handleSave() {
@@ -124,6 +128,12 @@ export default function RefeicoesPage() {
                   rows={3}
                 />
               </div>
+
+              {analyzeMeal.isError && (
+                <p className="text-sm text-destructive">
+                  ❌ Erro ao analisar. Verifique sua conexão e tente novamente.
+                </p>
+              )}
 
               {!parsedItems && (
                 <Button onClick={handleAnalyze} disabled={!description.trim() || analyzeMeal.isPending} className="w-full">

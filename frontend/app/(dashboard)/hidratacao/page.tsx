@@ -20,7 +20,7 @@ export default function HidratacaoPage() {
   const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
   async function log(ml: number) {
-    if (ml <= 0) return;
+    if (!Number.isFinite(ml) || ml <= 0) return;
     await logHydration.mutateAsync({ amount_ml: ml, date: today, time: timeStr });
     setCustom("");
   }
@@ -76,7 +76,7 @@ export default function HidratacaoPage() {
               className="flex-1"
             />
             <Button
-              onClick={() => log(parseInt(custom))}
+              onClick={() => log(parseInt(custom, 10))}
               disabled={!custom || logHydration.isPending}
             >
               Adicionar

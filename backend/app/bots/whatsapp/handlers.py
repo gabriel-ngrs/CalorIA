@@ -165,8 +165,12 @@ async def _confirm_pending_meal(number: str) -> None:
         await send_text(number, "⚠️ Nenhuma refeição pendente de confirmação.")
         return
 
-    items_data = json.loads(data)
     await _clear_pending(number)
+    try:
+        items_data = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        await send_text(number, "❌ Erro ao processar refeição. Tente registrar novamente.")
+        return
 
     async with AsyncSessionLocal() as db:
         user = await WhatsAppService(db).get_user_by_number(number)
