@@ -10,6 +10,9 @@ export function useMeals(date?: string) {
       const { data } = await api.get(`/api/v1/meals${params}`);
       return data;
     },
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 

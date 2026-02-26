@@ -46,9 +46,10 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
 
     # --------------------------------------------------------------------------
-    # Google Gemini API
+    # Groq API (IA — Llama)
     # --------------------------------------------------------------------------
-    GEMINI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""   # mantido por compatibilidade
+    GROQ_API_KEY: str = ""
 
     # --------------------------------------------------------------------------
     # Telegram
