@@ -1,8 +1,11 @@
 import NextAuth from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { existsSync } from "fs";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://backend:8000";
+const isDockerRuntime = existsSync("/.dockerenv");
+const defaultBackendUrl = isDockerRuntime ? "http://backend:8000" : "http://localhost:8000";
+const BACKEND_URL = process.env.BACKEND_URL ?? defaultBackendUrl;
 // 29 minutos em ms — renova 1 minuto antes do token expirar (30 min backend)
 const ACCESS_TOKEN_LIFETIME_MS = 29 * 60 * 1000;
 
