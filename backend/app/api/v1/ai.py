@@ -19,6 +19,7 @@ from app.schemas.ai import (
     NutritionalAlertsResponse,
     PhotoAnalysisRequest,
 )
+from app.services.ai.context_builder import build_meal_context
 from app.services.ai.gemini_client import get_gemini_client
 from app.services.ai.insights_generator import InsightsGenerator
 from app.services.ai.meal_parser import MealParser
@@ -47,9 +48,10 @@ async def analyze_meal(
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
     client = get_gemini_client()
     try:
+        user_context = await build_meal_context(user_id, db, date.today())
         return await MealParser(client).parse(
             description=data.description,
-            user_context=f"usuário autenticado id={user_id}",
+            user_context=user_context,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))

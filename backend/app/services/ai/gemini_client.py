@@ -36,27 +36,43 @@ class GeminiClient:
     # API pública
     # ------------------------------------------------------------------
 
-    async def generate_text(self, prompt: str, *, use_cache: bool = True) -> str:
-        """Gera texto com cache Redis opcional."""
+    async def generate_text(
+        self,
+        prompt: str,
+        *,
+        use_cache: bool = True,
+        system: str | None = None,
+    ) -> str:
+        """Gera texto com cache Redis opcional.
+
+        Se ``system`` for fornecido, usa formato system+user com temperatura
+        reduzida (0.1) para saídas estruturadas (JSON).
+        """
+        cache_input = f"[SYS]{system}\n[USR]{prompt}" if system else prompt
         if use_cache:
-            cache_key = self._cache_key(prompt)
+            cache_key = self._cache_key(cache_input)
             if cached := await self._get_cached(cache_key):
                 logger.debug("Cache hit Groq")
                 return cached
 
-        result = await self._text_with_retry(prompt)
+        result = await self._text_with_retry(prompt, system=system)
 
         if use_cache:
-            await self._set_cached(self._cache_key(prompt), result)
+            await self._set_cached(self._cache_key(cache_input), result)
 
         return result
 
     async def generate_with_image(
-        self, prompt: str, image_bytes: bytes, mime_type: str = "image/jpeg"
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        *,
+        system: str | None = None,
     ) -> str:
         """Gera texto a partir de imagem + prompt (sem cache, imagens são únicas)."""
         b64 = base64.b64encode(image_bytes).decode()
-        return await self._vision_with_retry(prompt, b64, mime_type)
+        return await self._vision_with_retry(prompt, b64, mime_type, system=system)
 
     # ------------------------------------------------------------------
     # Internos
@@ -81,14 +97,24 @@ class GeminiClient:
         except Exception as exc:
             logger.warning("Falha ao gravar cache (Redis): %s", exc)
 
-    async def _text_with_retry(self, prompt: str) -> str:
+    async def _text_with_retry(self, prompt: str, *, system: str | None = None) -> str:
         last_error: Exception | None = None
+        if system:
+            messages: list[dict[str, str]] = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ]
+            temperature = 0.1  # Mais baixo para JSON consistente
+        else:
+            messages = [{"role": "user", "content": prompt}]
+            temperature = 0.3
+
         for attempt in range(_MAX_RETRIES):
             try:
                 resp = await self._client.chat.completions.create(
                     model=_TEXT_MODEL,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3,
+                    messages=messages,  # type: ignore[arg-type]
+                    temperature=temperature,
                 )
                 usage = resp.usage
                 if usage:
@@ -113,27 +139,28 @@ class GeminiClient:
             f"Groq falhou após {_MAX_RETRIES} tentativas: {last_error}"
         ) from last_error
 
-    async def _vision_with_retry(self, prompt: str, b64: str, mime_type: str) -> str:
+    async def _vision_with_retry(
+        self, prompt: str, b64: str, mime_type: str, *, system: str | None = None
+    ) -> str:
         last_error: Exception | None = None
+        user_content: list[dict] = [
+            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
+            {"type": "text", "text": prompt},
+        ]
+        messages: list[dict] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+            temperature = 0.1
+        else:
+            temperature = 0.3
+        messages.append({"role": "user", "content": user_content})
+
         for attempt in range(_MAX_RETRIES):
             try:
                 resp = await self._client.chat.completions.create(
                     model=_VISION_MODEL,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{mime_type};base64,{b64}"
-                                    },
-                                },
-                                {"type": "text", "text": prompt},
-                            ],
-                        }
-                    ],
-                    temperature=0.3,
+                    messages=messages,  # type: ignore[arg-type]
+                    temperature=temperature,
                 )
                 return resp.choices[0].message.content or ""
             except Exception as exc:
