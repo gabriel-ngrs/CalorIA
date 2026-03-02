@@ -9,15 +9,9 @@ from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Startup: inicia bot Telegram em modo polling (dev)
-    if settings.TELEGRAM_BOT_TOKEN:
-        from app.bots.telegram.bot import start_polling
-        await start_polling()
+    # Bot Telegram roda em serviço separado (caloria_telegram_bot)
+    # para evitar conflito de polling com o hot-reload do Uvicorn.
     yield
-    # Shutdown: encerra bot Telegram
-    if settings.TELEGRAM_BOT_TOKEN:
-        from app.bots.telegram.bot import stop_polling
-        await stop_polling()
 
 
 app = FastAPI(

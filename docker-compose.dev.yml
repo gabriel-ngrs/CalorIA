@@ -133,6 +133,27 @@ services:
       - caloria_net
 
   # ---------------------------------------------------------------------------
+  # Bot Telegram — polling isolado do backend para evitar conflito com --reload
+  # ---------------------------------------------------------------------------
+  telegram_bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: caloria_telegram_bot
+    command: python -m app.bots.telegram.run_polling
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - caloria_net
+
+  # ---------------------------------------------------------------------------
   # Celery Beat (modo debug)
   # ---------------------------------------------------------------------------
   celery_beat:
