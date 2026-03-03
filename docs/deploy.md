@@ -1,181 +1,304 @@
-# Deploy — CalorIA no VPS
+# Deploy — CalorIA no Oracle Cloud (Grátis)
 
-Guia completo para hospedar o CalorIA em um servidor e acessar de qualquer lugar.
+Guia passo a passo para hospedar o CalorIA de graça para sempre.
 
----
-
-## Infraestrutura recomendada
-
-| Componente | Opção | Custo |
-|---|---|---|
-| VPS | **Hetzner CX22** (2 vCPU, 4 GB RAM, 40 GB SSD) | ~€3,79/mês |
-| Domínio | Registrar em Namecheap / Cloudflare (`.com`, `.com.br`) | ~€10/ano |
-| HTTPS | **Caddy** (Let's Encrypt automático) | gratuito |
-
-> **Alternativa gratuita de domínio:** use [DuckDNS](https://www.duckdns.org) para obter um subdomínio gratuito como `caloria.duckdns.org`.
+**Tempo estimado:** 30–40 minutos (primeira vez)
+**Custo:** R$ 0
 
 ---
 
-## Passo 1 — Criar o VPS (Hetzner)
+## O que você vai ter no final
 
-1. Acesse [hetzner.com/cloud](https://www.hetzner.com/cloud) e crie uma conta
-2. Crie um novo servidor:
-   - **Tipo:** CX22 (ou superior)
-   - **Imagem:** Ubuntu 24.04
-   - **Região:** Nuremberg (EU) ou a mais próxima
-   - **SSH Key:** adicione sua chave pública para acesso sem senha
-3. Anote o IP público do servidor
+- Dashboard web acessível em qualquer browser: `https://caloria.duckdns.org`
+- Bot Telegram funcionando 24/7 no celular e no PC
+- Banco de dados PostgreSQL rodando no servidor
+- HTTPS automático com certificado válido
 
 ---
 
-## Passo 2 — Configurar DNS
+## Pré-requisitos (o que você já precisa ter)
 
-No painel do seu registrador de domínio, crie um registro **A**:
+- [ ] Conta Google ou GitHub (para DuckDNS)
+- [ ] Groq API Key — [console.groq.com](https://console.groq.com) (gratuito)
+- [ ] Telegram Bot Token — fale com [@BotFather](https://t.me/BotFather) no Telegram
+- [ ] Cartão de crédito/débito (Oracle pede para verificar identidade — **não cobra nada**)
 
-```
-Tipo:  A
-Nome:  caloria   (ou @, ou qualquer subdomínio)
-Valor: <IP do VPS>
-TTL:   300
-```
+---
 
-Aguarde a propagação (geralmente 5–15 minutos). Teste com:
+## Parte 1 — Criar conta Oracle Cloud
+
+1. Acesse [cloud.oracle.com](https://cloud.oracle.com) e clique em **Start for free**
+
+2. Preencha os dados:
+   - País: Brazil
+   - Email e senha
+   - Nome e sobrenome
+
+3. Quando pedir o cartão: informe normalmente.
+   Oracle faz uma cobrança de verificação de **$1 que é estornada** em seguida. Não há cobrança automática ao usar apenas recursos Free Tier.
+
+4. Escolha a **Home Region** — escolha a mais próxima ao Brasil:
+   - `Brazil East (São Paulo)` — melhor latência
+   - `US East (Ashburn)` — alternativa se SP estiver sem capacidade
+
+5. Conclua a verificação de telefone e aguarde o email de confirmação.
+
+---
+
+## Parte 2 — Criar o servidor (VM grátis)
+
+1. No painel do Oracle Cloud, vá em:
+   **☰ Menu → Compute → Instances → Create instance**
+
+2. Configure assim:
+
+   **Name:** `caloria`
+
+   **Image and shape:**
+   - Clique em **Change shape**
+   - Em "Shape series", selecione **Ampere** (ícone de chip ARM)
+   - Escolha `VM.Standard.A1.Flex`
+   - **OCPUs:** 4 | **Memory:** 24 GB
+   - Clique em Select shape
+
+   **Image:**
+   - Clique em Change image
+   - Selecione **Canonical Ubuntu** → versão **22.04**
+
+   **Networking:** deixe o padrão (cria VCN automaticamente)
+
+   **SSH keys:**
+   - Se você já tem um par de chaves SSH: cole a chave pública (conteúdo de `~/.ssh/id_rsa.pub`)
+   - Se não tem: clique em **Generate a key pair** e baixe os dois arquivos
+
+3. Clique em **Create**
+
+4. Aguarde o status mudar para **Running** (1–3 minutos)
+
+5. Anote o **Public IP** da instância (ex: `129.153.xx.xx`)
+
+> ⚠️ Se aparecer **"Out of host capacity"**: tente mudar a região (vá em Manage Regions e habilite US East ou outro) ou tente de novo em 10–15 minutos. É problema de disponibilidade momentânea.
+
+---
+
+## Parte 3 — Abrir as portas no Oracle Cloud
+
+Por padrão o Oracle bloqueia tudo exceto SSH. Você precisa abrir as portas 80 e 443.
+
+1. No painel da instância criada, role até **Primary VNIC** e clique no nome da **Subnet**
+
+2. Na página da Subnet, clique na **Security List** (geralmente "Default Security List")
+
+3. Clique em **Add Ingress Rules** e adicione duas regras:
+
+   **Regra 1 — HTTP:**
+   - Source CIDR: `0.0.0.0/0`
+   - IP Protocol: TCP
+   - Destination Port Range: `80`
+
+   **Regra 2 — HTTPS:**
+   - Source CIDR: `0.0.0.0/0`
+   - IP Protocol: TCP
+   - Destination Port Range: `443`
+
+4. Clique em **Add Ingress Rules** para salvar
+
+---
+
+## Parte 4 — Criar seu domínio gratuito (DuckDNS)
+
+Você precisa de um domínio para o HTTPS funcionar.
+
+1. Acesse [duckdns.org](https://www.duckdns.org) e entre com sua conta Google ou GitHub
+
+2. Em **"sub domain"**, escolha um nome (ex: `caloria-gabriel`) e clique em **add domain**
+
+3. No campo **current ip**, cole o **Public IP** do seu servidor Oracle e clique em **update ip**
+
+4. Seu domínio é: `caloria-gabriel.duckdns.org` (substitua pelo nome que você escolheu)
+
+5. Aguarde 2–5 minutos para propagar. Teste:
+   ```
+   ping caloria-gabriel.duckdns.org
+   ```
+   Deve responder com o IP do seu servidor.
+
+---
+
+## Parte 5 — Conectar ao servidor via SSH
+
+No seu terminal (WSL, PowerShell, ou terminal do Mac/Linux):
+
 ```bash
-nslookup caloria.seudominio.com
+ssh ubuntu@<IP_DO_SERVIDOR>
+```
+
+Se gerou chaves pelo Oracle, use:
+```bash
+ssh -i ~/Downloads/ssh-key-*.key ubuntu@<IP_DO_SERVIDOR>
+```
+
+Na primeira conexão vai perguntar "Are you sure?" — digite `yes`.
+
+---
+
+## Parte 6 — Setup inicial do servidor
+
+Cole esses comandos no terminal do servidor:
+
+```bash
+# Liberar portas no firewall do Ubuntu (passo extra obrigatório no Oracle)
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo apt-get install -y iptables-persistent
+sudo netfilter-persistent save
+
+# Instalar Docker
+curl -fsSL https://get.docker.com | bash
+sudo usermod -aG docker ubuntu
+newgrp docker
+
+# Verificar que Docker está funcionando
+docker run hello-world
 ```
 
 ---
 
-## Passo 3 — Setup inicial do servidor
-
-Conecte via SSH e execute o script de setup:
+## Parte 7 — Clonar o projeto
 
 ```bash
-ssh root@<IP_DO_VPS>
-
-# Baixar e executar o script de setup
-curl -fsSL https://raw.githubusercontent.com/SEU_USER/caloria/main/scripts/setup-server.sh | bash
-```
-
-O script instala: Docker, configura firewall (80, 443, SSH) e fail2ban.
-
----
-
-## Passo 4 — Clonar o repositório
-
-```bash
+# Criar pasta do projeto
+sudo mkdir -p /opt/caloria
+sudo chown ubuntu:ubuntu /opt/caloria
 cd /opt/caloria
-git clone https://github.com/SEU_USER/caloria.git .
+
+# Clonar o repositório
+git clone https://github.com/gabriel-ngrs/CalorIA.git .
 ```
 
 ---
 
-## Passo 5 — Configurar o `.env`
+## Parte 8 — Configurar as variáveis de ambiente
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Preencha as variáveis obrigatórias:
+Edite os seguintes campos (use as setas para navegar, `Ctrl+O` para salvar, `Ctrl+X` para sair):
 
 ```bash
-# ===== OBRIGATÓRIO ALTERAR =====
-
+# Ambiente
 APP_ENV=production
-APP_DOMAIN=caloria.seudominio.com        # seu domínio real (sem https://)
 
-# URLs derivadas do domínio
-NEXT_PUBLIC_API_URL=https://caloria.seudominio.com
-NEXTAUTH_URL=https://caloria.seudominio.com
-NEXTAUTH_SECRET=                          # gere: openssl rand -hex 32
+# Domínio (sem https://)
+APP_DOMAIN=caloria-gabriel.duckdns.org
+
+# URLs do frontend
+NEXT_PUBLIC_API_URL=https://caloria-gabriel.duckdns.org
+NEXTAUTH_URL=https://caloria-gabriel.duckdns.org
+
+# Secrets — gere com os comandos abaixo
+SECRET_KEY=COLE_AQUI
+NEXTAUTH_SECRET=COLE_AQUI_OUTRO
 
 # Banco de dados
-POSTGRES_PASSWORD=                        # senha forte, ex: openssl rand -hex 16
-DATABASE_URL=postgresql+asyncpg://caloria:SENHA_ACIMA@postgres:5432/caloria_db
+POSTGRES_PASSWORD=ESCOLHA_UMA_SENHA_FORTE
+DATABASE_URL=postgresql+asyncpg://caloria:MESMA_SENHA_ACIMA@postgres:5432/caloria_db
 
-# Segurança JWT
-SECRET_KEY=                               # gere: openssl rand -hex 32
+# CORS
+BACKEND_CORS_ORIGINS=https://caloria-gabriel.duckdns.org
 
-# CORS (mesmo valor de NEXT_PUBLIC_API_URL)
-BACKEND_CORS_ORIGINS=https://caloria.seudominio.com
-
-# IA (Groq — gratuito em groq.com)
-GROQ_API_KEY=gsk_...
+# IA (Groq)
+GROQ_API_KEY=gsk_SUACHAVEGROQ
 
 # Telegram
-TELEGRAM_BOT_TOKEN=                       # do BotFather no Telegram
-
-# ===== OPCIONAIS (WhatsApp) =====
-EVOLUTION_API_URL=http://evolution_api:8080
-EVOLUTION_API_KEY=                        # gere: openssl rand -hex 16
-EVOLUTION_INSTANCE_NAME=caloria
-
-# ===== DEFAULTS (não precisa alterar) =====
-POSTGRES_USER=caloria
-POSTGRES_DB=caloria_db
-REDIS_URL=redis://redis:6379/0
+TELEGRAM_BOT_TOKEN=SEUBOTTOKEN
 ```
+
+Para gerar os secrets, abra outro terminal e rode:
+```bash
+# Dois comandos — um para SECRET_KEY, outro para NEXTAUTH_SECRET
+openssl rand -hex 32
+openssl rand -hex 32
+```
+
+Cole cada resultado no campo correspondente do `.env`.
 
 ---
 
-## Passo 6 — Deploy
+## Parte 9 — Fazer o deploy
 
 ```bash
+cd /opt/caloria
 bash scripts/deploy.sh
 ```
 
-O script faz automaticamente:
-1. Build das imagens Docker
-2. Sobe banco e Redis
-3. Roda as migrações Alembic
-4. Sobe todos os serviços
+Isso vai:
+1. Baixar todas as imagens Docker (~5 min na primeira vez)
+2. Compilar o frontend com sua URL configurada
+3. Criar o banco de dados e rodar as migrações
+4. Subir todos os serviços
+
+Aguarde terminar. No final vai aparecer a lista de serviços rodando.
 
 ---
 
-## Passo 7 — Verificar
+## Parte 10 — Verificar
 
 ```bash
-# Status dos serviços
+# Ver se todos os serviços subiram
 docker compose ps
 
-# Logs em tempo real
-docker compose logs -f
-
 # Testar a API
-curl https://caloria.seudominio.com/health
+curl https://caloria-gabriel.duckdns.org/health
+# Deve retornar: {"status":"ok","version":"0.1.0"}
 ```
 
-Acesse o dashboard em: **https://caloria.seudominio.com**
+Acesse no browser: **https://caloria-gabriel.duckdns.org**
+
+Você vai ver a tela de login do CalorIA.
 
 ---
 
-## Passo 8 — Conectar o bot Telegram
+## Parte 11 — Criar sua conta
 
-1. Abra o Telegram e procure o bot que você criou no BotFather
+1. Na tela de login, clique em **Cadastrar**
+2. Crie sua conta com email e senha
+3. Faça login — você já está no dashboard!
+
+---
+
+## Parte 12 — Conectar o bot Telegram
+
+1. Abra o Telegram e procure o seu bot pelo nome
 2. Envie `/start`
-3. No dashboard web, acesse **Conectar Bot** (`/conectar`)
-4. Gere um token e envie `/conectar TOKEN` para o bot
-5. Pronto — o bot está vinculado à sua conta
+3. No dashboard web, vá em **Conectar Bot** (menu lateral)
+4. Clique em **Gerar token** (válido por 10 minutos)
+5. Copie o token e envie no Telegram: `/conectar SEU_TOKEN`
+6. O bot vai confirmar a vinculação
+
+Agora você pode registrar refeições pelo Telegram em qualquer dispositivo!
 
 ---
 
-## Passo 9 — Conectar WhatsApp (opcional)
-
-1. Com os serviços rodando, acesse: `https://caloria.seudominio.com:8080`
-   > Nota: para expor a Evolution API pelo Caddy, adicione uma rota no `Caddyfile`.
-   > Temporariamente, use um túnel SSH: `ssh -L 8080:localhost:8080 root@<IP>`
-2. Crie uma instância chamada `caloria`
-3. Escaneie o QR Code com o WhatsApp do celular
-4. No dashboard, acesse **Conectar Bot** e repita o processo para WhatsApp
-
----
-
-## Atualizações futuras
-
-Para atualizar o projeto:
+## Comandos úteis (no servidor)
 
 ```bash
+# Ver logs em tempo real
+docker compose logs -f
+
+# Ver logs de um serviço específico
+docker compose logs -f telegram_bot
+docker compose logs -f backend
+
+# Reiniciar um serviço
+docker compose restart telegram_bot
+
+# Ver status
+docker compose ps
+
+# Atualizar o projeto (quando houver novas versões)
 cd /opt/caloria
 git pull
 bash scripts/deploy.sh
@@ -183,44 +306,27 @@ bash scripts/deploy.sh
 
 ---
 
-## Comandos úteis no servidor
+## Se algo der errado
 
+**Bot Telegram não responde:**
 ```bash
-# Ver logs de um serviço específico
-docker compose logs -f backend
-docker compose logs -f telegram_bot
-
-# Reiniciar um serviço
+docker compose logs telegram_bot
 docker compose restart telegram_bot
-
-# Acessar o banco
-docker compose exec postgres psql -U caloria -d caloria_db
-
-# Backup do banco
-docker compose exec postgres pg_dump -U caloria caloria_db > backup_$(date +%Y%m%d).sql
-
-# Parar tudo
-docker compose down
-
-# Parar e remover dados (CUIDADO — apaga o banco!)
-docker compose down -v
 ```
 
----
-
-## Monitoramento
-
+**Dashboard não abre:**
 ```bash
-# Ver uso de recursos
-docker stats
-
-# Ver espaço em disco
-df -h
-docker system df
+docker compose logs frontend
+docker compose logs caddy
 ```
 
----
+**Erro de banco de dados:**
+```bash
+docker compose logs backend
+docker compose exec backend alembic upgrade head
+```
 
-## Renovação de certificado HTTPS
-
-O Caddy renova os certificados Let's Encrypt automaticamente. Nenhuma ação necessária.
+**Reiniciar tudo:**
+```bash
+docker compose down && docker compose up -d
+```
