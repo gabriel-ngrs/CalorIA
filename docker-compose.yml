@@ -91,14 +91,59 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-insecure-secret-change-in-production}
     container_name: caloria_frontend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     depends_on:
       - backend
+    networks:
+      - caloria_net
+
+  # ---------------------------------------------------------------------------
+  # Bot Telegram — polling dedicado
+  # ---------------------------------------------------------------------------
+  telegram_bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: caloria_telegram_bot
+    restart: unless-stopped
+    command: python -m app.bots.telegram.run_polling
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - caloria_net
+
+  # ---------------------------------------------------------------------------
+  # Caddy — Reverse proxy com HTTPS automático (Let's Encrypt)
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: caloria_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
     networks:
       - caloria_net
 
@@ -149,6 +194,8 @@ volumes:
   postgres_data:
   redis_data:
   evolution_data:
+  caddy_data:
+  caddy_config:
 
 # =============================================================================
 # Rede compartilhada

@@ -23,6 +23,15 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Variáveis NEXT_PUBLIC_* precisam estar disponíveis em build time
+# pois o Next.js as embute estaticamente no bundle.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXTAUTH_URL=http://localhost:3000
+ARG NEXTAUTH_SECRET=insecure-secret-change-in-production
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+
 RUN npm run build
 
 # ---------------------------------------------------------------------------
