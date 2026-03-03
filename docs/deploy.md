@@ -164,7 +164,18 @@ docker run hello-world
 
 ---
 
-## Parte 7 — Clonar o projeto
+## Parte 7 — Preparar o código e clonar no servidor
+
+**No seu PC** (antes de clonar no servidor), envie o código para a `main`:
+
+```bash
+git checkout main
+git merge dev
+git push origin main
+git checkout dev    # volta para continuar desenvolvendo
+```
+
+**No servidor**, clone a `main`:
 
 ```bash
 # Criar pasta do projeto
@@ -172,8 +183,8 @@ sudo mkdir -p /opt/caloria
 sudo chown ubuntu:ubuntu /opt/caloria
 cd /opt/caloria
 
-# Clonar o repositório
-git clone https://github.com/gabriel-ngrs/CalorIA.git .
+# Clonar a branch main (produção)
+git clone -b main https://github.com/gabriel-ngrs/CalorIA.git .
 ```
 
 ---
@@ -297,11 +308,28 @@ docker compose restart telegram_bot
 
 # Ver status
 docker compose ps
+```
 
-# Atualizar o projeto (quando houver novas versões)
+## Fluxo de atualização (quando você fizer mudanças)
+
+**No seu PC:**
+```bash
+# Desenvolve normalmente na dev
+git checkout dev
+# ... faz as mudanças, commita ...
+
+# Quando quiser publicar no servidor:
+git checkout main
+git merge dev
+git push origin main
+git checkout dev
+```
+
+**No servidor (atualiza automaticamente com o deploy.sh):**
+```bash
 cd /opt/caloria
-git pull
 bash scripts/deploy.sh
+# O script faz git pull + rebuild + restart automaticamente
 ```
 
 ---
