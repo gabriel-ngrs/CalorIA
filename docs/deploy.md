@@ -310,26 +310,58 @@ docker compose restart telegram_bot
 docker compose ps
 ```
 
-## Fluxo de atualização (quando você fizer mudanças)
+## Fluxo de branches
 
-**No seu PC:**
-```bash
-# Desenvolve normalmente na dev
-git checkout dev
-# ... faz as mudanças, commita ...
-
-# Quando quiser publicar no servidor:
-git checkout main
-git merge dev
-git push origin main
-git checkout dev
+```
+dev  →  test  →  main
+ │        │         │
+ │ merge  │  merge  │
+Desenvolve Testa  Produção
+           (Oracle)
 ```
 
-**No servidor (atualiza automaticamente com o deploy.sh):**
+| Branch | Uso |
+|--------|-----|
+| `dev`  | Desenvolvimento do dia a dia |
+| `test` | Testes antes de publicar |
+| `main` | Produção — o que roda no servidor |
+
+**Workflow completo:**
+
+```bash
+# 1. Desenvolve na dev (commits normais)
+git checkout dev
+
+# 2. Quando quiser testar
+git checkout test
+git merge dev
+git push origin test
+
+# 3. Testa no servidor (veja abaixo como apontar para test)
+
+# 4. Se tudo OK, publica na produção
+git checkout main
+git merge test
+git push origin main
+git checkout dev    # volta para continuar desenvolvendo
+```
+
+**No servidor — atualizar produção (main):**
 ```bash
 cd /opt/caloria
 bash scripts/deploy.sh
-# O script faz git pull + rebuild + restart automaticamente
+# O script faz git pull origin main + rebuild + restart automaticamente
+```
+
+**No servidor — testar a branch test antes de subir para main:**
+```bash
+cd /opt/caloria
+git fetch origin
+git checkout test
+git pull origin test
+bash scripts/deploy.sh
+# Quando terminar os testes, volte para main:
+git checkout main
 ```
 
 ---
