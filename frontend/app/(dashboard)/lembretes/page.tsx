@@ -39,7 +39,6 @@ const CHANNEL_LABELS: Record<ReminderChannel, string> = {
   whatsapp: "WhatsApp",
 };
 
-const INTERVAL_OPTIONS = [1, 2, 3, 4];
 
 function generateIntervalTimes(start: string, end: string, intervalHours: number): string[] {
   const times: string[] = [];
@@ -327,22 +326,15 @@ export default function LembretesPage() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">A cada</Label>
-                      <Select
-                        value={String(intervalHours)}
-                        onValueChange={(v) => setIntervalHours(Number(v))}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {INTERVAL_OPTIONS.map((h) => (
-                            <SelectItem key={h} value={String(h)}>
-                              {h}h
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs">A cada (horas)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={intervalHours}
+                        onChange={(e) => setIntervalHours(Math.max(1, Math.min(12, Number(e.target.value))))}
+                        className="mt-1"
+                      />
                     </div>
                   </div>
                   {previewTimes.length > 0 && (
