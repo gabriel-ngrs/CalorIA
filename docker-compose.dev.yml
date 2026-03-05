@@ -124,6 +124,8 @@ services:
       - ./backend:/app
     env_file:
       - .env
+    environment:
+      TZ: America/Sao_Paulo
     depends_on:
       postgres:
         condition: service_healthy
@@ -166,6 +168,8 @@ services:
       - ./backend:/app
     env_file:
       - .env
+    environment:
+      TZ: America/Sao_Paulo
     depends_on:
       postgres:
         condition: service_healthy
