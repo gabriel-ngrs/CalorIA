@@ -12,7 +12,7 @@ const GOAL_ML = 2000;
 
 export default function HidratacaoPage() {
   const [custom, setCustom] = useState("");
-  const { data: summary, isLoading } = useHydrationToday();
+  const { data: summary } = useHydrationToday();
   const logHydration = useLogHydration();
 
   const today = new Date().toISOString().slice(0, 10);

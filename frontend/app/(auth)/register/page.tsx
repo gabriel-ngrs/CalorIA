@@ -38,8 +38,8 @@ export default function RegisterPage() {
       } else {
         router.push("/");
       }
-    } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Erro ao criar conta.";
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ?? "Erro ao criar conta.";
       setError(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
