@@ -12,16 +12,28 @@ import type { MealType } from "@/types";
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: "Café da manhã",
+  morning_snack: "Lanche da manhã",
   lunch: "Almoço",
+  afternoon_snack: "Lanche da tarde",
   dinner: "Jantar",
+  supper: "Ceia",
   snack: "Lanche",
+  pre_workout: "Pré-treino",
+  post_workout: "Pós-treino",
+  supplement: "Suplemento",
 };
 
 const MEAL_EMOJIS: Record<MealType, string> = {
   breakfast: "☀️",
+  morning_snack: "🍌",
   lunch: "🍽️",
+  afternoon_snack: "🍎",
   dinner: "🌙",
-  snack: "🍎",
+  supper: "🌛",
+  snack: "🥨",
+  pre_workout: "💪",
+  post_workout: "🏋️",
+  supplement: "💊",
 };
 
 export default function DashboardPage() {
