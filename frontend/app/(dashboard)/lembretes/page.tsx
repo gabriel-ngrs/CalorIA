@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -113,14 +113,6 @@ export default function LembretesPage() {
     setMessage("");
   }
 
-  // Agrupa lembretes por tipo+canal para exibição
-  const grouped = (reminders ?? []).reduce<Record<string, typeof reminders>>((acc, r) => {
-    const key = `${r!.type}-${r!.channel}`;
-    if (!acc[key]) acc[key] = [];
-    acc[key]!.push(r);
-    return acc;
-  }, {});
-
   return (
     <div className="space-y-6 max-w-xl">
       <div>
@@ -158,7 +150,7 @@ export default function LembretesPage() {
                       {r.time.slice(0, 5)} · {daysLabel}
                     </p>
                     {r.message && (
-                      <p className="text-xs text-muted-foreground italic mt-0.5">"{r.message}"</p>
+                      <p className="text-xs text-muted-foreground italic mt-0.5">&ldquo;{r.message}&rdquo;</p>
                     )}
                   </div>
                   <Button

@@ -119,6 +119,7 @@ export interface HydrationLog {
 }
 
 export interface HydrationDaySummary {
+  date: string;
   total_ml: number;
   entries_count: number;
 }
@@ -229,6 +230,73 @@ export interface InsightResponse {
   type: string;
   content: string;
   generated_at: string;
+}
+
+export interface SuggestedMealItem {
+  food_name: string;
+  quantity: number;
+  unit: string;
+  estimated_calories: number;
+}
+
+export interface MealSuggestion {
+  name: string;
+  description: string;
+  meal_type: string;
+  estimated_calories: number;
+  items: SuggestedMealItem[];
+}
+
+export interface EatingPattern {
+  analysis: string;
+  frequent_foods: string[];
+  days_analyzed: number;
+}
+
+export interface NutritionalAlert {
+  nutrient: string;
+  average_daily: number;
+  recommended_min: number;
+  unit: string;
+  severity: "low" | "medium" | "high";
+}
+
+export interface NutritionalAlertsResponse {
+  alerts: NutritionalAlert[];
+  analysis: string;
+  days_analyzed: number;
+}
+
+export interface GoalAdjustmentSuggestion {
+  current_calorie_goal: number | null;
+  suggested_calorie_goal: number | null;
+  current_weight_goal: number | null;
+  weight_trend_kg_per_week: number | null;
+  adjustment_recommended: boolean;
+  suggestion: string;
+}
+
+export interface WeekSummary {
+  week_number: number;
+  start_date: string;
+  end_date: string;
+  avg_calories: number;
+  days_logged: number;
+  adherence_pct: number;
+}
+
+export interface MonthlyReport {
+  month: number;
+  year: number;
+  total_days_logged: number;
+  adherence_score: number;
+  avg_daily_calories: number;
+  avg_daily_protein: number;
+  avg_daily_carbs: number;
+  avg_daily_fat: number;
+  best_week: WeekSummary;
+  worst_week: WeekSummary;
+  analysis: string;
 }
 
 // ─── next-auth session augmentation ────────────────────────────────────────
