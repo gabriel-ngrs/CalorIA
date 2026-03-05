@@ -33,7 +33,7 @@ async def update_me(
     user = await svc.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
-    for key, value in data.model_dump(mode="json", exclude_unset=True).items():
+    for key, value in data.model_dump(exclude_unset=True).items():
         setattr(user, key, value)
     await db.commit()
     await db.refresh(user)
