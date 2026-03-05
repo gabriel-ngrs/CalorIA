@@ -15,6 +15,7 @@ export type ActivityLevel =
   | "moderately_active"
   | "very_active"
   | "extra_active";
+export type GoalType = "lose_weight" | "gain_muscle" | "maintain" | "body_recomp";
 
 export interface UserProfile {
   height_cm: number | null;
@@ -31,6 +32,8 @@ export interface User {
   email: string;
   calorie_goal: number | null;
   weight_goal: number | null;
+  water_goal_ml: number | null;
+  goal_type: GoalType | null;
   telegram_chat_id: string | null;
   whatsapp_number: string | null;
   profile: UserProfile | null;
@@ -39,7 +42,17 @@ export interface User {
 
 // ─── Meals ─────────────────────────────────────────────────────────────────
 
-export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+export type MealType =
+  | "breakfast"
+  | "morning_snack"
+  | "lunch"
+  | "afternoon_snack"
+  | "dinner"
+  | "supper"
+  | "snack"
+  | "pre_workout"
+  | "post_workout"
+  | "supplement";
 export type MealSource = "manual" | "telegram" | "whatsapp";
 
 export interface MealItem {
@@ -80,6 +93,13 @@ export interface MealCreate {
   source?: MealSource;
   notes?: string;
   items: MealItemCreate[];
+}
+
+export interface MealUpdate {
+  meal_type?: MealType;
+  date?: string;
+  notes?: string;
+  name?: string;
 }
 
 // ─── Logs ──────────────────────────────────────────────────────────────────
