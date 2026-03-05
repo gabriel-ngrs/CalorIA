@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,21 +23,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAnalyzeMeal, useCreateMeal, useDeleteMeal, useMeals } from "@/lib/hooks/useMeals";
-import type { MealItemCreate, MealType, ParsedFoodItem } from "@/types";
+import { useAnalyzeMeal, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
+import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: "Café da manhã",
+  morning_snack: "Lanche da manhã",
   lunch: "Almoço",
+  afternoon_snack: "Lanche da tarde",
   dinner: "Jantar",
+  supper: "Ceia",
   snack: "Lanche",
+  pre_workout: "Pré-treino",
+  post_workout: "Pós-treino",
+  supplement: "Suplemento",
 };
 
 const MEAL_EMOJIS: Record<MealType, string> = {
   breakfast: "☀️",
+  morning_snack: "🍌",
   lunch: "🍽️",
+  afternoon_snack: "🍎",
   dinner: "🌙",
-  snack: "🍎",
+  supper: "🌛",
+  snack: "🥨",
+  pre_workout: "💪",
+  post_workout: "🏋️",
+  supplement: "💊",
 };
 
 export default function RefeicoesPage() {
@@ -47,11 +59,36 @@ export default function RefeicoesPage() {
   const deleteMeal = useDeleteMeal();
   const analyzeMeal = useAnalyzeMeal();
   const createMeal = useCreateMeal();
+  const updateMeal = useUpdateMeal();
 
+  // Estado do dialog de nova refeição
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [parsedItems, setParsedItems] = useState<ParsedFoodItem[] | null>(null);
+
+  // Estado do dialog de edição
+  const [editOpen, setEditOpen] = useState(false);
+  const [editMeal, setEditMeal] = useState<Meal | null>(null);
+  const [editMealType, setEditMealType] = useState<MealType>("lunch");
+  const [editNotes, setEditNotes] = useState("");
+
+  function openEdit(meal: Meal) {
+    setEditMeal(meal);
+    setEditMealType(meal.meal_type);
+    setEditNotes(meal.notes ?? "");
+    setEditOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!editMeal) return;
+    await updateMeal.mutateAsync({
+      id: editMeal.id,
+      data: { meal_type: editMealType, notes: editNotes || undefined },
+    });
+    setEditOpen(false);
+    setEditMeal(null);
+  }
 
   async function handleAnalyze() {
     try {
@@ -112,7 +149,9 @@ export default function RefeicoesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(MEAL_LABELS).map(([v, label]) => (
-                      <SelectItem key={v} value={v}>{label}</SelectItem>
+                      <SelectItem key={v} value={v}>
+                        {MEAL_EMOJIS[v as MealType]} {label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -169,6 +208,51 @@ export default function RefeicoesPage() {
         </Dialog>
       </div>
 
+      {/* Dialog de edição */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar refeição</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Tipo</Label>
+              <Select value={editMealType} onValueChange={(v) => setEditMealType(v as MealType)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(MEAL_LABELS).map(([v, label]) => (
+                    <SelectItem key={v} value={v}>
+                      {MEAL_EMOJIS[v as MealType]} {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-notes">Notas</Label>
+              <Textarea
+                id="edit-notes"
+                placeholder="Observações sobre a refeição..."
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                className="mt-1 resize-none"
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={updateMeal.isPending} className="flex-1">
+                {updateMeal.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Filtro por data */}
       <div className="flex items-center gap-3">
         <Label htmlFor="date" className="shrink-0">Data</Label>
@@ -209,6 +293,14 @@ export default function RefeicoesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-primary"
+                      onClick={() => openEdit(meal)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-7 w-7 text-muted-foreground hover:text-destructive"
                       onClick={() => deleteMeal.mutate(meal.id)}
                     >
@@ -228,6 +320,9 @@ export default function RefeicoesPage() {
                     </div>
                   ))}
                 </div>
+                {meal.notes && (
+                  <p className="text-xs text-muted-foreground mt-2 italic">{meal.notes}</p>
+                )}
               </CardContent>
             </Card>
           );
