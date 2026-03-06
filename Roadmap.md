@@ -126,6 +126,8 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Prompt com contexto do usuário (metas calóricas, alimentos frequentes)
 - [x] Tratar ambiguidades ("um prato de arroz") com estimativas calibradas
 - [x] Retornar JSON: `[{food_name, quantity, unit, calories, protein, carbs, fat, confidence}]`
+- [x] `services/ai/taco_lookup.py` — banco TACO (~600 alimentos) com busca fuzzy (rapidfuzz ≥ 75); macros reais injetados no prompt antes do Gemini
+- [x] `services/ai/context_builder.py` — injeta tipo de refeição (inferido por keywords) + histórico das últimas 3 refeições do mesmo tipo + porções históricas
 
 ### 2.3 Análise de Foto
 - [x] `services/ai/vision_parser.py` — analisar imagem de prato/alimento
@@ -257,6 +259,10 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Botão "Adicionar Refeição" → modal com análise via IA
 - [x] Preview dos itens identificados pela IA antes de salvar
 - [x] Exclusão de refeições
+- [x] Edição de refeições
+- [x] Categorias expandidas (café manhã, lanche manhã, almoço, lanche tarde, jantar, ceia, lanche noturno)
+- [x] Calendário customizado com tema escuro (react-day-picker + Popover Radix)
+- [x] Sidebar de stats do dia (calorias, proteína, carboidrato, gordura)
 
 ### 5.5 Gráfico de Evolução de Peso (`/peso`)
 - [x] Gráfico de linha: peso ao longo do tempo (90 dias)
@@ -268,10 +274,12 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Barra de progresso com percentual
 - [x] Botões rápidos: +200ml, +300ml, +500ml
 - [x] Input para valor personalizado
+- [x] Gráfico de barras com histórico de N dias e métricas do período
 
 ### 5.7 Humor e Energia (`/humor`)
 - [x] Formulário com sliders 1-5 para energia e humor + notas
 - [x] Gráfico de linha dupla: energia e humor ao longo do tempo
+- [x] Seletor de período (7/14/30 dias) com métricas: média, melhor dia
 
 ### 5.8 Lembretes (`/lembretes`)
 - [x] Lista de lembretes ativos por canal (Telegram/WhatsApp)
@@ -292,6 +300,18 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Insight do dia gerado pela IA
 - [x] Análise semanal
 - [x] Campo de chat livre com a IA
+- [x] Alertas nutricionais (deficiências recorrentes com severidade)
+- [x] Sugestão de ajuste de metas calóricas baseada em tendência de peso
+- [x] Relatório mensal com score de aderência e melhores/piores semanas
+
+### 5.12 Redesign Visual Completo
+- [x] Sistema de design Glassmorphism + Neumorphism (`globals.css` + `tailwind.config.ts`)
+- [x] Paleta: background esmeralda profundo, primary verde, accent laranja
+- [x] Classes utilitárias: `.glass`, `.glass-card`, `.neu-raised`, `.neu-inset`, `.glow-primary`
+- [x] Todos os módulos com layout de duas colunas e hover effects uniformes
+- [x] Tooltips customizados glass nos gráficos Recharts
+- [x] Ícones Lucide em todo o dashboard (sem emojis)
+- [x] Dark mode como padrão (fixo)
 
 ---
 
@@ -405,5 +425,5 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 5 | Frontend Dashboard | `[x]` |
 | 6 | Notificações e Lembretes | `[x]` |
 | 7 | Insights Avançados de IA | `[x]` |
-| 8 | Qualidade e Testes | `[ ]` |
+| 8 | Qualidade e Testes | `[~]` |
 | 9 | Preparação para Escala | `[ ]` |
