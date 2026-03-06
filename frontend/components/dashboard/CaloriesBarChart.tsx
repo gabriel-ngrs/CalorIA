@@ -52,7 +52,7 @@ export function CaloriesBarChart({ data, calorieGoal }: Props) {
   }));
 
   return (
-    <Card>
+    <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-accent/40">
       <CardHeader>
         <CardTitle className="text-sm">Calorias — últimos 7 dias</CardTitle>
       </CardHeader>

@@ -243,7 +243,7 @@ export default function DashboardPage() {
 
       {/* Refeições do dia */}
       {dashboard.nutrition.meals.length > 0 && (
-        <Card>
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
           <CardHeader>
             <CardTitle className="text-sm">Refeições de hoje</CardTitle>
           </CardHeader>

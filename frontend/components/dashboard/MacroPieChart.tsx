@@ -79,7 +79,7 @@ export function MacroPieChart({ nutrition }: Props) {
   }
 
   return (
-    <Card>
+    <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
       <CardHeader>
         <CardTitle className="text-sm">Distribuição de macros</CardTitle>
       </CardHeader>
