@@ -4,27 +4,21 @@ const nextConfig = {
   output: "standalone",
 
   experimental: {
-    // Reduz módulos compilados por rota fazendo tree-shake otimizado das libs pesadas
-    // Resultado: hot reload ~30-40% mais rápido em dev
-    optimizePackageImports: [
-      "lucide-react",
-      "recharts",
-      "@radix-ui/react-dialog",
-      "@radix-ui/react-select",
-      "@radix-ui/react-popover",
-      "@radix-ui/react-tooltip",
-      "@radix-ui/react-dropdown-menu",
-      "@tanstack/react-query",
-    ],
+    // Apenas lucide-react se beneficia desta otimização — é um barrel puro com
+    // 1000+ ícones. Outros pacotes (@tanstack, recharts, @radix-ui) não são barrels
+    // e quando adicionados aqui AUMENTAM o número de módulos compilados.
+    optimizePackageImports: ["lucide-react"],
   },
 
-  // Corrige o file watcher no WSL2 + Docker bind mount
-  // inotify não é confiável nesse ambiente — polling evita rebuilds fantasma
+  // Corrige o file watcher no WSL2 + Docker bind mount.
+  // CRÍTICO: `ignored` impede que webpack faça polling em node_modules
+  // (milhares de arquivos) a cada tick — principal causa do CPU 140%+.
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
-        poll: 1000,
+        poll: 2000,
         aggregateTimeout: 500,
+        ignored: ["**/node_modules/**", "**/.git/**", "**/.next/**"],
       };
     }
     return config;
