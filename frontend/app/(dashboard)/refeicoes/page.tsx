@@ -563,7 +563,7 @@ export default function RefeicoesPage() {
         </Button>
 
         <div className="flex-1 text-center">
-          <p className="text-sm font-medium capitalize">{dateLabel}</p>
+          <p className="text-sm font-medium capitalize" suppressHydrationWarning>{dateLabel}</p>
         </div>
 
         <div className="flex items-center gap-1">
