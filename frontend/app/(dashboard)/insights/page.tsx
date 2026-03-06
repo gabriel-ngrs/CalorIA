@@ -88,7 +88,7 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
@@ -97,8 +97,11 @@ export default function InsightsPage() {
         <p className="text-muted-foreground text-sm">Análises personalizadas sobre sua alimentação</p>
       </div>
 
+      {/* ── Linha superior: Insight diário + Sugestão de refeição ──────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
       {/* ── Insight diário ─────────────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
         <CardHeader>
           <SectionHeader
             icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
@@ -127,7 +130,7 @@ export default function InsightsPage() {
       </Card>
 
       {/* ── Sugestão de refeição ───────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-400/30">
         <CardHeader>
           <SectionHeader
             icon={<Utensils className="h-4 w-4 text-orange-400" />}
@@ -155,8 +158,10 @@ export default function InsightsPage() {
         </CardContent>
       </Card>
 
+      </div>{/* fim grid 2 colunas */}
+
       {/* ── Alertas nutricionais ──────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <SectionHeader
             icon={<Bell className="h-4 w-4 text-yellow-400" />}
@@ -190,7 +195,7 @@ export default function InsightsPage() {
       </Card>
 
       {/* ── Padrões alimentares ───────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <SectionHeader
             icon={<TrendingUp className="h-4 w-4 text-primary" />}
@@ -224,7 +229,7 @@ export default function InsightsPage() {
       </Card>
 
       {/* ── Análise semanal ───────────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-400/30">
         <CardHeader>
           <SectionHeader
             icon={<CalendarDays className="h-4 w-4 text-blue-400" />}
@@ -253,7 +258,7 @@ export default function InsightsPage() {
       </Card>
 
       {/* ── Ajuste de metas ───────────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-emerald-400/30">
         <CardHeader>
           <SectionHeader
             icon={<Target className="h-4 w-4 text-emerald-400" />}
@@ -282,7 +287,7 @@ export default function InsightsPage() {
       </Card>
 
       {/* ── Relatório mensal ──────────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-purple-400/30">
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <SectionHeader
             icon={<BarChart3 className="h-4 w-4 text-purple-400" />}
@@ -331,7 +336,7 @@ export default function InsightsPage() {
       </Card>
 
       {/* ── Pergunte à IA ─────────────────────────────────────────────── */}
-      <Card>
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
         <CardHeader>
           <SectionHeader
             icon={<Send className="h-4 w-4 text-primary" />}
