@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Copy, RefreshCw } from "lucide-react";
+import { Check, Clock, Copy, MessageCircle, RefreshCw } from "lucide-react";
 import { useGenerateTelegramToken, useGenerateWhatsAppToken, useMe } from "@/lib/hooks/useProfile";
 
 export default function ConectarPage() {
@@ -24,7 +24,10 @@ export default function ConectarPage() {
   return (
     <div className="space-y-6 max-w-xl">
       <div>
-        <h1 className="text-2xl font-bold">🤖 Conectar Bot</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+            <MessageCircle className="h-6 w-6 text-primary" />
+            Conectar Bot
+          </h1>
         <p className="text-muted-foreground text-sm">Vincule seus canais de mensagem</p>
       </div>
 
@@ -32,7 +35,7 @@ export default function ConectarPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            ✈️ Telegram
+            Telegram
             {user?.telegram_chat_id ? (
               <Badge variant="default" className="text-xs">Conectado</Badge>
             ) : (
@@ -59,7 +62,7 @@ export default function ConectarPage() {
                 className="h-7 w-7 shrink-0"
                 onClick={() => copyToClipboard(telegramToken, "telegram")}
               >
-                {copied === "telegram" ? "✅" : <Copy className="h-3.5 w-3.5" />}
+                {copied === "telegram" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
           )}
@@ -77,7 +80,7 @@ export default function ConectarPage() {
             {telegramToken ? "Gerar novo token" : "Gerar token"}
           </Button>
           {telegramToken && (
-            <p className="text-xs text-muted-foreground">⏰ Válido por 10 minutos</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Válido por 10 minutos</p>
           )}
         </CardContent>
       </Card>
@@ -86,7 +89,7 @@ export default function ConectarPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            💬 WhatsApp
+            WhatsApp
             {user?.whatsapp_number ? (
               <Badge variant="default" className="text-xs">Conectado</Badge>
             ) : (
@@ -113,7 +116,7 @@ export default function ConectarPage() {
                 className="h-7 w-7 shrink-0"
                 onClick={() => copyToClipboard(whatsappToken, "whatsapp")}
               >
-                {copied === "whatsapp" ? "✅" : <Copy className="h-3.5 w-3.5" />}
+                {copied === "whatsapp" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
           )}
@@ -131,7 +134,7 @@ export default function ConectarPage() {
             {whatsappToken ? "Gerar novo token" : "Gerar token"}
           </Button>
           {whatsappToken && (
-            <p className="text-xs text-muted-foreground">⏰ Válido por 10 minutos</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Válido por 10 minutos</p>
           )}
         </CardContent>
       </Card>

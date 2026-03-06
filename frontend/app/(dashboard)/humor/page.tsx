@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Star, Smile, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useMoodLogs, useLogMood } from "@/lib/hooks/useLogs";
 
-const ENERGY_EMOJIS = ["😴", "😪", "😐", "😊", "⚡"];
-const MOOD_EMOJIS = ["😞", "😕", "😐", "😊", "😄"];
+
 const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];
 
 export default function HumorPage() {
@@ -71,7 +71,10 @@ export default function HumorPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold">😊 Humor & Energia</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Smile className="h-6 w-6 text-yellow-400" />
+            Humor & Energia
+          </h1>
         <p className="text-muted-foreground text-sm">Como você está hoje?</p>
       </div>
 
@@ -83,8 +86,9 @@ export default function HumorPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <Label className="mb-2 block">
-                ⚡ Energia: {ENERGY_EMOJIS[energy - 1]} {energy}/5 — {LEVEL_LABELS[energy - 1]}
+              <Label className="mb-2 flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-orange-500" />
+                Energia: {energy}/5 — {LEVEL_LABELS[energy - 1]}
               </Label>
               <Slider
                 min={1}
@@ -96,8 +100,9 @@ export default function HumorPage() {
               />
             </div>
             <div>
-              <Label className="mb-2 block">
-                😊 Humor: {MOOD_EMOJIS[mood - 1]} {mood}/5 — {LEVEL_LABELS[mood - 1]}
+              <Label className="mb-2 flex items-center gap-1.5">
+                <Smile className="h-3.5 w-3.5 text-blue-500" />
+                Humor: {mood}/5 — {LEVEL_LABELS[mood - 1]}
               </Label>
               <Slider
                 min={1}
@@ -133,7 +138,7 @@ export default function HumorPage() {
               <p className="text-2xl font-bold text-orange-500">
                 {avgEnergy !== null ? avgEnergy.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">⚡ Média energia</p>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1"><Zap className="h-3 w-3" /> Média energia</p>
             </CardContent>
           </Card>
           <Card>
@@ -141,7 +146,7 @@ export default function HumorPage() {
               <p className="text-2xl font-bold text-blue-500">
                 {avgMood !== null ? avgMood.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">😊 Média humor</p>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1"><Smile className="h-3 w-3" /> Média humor</p>
             </CardContent>
           </Card>
           <Card>
@@ -156,7 +161,10 @@ export default function HumorPage() {
       {bestDay && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4">
-            <p className="text-sm font-medium">🌟 Melhor dia do período</p>
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+              Melhor dia do período
+            </p>
             <p className="text-base font-semibold mt-1">
               {new Date(bestDay.date + "T12:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
             </p>

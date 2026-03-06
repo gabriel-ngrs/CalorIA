@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CheckCircle2, Droplets as DropletIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,10 @@ export default function HidratacaoPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold">💧 Hidratação</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+            <DropletIcon className="h-6 w-6 text-blue-500" />
+            Hidratação
+          </h1>
         <p className="text-muted-foreground text-sm">Controle seu consumo de água</p>
       </div>
 
@@ -123,8 +127,9 @@ export default function HidratacaoPage() {
       </Card>
 
       {pct >= 100 && (
-        <p className="text-center text-green-600 font-medium">
-          🎉 Meta diária atingida! Continue bebendo água.
+        <p className="text-center text-green-600 font-medium flex items-center justify-center gap-2">
+          <CheckCircle2 className="h-5 w-5" />
+          Meta diária atingida! Continue bebendo água.
         </p>
       )}
 

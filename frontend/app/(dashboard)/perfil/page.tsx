@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,10 +25,10 @@ const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
 };
 
 const GOAL_TYPE_LABELS: Record<GoalType, string> = {
-  lose_weight: "🔥 Emagrecer",
-  gain_muscle: "💪 Ganhar massa muscular",
-  maintain: "⚖️ Manter peso",
-  body_recomp: "🔄 Recomposição corporal",
+  lose_weight: "Emagrecer",
+  gain_muscle: "Ganhar massa muscular",
+  maintain: "Manter peso",
+  body_recomp: "Recomposição corporal",
 };
 
 export default function PerfilPage() {
@@ -98,7 +99,10 @@ export default function PerfilPage() {
       {profile?.tdee_calculated && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4">
-            <p className="text-sm font-medium">🔥 TDEE estimado</p>
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Flame className="h-4 w-4 text-orange-500" />
+              TDEE estimado
+            </p>
             <p className="text-3xl font-bold">{profile.tdee_calculated.toFixed(0)} <span className="text-base font-normal text-muted-foreground">kcal/dia</span></p>
             <p className="text-xs text-muted-foreground mt-1">Total Daily Energy Expenditure (Harris-Benedict)</p>
           </CardContent>
@@ -186,7 +190,7 @@ export default function PerfilPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={updateProfile.isPending || updateMe.isPending}>
-              {saved ? "✅ Salvo!" : updateProfile.isPending ? "Salvando..." : "Salvar"}
+              {saved ? <><Check className="h-4 w-4 mr-1.5" /> Salvo!</> : updateProfile.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </form>
         </CardContent>

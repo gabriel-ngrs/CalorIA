@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,10 @@ export default function PesoPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold">⚖️ Peso</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Scale className="h-6 w-6 text-primary" />
+            Peso
+          </h1>
         <p className="text-muted-foreground text-sm">Acompanhe sua evolução</p>
       </div>
 
@@ -68,7 +72,7 @@ export default function PesoPage() {
               <CardContent>
                 <p className="text-3xl font-bold">{user.weight_goal} <span className="text-base font-normal">kg</span></p>
                 <p className={`text-xs mt-1 ${latest.weight_kg <= user.weight_goal ? "text-green-600" : "text-orange-600"}`}>
-                  {latest.weight_kg <= user.weight_goal ? "✅ Meta atingida!" : `Faltam ${(latest.weight_kg - user.weight_goal).toFixed(1)} kg`}
+                  {latest.weight_kg <= user.weight_goal ? "Meta atingida!" : `Faltam ${(latest.weight_kg - user.weight_goal).toFixed(1)} kg`}
                 </p>
               </CardContent>
             </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, Pencil, Plus, Search, Trash2, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,17 +39,17 @@ const MEAL_LABELS: Record<MealType, string> = {
   supplement: "Suplemento",
 };
 
-const MEAL_EMOJIS: Record<MealType, string> = {
-  breakfast: "☀️",
-  morning_snack: "🍌",
-  lunch: "🍽️",
-  afternoon_snack: "🍎",
-  dinner: "🌙",
-  supper: "🌛",
-  snack: "🥨",
-  pre_workout: "💪",
-  post_workout: "🏋️",
-  supplement: "💊",
+const MEAL_COLORS: Record<MealType, string> = {
+  breakfast: "bg-amber-500",
+  morning_snack: "bg-yellow-400",
+  lunch: "bg-orange-500",
+  afternoon_snack: "bg-green-500",
+  dinner: "bg-indigo-400",
+  supper: "bg-violet-400",
+  snack: "bg-teal-400",
+  pre_workout: "bg-red-500",
+  post_workout: "bg-blue-500",
+  supplement: "bg-purple-400",
 };
 
 export default function RefeicoesPage() {
@@ -126,7 +126,10 @@ export default function RefeicoesPage() {
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">🍽️ Refeições</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <UtensilsCrossed className="h-6 w-6 text-primary" />
+            Refeições
+          </h1>
           <p className="text-muted-foreground text-sm">Histórico e registro de refeições</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -150,7 +153,7 @@ export default function RefeicoesPage() {
                   <SelectContent>
                     {Object.entries(MEAL_LABELS).map(([v, label]) => (
                       <SelectItem key={v} value={v}>
-                        {MEAL_EMOJIS[v as MealType]} {label}
+                        {label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -169,14 +172,16 @@ export default function RefeicoesPage() {
               </div>
 
               {analyzeMeal.isError && (
-                <p className="text-sm text-destructive">
-                  ❌ Erro ao analisar. Verifique sua conexão e tente novamente.
+                <p className="text-sm text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  Erro ao analisar. Verifique sua conexão e tente novamente.
                 </p>
               )}
 
               {!parsedItems && (
                 <Button onClick={handleAnalyze} disabled={!description.trim() || analyzeMeal.isPending} className="w-full">
-                  {analyzeMeal.isPending ? "Analisando com IA..." : "🔍 Analisar com IA"}
+                  <Search className="h-4 w-4 mr-1.5" />
+                  {analyzeMeal.isPending ? "Analisando com IA..." : "Analisar com IA"}
                 </Button>
               )}
 
@@ -185,8 +190,8 @@ export default function RefeicoesPage() {
                   <div className="border rounded-md divide-y text-sm">
                     {parsedItems.map((item, i) => (
                       <div key={i} className="flex justify-between px-3 py-2">
-                        <span>
-                          {item.confidence < 0.6 && "⚠️ "}
+                        <span className="flex items-center gap-1">
+                          {item.confidence < 0.6 && <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />}
                           {item.food_name} ({item.quantity}{item.unit})
                         </span>
                         <span className="text-orange-600 font-medium">{item.calories.toFixed(0)} kcal</span>
@@ -198,7 +203,8 @@ export default function RefeicoesPage() {
                       Reanalisar
                     </Button>
                     <Button onClick={handleSave} disabled={createMeal.isPending} className="flex-1">
-                      {createMeal.isPending ? "Salvando..." : "✅ Salvar"}
+                      {!createMeal.isPending && <Check className="h-4 w-4 mr-1.5" />}
+                      {createMeal.isPending ? "Salvando..." : "Salvar"}
                     </Button>
                   </div>
                 </div>
@@ -224,7 +230,7 @@ export default function RefeicoesPage() {
                 <SelectContent>
                   {Object.entries(MEAL_LABELS).map(([v, label]) => (
                     <SelectItem key={v} value={v}>
-                      {MEAL_EMOJIS[v as MealType]} {label}
+                      {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -285,7 +291,8 @@ export default function RefeicoesPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm flex items-center gap-1.5">
-                    {MEAL_EMOJIS[meal.meal_type]} {MEAL_LABELS[meal.meal_type]}
+                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${MEAL_COLORS[meal.meal_type]}`} />
+                    {MEAL_LABELS[meal.meal_type]}
                     <Badge variant="secondary" className="text-xs capitalize">{meal.source}</Badge>
                   </CardTitle>
                   <div className="flex items-center gap-2">

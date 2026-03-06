@@ -1,5 +1,6 @@
 "use client";
 
+import { Flame, Dumbbell, Zap, Droplets } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { NutritionSummary, User } from "@/types";
@@ -14,32 +15,40 @@ const macros = [
     label: "Calorias",
     key: "total_calories",
     unit: "kcal",
-    icon: "🔥",
+    Icon: Flame,
     color: "#f97316",
+    bgColor: "bg-orange-500/10",
+    iconColor: "text-orange-500",
     decimals: 0,
   },
   {
     label: "Proteína",
     key: "total_protein",
     unit: "g",
-    icon: "💪",
+    Icon: Dumbbell,
     color: "#22c55e",
+    bgColor: "bg-green-500/10",
+    iconColor: "text-green-500",
     decimals: 1,
   },
   {
     label: "Carboidrato",
     key: "total_carbs",
     unit: "g",
-    icon: "⚡",
+    Icon: Zap,
     color: "#eab308",
+    bgColor: "bg-yellow-500/10",
+    iconColor: "text-yellow-500",
     decimals: 1,
   },
   {
     label: "Gordura",
     key: "total_fat",
     unit: "g",
-    icon: "🫧",
+    Icon: Droplets,
     color: "#7CA2B2",
+    bgColor: "bg-sky-400/10",
+    iconColor: "text-sky-400",
     decimals: 1,
   },
 ] as const;
@@ -49,7 +58,7 @@ export function MacroCards({ nutrition, user }: Props) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {macros.map(({ label, key, unit, icon, color, decimals }) => {
+      {macros.map(({ label, key, unit, Icon, color, bgColor, iconColor, decimals }) => {
         const value = nutrition[key];
         const pct =
           key === "total_calories" ? Math.min((value / calorieGoal) * 100, 100) : null;
@@ -57,8 +66,10 @@ export function MacroCards({ nutrition, user }: Props) {
         return (
           <Card key={key}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <span className="text-sm">{icon}</span>
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className={`flex items-center justify-center w-6 h-6 rounded-md ${bgColor}`}>
+                  <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
+                </span>
                 {label}
               </CardTitle>
             </CardHeader>

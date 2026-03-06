@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, Sparkles, RefreshCw, ChevronDown, ChevronUp, Utensils, TrendingUp, Bell, Target, BarChart3 } from "lucide-react";
+import { CheckCircle2, Send, Sparkles, RefreshCw, ChevronDown, ChevronUp, Utensils, TrendingUp, Bell, Target, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -101,7 +101,7 @@ export default function InsightsPage() {
       <Card>
         <CardHeader>
           <SectionHeader
-            icon={<span className="text-base">🌟</span>}
+            icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
             title="Insight do dia"
             description="Análise rápida com base nos seus dados de hoje"
           />
@@ -334,7 +334,7 @@ export default function InsightsPage() {
       <Card>
         <CardHeader>
           <SectionHeader
-            icon={<span className="text-base">💬</span>}
+            icon={<Send className="h-4 w-4 text-primary" />}
             title="Pergunte à IA"
             description="Faça qualquer pergunta sobre sua alimentação"
           />
@@ -448,7 +448,7 @@ function NutritionalAlertsCard({ data }: { data: NutritionalAlertsResponse }) {
   return (
     <div className="space-y-3">
       {data.alerts.length === 0 ? (
-        <p className="text-sm text-emerald-500">✅ Nenhuma deficiência significativa detectada nos últimos {data.days_analyzed} dias.</p>
+        <p className="text-sm text-emerald-500 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Nenhuma deficiência significativa detectada nos últimos {data.days_analyzed} dias.</p>
       ) : (
         <div className="space-y-2">
           {data.alerts.map((alert, i) => {

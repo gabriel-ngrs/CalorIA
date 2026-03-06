@@ -1,6 +1,6 @@
 "use client";
 
-import { Droplets } from "lucide-react";
+import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MacroCards } from "@/components/dashboard/MacroCards";
@@ -23,17 +23,17 @@ const MEAL_LABELS: Record<MealType, string> = {
   supplement: "Suplemento",
 };
 
-const MEAL_EMOJIS: Record<MealType, string> = {
-  breakfast: "☀️",
-  morning_snack: "🍌",
-  lunch: "🍽️",
-  afternoon_snack: "🍎",
-  dinner: "🌙",
-  supper: "🌛",
-  snack: "🥨",
-  pre_workout: "💪",
-  post_workout: "🏋️",
-  supplement: "💊",
+const MEAL_COLORS: Record<MealType, string> = {
+  breakfast: "text-amber-500",
+  morning_snack: "text-yellow-400",
+  lunch: "text-orange-500",
+  afternoon_snack: "text-green-500",
+  dinner: "text-indigo-400",
+  supper: "text-violet-400",
+  snack: "text-teal-400",
+  pre_workout: "text-red-500",
+  post_workout: "text-blue-500",
+  supplement: "text-purple-400",
 };
 
 export default function DashboardPage() {
@@ -57,7 +57,7 @@ export default function DashboardPage() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
-        <span className="text-5xl">⚠️</span>
+        <AlertTriangle className="h-12 w-12 text-destructive/70" />
         <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
         <p className="text-muted-foreground text-sm max-w-xs">
           Não foi possível conectar ao servidor. Tente recarregar a página.
@@ -76,7 +76,7 @@ export default function DashboardPage() {
   if (isEmpty) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
-        <span className="text-5xl">🍽️</span>
+        <UtensilsCrossed className="h-12 w-12 text-muted-foreground/40" />
         <h2 className="text-xl font-semibold">Nenhum dado para hoje</h2>
         <p className="text-muted-foreground text-sm max-w-xs">
           Registre sua primeira refeição pelo Telegram, WhatsApp ou pela página de Refeições.
@@ -135,7 +135,10 @@ export default function DashboardPage() {
         {/* Humor */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">😊 Humor do dia</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <Smile className="h-4 w-4 text-yellow-400" />
+              Humor do dia
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {dashboard.mood ? (
@@ -165,7 +168,10 @@ export default function DashboardPage() {
         {/* Peso */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">⚖️ Peso atual</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <Scale className="h-4 w-4 text-primary" />
+              Peso atual
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {dashboard.latest_weight ? (
@@ -206,8 +212,9 @@ export default function DashboardPage() {
               return (
                 <div key={i} className="py-2 flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium">
-                      {MEAL_EMOJIS[meal.meal_type]} {MEAL_LABELS[meal.meal_type]}
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <span className={`inline-block h-2 w-2 rounded-full bg-current ${MEAL_COLORS[meal.meal_type]}`} />
+                      {MEAL_LABELS[meal.meal_type]}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {meal.items.map((it) => it.food_name).join(", ")}

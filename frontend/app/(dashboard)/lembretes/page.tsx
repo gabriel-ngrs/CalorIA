@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Bell, Pause, Play, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,11 +27,11 @@ import type { ReminderChannel, ReminderType } from "@/types";
 const DAYS_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 const TYPE_LABELS: Record<ReminderType, string> = {
-  meal: "🍽️ Refeição",
-  water: "💧 Água",
-  weight: "⚖️ Peso",
-  daily_summary: "📊 Resumo diário",
-  custom: "✏️ Personalizado",
+  meal: "Refeição",
+  water: "Água",
+  weight: "Peso",
+  daily_summary: "Resumo diário",
+  custom: "Personalizado",
 };
 
 const CHANNEL_LABELS: Record<ReminderChannel, string> = {
@@ -116,7 +116,10 @@ export default function LembretesPage() {
   return (
     <div className="space-y-6 max-w-xl">
       <div>
-        <h1 className="text-2xl font-bold">⏰ Lembretes</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Bell className="h-6 w-6 text-primary" />
+            Lembretes
+          </h1>
         <p className="text-muted-foreground text-sm">Configure notificações nos seus canais</p>
       </div>
 
@@ -138,10 +141,12 @@ export default function LembretesPage() {
                     <p className="text-sm font-medium flex items-center gap-1.5 flex-wrap">
                       <button
                         onClick={() => toggleReminder.mutate(r.id)}
-                        className="text-base leading-none"
+                        className="cursor-pointer"
                         title={r.active ? "Clique para pausar" : "Clique para ativar"}
                       >
-                        {r.active ? "✅" : "⏸️"}
+                        {r.active
+                          ? <Play className="h-4 w-4 text-green-500 fill-green-500" />
+                          : <Pause className="h-4 w-4 text-muted-foreground" />}
                       </button>
                       {TYPE_LABELS[r.type]}
                       <Badge variant="secondary" className="text-xs">{CHANNEL_LABELS[r.channel]}</Badge>
