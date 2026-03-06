@@ -3,24 +3,108 @@
 import { useState } from "react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  Legend,
 } from "recharts";
-import { Star, Smile, Zap } from "lucide-react";
+import type { TooltipProps } from "recharts";
+import { Star, Smile, Zap, CalendarDays, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import { useMoodLogs, useLogMood } from "@/lib/hooks/useLogs";
 
-const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];
-const LEVEL_COLORS = ["text-red-400", "text-orange-400", "text-yellow-400", "text-blue-400", "text-green-400"];
+const LEVELS = [
+  { value: 1, label: "Muito baixo" },
+  { value: 2, label: "Baixo"       },
+  { value: 3, label: "Médio"       },
+  { value: 4, label: "Alto"        },
+  { value: 5, label: "Muito alto"  },
+];
+
+const ENERGY_COLORS: Record<number, string> = {
+  1: "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20",
+  2: "border-orange-500/50 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20",
+  3: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20",
+  4: "border-blue-500/50 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20",
+  5: "border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20",
+};
+
+const ENERGY_SELECTED: Record<number, string> = {
+  1: "border-red-500 bg-red-500/25 text-red-300 ring-1 ring-red-500/50",
+  2: "border-orange-500 bg-orange-500/25 text-orange-300 ring-1 ring-orange-500/50",
+  3: "border-yellow-500 bg-yellow-500/25 text-yellow-300 ring-1 ring-yellow-500/50",
+  4: "border-blue-500 bg-blue-500/25 text-blue-300 ring-1 ring-blue-500/50",
+  5: "border-green-500 bg-green-500/25 text-green-300 ring-1 ring-green-500/50",
+};
+
+function LevelSelector({
+  value,
+  onChange,
+  colorMap,
+  selectedMap,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  colorMap: Record<number, string>;
+  selectedMap: Record<number, string>;
+}) {
+  return (
+    <div className="flex gap-2">
+      {LEVELS.map((l) => {
+        const isSelected = value === l.value;
+        return (
+          <button
+            key={l.value}
+            type="button"
+            onClick={() => onChange(l.value)}
+            title={l.label}
+            className={cn(
+              "flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all duration-150 cursor-pointer",
+              isSelected ? selectedMap[l.value] : colorMap[l.value]
+            )}
+          >
+            <span className="text-lg font-bold leading-none">{l.value}</span>
+            <span className="text-[10px] font-medium leading-tight text-center px-0.5">{l.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MoodTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: "rgba(15, 28, 38, 0.88)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        border: "1px solid rgba(145, 183, 199, 0.16)",
+        borderRadius: "10px",
+        padding: "10px 14px",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+        minWidth: "130px",
+      }}
+    >
+      <p style={{ margin: "0 0 6px", fontSize: "11px", color: "#94a3b8", fontWeight: 500 }}>{label}</p>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+          <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: p.color }} />
+          <span style={{ fontSize: "12px", color: "#94a3b8", textTransform: "capitalize" }}>{p.dataKey}</span>
+          <span style={{ fontSize: "14px", fontWeight: 700, color: p.color, marginLeft: "auto" }}>{p.value}/5</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function getLocalToday(): string {
   const d = new Date();
@@ -28,19 +112,6 @@ function getLocalToday(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function LevelDots({ value, color }: { value: number; color: string }) {
-  return (
-    <span className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          className={`inline-block w-2 h-2 rounded-full transition-colors ${i <= value ? color : "bg-muted"}`}
-        />
-      ))}
-    </span>
-  );
 }
 
 export default function HumorPage() {
@@ -90,7 +161,9 @@ export default function HumorPage() {
     }));
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5">
+
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Smile className="h-6 w-6 text-yellow-400" />
@@ -99,127 +172,173 @@ export default function HumorPage() {
         <p className="text-muted-foreground text-sm">Como você está hoje?</p>
       </div>
 
-      {/* Registrar */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Registrar hoje</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <Label className="mb-3 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-orange-500" />
-                  Energia
-                </span>
-                <span className="flex items-center gap-2">
-                  <LevelDots value={energy} color="bg-orange-400" />
-                  <span className={`text-xs font-medium ${LEVEL_COLORS[energy - 1]}`}>
-                    {energy}/5 — {LEVEL_LABELS[energy - 1]}
-                  </span>
-                </span>
-              </Label>
-              <Slider
-                min={1}
-                max={5}
-                step={1}
-                value={[energy]}
-                onValueChange={([v]) => setEnergy(v)}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <Label className="mb-3 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Smile className="h-3.5 w-3.5 text-blue-500" />
-                  Humor
-                </span>
-                <span className="flex items-center gap-2">
-                  <LevelDots value={mood} color="bg-blue-400" />
-                  <span className={`text-xs font-medium ${LEVEL_COLORS[mood - 1]}`}>
-                    {mood}/5 — {LEVEL_LABELS[mood - 1]}
-                  </span>
-                </span>
-              </Label>
-              <Slider
-                min={1}
-                max={5}
-                step={1}
-                value={[mood]}
-                onValueChange={([v]) => setMood(v)}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <Label htmlFor="notes">Notas (opcional)</Label>
-              <Input
-                id="notes"
-                placeholder="Como foi seu dia?"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <Button type="submit" disabled={logMood.isPending}>
-              {logMood.isPending ? "Salvando..." : "Registrar"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Layout 2 colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-      {/* Métricas */}
-      {recentLogs.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <p className="text-2xl font-bold text-orange-500">
+        {/* Coluna esquerda — formulário (2/3) */}
+        <Card className="lg:col-span-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
+          <CardHeader>
+            <CardTitle className="text-sm">Registrar hoje</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* Energia */}
+              <div className="space-y-2.5">
+                <Label className="flex items-center gap-1.5 text-sm font-medium">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
+                    <Zap className="h-3 w-3 text-orange-500" />
+                  </span>
+                  Energia
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {LEVELS[energy - 1].label}
+                  </span>
+                </Label>
+                <LevelSelector
+                  value={energy}
+                  onChange={setEnergy}
+                  colorMap={ENERGY_COLORS}
+                  selectedMap={ENERGY_SELECTED}
+                />
+              </div>
+
+              {/* Humor */}
+              <div className="space-y-2.5">
+                <Label className="flex items-center gap-1.5 text-sm font-medium">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10">
+                    <Smile className="h-3 w-3 text-blue-400" />
+                  </span>
+                  Humor
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {LEVELS[mood - 1].label}
+                  </span>
+                </Label>
+                <LevelSelector
+                  value={mood}
+                  onChange={setMood}
+                  colorMap={ENERGY_COLORS}
+                  selectedMap={ENERGY_SELECTED}
+                />
+              </div>
+
+              {/* Notas */}
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className="flex items-center gap-1.5 text-sm">
+                  <NotebookPen className="h-3.5 w-3.5 text-muted-foreground" />
+                  Notas (opcional)
+                </Label>
+                <Input
+                  id="notes"
+                  placeholder="Como foi seu dia?"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+
+              <Button type="submit" disabled={logMood.isPending} className="w-full">
+                {logMood.isPending ? "Salvando..." : "Registrar"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Coluna direita — stats (1/3) */}
+        <div className="space-y-4">
+          {/* Média energia */}
+          <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
+                  <Zap className="h-3 w-3 text-orange-500" />
+                </span>
+                Média energia
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-orange-500">
                 {avgEnergy !== null ? avgEnergy.toFixed(1) : "—"}
+                <span className="text-base font-normal text-muted-foreground ml-1">/ 5</span>
               </p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                <Zap className="h-3 w-3" /> Média energia
-              </p>
+              {avgEnergy !== null && (
+                <p className="text-xs text-muted-foreground mt-1">{LEVELS[Math.round(avgEnergy) - 1]?.label}</p>
+              )}
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <p className="text-2xl font-bold text-blue-500">
+
+          {/* Média humor */}
+          <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10">
+                  <Smile className="h-3 w-3 text-blue-400" />
+                </span>
+                Média humor
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-blue-400">
                 {avgMood !== null ? avgMood.toFixed(1) : "—"}
+                <span className="text-base font-normal text-muted-foreground ml-1">/ 5</span>
               </p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                <Smile className="h-3 w-3" /> Média humor
-              </p>
+              {avgMood !== null && (
+                <p className="text-xs text-muted-foreground mt-1">{LEVELS[Math.round(avgMood) - 1]?.label}</p>
+              )}
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <p className="text-2xl font-bold text-green-500">{recentLogs.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Dias registrados</p>
+
+          {/* Melhor dia */}
+          {bestDay && (
+            <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
+              <CardHeader className="pb-1">
+                <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-md bg-yellow-400/10">
+                    <Star className="h-3 w-3 text-yellow-400" />
+                  </span>
+                  Melhor dia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm font-semibold capitalize">
+                  {new Date(bestDay.date + "T12:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
+                </p>
+                <div className="flex gap-3 mt-1.5">
+                  <span className="text-xs text-orange-400 flex items-center gap-1">
+                    <Zap className="h-3 w-3" />{bestDay.energy_level}/5
+                  </span>
+                  <span className="text-xs text-blue-400 flex items-center gap-1">
+                    <Smile className="h-3 w-3" />{bestDay.mood_level}/5
+                  </span>
+                </div>
+                {bestDay.notes && (
+                  <p className="text-xs text-muted-foreground italic mt-1.5 truncate">&ldquo;{bestDay.notes}&rdquo;</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Dias registrados */}
+          <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary/10">
+                  <CalendarDays className="h-3 w-3 text-primary" />
+                </span>
+                Dias registrados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-primary">
+                {recentLogs.length}
+                <span className="text-base font-normal text-muted-foreground ml-1">/ {period}d</span>
+              </p>
             </CardContent>
           </Card>
         </div>
-      )}
+      </div>
 
-      {bestDay && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-4">
-            <p className="text-sm font-medium flex items-center gap-1.5">
-              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-              Melhor dia do período
-            </p>
-            <p className="text-base font-semibold mt-1">
-              {new Date(bestDay.date + "T12:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Energia {bestDay.energy_level}/5 · Humor {bestDay.mood_level}/5
-              {bestDay.notes && ` · "${bestDay.notes}"`}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Gráfico */}
+      {/* Gráfico — largura total */}
       {chartData.length > 1 && (
-        <Card>
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm">Evolução</CardTitle>
             <div className="flex gap-1">
@@ -237,15 +356,15 @@ export default function HumorPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(145,183,199,0.08)" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis domain={[0, 5.5]} tick={{ fontSize: 10 }} ticks={[1, 2, 3, 4, 5]} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="energia" stroke="#f97316" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="humor" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <YAxis domain={[0, 5.5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 10 }} />
+                <Tooltip content={<MoodTooltip />} cursor={{ stroke: "rgba(145,183,199,0.2)", strokeWidth: 1 }} />
+                <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+                <Line type="monotone" dataKey="energia" stroke="#f97316" strokeWidth={2.5} dot={false} activeDot={{ r: 5, strokeWidth: 0 }} />
+                <Line type="monotone" dataKey="humor" stroke="#3b82f6" strokeWidth={2.5} dot={false} activeDot={{ r: 5, strokeWidth: 0 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
