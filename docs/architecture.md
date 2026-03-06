@@ -29,6 +29,8 @@ Decisões técnicas e ADRs do projeto CalorIA.
 │             AuthService · ReminderService                         │
 │             ai/ GeminiClient · MealParser · VisionParser          │
 │                 InsightsGenerator · PatternAnalyzer               │
+│                 TacoLookup (fuzzy, ~600 alimentos TACO)           │
+│                 ContextBuilder (histórico + tipo de refeição)     │
 │             nutrition/ TDEE (Harris-Benedict)                     │
 │                                                                    │
 │  workers/  Celery Beat:                                            │
@@ -114,26 +116,67 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ---
 
-## Fluxo de Registro de Refeição (Telegram/WhatsApp)
+## Fluxo de Registro de Refeição (Telegram/WhatsApp/API)
 
 ```
-Usuário envia mensagem
+Usuário envia mensagem (texto ou foto)
         │
         ▼
-  Bot recebe texto/foto
+  Bot / API recebe entrada
         │
-        ├── texto → MealParser → Gemini Flash → JSON estruturado
-        │
-        └── foto  → VisionParser → Gemini Pro Vision → JSON estruturado
-                         │
-                         ▼
-              Exibe resumo + botões Confirmar/Cancelar
-                         │
-                    Usuário confirma
-                         │
-                         ▼
+        ├── texto → MealParser
+        │              │
+        └── foto  → VisionParser
+                       │
+                       ▼
+              ContextBuilder
+              ├── infere tipo de refeição (café/almoço/janta/lanche)
+              ├── busca últimas 3 refeições do mesmo tipo
+              └── injeta porções históricas e médias diárias
+                       │
+                       ▼
+              TacoLookup (fuzzy, rapidfuzz ≥ 75)
+              └── substitui macros estimados por valores reais TACO
+                       │
+                       ▼
+              Gemini Flash (prompt enriquecido com TACO + histórico)
+              └── JSON: [{food_name, calories, protein, carbs, fat, confidence}]
+                       │
+                       ▼
+              Exibe resumo + confirmação (bot) ou retorna JSON (API)
+                       │
+                  Usuário confirma
+                       │
+                       ▼
               POST /api/v1/meals → salva no banco
 ```
+
+---
+
+## ADR-006 — Banco TACO com lookup fuzzy
+
+**Contexto:** O Gemini estima macros com variância alta para alimentos brasileiros típicos.
+
+**Decisão:** Embutir ~600 alimentos da Tabela Brasileira de Composição de Alimentos (TACO) no backend. Antes de cada chamada ao Gemini, buscar alimentos por similaridade de nome (rapidfuzz, threshold 75) e injetar os valores reais no prompt.
+
+**Consequências:**
+- Macros mais precisos para alimentos comuns (arroz, feijão, frango, etc.)
+- Prompt maior — sem impacto significativo no free tier do Gemini Flash
+- Fallback: se não encontrar no TACO, Gemini estima normalmente
+- Bot Telegram e API REST compartilham o mesmo `MealParser` + `TacoLookup`
+
+---
+
+## ADR-007 — Sistema de design Glassmorphism + Neumorphism
+
+**Contexto:** shadcn/ui padrão tem visual genérico; o projeto precisava de identidade visual própria.
+
+**Decisão:** Criar sistema de design com glassmorphism (backdrop-blur + transparência) combinado com neumorphism (sombras suaves embutidas/elevadas). Implementado via CSS custom em `globals.css` (`@layer components`) e tokens no `tailwind.config.ts`.
+
+**Consequências:**
+- Classes utilitárias: `.glass`, `.glass-card`, `.glass-neu`, `.neu-raised`, `.neu-inset`, `.glow-primary`
+- Dark mode como padrão (`html.dark` fixo) — não suporta light mode por ora
+- Todos os módulos do dashboard seguem o mesmo sistema visual
 
 ---
 
@@ -157,7 +200,7 @@ Todas as relações usam `CASCADE DELETE` — ao remover o usuário, todos os da
 
 ## Segurança
 
-- Senhas com bcrypt (passlib, custo padrão)
+- Senhas com bcrypt direto (sem passlib — incompatível com bcrypt 5.x)
 - JWT HS256 — access (30 min) + refresh (30 dias)
 - CORS configurável via `BACKEND_CORS_ORIGINS`
 - `GEMINI_API_KEY` nunca exposta ao frontend

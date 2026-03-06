@@ -16,9 +16,15 @@ if TYPE_CHECKING:
 
 class MealType(str, enum.Enum):
     BREAKFAST = "breakfast"
+    MORNING_SNACK = "morning_snack"
     LUNCH = "lunch"
+    AFTERNOON_SNACK = "afternoon_snack"
     DINNER = "dinner"
+    SUPPER = "supper"
     SNACK = "snack"
+    PRE_WORKOUT = "pre_workout"
+    POST_WORKOUT = "post_workout"
+    SUPPLEMENT = "supplement"
 
 
 class MealSource(str, enum.Enum):

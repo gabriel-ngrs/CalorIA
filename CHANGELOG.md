@@ -9,6 +9,57 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+---
+
+## [0.4.0] - 2026-03-05
+
+### Adicionado
+
+- **Banco TACO com lookup fuzzy** — `services/ai/taco_lookup.py` com ~600 alimentos da tabela TACO, busca fuzzy via rapidfuzz com threshold 75. Macros reais injetados no prompt do Gemini antes de qualquer chamada à API.
+- **Contexto histórico de refeições** — `services/ai/context_builder.py` infere tipo de refeição por palavras-chave (café, almoço, janta, lanche) e injeta no prompt: últimas 3 refeições do mesmo tipo, porções históricas por alimento e médias diárias. Bot Telegram e API REST compartilham o mesmo pipeline.
+- **Calendário customizado com tema escuro** — `components/ui/calendar.tsx` (react-day-picker v8) com cores primárias, seleção destacada e navegação com ícones Lucide. Substitui o seletor nativo do browser na página de refeições.
+- **Componente Popover** — `components/ui/popover.tsx` (Radix UI) com animações fade-in/zoom-in, usado como wrapper do calendário.
+- **Dependências**: `react-day-picker ^8.10.1`, `date-fns ^3.6.0`, `@radix-ui/react-popover ^1.1.15`
+- **Todos os endpoints de Insights** — página `/insights` expande para exibir: análise diária, semanal, alertas nutricionais, ajuste de metas, relatório mensal e chat livre com a IA.
+- **Métricas de período no Humor** — seletor de 7/14/30 dias, média de energia e humor, melhor dia do período.
+- **Gráficos históricos na Hidratação** — gráfico de barras com consumo dos últimos N dias e métricas do período.
+- **Categorias expandidas de refeição** — "café da manhã", "lanche manhã", "almoço", "lanche tarde", "jantar", "ceia", "lanche noturno" com labels e ícones por categoria.
+- **Edição de refeições** — modal de edição inline na página `/refeicoes`.
+- **Endpoint de lembretes completo** — suporte a múltiplos horários e intervalo de horas; input livre substituiu select fixo.
+
+### Alterado
+
+- **Redesign completo do frontend** — todos os módulos do dashboard reescritos com sistema de design glassmorphism + neumorphism:
+  - Layout de duas colunas em todas as páginas (formulário + stats/lista)
+  - Hover effects uniformes: `transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl`
+  - Removidos `max-w-*` limitadores — páginas usam todo o espaço disponível
+  - Tooltips customizados com classe `.glass` nos gráficos Recharts
+  - Ícones Lucide substituem emojis em todo o dashboard
+- **Módulo de Refeições** — sidebar de stats do dia (calorias, proteína, carboidrato, gordura com % kcal); calendário popover substitui input date nativo
+- **Módulo de Peso** — área chart em vez de line chart; tooltip glass; layout expandido
+- **Módulo de Hidratação** — gradiente azul na barra de progresso; 2 colunas
+- **Módulo de Humor** — `LevelSelector` com botões coloridos 1-5; 2 colunas
+- **Módulo de Lembretes** — 2 colunas (formulário + lista); `TYPE_COLORS` por tipo de lembrete
+- **Módulo de Perfil** — 2 colunas (dados pessoais + metas); banner TDEE com delta vs meta
+- **Módulo Conectar Bot** — cards lado a lado (Telegram azul + WhatsApp verde); chips de status
+- **Pipeline de IA** — TACO lookup + context builder injetados em `MealParser` antes da chamada ao Gemini; bot Telegram e API REST compartilham o mesmo serviço
+- **Precisão de macronutrientes** — prompt reformulado para usar valores reais da tabela TACO quando disponíveis, com fallback calibrado para o Gemini
+
+### Corrigido
+
+- `SelectItem` com fundo laranja (accent) cobrindo texto ao hover → substituído por `focus:bg-primary/10 focus:text-foreground`
+- Fuso horário incorreto nas datas de refeições — `getLocalToday()` e `TZ=America/Sao_Paulo` nos containers Docker
+- Erro de hidratação ao navegar entre datas na página de refeições
+- Build TypeScript de produção: interfaces vazias convertidas para `type`, erros de tipos corrigidos
+- Roteamento Caddy: `/api/auth/*` roteado para o frontend antes de `/api/*`
+- Envio de lembretes no Celery Worker
+- Verificação de chave de API: `GROQ_API_KEY` em vez de `GEMINI_API_KEY`
+- Serialização do enum `goal_type` ao salvar perfil
+
+---
+
+## [0.3.0] — histórico anterior
+
 ### Adicionado
 - `backend/tests/conftest.py`: infraestrutura de testes com engine PostgreSQL dedicado, fixtures session-scoped para criação/destruição do schema e fixtures por função para db, test_user, client autenticado e anon_client
 - `backend/tests/unit/`: testes unitários para `security` (JWT, bcrypt), `tdee` (Harris-Benedict), `meal_parser` e `vision_parser` (mock GeminiClient)

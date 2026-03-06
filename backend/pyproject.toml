@@ -41,6 +41,9 @@ dependencies = [
 
     # Imagens
     "pillow>=11.0.0",
+
+    # Busca fuzzy para lookup TACO
+    "rapidfuzz>=3.0.0",
 ]
 
 [project.optional-dependencies]

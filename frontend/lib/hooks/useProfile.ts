@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { User, UserProfile } from "@/types";
+import type { GoalType, User, UserProfile } from "@/types";
 
 export function useMe() {
   return useQuery<User>({
@@ -39,7 +39,7 @@ export function useUpdateProfile() {
 export function useUpdateMe() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { name?: string; calorie_goal?: number; weight_goal?: number }) => {
+    mutationFn: async (payload: { name?: string; calorie_goal?: number; weight_goal?: number; water_goal_ml?: number; goal_type?: GoalType }) => {
       const { data } = await api.patch("/api/v1/users/me", payload);
       return data as User;
     },

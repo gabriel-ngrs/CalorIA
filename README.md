@@ -6,11 +6,11 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 
 ## Funcionalidades
 
-- **Registro via mensagem** — envie texto ou foto da refeição no WhatsApp ou Telegram e a IA calcula os macros automaticamente
-- **Dashboard web** — gráficos de calorias, macros, evolução de peso e hidratação
-- **Tracking completo** — peso corporal, hidratação, humor e energia
-- **Lembretes inteligentes** — notificações de refeição, água e resumo diário
-- **Insights personalizados** — IA analisa seus padrões e gera recomendações
+- **Registro via mensagem** — envie texto ou foto da refeição no WhatsApp ou Telegram; a IA consulta o banco TACO (~600 alimentos brasileiros) e injeta contexto histórico antes de calcular os macros
+- **Dashboard web** — interface glassmorphism com gráficos de calorias, macros, evolução de peso e hidratação
+- **Tracking completo** — peso corporal, hidratação, humor e energia com métricas de período
+- **Lembretes inteligentes** — notificações de refeição, água e resumo diário via Telegram/WhatsApp
+- **Insights personalizados** — IA analisa padrões, detecta deficiências nutricionais e sugere ajuste de metas
 - **Multi-canal** — use Telegram e WhatsApp simultaneamente
 
 ---
@@ -26,7 +26,7 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 | IA | Google Gemini Flash 1.5 + Vision |
 | Bot Telegram | python-telegram-bot |
 | Bot WhatsApp | Evolution API (self-hosted) |
-| Frontend | Next.js 14 + TypeScript + shadcn/ui |
+| Frontend | Next.js 14 + TypeScript + shadcn/ui (Glassmorphism) |
 | ORM | SQLAlchemy 2 (async) + Alembic |
 | Infra | Docker Compose |
 
@@ -206,7 +206,7 @@ A cada mudança significativa, fazer commit. Ver CLAUDE.md para detalhes complet
 | Tokens por minuto | 1.000.000 |
 | Requisições por dia | 1.500 |
 
-O projeto implementa cache Redis para alimentos frequentes e reduz o consumo.
+O projeto implementa cache Redis para alimentos frequentes e reduz o consumo. O banco TACO embutido (~600 alimentos) reduz dependência do Gemini para alimentos brasileiros comuns.
 
 ---
 

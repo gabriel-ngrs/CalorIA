@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.models.user import GoalType
 
 
 class UserCreate(BaseModel):
@@ -18,6 +21,8 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     calorie_goal: int | None = Field(default=None, gt=0)
     weight_goal: float | None = Field(default=None, gt=0)
+    water_goal_ml: int | None = Field(default=None, gt=0)
+    goal_type: Optional[GoalType] = None
 
 
 class UserLogin(BaseModel):
@@ -33,7 +38,11 @@ class UserResponse(BaseModel):
     name: str
     calorie_goal: int | None
     weight_goal: float | None
+    water_goal_ml: int | None
+    goal_type: GoalType | None
     is_active: bool
+    telegram_chat_id: str | None
+    whatsapp_number: str | None
     created_at: datetime
 
 

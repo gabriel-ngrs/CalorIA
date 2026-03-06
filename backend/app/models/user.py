@@ -3,10 +3,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
+import enum
+
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+
+class GoalType(str, enum.Enum):
+    LOSE_WEIGHT = "lose_weight"
+    GAIN_MUSCLE = "gain_muscle"
+    MAINTAIN = "maintain"
+    BODY_RECOMP = "body_recomp"
+
 
 if TYPE_CHECKING:
     from app.models.ai_conversation import AIConversation
@@ -29,6 +39,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     calorie_goal: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weight_goal: Mapped[float | None] = mapped_column(Float, nullable=True)
+    water_goal_ml: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    goal_type: Mapped[GoalType | None] = mapped_column(SAEnum(GoalType), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     telegram_chat_id: Mapped[str | None] = mapped_column(
         String(50), nullable=True, unique=True, index=True

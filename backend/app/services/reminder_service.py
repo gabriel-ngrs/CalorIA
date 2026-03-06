@@ -33,6 +33,24 @@ class ReminderService:
         await self.db.refresh(reminder)
         return reminder
 
+    async def create_many(self, user_id: int, items: list[ReminderCreate]) -> list[Reminder]:
+        reminders = [
+            Reminder(
+                user_id=user_id,
+                type=item.type,
+                time=item.time,
+                days_of_week=item.days_of_week,
+                channel=item.channel,
+                message=item.message,
+            )
+            for item in items
+        ]
+        self.db.add_all(reminders)
+        await self.db.commit()
+        for r in reminders:
+            await self.db.refresh(r)
+        return reminders
+
     async def delete(self, user_id: int, reminder_id: int) -> bool:
         result = await self.db.execute(
             select(Reminder).where(
