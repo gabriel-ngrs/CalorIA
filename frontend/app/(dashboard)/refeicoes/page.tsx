@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -77,10 +77,22 @@ const SOURCE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
   whatsapp: { label: "WhatsApp", icon: <Bot className="h-3 w-3" /> },
 };
 
+/** Retorna a data local do sistema no formato YYYY-MM-DD (sem depender de UTC). */
+function getLocalToday(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + "T12:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function formatDateDisplay(dateStr: string): string {
@@ -92,7 +104,7 @@ function formatDateDisplay(dateStr: string): string {
 }
 
 function isToday(dateStr: string): boolean {
-  return dateStr === new Date().toISOString().slice(0, 10);
+  return dateStr === getLocalToday();
 }
 
 // ── Macro pill ────────────────────────────────────────────────────────────────
@@ -258,8 +270,9 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function RefeicoesPage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalToday();
   const [filterDate, setFilterDate] = useState(today);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const { data: meals, isLoading } = useMeals(filterDate);
   const deleteMeal = useDeleteMeal();
   const analyzeMeal = useAnalyzeMeal();
@@ -566,29 +579,28 @@ export default function RefeicoesPage() {
             </Button>
           )}
 
-          {/* Hidden native date input for calendar picker */}
+          {/* Calendar picker — ref + showPicker() */}
           <div className="relative">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 cursor-pointer relative overflow-hidden"
-              asChild
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => dateInputRef.current?.showPicker()}
             >
-              <label htmlFor="date-pick" className="cursor-pointer">
-                <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              </label>
+              <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
             </Button>
-            <Input
-              id="date-pick"
+            <input
+              ref={dateInputRef}
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+              tabIndex={-1}
             />
           </div>
         </div>
