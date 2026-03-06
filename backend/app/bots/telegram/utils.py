@@ -26,6 +26,7 @@ _MEAL_KEYWORDS: dict[MealType, list[str]] = {
     MealType.LUNCH: ["almoço", "almoçando", "almoçei"],
     MealType.DINNER: ["janta", "jantar", "jantando", "jantei", "ceia"],
     MealType.SNACK: ["lanche", "lanchar", "merenda", "snack"],
+    MealType.DESSERT: ["sobremesa", "doce", "sorvete", "bolo"],
 }
 
 
@@ -62,6 +63,7 @@ def meal_type_emoji(meal_type: MealType) -> str:
         MealType.LUNCH: "🍽️",
         MealType.DINNER: "🌙",
         MealType.SNACK: "🍎",
+        MealType.DESSERT: "🍰",
     }.get(meal_type, "🍽️")
 
 
@@ -71,4 +73,5 @@ def meal_type_label(meal_type: MealType) -> str:
         MealType.LUNCH: "Almoço",
         MealType.DINNER: "Jantar",
         MealType.SNACK: "Lanche",
+        MealType.DESSERT: "Sobremesa",
     }.get(meal_type, meal_type.value)

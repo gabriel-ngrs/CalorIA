@@ -22,6 +22,7 @@ const MEAL_LABELS: Record<MealType, string> = {
   pre_workout: "Pré-treino",
   post_workout: "Pós-treino",
   supplement: "Suplemento",
+  dessert: "Sobremesa",
 };
 
 const MEAL_ACCENT: Record<MealType, { border: string; dot: string; cal: string }> = {
@@ -35,6 +36,7 @@ const MEAL_ACCENT: Record<MealType, { border: string; dot: string; cal: string }
   pre_workout:     { border: "border-l-red-500",     dot: "bg-red-500",     cal: "text-red-500" },
   post_workout:    { border: "border-l-blue-500",    dot: "bg-blue-500",    cal: "text-blue-500" },
   supplement:      { border: "border-l-purple-400",  dot: "bg-purple-400",  cal: "text-purple-400" },
+  dessert:         { border: "border-l-pink-400",    dot: "bg-pink-400",    cal: "text-pink-400" },
 };
 
 const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];

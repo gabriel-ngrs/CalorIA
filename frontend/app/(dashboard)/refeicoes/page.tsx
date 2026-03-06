@@ -58,6 +58,7 @@ const MEAL_LABELS: Record<MealType, string> = {
   pre_workout: "Pré-treino",
   post_workout: "Pós-treino",
   supplement: "Suplemento",
+  dessert: "Sobremesa",
 };
 
 // Color accent classes for left border + icon bg
@@ -72,6 +73,7 @@ const MEAL_ACCENT: Record<MealType, { border: string; bg: string; text: string }
   pre_workout:     { border: "border-l-red-500",    bg: "bg-red-500/15",    text: "text-red-400" },
   post_workout:    { border: "border-l-blue-500",   bg: "bg-blue-500/15",   text: "text-blue-400" },
   supplement:      { border: "border-l-purple-400", bg: "bg-purple-400/15", text: "text-purple-400" },
+  dessert:         { border: "border-l-pink-400",   bg: "bg-pink-400/15",   text: "text-pink-400" },
 };
 
 const SOURCE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
