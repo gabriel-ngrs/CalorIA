@@ -1,7 +1,8 @@
 "use client";
 
-import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed } from "lucide-react";
+import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MacroCards } from "@/components/dashboard/MacroCards";
 import { MacroPieChart } from "@/components/dashboard/MacroPieChart";
@@ -23,18 +24,33 @@ const MEAL_LABELS: Record<MealType, string> = {
   supplement: "Suplemento",
 };
 
-const MEAL_COLORS: Record<MealType, string> = {
-  breakfast: "text-amber-500",
-  morning_snack: "text-yellow-400",
-  lunch: "text-orange-500",
-  afternoon_snack: "text-green-500",
-  dinner: "text-indigo-400",
-  supper: "text-violet-400",
-  snack: "text-teal-400",
-  pre_workout: "text-red-500",
-  post_workout: "text-blue-500",
-  supplement: "text-purple-400",
+const MEAL_ACCENT: Record<MealType, { border: string; dot: string; cal: string }> = {
+  breakfast:       { border: "border-l-amber-500",   dot: "bg-amber-500",   cal: "text-amber-500" },
+  morning_snack:   { border: "border-l-yellow-400",  dot: "bg-yellow-400",  cal: "text-yellow-400" },
+  lunch:           { border: "border-l-orange-500",  dot: "bg-orange-500",  cal: "text-orange-500" },
+  afternoon_snack: { border: "border-l-green-500",   dot: "bg-green-500",   cal: "text-green-500" },
+  dinner:          { border: "border-l-indigo-400",  dot: "bg-indigo-400",  cal: "text-indigo-400" },
+  supper:          { border: "border-l-violet-400",  dot: "bg-violet-400",  cal: "text-violet-400" },
+  snack:           { border: "border-l-teal-400",    dot: "bg-teal-400",    cal: "text-teal-400" },
+  pre_workout:     { border: "border-l-red-500",     dot: "bg-red-500",     cal: "text-red-500" },
+  post_workout:    { border: "border-l-blue-500",    dot: "bg-blue-500",    cal: "text-blue-500" },
+  supplement:      { border: "border-l-purple-400",  dot: "bg-purple-400",  cal: "text-purple-400" },
 };
+
+const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];
+
+function LevelDots({ value, color }: { value: number; color: string }) {
+  return (
+    <span className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          className={`inline-block w-2 h-2 rounded-full transition-colors ${i <= value ? color : "bg-muted"}`}
+        />
+      ))}
+    </span>
+  );
+}
 
 export default function DashboardPage() {
   const { data: dashboard, isLoading, isError } = useDashboardToday();
@@ -91,74 +107,93 @@ export default function DashboardPage() {
     month: "long",
   });
 
+  const goalMl = user?.water_goal_ml ?? 2000;
+  const hydPct = Math.min((dashboard.hydration.total_ml / goalMl) * 100, 100);
+
+  const weightDelta = dashboard.latest_weight && user?.weight_goal
+    ? dashboard.latest_weight.weight_kg - user.weight_goal
+    : null;
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold capitalize">{today}</h1>
+        <h1 className="text-2xl font-bold capitalize" suppressHydrationWarning>{today}</h1>
         <p className="text-muted-foreground text-sm">Resumo do seu dia</p>
       </div>
 
+      {/* Macro cards */}
       <MacroCards nutrition={dashboard.nutrition} user={user} />
 
+      {/* Linha secundária: Hidratação, Humor, Peso */}
       <div className="grid gap-4 md:grid-cols-3">
+
         {/* Hidratação */}
-        <Card>
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
-              <Droplets className="h-4 w-4 text-blue-500" />
+              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/10">
+                <Droplets className="h-4 w-4 text-blue-500" />
+              </span>
               Hidratação
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-bold text-blue-500">
               {dashboard.hydration.total_ml}
               <span className="text-sm font-normal text-muted-foreground ml-1">ml</span>
             </p>
-            <div className="mt-2 flex gap-0.5">
-              {[...Array(10)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-2 flex-1 rounded-full ${
-                    i < Math.floor((dashboard.hydration.total_ml / 2000) * 10)
-                      ? "bg-blue-500"
-                      : "bg-muted"
-                  }`}
-                />
-              ))}
+            <div className="mt-2 space-y-1">
+              <Progress value={hydPct} />
+              <p className="text-xs text-muted-foreground">
+                {hydPct.toFixed(0)}% da meta · {goalMl} ml
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {Math.min((dashboard.hydration.total_ml / 2000) * 100, 100).toFixed(0)}% da meta (2000 ml)
-            </p>
           </CardContent>
         </Card>
 
         {/* Humor */}
-        <Card>
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
-              <Smile className="h-4 w-4 text-yellow-400" />
+              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-400/10">
+                <Smile className="h-4 w-4 text-yellow-400" />
+              </span>
               Humor do dia
             </CardTitle>
           </CardHeader>
           <CardContent>
             {dashboard.mood ? (
-              <>
-                <div className="flex gap-4">
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Energia</p>
-                    <p className="text-2xl font-bold">{dashboard.mood.energy_level}/5</p>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-orange-400" /> Energia
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <LevelDots value={dashboard.mood.energy_level} color="bg-orange-400" />
+                      <span className="text-sm font-semibold">{dashboard.mood.energy_level}/5</span>
+                    </div>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Humor</p>
-                    <p className="text-2xl font-bold">{dashboard.mood.mood_level}/5</p>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Smile className="h-3 w-3 text-blue-400" /> Humor
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <LevelDots value={dashboard.mood.mood_level} color="bg-blue-400" />
+                      <span className="text-sm font-semibold">{dashboard.mood.mood_level}/5</span>
+                    </div>
                   </div>
                 </div>
                 {dashboard.mood.notes && (
-                  <p className="text-xs text-muted-foreground mt-2 italic">
+                  <p className="text-xs text-muted-foreground italic truncate">
                     &ldquo;{dashboard.mood.notes}&rdquo;
                   </p>
                 )}
-              </>
+                <p className="text-xs text-muted-foreground">
+                  {LEVEL_LABELS[(dashboard.mood.energy_level + dashboard.mood.mood_level) / 2 > 3 ? 3 : Math.round((dashboard.mood.energy_level + dashboard.mood.mood_level) / 2) - 1]}
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">Não registrado hoje</p>
             )}
@@ -166,10 +201,12 @@ export default function DashboardPage() {
         </Card>
 
         {/* Peso */}
-        <Card>
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
-              <Scale className="h-4 w-4 text-primary" />
+              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
+                <Scale className="h-4 w-4 text-primary" />
+              </span>
               Peso atual
             </CardTitle>
           </CardHeader>
@@ -180,11 +217,14 @@ export default function DashboardPage() {
                   {dashboard.latest_weight.weight_kg}
                   <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
                 </p>
-                {user?.weight_goal && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Meta: {user.weight_goal} kg (
-                    {(dashboard.latest_weight.weight_kg - user.weight_goal > 0 ? "+" : "")}
-                    {(dashboard.latest_weight.weight_kg - user.weight_goal).toFixed(1)} kg)
+                {user?.weight_goal && weightDelta !== null && (
+                  <p className={`text-xs mt-1 flex items-center gap-1 ${weightDelta > 0 ? "text-orange-400" : weightDelta < 0 ? "text-green-500" : "text-muted-foreground"}`}>
+                    {weightDelta > 0
+                      ? <TrendingUp className="h-3 w-3" />
+                      : weightDelta < 0
+                      ? <TrendingDown className="h-3 w-3" />
+                      : <Minus className="h-3 w-3" />}
+                    Meta: {user.weight_goal} kg ({weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg)
                   </p>
                 )}
               </>
@@ -195,6 +235,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* Gráficos */}
       <div className="grid gap-4 md:grid-cols-2">
         <MacroPieChart nutrition={dashboard.nutrition} />
         {macros && <CaloriesBarChart data={macros} calorieGoal={user?.calorie_goal ?? undefined} />}
@@ -206,21 +247,25 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-sm">Refeições de hoje</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y">
+          <CardContent className="divide-y p-0">
             {dashboard.nutrition.meals.map((meal, i) => {
               const totalCal = meal.items.reduce((s, it) => s + it.calories, 0);
+              const accent = MEAL_ACCENT[meal.meal_type];
               return (
-                <div key={i} className="py-2 flex items-start justify-between">
+                <div
+                  key={i}
+                  className={`py-2.5 px-6 flex items-start justify-between border-l-4 ${accent.border} transition-colors duration-150 hover:bg-muted/30`}
+                >
                   <div>
                     <p className="text-sm font-medium flex items-center gap-1.5">
-                      <span className={`inline-block h-2 w-2 rounded-full bg-current ${MEAL_COLORS[meal.meal_type]}`} />
+                      <span className={`inline-block h-2 w-2 rounded-full ${accent.dot}`} />
                       {MEAL_LABELS[meal.meal_type]}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {meal.items.map((it) => it.food_name).join(", ")}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold text-orange-600">
+                  <p className={`text-sm font-semibold shrink-0 ml-3 ${accent.cal}`}>
                     {totalCal.toFixed(0)} kcal
                   </p>
                 </div>
