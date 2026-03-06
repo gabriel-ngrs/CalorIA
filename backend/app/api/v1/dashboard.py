@@ -42,20 +42,17 @@ async def macros_chart(
     from datetime import timedelta
     from app.services.meal_service import MealService
 
-    svc = MealService(db)
-    result = []
-    for i in range(days - 1, -1, -1):
-        d = end_date - timedelta(days=i)
-        summary = await svc.get_daily_summary(user_id, d)
+    start_date = end_date - timedelta(days=days - 1)
+    macros_by_date = await MealService(db).get_macros_by_date_range(user_id, start_date, end_date)
+
+    result: list[WeeklyMacroPoint] = []
+    current = start_date
+    while current <= end_date:
         result.append(
-            WeeklyMacroPoint(
-                date=d,
-                calories=summary.total_calories,
-                protein=summary.total_protein,
-                carbs=summary.total_carbs,
-                fat=summary.total_fat,
-            )
+            macros_by_date.get(current)
+            or WeeklyMacroPoint(date=current, calories=0, protein=0, carbs=0, fat=0)
         )
+        current += timedelta(days=1)
     return result
 
 
