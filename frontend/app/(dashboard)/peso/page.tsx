@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Scale } from "lucide-react";
+import { Scale, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,14 @@ import { useWeightLogs, useLogWeight } from "@/lib/hooks/useLogs";
 import { useWeightChart } from "@/lib/hooks/useDashboard";
 import { useMe } from "@/lib/hooks/useProfile";
 
+function getLocalToday(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function PesoPage() {
   const [weight, setWeight] = useState("");
   const { data: logs } = useWeightLogs();
@@ -27,7 +35,7 @@ export default function PesoPage() {
   const { data: user } = useMe();
   const logWeight = useLogWeight();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalToday();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,14 +51,16 @@ export default function PesoPage() {
   }));
 
   const latest = logs?.[0];
+  const prev = logs?.[1];
+  const delta = latest && prev ? latest.weight_kg - prev.weight_kg : null;
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Scale className="h-6 w-6 text-primary" />
-            Peso
-          </h1>
+          <Scale className="h-6 w-6 text-primary" />
+          Peso
+        </h1>
         <p className="text-muted-foreground text-sm">Acompanhe sua evolução</p>
       </div>
 
@@ -62,6 +72,12 @@ export default function PesoPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{latest.weight_kg} <span className="text-base font-normal">kg</span></p>
+              {delta !== null && (
+                <p className={`text-xs mt-1 flex items-center gap-1 ${delta < 0 ? "text-green-500" : delta > 0 ? "text-orange-400" : "text-muted-foreground"}`}>
+                  {delta < 0 ? <TrendingDown className="h-3 w-3" /> : delta > 0 ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                  {delta > 0 ? "+" : ""}{delta.toFixed(1)} kg desde o último registro
+                </p>
+              )}
             </CardContent>
           </Card>
           {user?.weight_goal && (
@@ -71,7 +87,7 @@ export default function PesoPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{user.weight_goal} <span className="text-base font-normal">kg</span></p>
-                <p className={`text-xs mt-1 ${latest.weight_kg <= user.weight_goal ? "text-green-600" : "text-orange-600"}`}>
+                <p className={`text-xs mt-1 ${latest.weight_kg <= user.weight_goal ? "text-green-500" : "text-orange-400"}`}>
                   {latest.weight_kg <= user.weight_goal ? "Meta atingida!" : `Faltam ${(latest.weight_kg - user.weight_goal).toFixed(1)} kg`}
                 </p>
               </CardContent>
@@ -133,14 +149,26 @@ export default function PesoPage() {
             <CardTitle className="text-sm">Histórico</CardTitle>
           </CardHeader>
           <CardContent className="divide-y text-sm">
-            {logs.slice(0, 10).map((l) => (
-              <div key={l.id} className="flex justify-between py-1.5">
-                <span className="text-muted-foreground">
-                  {new Date(l.date).toLocaleDateString("pt-BR")}
-                </span>
-                <span className="font-medium">{l.weight_kg} kg</span>
-              </div>
-            ))}
+            {logs.slice(0, 10).map((l, idx) => {
+              const next = logs[idx + 1];
+              const d = next ? l.weight_kg - next.weight_kg : null;
+              return (
+                <div key={l.id} className="flex justify-between items-center py-1.5">
+                  <span className="text-muted-foreground">
+                    {new Date(l.date).toLocaleDateString("pt-BR")}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {d !== null && (
+                      <span className={`text-xs flex items-center gap-0.5 ${d < 0 ? "text-green-500" : d > 0 ? "text-orange-400" : "text-muted-foreground"}`}>
+                        {d < 0 ? <TrendingDown className="h-3 w-3" /> : d > 0 ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                        {d > 0 ? "+" : ""}{d.toFixed(1)}
+                      </span>
+                    )}
+                    <span className="font-medium">{l.weight_kg} kg</span>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}

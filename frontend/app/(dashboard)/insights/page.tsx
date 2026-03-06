@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Send, Sparkles, RefreshCw, ChevronDown, ChevronUp, Utensils, TrendingUp, Bell, Target, BarChart3 } from "lucide-react";
+import { CheckCircle2, Send, Sparkles, RefreshCw, ChevronDown, ChevronUp, Utensils, TrendingUp, TrendingDown, Bell, Target, BarChart3, CalendarDays, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -227,7 +227,7 @@ export default function InsightsPage() {
       <Card>
         <CardHeader>
           <SectionHeader
-            icon={<span className="text-base">📅</span>}
+            icon={<CalendarDays className="h-4 w-4 text-blue-400" />}
             title="Análise semanal"
             description="Resumo detalhado dos últimos 7 dias"
           />
@@ -555,13 +555,13 @@ function MonthlyReportCard({ data }: { data: MonthlyReport }) {
       {/* Melhor e pior semana */}
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5">
-          <p className="text-xs text-emerald-400 font-medium mb-1">🏆 Melhor semana</p>
+          <p className="text-xs text-emerald-400 font-medium mb-1 flex items-center gap-1"><Trophy className="h-3 w-3" /> Melhor semana</p>
           <p className="text-xs text-muted-foreground">Semana {data.best_week.week_number}</p>
           <p className="text-xs"><strong>{data.best_week.adherence_pct.toFixed(0)}%</strong> aderência</p>
           <p className="text-xs">{data.best_week.days_logged} dias registrados</p>
         </div>
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
-          <p className="text-xs text-red-400 font-medium mb-1">📉 Semana mais fraca</p>
+          <p className="text-xs text-red-400 font-medium mb-1 flex items-center gap-1"><TrendingDown className="h-3 w-3" /> Semana mais fraca</p>
           <p className="text-xs text-muted-foreground">Semana {data.worst_week.week_number}</p>
           <p className="text-xs"><strong>{data.worst_week.adherence_pct.toFixed(0)}%</strong> aderência</p>
           <p className="text-xs">{data.worst_week.days_logged} dias registrados</p>

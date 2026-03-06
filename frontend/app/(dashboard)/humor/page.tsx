@@ -19,8 +19,29 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useMoodLogs, useLogMood } from "@/lib/hooks/useLogs";
 
-
 const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];
+const LEVEL_COLORS = ["text-red-400", "text-orange-400", "text-yellow-400", "text-blue-400", "text-green-400"];
+
+function getLocalToday(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function LevelDots({ value, color }: { value: number; color: string }) {
+  return (
+    <span className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          className={`inline-block w-2 h-2 rounded-full transition-colors ${i <= value ? color : "bg-muted"}`}
+        />
+      ))}
+    </span>
+  );
+}
 
 export default function HumorPage() {
   const [energy, setEnergy] = useState(3);
@@ -30,7 +51,7 @@ export default function HumorPage() {
   const { data: logs } = useMoodLogs();
   const logMood = useLogMood();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalToday();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,9 +93,9 @@ export default function HumorPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Smile className="h-6 w-6 text-yellow-400" />
-            Humor & Energia
-          </h1>
+          <Smile className="h-6 w-6 text-yellow-400" />
+          Humor & Energia
+        </h1>
         <p className="text-muted-foreground text-sm">Como você está hoje?</p>
       </div>
 
@@ -86,9 +107,17 @@ export default function HumorPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <Label className="mb-2 flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-orange-500" />
-                Energia: {energy}/5 — {LEVEL_LABELS[energy - 1]}
+              <Label className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-orange-500" />
+                  Energia
+                </span>
+                <span className="flex items-center gap-2">
+                  <LevelDots value={energy} color="bg-orange-400" />
+                  <span className={`text-xs font-medium ${LEVEL_COLORS[energy - 1]}`}>
+                    {energy}/5 — {LEVEL_LABELS[energy - 1]}
+                  </span>
+                </span>
               </Label>
               <Slider
                 min={1}
@@ -100,9 +129,17 @@ export default function HumorPage() {
               />
             </div>
             <div>
-              <Label className="mb-2 flex items-center gap-1.5">
-                <Smile className="h-3.5 w-3.5 text-blue-500" />
-                Humor: {mood}/5 — {LEVEL_LABELS[mood - 1]}
+              <Label className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Smile className="h-3.5 w-3.5 text-blue-500" />
+                  Humor
+                </span>
+                <span className="flex items-center gap-2">
+                  <LevelDots value={mood} color="bg-blue-400" />
+                  <span className={`text-xs font-medium ${LEVEL_COLORS[mood - 1]}`}>
+                    {mood}/5 — {LEVEL_LABELS[mood - 1]}
+                  </span>
+                </span>
               </Label>
               <Slider
                 min={1}
@@ -138,7 +175,9 @@ export default function HumorPage() {
               <p className="text-2xl font-bold text-orange-500">
                 {avgEnergy !== null ? avgEnergy.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1"><Zap className="h-3 w-3" /> Média energia</p>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <Zap className="h-3 w-3" /> Média energia
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -146,7 +185,9 @@ export default function HumorPage() {
               <p className="text-2xl font-bold text-blue-500">
                 {avgMood !== null ? avgMood.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1"><Smile className="h-3 w-3" /> Média humor</p>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <Smile className="h-3 w-3" /> Média humor
+              </p>
             </CardContent>
           </Card>
           <Card>

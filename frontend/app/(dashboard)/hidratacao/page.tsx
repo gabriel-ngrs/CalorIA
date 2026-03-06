@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CheckCircle2, Droplets as DropletIcon } from "lucide-react";
+import { CheckCircle2, Droplets, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,14 @@ import { useMe } from "@/lib/hooks/useProfile";
 const QUICK_OPTIONS = [200, 300, 500];
 const DEFAULT_GOAL_ML = 2000;
 
+function getLocalToday(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function HidratacaoPage() {
   const [custom, setCustom] = useState("");
   const [historyDays, setHistoryDays] = useState(7);
@@ -31,7 +39,7 @@ export default function HidratacaoPage() {
   const logHydration = useLogHydration();
 
   const goalMl = user?.water_goal_ml ?? DEFAULT_GOAL_ML;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalToday();
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
@@ -68,9 +76,9 @@ export default function HidratacaoPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-            <DropletIcon className="h-6 w-6 text-blue-500" />
-            Hidratação
-          </h1>
+          <Droplets className="h-6 w-6 text-blue-500" />
+          Hidratação
+        </h1>
         <p className="text-muted-foreground text-sm">Controle seu consumo de água</p>
       </div>
 
@@ -84,27 +92,41 @@ export default function HidratacaoPage() {
             <p className="text-sm text-muted-foreground mt-1">de {goalMl} ml hoje</p>
           </div>
           <Progress value={pct} className="h-3" />
-          <p className="text-center text-sm font-medium mt-2">{pct.toFixed(0)}%</p>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-xs text-muted-foreground">0 ml</p>
+            <p className="text-sm font-medium">{pct.toFixed(0)}%</p>
+            <p className="text-xs text-muted-foreground">{goalMl} ml</p>
+          </div>
+          {pct >= 100 && (
+            <p className="text-center text-green-500 font-medium flex items-center justify-center gap-1.5 mt-3 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              Meta diária atingida!
+            </p>
+          )}
         </CardContent>
       </Card>
 
       {/* Adicionar */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Adicionar</CardTitle>
+          <CardTitle className="text-sm">Adicionar água</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {QUICK_OPTIONS.map((ml) => (
-              <Button
+              <button
                 key={ml}
-                variant="outline"
-                className="flex-1"
+                type="button"
                 disabled={logHydration.isPending}
                 onClick={() => log(ml)}
+                className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border border-border bg-blue-500/5 hover:bg-blue-500/15 hover:border-blue-500/40 transition-colors cursor-pointer disabled:opacity-50"
               >
-                +{ml} ml
-              </Button>
+                <Droplets className="h-5 w-5 text-blue-500" />
+                <span className="text-sm font-semibold">+{ml} ml</span>
+                <span className="text-xs text-muted-foreground">
+                  {ml === 200 ? "Copo" : ml === 300 ? "Garrafa P" : "Garrafa M"}
+                </span>
+              </button>
             ))}
           </div>
           <div className="flex gap-2">
@@ -119,19 +141,14 @@ export default function HidratacaoPage() {
             <Button
               onClick={() => log(parseInt(custom, 10))}
               disabled={!custom || logHydration.isPending}
+              className="gap-1.5"
             >
+              <Plus className="h-3.5 w-3.5" />
               Adicionar
             </Button>
           </div>
         </CardContent>
       </Card>
-
-      {pct >= 100 && (
-        <p className="text-center text-green-600 font-medium flex items-center justify-center gap-2">
-          <CheckCircle2 className="h-5 w-5" />
-          Meta diária atingida! Continue bebendo água.
-        </p>
-      )}
 
       {/* Métricas do período */}
       {history && history.length > 0 && (

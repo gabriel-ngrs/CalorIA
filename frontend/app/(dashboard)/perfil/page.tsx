@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Flame } from "lucide-react";
+import { Check, Flame, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -92,7 +92,10 @@ export default function PerfilPage() {
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h1 className="text-2xl font-bold">👤 Perfil</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <User className="h-6 w-6 text-primary" />
+          Perfil
+        </h1>
         <p className="text-muted-foreground text-sm">Seus dados e metas</p>
       </div>
 
