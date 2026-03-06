@@ -81,7 +81,6 @@ export default function PesoPage() {
   const prev = logs?.[1];
   const delta = latest && prev ? latest.weight_kg - prev.weight_kg : null;
 
-  // progresso para meta (quanto % do caminho já percorreu)
   const goalPct = (() => {
     if (!latest || !user?.weight_goal || !logs?.length) return null;
     const start = logs[logs.length - 1]?.weight_kg ?? latest.weight_kg;
@@ -92,7 +91,9 @@ export default function PesoPage() {
   })();
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-5">
+
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Scale className="h-6 w-6 text-primary" />
@@ -103,8 +104,9 @@ export default function PesoPage() {
 
       {/* Stat cards */}
       {latest && (
-        <div className="flex gap-4">
-          <Card className="flex-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {/* Peso atual */}
+          <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
@@ -116,19 +118,20 @@ export default function PesoPage() {
             <CardContent>
               <p className="text-3xl font-bold text-orange-500">
                 {latest.weight_kg}
-                <span className="text-base font-normal text-muted-foreground ml-1">kg</span>
+                <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
               </p>
               {delta !== null && (
                 <p className={`text-xs mt-1.5 flex items-center gap-1 font-medium ${delta < 0 ? "text-green-500" : delta > 0 ? "text-orange-400" : "text-muted-foreground"}`}>
                   {delta < 0 ? <TrendingDown className="h-3 w-3" /> : delta > 0 ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                  {delta > 0 ? "+" : ""}{delta.toFixed(1)} kg desde o último registro
+                  {delta > 0 ? "+" : ""}{delta.toFixed(1)} kg
                 </p>
               )}
             </CardContent>
           </Card>
 
+          {/* Meta */}
           {user?.weight_goal && (
-            <Card className="flex-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/40">
+            <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/40">
               <CardHeader className="pb-1">
                 <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                   <span className="flex items-center justify-center w-5 h-5 rounded-md bg-green-500/10">
@@ -140,37 +143,51 @@ export default function PesoPage() {
               <CardContent>
                 <p className="text-3xl font-bold text-green-500">
                   {user.weight_goal}
-                  <span className="text-base font-normal text-muted-foreground ml-1">kg</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
                 </p>
                 <p className={`text-xs mt-1.5 font-medium ${latest.weight_kg <= user.weight_goal ? "text-green-500" : "text-orange-400"}`}>
                   {latest.weight_kg <= user.weight_goal
                     ? "Meta atingida!"
                     : `Faltam ${(latest.weight_kg - user.weight_goal).toFixed(1)} kg`}
                 </p>
-                {goalPct !== null && (
-                  <div className="mt-2 space-y-1">
-                    <Progress
-                      value={goalPct}
-                      indicatorColor="linear-gradient(90deg, #86efac 0%, #22c55e 100%)"
-                    />
-                    <p className="text-xs text-muted-foreground">{goalPct.toFixed(0)}% do caminho</p>
-                  </div>
-                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Progresso para meta */}
+          {user?.weight_goal && goalPct !== null && (
+            <Card className="col-span-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/30">
+              <CardHeader className="pb-1">
+                <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Progresso para a meta
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-2xl font-bold text-green-500">{goalPct.toFixed(0)}%</span>
+                  <span className="text-xs text-muted-foreground">
+                    {logs?.[logs.length - 1]?.weight_kg} → {user.weight_goal} kg
+                  </span>
+                </div>
+                <Progress
+                  value={goalPct}
+                  indicatorColor="linear-gradient(90deg, #86efac 0%, #22c55e 100%)"
+                />
               </CardContent>
             </Card>
           )}
         </div>
       )}
 
-      {/* Gráfico de área */}
+      {/* Gráfico — largura total */}
       {formatted.length > 1 && (
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
           <CardHeader>
             <CardTitle className="text-sm">Evolução — últimos 90 dias</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={formatted} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={formatted} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
                 <defs>
                   <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f97316" stopOpacity={0.25} />
@@ -205,81 +222,85 @@ export default function PesoPage() {
         </Card>
       )}
 
-      {/* Registrar */}
-      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
-        <CardHeader>
-          <CardTitle className="text-sm">Registrar peso</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <div className="flex-1">
-              <Label className="sr-only" htmlFor="weight">Peso (kg)</Label>
-              <Input
-                id="weight"
-                placeholder="Ex: 80.5"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-              />
-            </div>
-            <Button type="submit" disabled={logWeight.isPending}>
-              {logWeight.isPending ? "..." : "Salvar"}
-            </Button>
-          </form>
-          {/* Atalhos baseados no peso atual */}
-          {latest && (
-            <div className="flex gap-2">
-              {[-1, -0.5, -0.1, +0.1, +0.5, +1].map((v) => {
-                const val = parseFloat((latest.weight_kg + v).toFixed(1));
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setWeight(String(val))}
-                    className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer
-                      ${v < 0
-                        ? "border-green-500/30 text-green-500 hover:bg-green-500/10"
-                        : "border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-                      }`}
-                  >
-                    {v > 0 ? `+${v}` : v}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Linha inferior: Registrar + Histórico lado a lado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-      {/* Histórico */}
-      {logs && logs.length > 0 && (
+        {/* Registrar */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
           <CardHeader>
-            <CardTitle className="text-sm">Histórico</CardTitle>
+            <CardTitle className="text-sm">Registrar peso</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y text-sm p-0">
-            {logs.slice(0, 10).map((l, idx) => {
-              const next = logs[idx + 1];
-              const d = next ? l.weight_kg - next.weight_kg : null;
-              return (
-                <div key={l.id} className="flex justify-between items-center py-2.5 px-6 hover:bg-muted/30 transition-colors">
-                  <span className="text-muted-foreground text-xs">
-                    {new Date(l.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    {d !== null && (
-                      <span className={`text-xs flex items-center gap-0.5 font-medium ${d < 0 ? "text-green-500" : d > 0 ? "text-orange-400" : "text-muted-foreground"}`}>
-                        {d < 0 ? <TrendingDown className="h-3 w-3" /> : d > 0 ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                        {d > 0 ? "+" : ""}{d.toFixed(1)}
-                      </span>
-                    )}
-                    <span className="font-semibold">{l.weight_kg} kg</span>
-                  </div>
-                </div>
-              );
-            })}
+          <CardContent className="space-y-3">
+            <form onSubmit={handleSubmit} className="flex gap-3">
+              <div className="flex-1">
+                <Label className="sr-only" htmlFor="weight">Peso (kg)</Label>
+                <Input
+                  id="weight"
+                  placeholder="Ex: 80.5"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
+              </div>
+              <Button type="submit" disabled={logWeight.isPending}>
+                {logWeight.isPending ? "..." : "Salvar"}
+              </Button>
+            </form>
+            {latest && (
+              <div className="grid grid-cols-6 gap-1.5">
+                {[-1, -0.5, -0.1, +0.1, +0.5, +1].map((v) => {
+                  const val = parseFloat((latest.weight_kg + v).toFixed(1));
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setWeight(String(val))}
+                      className={`py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer
+                        ${v < 0
+                          ? "border-green-500/30 text-green-500 hover:bg-green-500/10"
+                          : "border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                        }`}
+                    >
+                      {v > 0 ? `+${v}` : v}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+
+        {/* Histórico */}
+        {logs && logs.length > 0 && (
+          <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
+            <CardHeader>
+              <CardTitle className="text-sm">Histórico</CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y text-sm p-0">
+              {logs.slice(0, 8).map((l, idx) => {
+                const next = logs[idx + 1];
+                const d = next ? l.weight_kg - next.weight_kg : null;
+                return (
+                  <div key={l.id} className="flex justify-between items-center py-2.5 px-6 hover:bg-muted/30 transition-colors">
+                    <span className="text-muted-foreground text-xs">
+                      {new Date(l.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {d !== null && (
+                        <span className={`text-xs flex items-center gap-0.5 font-medium ${d < 0 ? "text-green-500" : d > 0 ? "text-orange-400" : "text-muted-foreground"}`}>
+                          {d < 0 ? <TrendingDown className="h-3 w-3" /> : d > 0 ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                          {d > 0 ? "+" : ""}{d.toFixed(1)}
+                        </span>
+                      )}
+                      <span className="font-semibold">{l.weight_kg} kg</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+      </div>
     </div>
   );
 }
