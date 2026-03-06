@@ -84,14 +84,16 @@ async def _send_reminder_notification(user: User, reminder: Reminder) -> None:
 
 
 async def _send_telegram(chat_id: str, message: str) -> None:
-    from app.bots.telegram.bot import get_application
+    from telegram import Bot
 
-    app = get_application()
-    if app is None:
-        logger.warning("Bot Telegram não iniciado — não foi possível enviar lembrete.")
+    from app.core.config import settings
+
+    if not settings.TELEGRAM_BOT_TOKEN:
+        logger.warning("TELEGRAM_BOT_TOKEN não configurado — lembrete não enviado.")
         return
     try:
-        await app.bot.send_message(chat_id=chat_id, text=message)
+        async with Bot(token=settings.TELEGRAM_BOT_TOKEN) as bot:
+            await bot.send_message(chat_id=chat_id, text=message)
     except Exception as exc:
         logger.error("Erro ao enviar lembrete Telegram para %s: %s", chat_id, exc)
 

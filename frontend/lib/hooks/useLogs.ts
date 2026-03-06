@@ -40,6 +40,16 @@ export function useHydrationToday() {
   });
 }
 
+export function useHydrationHistory(days = 7) {
+  return useQuery<HydrationDaySummary[]>({
+    queryKey: ["hydration", "history", days],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/v1/hydration/history?days=${days}`);
+      return data;
+    },
+  });
+}
+
 export function useLogHydration() {
   const qc = useQueryClient();
   return useMutation({

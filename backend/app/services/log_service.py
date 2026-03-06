@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,6 +60,14 @@ class HydrationService:
         await self.db.commit()
         await self.db.refresh(log)
         return log
+
+    async def get_history(self, user_id: int, days: int) -> list[HydrationDaySummary]:
+        today = date.today()
+        summaries = []
+        for i in range(days - 1, -1, -1):
+            day = today - timedelta(days=i)
+            summaries.append(await self.get_day_summary(user_id, day))
+        return summaries
 
     async def get_day_summary(self, user_id: int, day: date) -> HydrationDaySummary:
         result = await self.db.execute(

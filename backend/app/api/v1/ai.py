@@ -30,11 +30,11 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 def _require_gemini() -> None:
-    """Dependência FastAPI: garante que GEMINI_API_KEY está configurada."""
-    if not settings.GEMINI_API_KEY:
+    """Dependência FastAPI: garante que GROQ_API_KEY está configurada."""
+    if not settings.GROQ_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serviço de IA não configurado. Defina GEMINI_API_KEY.",
+            detail="Serviço de IA não configurado. Defina GROQ_API_KEY.",
         )
 
 
@@ -48,10 +48,13 @@ async def analyze_meal(
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
     client = get_gemini_client()
     try:
-        user_context = await build_meal_context(user_id, db, date.today())
+        user_context = await build_meal_context(
+            user_id, db, date.today(), description=data.description
+        )
         return await MealParser(client).parse(
             description=data.description,
             user_context=user_context,
+            db=db,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
