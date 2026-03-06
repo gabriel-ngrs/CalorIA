@@ -65,16 +65,20 @@ async def _analyze_and_reply(
             )
             return ConversationHandler.END
 
-        user_context = await build_meal_context(user.id, db, date.today())
+        user_context = await build_meal_context(
+            user.id, db, date.today(), description=description
+        )
 
     await update.message.reply_html("🔍 <i>Analisando com IA...</i>")
 
     try:
         client = get_gemini_client()
-        result = await MealParser(client).parse(
-            description=description,
-            user_context=user_context,
-        )
+        async with AsyncSessionLocal() as db2:
+            result = await MealParser(client).parse(
+                description=description,
+                user_context=user_context,
+                db=db2,
+            )
     except Exception as exc:
         logger.error("Erro ao analisar refeição: %s", exc)
         await update.message.reply_html("❌ Não consegui analisar. Tente descrever de forma diferente.")

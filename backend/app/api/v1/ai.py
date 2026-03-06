@@ -48,7 +48,9 @@ async def analyze_meal(
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
     client = get_gemini_client()
     try:
-        user_context = await build_meal_context(user_id, db, date.today())
+        user_context = await build_meal_context(
+            user_id, db, date.today(), description=data.description
+        )
         return await MealParser(client).parse(
             description=data.description,
             user_context=user_context,
