@@ -52,6 +52,7 @@ async def analyze_meal(
         return await MealParser(client).parse(
             description=data.description,
             user_context=user_context,
+            db=db,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))

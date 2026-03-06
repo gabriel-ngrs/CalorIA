@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.gemini_client import GeminiClient
 from app.services.ai.utils import extract_json_from_ai_response
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -229,13 +233,14 @@ FORMATO OBRIGATÓRIO (array JSON):
 _USER_TEMPLATE = """CONTEXTO DO USUÁRIO (use para calibrar porções):
 {user_context}
 
+{taco_context}
 DESCRIÇÃO DA REFEIÇÃO:
 {description}
 
 Pense passo a passo INTERNAMENTE (não escreva os passos):
 1. Identifique cada alimento e método de preparo
 2. Converta descrições vagas para gramas usando as porções típicas e o histórico do usuário
-3. Busque cada alimento na tabela TACO acima
+3. Use os valores do banco TACO acima quando disponíveis (prioridade máxima)
 4. Calcule os macros para a porção total (não por 100g)
 5. Verifique: calories ≈ protein×4 + carbs×4 + fat×9
 
@@ -272,9 +277,20 @@ class MealParser:
         self,
         description: str,
         user_context: str = "usuário sem histórico",
+        db: "AsyncSession | None" = None,
     ) -> MealAnalysisResponse:
+        # Lookup dinâmico no banco TACO antes de chamar a IA
+        taco_context = ""
+        if db is not None:
+            from app.services.ai.taco_lookup import find_foods_in_text, format_taco_context
+            matches = await find_foods_in_text(description, db)
+            taco_context = format_taco_context(matches)
+            if matches:
+                logger.info("TACO lookup: %d alimentos encontrados para '%s'", len(matches), description[:60])
+
         user_msg = _USER_TEMPLATE.format(
             user_context=user_context,
+            taco_context=taco_context,
             description=description,
         )
 
