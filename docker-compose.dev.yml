@@ -107,7 +107,6 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next
     env_file:
       - .env
     depends_on:
