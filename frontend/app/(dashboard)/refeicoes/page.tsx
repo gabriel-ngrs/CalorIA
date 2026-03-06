@@ -122,44 +122,96 @@ function MacroPill({ icon, value, unit, color }: {
   );
 }
 
-// ── Daily summary strip ───────────────────────────────────────────────────────
+// ── Day stats sidebar ─────────────────────────────────────────────────────────
 
-function DaySummary({ meals }: { meals: Meal[] }) {
+function DayStats({ meals }: { meals: Meal[] }) {
   const totalCal  = meals.reduce((s, m) => s + m.items.reduce((a, it) => a + it.calories, 0), 0);
   const totalProt = meals.reduce((s, m) => s + m.items.reduce((a, it) => a + it.protein, 0), 0);
   const totalCarb = meals.reduce((s, m) => s + m.items.reduce((a, it) => a + it.carbs, 0), 0);
   const totalFat  = meals.reduce((s, m) => s + m.items.reduce((a, it) => a + it.fat, 0), 0);
-
-  if (totalCal === 0) return null;
+  const totalFiber = meals.reduce((s, m) => s + m.items.reduce((a, it) => a + (it.fiber ?? 0), 0), 0);
 
   return (
-    <div className="glass-card rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1.5 mr-2">
-        <Flame className="h-4 w-4 text-orange-400" />
-        <span className="text-lg font-bold text-orange-400">{totalCal.toFixed(0)}</span>
-        <span className="text-xs text-muted-foreground">kcal hoje</span>
-      </div>
-      <div className="h-4 w-px bg-border hidden sm:block" />
-      <div className="flex items-center gap-2 flex-wrap">
-        <MacroPill
-          icon={<Dumbbell className="h-3 w-3" />}
-          value={totalProt} unit="g prot"
-          color="bg-green-500/10 text-green-400"
-        />
-        <MacroPill
-          icon={<Zap className="h-3 w-3" />}
-          value={totalCarb} unit="g carb"
-          color="bg-yellow-500/10 text-yellow-400"
-        />
-        <MacroPill
-          icon={<Droplets className="h-3 w-3" />}
-          value={totalFat} unit="g gord"
-          color="bg-sky-400/10 text-sky-400"
-        />
-      </div>
-      <div className="ml-auto text-xs text-muted-foreground">
-        {meals.length} {meals.length === 1 ? "refeição" : "refeições"}
-      </div>
+    <div className="space-y-3">
+      {/* Calorias */}
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
+        <CardContent className="pt-4 pb-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
+            <Flame className="h-3 w-3 text-orange-400" /> Calorias
+          </p>
+          <p className="text-3xl font-bold text-orange-400">
+            {totalCal.toFixed(0)}
+            <span className="text-sm font-normal text-muted-foreground ml-1">kcal</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {meals.length} {meals.length === 1 ? "refeição" : "refeições"} ·{" "}
+            {meals.reduce((s, m) => s + m.items.length, 0)} itens
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Proteína */}
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/40">
+        <CardContent className="pt-4 pb-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
+            <Dumbbell className="h-3 w-3 text-green-400" /> Proteína
+          </p>
+          <p className="text-2xl font-bold text-green-400">
+            {totalProt.toFixed(0)}
+            <span className="text-sm font-normal text-muted-foreground ml-1">g</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {totalCal > 0 ? ((totalProt * 4 / totalCal) * 100).toFixed(0) : 0}% das kcal
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Carbs */}
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-500/40">
+        <CardContent className="pt-4 pb-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
+            <Zap className="h-3 w-3 text-yellow-400" /> Carboidratos
+          </p>
+          <p className="text-2xl font-bold text-yellow-400">
+            {totalCarb.toFixed(0)}
+            <span className="text-sm font-normal text-muted-foreground ml-1">g</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {totalCal > 0 ? ((totalCarb * 4 / totalCal) * 100).toFixed(0) : 0}% das kcal
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Gordura */}
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-sky-400/40">
+        <CardContent className="pt-4 pb-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
+            <Droplets className="h-3 w-3 text-sky-400" /> Gordura
+          </p>
+          <p className="text-2xl font-bold text-sky-400">
+            {totalFat.toFixed(0)}
+            <span className="text-sm font-normal text-muted-foreground ml-1">g</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {totalCal > 0 ? ((totalFat * 9 / totalCal) * 100).toFixed(0) : 0}% das kcal
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Fibra — só mostra se houver dados */}
+      {totalFiber > 0 && (
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-emerald-500/40">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
+              <Flame className="h-3 w-3 text-emerald-400" /> Fibra
+            </p>
+            <p className="text-2xl font-bold text-emerald-400">
+              {totalFiber.toFixed(0)}
+              <span className="text-sm font-normal text-muted-foreground ml-1">g</span>
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -360,7 +412,7 @@ export default function RefeicoesPage() {
   const isTodaySelected = isToday(filterDate);
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-5">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
@@ -551,6 +603,10 @@ export default function RefeicoesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Layout 2 colunas: refeições (esq) + stats (dir) ───────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+
       {/* ── Date navigator ─────────────────────────────────────────────────── */}
       <div className="glass-card rounded-xl px-3 py-2.5 flex items-center gap-2">
         <Button
@@ -615,9 +671,6 @@ export default function RefeicoesPage() {
         </Button>
       </div>
 
-      {/* ── Daily summary ──────────────────────────────────────────────────── */}
-      {meals && meals.length > 0 && <DaySummary meals={meals} />}
-
       {/* ── Loading ────────────────────────────────────────────────────────── */}
       {isLoading && (
         <div className="space-y-3">
@@ -666,6 +719,28 @@ export default function RefeicoesPage() {
           />
         ))}
       </div>
+
+      </div>{/* fim col-span-2 */}
+
+      {/* ── Coluna direita: stats do dia ────────────────────────────────────── */}
+      <div>
+        {meals && meals.length > 0
+          ? <DayStats meals={meals} />
+          : (
+            <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
+              <CardContent className="pt-10 pb-10 flex flex-col items-center gap-3 text-center">
+                <span className="flex items-center justify-center w-12 h-12 rounded-full bg-muted/30">
+                  <Flame className="h-6 w-6 text-muted-foreground/40" />
+                </span>
+                <p className="text-sm text-muted-foreground">Sem dados nutricionais</p>
+                <p className="text-xs text-muted-foreground/70">Os totais do dia aparecerão aqui</p>
+              </CardContent>
+            </Card>
+          )
+        }
+      </div>
+
+      </div>{/* fim grid */}
     </div>
   );
 }
