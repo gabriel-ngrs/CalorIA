@@ -91,7 +91,7 @@ export default function HidratacaoPage() {
             </p>
             <p className="text-sm text-muted-foreground mt-1">de {goalMl} ml hoje</p>
           </div>
-          <Progress value={pct} className="h-3" />
+          <Progress value={pct} className="h-3" indicatorColor="#3b82f6" />
           <div className="flex justify-between items-center mt-2">
             <p className="text-xs text-muted-foreground">0 ml</p>
             <p className="text-sm font-medium">{pct.toFixed(0)}%</p>

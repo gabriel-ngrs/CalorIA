@@ -144,7 +144,7 @@ export default function DashboardPage() {
               <span className="text-sm font-normal text-muted-foreground ml-1">ml</span>
             </p>
             <div className="mt-2 space-y-1">
-              <Progress value={hydPct} />
+              <Progress value={hydPct} indicatorColor="#3b82f6" />
               <p className="text-xs text-muted-foreground">
                 {hydPct.toFixed(0)}% da meta · {goalMl} ml
               </p>
