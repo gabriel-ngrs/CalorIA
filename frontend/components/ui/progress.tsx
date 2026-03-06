@@ -12,11 +12,12 @@ const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   ProgressProps
 >(({ className, value, indicatorColor, ...props }, ref) => {
+  const isGradient = indicatorColor?.startsWith("linear-gradient") || indicatorColor?.startsWith("radial-gradient");
   const indicatorStyle = indicatorColor
     ? {
         transform: `translateX(-${100 - (value || 0)}%)`,
         background: indicatorColor,
-        boxShadow: `0 0 8px ${indicatorColor}66`,
+        boxShadow: isGradient ? "0 0 8px rgba(59,130,246,0.45)" : `0 0 8px ${indicatorColor}66`,
       }
     : {
         transform: `translateX(-${100 - (value || 0)}%)`,
