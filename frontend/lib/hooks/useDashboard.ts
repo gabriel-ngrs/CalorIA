@@ -14,9 +14,8 @@ export function useDashboardToday() {
       const { data } = await api.get("/api/v1/dashboard/today");
       return data;
     },
-    staleTime: 0,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    // Usa os defaults globais (staleTime: 3min, refetchOnWindowFocus: false)
+    // Mutations de refeição/hidratação já invalidam esse cache via queryClient.invalidateQueries
   });
 }
 
@@ -27,9 +26,6 @@ export function useWeeklySummary() {
       const { data } = await api.get("/api/v1/dashboard/weekly");
       return data;
     },
-    staleTime: 0,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
   });
 }
 
