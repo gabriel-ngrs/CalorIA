@@ -72,8 +72,9 @@ api.interceptors.request.use(async (config) => {
 // Isso elimina o ciclo "401 → React Query aguarda 1s → retry" que duplicava latência.
 api.interceptors.response.use(
   (response) => {
-    const ms = response.config._t0
-      ? (performance.now() - (response.config as TimedRequestConfig)._t0!).toFixed(0)
+    const timedConfig = response.config as TimedRequestConfig;
+    const ms = timedConfig._t0
+      ? (performance.now() - timedConfig._t0).toFixed(0)
       : "?";
     const slow = Number(ms) > 500 ? " ⚠️ LENTO" : "";
     console.log(
