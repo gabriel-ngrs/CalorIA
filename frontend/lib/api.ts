@@ -1,6 +1,10 @@
 import axios from "axios";
-import type { AxiosRequestConfig } from "axios";
+import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { getSession, signOut } from "next-auth/react";
+
+interface TimedRequestConfig extends InternalAxiosRequestConfig {
+  _t0?: number;
+}
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
@@ -50,7 +54,7 @@ api.interceptors.request.use(async (config) => {
   const authMs = (performance.now() - t0).toFixed(0);
   console.log(`[API→] ${config.method?.toUpperCase()} ${config.url}  (auth: ${authMs}ms via ${hadCache ? "cache" : "getSession()"})`);
 
-  (config as any)._t0 = performance.now();
+  (config as TimedRequestConfig)._t0 = performance.now();
 
   if (error === "RefreshAccessTokenError") {
     await signOut({ redirect: true, callbackUrl: "/login" });
@@ -69,7 +73,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => {
     const ms = response.config._t0
-      ? (performance.now() - (response.config as any)._t0).toFixed(0)
+      ? (performance.now() - (response.config as TimedRequestConfig)._t0!).toFixed(0)
       : "?";
     const slow = Number(ms) > 500 ? " ⚠️ LENTO" : "";
     console.log(
