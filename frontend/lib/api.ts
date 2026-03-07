@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { AxiosRequestConfig } from "axios";
 import { getSession, signOut } from "next-auth/react";
 
 const api = axios.create({
@@ -7,39 +8,48 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Cache do token em memória — evita chamar /api/auth/session em cada requisição
+// ─── Cache do token em memória ────────────────────────────────────────────────
+// Evita N chamadas HTTP para /api/auth/session por navegação.
 let _cache: { token: string | null; error?: string; until: number } | null = null;
-let _cacheHit = false;
+
+// Deduplicação: uma única Promise para getSession() quando múltiplas requests
+// disparam simultaneamente sem cache. Evita N×HTTP paralelos para /api/auth/session.
+let _pendingSession: Promise<{ token: string | null; error?: string }> | null = null;
 
 /** Chamado pelo SessionSync quando a sessão muda — atualiza o cache sem HTTP */
 export function setApiToken(token: string | null, error?: string) {
   _cache = { token, error, until: Date.now() + 90 * 1000 };
+  _pendingSession = null; // cancela qualquer pending para usar o cache fresco
+}
+
+/** Resolve o token: usa cache se fresco, senão faz UMA chamada getSession() compartilhada */
+async function resolveToken(): Promise<{ token: string | null; error?: string }> {
+  if (_cache && Date.now() < _cache.until) {
+    return { token: _cache.token, error: _cache.error };
+  }
+  // Deduplicação: reutiliza Promise em voo se já existir
+  if (!_pendingSession) {
+    _pendingSession = getSession()
+      .then((session) => {
+        const result = { token: session?.accessToken ?? null, error: session?.error };
+        _cache = { ...result, until: Date.now() + 90 * 1000 };
+        return result;
+      })
+      .finally(() => { _pendingSession = null; });
+  }
+  return _pendingSession;
 }
 
 // ─── Interceptor de REQUEST: injeta token + marca timestamp ──────────────────
 api.interceptors.request.use(async (config) => {
   const t0 = performance.now();
+  const hadCache = _cache && Date.now() < _cache.until;
 
-  let token: string | null = null;
-  let error: string | undefined;
-
-  if (_cache && Date.now() < _cache.until) {
-    _cacheHit = true;
-    token = _cache.token;
-    error = _cache.error;
-  } else {
-    _cacheHit = false;
-    const session = await getSession();
-    token = session?.accessToken ?? null;
-    error = session?.error;
-    _cache = { token, error, until: Date.now() + 90 * 1000 };
-  }
+  const { token, error } = await resolveToken();
 
   const authMs = (performance.now() - t0).toFixed(0);
-  const src = _cacheHit ? "cache" : "getSession()";
-  console.log(`[API→] ${config.method?.toUpperCase()} ${config.url}  (auth: ${authMs}ms via ${src})`);
+  console.log(`[API→] ${config.method?.toUpperCase()} ${config.url}  (auth: ${authMs}ms via ${hadCache ? "cache" : "getSession()"})`);
 
-  // Guarda o timestamp para calcular duração na resposta
   (config as any)._t0 = performance.now();
 
   if (error === "RefreshAccessTokenError") {
@@ -53,7 +63,9 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// ─── Interceptor de RESPONSE: loga status + duração total ───────────────────
+// ─── Interceptor de RESPONSE: loga + retry transparente em 401 ───────────────
+// Quando o backend retorna 401, invalida o cache e tenta uma vez com token fresco.
+// Isso elimina o ciclo "401 → React Query aguarda 1s → retry" que duplicava latência.
 api.interceptors.response.use(
   (response) => {
     const ms = response.config._t0
@@ -65,13 +77,31 @@ api.interceptors.response.use(
     );
     return response;
   },
-  (error) => {
+  async (error) => {
     const ms = error.config?._t0
       ? (performance.now() - error.config._t0).toFixed(0)
       : "?";
     console.error(
       `[API✗] ${error.config?.method?.toUpperCase()} ${error.config?.url}  ERR  ${ms}ms  —  ${error.message}`
     );
+
+    // Retry transparente para 401: invalida cache, busca token fresco, reenvia
+    const original = error.config as AxiosRequestConfig & { _retry?: boolean };
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      _cache = null; // invalida cache para forçar novo getSession()
+      const { token, error: sessionError } = await resolveToken();
+      if (sessionError === "RefreshAccessTokenError") {
+        await signOut({ redirect: true, callbackUrl: "/login" });
+        return Promise.reject(error);
+      }
+      if (token) {
+        original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
+        console.log(`[API↺] 401 → retry com token fresco: ${original.method?.toUpperCase()} ${original.url}`);
+        return api(original);
+      }
+    }
+
     return Promise.reject(error);
   }
 );

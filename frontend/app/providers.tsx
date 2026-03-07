@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { isAxiosError } from "axios";
 import { setApiToken } from "@/lib/api";
 
 /** Sincroniza o token da sessão React com o cache do axios — sem chamadas HTTP extras */
@@ -53,8 +54,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 3 * 60 * 1000,  // 3 minutos — não refetcha ao navegar
             gcTime: 10 * 60 * 1000,    // 10 minutos em cache depois de inativo
-            retry: 1,
             refetchOnWindowFocus: false, // não refetcha ao trocar aba
+            // 401 é tratado pelo interceptor axios (retry transparente sem delay).
+            // Outros erros retentam uma vez normalmente.
+            retry: (failureCount, error) => {
+              if (isAxiosError(error) && error.response?.status === 401) return false;
+              return failureCount < 1;
+            },
           },
         },
       })

@@ -109,6 +109,10 @@ services:
       - /app/node_modules
     env_file:
       - .env
+    environment:
+      # Habilita polling de arquivos no WSL2 + Docker bind mount.
+      # inotify não propaga eventos entre host WSL2 e container — polling garante HMR.
+      WATCHPACK_POLLING: "true"
     depends_on:
       - backend
     networks:
