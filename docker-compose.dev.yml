@@ -101,7 +101,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: caloria_frontend
-    command: npm run dev -- --turbo
+    # Inicia Next.js + roda script de warmup em background.
+    # O warmup pré-compila /login e /dashboard durante o startup,
+    # eliminando o atraso de compilação na primeira visita do usuário.
+    command: sh -c "npm run dev -- --turbo & sh /app/scripts/warmup.sh; wait"
     ports:
       - "3000:3000"
     volumes:
