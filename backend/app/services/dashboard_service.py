@@ -19,38 +19,32 @@ class DashboardService:
         self._mood = MoodService(db)
 
     async def get_today(self, user_id: int, today: date) -> DashboardToday:
+        # Queries sequenciais na mesma sessão (AsyncSession não suporta await concorrente)
         nutrition = await self._meals.get_daily_summary(user_id, today)
         hydration = await self._hydration.get_day_summary(user_id, today)
-
         mood_log = await self._mood.get_by_date(user_id, today)
-        mood = MoodLogResponse.model_validate(mood_log) if mood_log else None
-
         latest_wl = await self._weight.latest(user_id)
-        latest_weight = WeightLogResponse.model_validate(latest_wl) if latest_wl else None
 
         return DashboardToday(
             date=today,
             nutrition=nutrition,
             hydration=hydration,
-            mood=mood,
-            latest_weight=latest_weight,
+            mood=MoodLogResponse.model_validate(mood_log) if mood_log else None,
+            latest_weight=WeightLogResponse.model_validate(latest_wl) if latest_wl else None,
         )
 
     async def get_weekly(self, user_id: int, end_date: date) -> WeeklySummary:
         start_date = end_date - timedelta(days=6)
-        days: list[WeeklyMacroPoint] = []
 
+        # Uma única query SQL em vez de 7 chamadas em loop — N+1 eliminado
+        macros_by_date = await self._meals.get_macros_by_date_range(user_id, start_date, end_date)
+
+        days: list[WeeklyMacroPoint] = []
         current = start_date
         while current <= end_date:
-            summary = await self._meals.get_daily_summary(user_id, current)
             days.append(
-                WeeklyMacroPoint(
-                    date=current,
-                    calories=summary.total_calories,
-                    protein=summary.total_protein,
-                    carbs=summary.total_carbs,
-                    fat=summary.total_fat,
-                )
+                macros_by_date.get(current)
+                or WeeklyMacroPoint(date=current, calories=0, protein=0, carbs=0, fat=0)
             )
             current += timedelta(days=1)
 

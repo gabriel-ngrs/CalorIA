@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.meal import Meal, MealType
 from app.models.meal_item import MealItem
+from app.schemas.dashboard import WeeklyMacroPoint
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
 
 
@@ -90,6 +91,43 @@ class MealService:
         await self.db.delete(meal)
         await self.db.commit()
         return True
+
+    async def get_macros_by_date_range(
+        self, user_id: int, start_date: date, end_date: date
+    ) -> dict[date, WeeklyMacroPoint]:
+        """Uma única query SQL que agrega macros por dia para um intervalo de datas.
+
+        Substitui o padrão anterior de N chamadas a get_daily_summary em loop.
+        Retorna dict keyed por date — dias sem refeições ficam ausentes do dict.
+        """
+        stmt = (
+            select(
+                Meal.date,
+                func.coalesce(func.sum(MealItem.calories), 0).label("calories"),
+                func.coalesce(func.sum(MealItem.protein), 0).label("protein"),
+                func.coalesce(func.sum(MealItem.carbs), 0).label("carbs"),
+                func.coalesce(func.sum(MealItem.fat), 0).label("fat"),
+            )
+            .join(MealItem, MealItem.meal_id == Meal.id)
+            .where(
+                Meal.user_id == user_id,
+                Meal.date >= start_date,
+                Meal.date <= end_date,
+            )
+            .group_by(Meal.date)
+            .order_by(Meal.date)
+        )
+        result = await self.db.execute(stmt)
+        return {
+            row.date: WeeklyMacroPoint(
+                date=row.date,
+                calories=round(float(row.calories), 1),
+                protein=round(float(row.protein), 1),
+                carbs=round(float(row.carbs), 1),
+                fat=round(float(row.fat), 1),
+            )
+            for row in result.all()
+        }
 
     async def get_daily_summary(self, user_id: int, summary_date: date) -> DailySummary:
         meals = await self.list_meals(user_id, meal_date=summary_date, limit=100)

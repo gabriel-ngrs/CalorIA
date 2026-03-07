@@ -9,6 +9,7 @@ export function useMe() {
       const { data } = await api.get("/api/v1/auth/me");
       return data;
     },
+    staleTime: 15 * 60 * 1000, // 15 min — dados do usuário raramente mudam
   });
 }
 

@@ -10,12 +10,16 @@ const BACKEND_URL = process.env.BACKEND_URL ?? defaultBackendUrl;
 const ACCESS_TOKEN_LIFETIME_MS = 29 * 60 * 1000;
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: token.refreshToken }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!res.ok) throw new Error(`Refresh failed: ${res.status}`);
 
@@ -28,6 +32,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       error: undefined,
     };
   } catch {
+    clearTimeout(timeout);
     return { ...token, error: "RefreshAccessTokenError" };
   }
 }
