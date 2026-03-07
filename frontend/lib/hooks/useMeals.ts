@@ -10,9 +10,8 @@ export function useMeals(date?: string) {
       const { data } = await api.get(`/api/v1/meals${params}`);
       return data;
     },
-    staleTime: 0,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    // Usa os defaults globais (staleTime: 3min, refetchOnWindowFocus: false)
+    // Mutations (create/update/delete) já invalidam o cache via onSuccess
   });
 }
 

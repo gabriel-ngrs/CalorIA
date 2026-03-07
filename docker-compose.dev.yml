@@ -76,7 +76,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: caloria_backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
     ports:
       - "8000:8000"
     volumes:
@@ -101,15 +101,21 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: caloria_frontend
-    command: npm run dev
+    # Inicia Next.js + roda script de warmup em background.
+    # O warmup pré-compila /login e /dashboard durante o startup,
+    # eliminando o atraso de compilação na primeira visita do usuário.
+    command: sh -c "npm run dev -- --turbo & sh /app/scripts/warmup.sh; wait"
     ports:
       - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next
     env_file:
       - .env
+    environment:
+      # Habilita polling de arquivos no WSL2 + Docker bind mount.
+      # inotify não propaga eventos entre host WSL2 e container — polling garante HMR.
+      WATCHPACK_POLLING: "true"
     depends_on:
       - backend
     networks:

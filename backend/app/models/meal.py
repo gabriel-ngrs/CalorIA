@@ -25,6 +25,7 @@ class MealType(str, enum.Enum):
     PRE_WORKOUT = "pre_workout"
     POST_WORKOUT = "post_workout"
     SUPPLEMENT = "supplement"
+    DESSERT = "dessert"
 
 
 class MealSource(str, enum.Enum):

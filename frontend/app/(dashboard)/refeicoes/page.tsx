@@ -41,9 +41,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ptBR } from "date-fns/locale";
+import dynamic from "next/dynamic";
+// Import direto do arquivo de locale — não carrega o barrel inteiro de date-fns
+import ptBR from "date-fns/locale/pt-BR";
+
+// Calendar (react-day-picker) carregado sob demanda — não entra no bundle inicial da página
+const Calendar = dynamic(
+  () => import("@/components/ui/calendar").then((m) => m.Calendar),
+  { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
+);
 import { useAnalyzeMeal, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
 import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
 
@@ -58,6 +65,7 @@ const MEAL_LABELS: Record<MealType, string> = {
   pre_workout: "Pré-treino",
   post_workout: "Pós-treino",
   supplement: "Suplemento",
+  dessert: "Sobremesa",
 };
 
 // Color accent classes for left border + icon bg
@@ -72,6 +80,7 @@ const MEAL_ACCENT: Record<MealType, { border: string; bg: string; text: string }
   pre_workout:     { border: "border-l-red-500",    bg: "bg-red-500/15",    text: "text-red-400" },
   post_workout:    { border: "border-l-blue-500",   bg: "bg-blue-500/15",   text: "text-blue-400" },
   supplement:      { border: "border-l-purple-400", bg: "bg-purple-400/15", text: "text-purple-400" },
+  dessert:         { border: "border-l-pink-400",   bg: "bg-pink-400/15",   text: "text-pink-400" },
 };
 
 const SOURCE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {

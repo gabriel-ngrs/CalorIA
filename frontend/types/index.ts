@@ -52,7 +52,8 @@ export type MealType =
   | "snack"
   | "pre_workout"
   | "post_workout"
-  | "supplement";
+  | "supplement"
+  | "dessert";
 export type MealSource = "manual" | "telegram" | "whatsapp";
 
 export interface MealItem {
