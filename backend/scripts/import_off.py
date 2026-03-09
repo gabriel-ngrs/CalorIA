@@ -74,8 +74,8 @@ _CATEGORY_KEYWORDS: list[tuple[str, str]] = [
     ("shrimp", "peixes"),
     ("tuna", "peixes"),
     ("salmon", "peixes"),
-    # Laticínios
-    ("dairy", "laticinios"),
+    # Laticínios — usa "dair" para casar "dairy" e "dairies"
+    ("dair", "laticinios"),
     ("cheese", "laticinios"),
     ("yogurt", "laticinios"),
     ("milk", "laticinios"),
@@ -95,6 +95,8 @@ _CATEGORY_KEYWORDS: list[tuple[str, str]] = [
     ("wine", "bebidas"),
     ("alcoholic", "bebidas"),
     ("smoothie", "bebidas"),
+    ("cocoa-powder", "bebidas"),
+    ("instant-beverage", "bebidas"),
     # Frutas
     ("fruit", "frutas"),
     # Vegetais e plantas
@@ -114,12 +116,13 @@ _CATEGORY_KEYWORDS: list[tuple[str, str]] = [
     ("oat", "cereais"),
     ("flour", "cereais"),
     ("grain", "cereais"),
-    ("rice", "cereais"),
-    # Doces e snacks açucarados
+    # Doces, chocolates e snacks açucarados
+    ("cocoa", "acucares"),
     ("chocolate", "acucares"),
     ("candy", "acucares"),
     ("sweet", "acucares"),
     ("biscuit", "acucares"),
+    ("cracker", "acucares"),
     ("cookie", "acucares"),
     ("cake", "acucares"),
     ("sugar", "acucares"),
