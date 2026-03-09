@@ -28,7 +28,7 @@ import unicodedata
 from pathlib import Path
 
 import httpx
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text as sa_text
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -195,6 +195,7 @@ async def import_off(limit: int, dry_run: bool, force: bool) -> None:
         skipped_quality = 0
         skipped_duplicate = 0
         page = 1
+        consecutive_empty = 0  # páginas seguidas sem nenhum produto novo
 
         async with httpx.AsyncClient() as client:
             while inserted < limit:
@@ -210,7 +211,7 @@ async def import_off(limit: int, dry_run: bool, force: bool) -> None:
                     logger.info("Sem mais produtos na API. Total de páginas: %d", page - 1)
                     break
 
-                batch: list[TacoFood] = []
+                batch: list[dict] = []
                 for product in products:
                     if inserted + len(batch) >= limit:
                         break
@@ -220,14 +221,12 @@ async def import_off(limit: int, dry_run: bool, force: bool) -> None:
                         skipped_quality += 1
                         continue
 
-                    # Evita duplicata por código de barras
+                    # Pré-filtra duplicatas em memória para reduzir conflitos
                     if food.external_id and food.external_id in existing_barcodes:
                         skipped_duplicate += 1
                         continue
 
-                    # Evita duplicata por nome (único no banco)
                     if food.name in existing_names:
-                        # Tenta adicionar sufixo da marca para diferenciar
                         brand = (product.get("brands") or "").strip()
                         if brand:
                             food.name = f"{food.name} ({brand})"[:200]
@@ -238,13 +237,57 @@ async def import_off(limit: int, dry_run: bool, force: bool) -> None:
                     existing_names.add(food.name)
                     if food.external_id:
                         existing_barcodes.add(food.external_id)
-                    batch.append(food)
 
-                if batch and not dry_run:
-                    db.add_all(batch)
+                    batch.append({
+                        "name": food.name,
+                        "aliases": food.aliases,
+                        "category": food.category,
+                        "preparation": food.preparation,
+                        "notes": food.notes,
+                        "source": food.source,
+                        "external_id": food.external_id,
+                        "search_text": food.search_text,
+                        "calories_100g": food.calories_100g,
+                        "protein_100g": food.protein_100g,
+                        "carbs_100g": food.carbs_100g,
+                        "fat_100g": food.fat_100g,
+                        "fiber_100g": food.fiber_100g,
+                    })
+
+                if not batch:
+                    consecutive_empty += 1
+                    # Se 5 páginas seguidas não trouxeram nada novo, esgotamos o catálogo
+                    if consecutive_empty >= 5:
+                        logger.info("5 páginas consecutivas sem novos produtos. Encerrando.")
+                        break
+                    page += 1
+                    continue
+
+                consecutive_empty = 0
+
+                if not dry_run:
+                    # ON CONFLICT DO NOTHING: duplicatas residuais dentro do batch não crasham
+                    result = await db.execute(
+                        sa_text("""
+                            INSERT INTO taco_foods
+                                (name, aliases, category, preparation, notes, source,
+                                 external_id, search_text,
+                                 calories_100g, protein_100g, carbs_100g, fat_100g, fiber_100g)
+                            VALUES
+                                (:name, :aliases, :category, :preparation, :notes, :source,
+                                 :external_id, :search_text,
+                                 :calories_100g, :protein_100g, :carbs_100g, :fat_100g, :fiber_100g)
+                            ON CONFLICT (name) DO NOTHING
+                        """),
+                        batch,
+                    )
                     await db.commit()
+                    actually_inserted = result.rowcount if result.rowcount >= 0 else len(batch)
+                    skipped_duplicate += len(batch) - actually_inserted
+                    inserted += actually_inserted
+                else:
+                    inserted += len(batch)
 
-                inserted += len(batch)
                 page += 1
 
                 # OFF retorna no máximo ~1000 páginas úteis
