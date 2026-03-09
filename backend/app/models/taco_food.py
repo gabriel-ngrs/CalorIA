@@ -7,11 +7,11 @@ from app.core.database import Base
 
 
 class TacoFood(Base):
-    """Alimento da Tabela Brasileira de Composição de Alimentos (TACO/UNICAMP).
+    """Alimento do banco nutricional (TACO/UNICAMP, Open Food Facts, USDA).
 
     Valores nutricionais por 100g (cozido/preparado quando aplicável).
-    Aliases são usados pela busca fuzzy para encontrar o alimento a partir de
-    descrições livres do usuário.
+    A coluna search_text (name + aliases desnormalizados) é indexada com
+    GIN trigrama para busca fuzzy eficiente diretamente no PostgreSQL.
     """
 
     __tablename__ = "taco_foods"
@@ -22,6 +22,13 @@ class TacoFood(Base):
     category: Mapped[str] = mapped_column(String(50), index=True)
     preparation: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Origem do registro
+    source: Mapped[str] = mapped_column(String(20), default="taco")
+    # Código de barras (EAN/UPC) para produtos do Open Food Facts
+    external_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    # Texto desnormalizado para busca trigrama (name + aliases em minúsculas)
+    search_text: Mapped[str] = mapped_column(Text)
 
     # Macronutrientes por 100g
     calories_100g: Mapped[float] = mapped_column(Float)
