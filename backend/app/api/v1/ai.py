@@ -64,6 +64,7 @@ async def analyze_meal(
 async def analyze_photo(
     data: PhotoAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_gemini),
 ) -> MealAnalysisResponse:
     """Analisa foto de refeição (base64) e retorna itens nutricionais."""
@@ -72,6 +73,7 @@ async def analyze_photo(
         return await VisionParser(client).parse_base64(
             image_base64=data.image_base64,
             mime_type=data.mime_type,
+            db=db,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
