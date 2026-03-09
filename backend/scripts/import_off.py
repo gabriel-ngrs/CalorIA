@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import sys
 import unicodedata
 from pathlib import Path
@@ -166,6 +167,18 @@ def _build_search_text(name: str, aliases: list[str]) -> str:
     return " ".join([name] + aliases).lower()
 
 
+# Caracteres válidos em nomes em português/inglês: letras latinas, dígitos, pontuação comum
+_LATIN_RE = re.compile(r"[^\u0000-\u024F\s\d.,;:!()\-'\"/%&@#]")
+
+
+def _is_latin_name(name: str) -> bool:
+    """Retorna True se ao menos 80% dos caracteres são do bloco Latin/Latin-Extended."""
+    if not name:
+        return False
+    non_latin = len(_LATIN_RE.findall(name))
+    return non_latin / len(name) < 0.2
+
+
 def _parse_product(product: dict) -> TacoFood | None:
     """Converte um produto OFF em TacoFood. Retorna None se dados insuficientes."""
     name = (
@@ -175,6 +188,10 @@ def _parse_product(product: dict) -> TacoFood | None:
     ).strip()
 
     if not name or len(name) > 200:
+        return None
+
+    # Descarta nomes em alfabetos não-latinos (chinês, japonês, árabe, etc.)
+    if not _is_latin_name(name):
         return None
 
     nutriments = product.get("nutriments", {})
