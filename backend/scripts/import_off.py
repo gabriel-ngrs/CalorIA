@@ -4,20 +4,27 @@ Faz download paginado da API pública do OFF filtrando por país Brasil.
 Apenas produtos com calorias, proteínas, carboidratos e gorduras preenchidos
 são importados — garante qualidade mínima dos dados.
 
+A API do OFF pode cair em importações longas. O script tem retry automático
+com backoff exponencial por página. Se ainda assim falhar, use --start-page
+para retomar de onde parou sem precisar reimportar tudo.
+
 Uso:
     cd backend
 
     # Importa até 5.000 produtos (padrão)
     python scripts/import_off.py
 
-    # Importa até 50.000 produtos
-    python scripts/import_off.py --limit 50000
+    # Importa até 200.000 produtos
+    python scripts/import_off.py --limit 200000
 
     # Importa em modo seco (exibe contagens, não salva)
     python scripts/import_off.py --dry-run
 
     # Força reimportação (remove registros existentes source=openfoodfacts)
     python scripts/import_off.py --force
+
+    # Retoma da página 90 (após queda anterior)
+    python scripts/import_off.py --start-page 90 --limit 200000
 """
 from __future__ import annotations
 
@@ -26,6 +33,7 @@ import logging
 import sys
 import unicodedata
 from pathlib import Path
+from time import sleep
 
 import httpx
 from sqlalchemy import delete, select, text as sa_text
@@ -151,7 +159,10 @@ def _parse_product(product: dict) -> TacoFood | None:
 
 
 async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
-    """Busca uma página de produtos brasileiros na API do OFF."""
+    """Busca uma página de produtos brasileiros na API do OFF.
+
+    Tenta até 4 vezes com backoff exponencial (2s, 4s, 8s) antes de desistir.
+    """
     params = {
         "action": "process",
         "tagtype_0": "countries",
@@ -165,13 +176,23 @@ async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
         "page_size": PAGE_SIZE,
         "page": page,
     }
-    resp = await client.get(OFF_API, params=params, timeout=REQUEST_TIMEOUT)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("products") or []
+    last_exc: Exception | None = None
+    for attempt in range(4):
+        if attempt > 0:
+            wait = 2 ** attempt  # 2s, 4s, 8s
+            logger.warning("Tentativa %d/4 para página %d (aguardando %ds)...", attempt + 1, page, wait)
+            await asyncio.sleep(wait)
+        try:
+            resp = await client.get(OFF_API, params=params, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("products") or []
+        except httpx.HTTPError as exc:
+            last_exc = exc
+    raise last_exc  # type: ignore[misc]
 
 
-async def import_off(limit: int, dry_run: bool, force: bool) -> None:
+async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1) -> None:
     async with AsyncSessionLocal() as db:
         if force:
             deleted = await db.execute(
@@ -194,8 +215,11 @@ async def import_off(limit: int, dry_run: bool, force: bool) -> None:
         inserted = 0
         skipped_quality = 0
         skipped_duplicate = 0
-        page = 1
+        page = start_page
         consecutive_empty = 0  # páginas seguidas sem nenhum produto novo
+
+        if start_page > 1:
+            logger.info("Retomando a partir da página %d.", start_page)
 
         async with httpx.AsyncClient() as client:
             while inserted < limit:
@@ -303,21 +327,28 @@ async def import_off(limit: int, dry_run: bool, force: bool) -> None:
             logger.info("  [dry-run] Nenhum dado foi salvo.")
 
 
+def _get_arg(args: list[str], flag: str, default: int) -> int:
+    for i, arg in enumerate(args):
+        if arg.startswith(f"{flag}="):
+            return int(arg.split("=", 1)[1])
+        if arg == flag and i + 1 < len(args):
+            return int(args[i + 1])
+    return default
+
+
 def main() -> None:
     args = sys.argv[1:]
     dry_run = "--dry-run" in args
     force = "--force" in args
-
-    limit = DEFAULT_LIMIT
-    for arg in args:
-        if arg.startswith("--limit="):
-            limit = int(arg.split("=")[1])
-        elif arg == "--limit" and args.index(arg) + 1 < len(args):
-            limit = int(args[args.index(arg) + 1])
+    limit = _get_arg(args, "--limit", DEFAULT_LIMIT)
+    start_page = _get_arg(args, "--start-page", 1)
 
     logger.info("Iniciando importação Open Food Facts Brasil")
-    logger.info("  Limite: %d produtos | dry-run: %s | force: %s", limit, dry_run, force)
-    asyncio.run(import_off(limit=limit, dry_run=dry_run, force=force))
+    logger.info(
+        "  Limite: %d | página inicial: %d | dry-run: %s | force: %s",
+        limit, start_page, dry_run, force,
+    )
+    asyncio.run(import_off(limit=limit, dry_run=dry_run, force=force, start_page=start_page))
 
 
 if __name__ == "__main__":
