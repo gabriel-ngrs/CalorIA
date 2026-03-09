@@ -394,13 +394,37 @@ TACO_DATA: list[dict] = [
 ]
 
 
+def _build_search_text(name: str, aliases: list[str]) -> str:
+    """Gera o texto de busca desnormalizado (name + aliases em minúsculas)."""
+    parts = [name] + aliases
+    return " ".join(parts).lower()
+
+
 async def seed(db: AsyncSession) -> None:
     existing = await db.scalar(select(TacoFood).limit(1))
     if existing:
         print("✓ Tabela taco_foods já populada. Use --force para recriar.")
         return
 
-    foods = [TacoFood(**{k: v for k, v in item.items() if k != "notes"}, **{"notes": item.get("notes")}) for item in TACO_DATA]
+    foods = []
+    for item in TACO_DATA:
+        aliases = item.get("aliases", [])
+        food = TacoFood(
+            name=item["name"],
+            aliases=aliases,
+            category=item["category"],
+            preparation=item.get("preparation"),
+            notes=item.get("notes"),
+            source="taco",
+            search_text=_build_search_text(item["name"], aliases),
+            calories_100g=item["calories_100g"],
+            protein_100g=item["protein_100g"],
+            carbs_100g=item["carbs_100g"],
+            fat_100g=item["fat_100g"],
+            fiber_100g=item.get("fiber_100g", 0.0),
+        )
+        foods.append(food)
+
     db.add_all(foods)
     await db.commit()
     print(f"✓ {len(foods)} alimentos inseridos na tabela taco_foods.")
