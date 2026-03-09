@@ -14,8 +14,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Tabela TACO expandida + alimentos processados/fast food (valores por 100g,
-# já cozido/preparado quando aplicável).
+# Tabela TACO estática — mantida apenas para compatibilidade com vision_parser.
+# O meal_parser não a usa mais: os valores são injetados dinamicamente pelo
+# taco_lookup via pg_trgm antes de cada chamada à IA.
 # ---------------------------------------------------------------------------
 _TACO_TABLE = """
 === TABELA NUTRICIONAL — valores por 100g (cozido/preparado, salvo indicação) ===
@@ -200,17 +201,17 @@ _PORTIONS_REF = """
 "colher de sopa de feijão" (sem caldo)          → 20-25g   → 15-19 kcal
 """
 
-_SYSTEM_PROMPT = f"""Você é um nutricionista especializado em alimentação brasileira com acesso à tabela TACO e dados de alimentos ultraprocessados.
+_SYSTEM_PROMPT = f"""Você é um nutricionista especializado em alimentação brasileira.
 
 REGRAS ABSOLUTAS — nunca viole:
 1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. USE SEMPRE os valores da tabela de referência abaixo quando o alimento for reconhecido.
-3. NUNCA invente macros do zero — se não reconhecer o alimento, indique confidence 0.5 e use estimativa conservadora.
+2. Quando o prompt do usuário incluir a seção "BANCO NUTRICIONAL", USE ESSES VALORES EXATOS — eles têm prioridade máxima sobre qualquer estimativa.
+3. Para alimentos ausentes do banco, use seu conhecimento nutricional e defina confidence 0.5.
 4. Calcule calorias TOTAIS para a porção (não por 100g): calories = protein×4 + carbs×4 + fat×9 (±2%).
 5. Liste CADA ingrediente separadamente, mesmo em pratos compostos.
 6. Diferencie SEMPRE o método de preparo: grelhado ≠ frito ≠ cozido ≠ assado (impacta calorias).
-7. Quando a porção for vaga ("um prato", "uma porção"), use a seção de porções típicas.
-8. confidence: 1.0 = alimento na tabela + porção exata informada; 0.85 = alimento na tabela + porção estimada; 0.6 = estimativa sem referência direta.
+7. Quando a porção for vaga ("um prato", "uma porção"), use a seção de porções típicas abaixo.
+8. confidence: 1.0 = banco nutricional + porção exata; 0.85 = banco nutricional + porção estimada; 0.5 = sem referência direta.
 
 FORMATO OBRIGATÓRIO (array JSON):
 [
@@ -227,7 +228,6 @@ FORMATO OBRIGATÓRIO (array JSON):
   }}
 ]
 
-{_TACO_TABLE}
 {_PORTIONS_REF}"""
 
 _USER_TEMPLATE = """CONTEXTO DO USUÁRIO (use para calibrar porções):
