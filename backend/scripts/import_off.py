@@ -141,6 +141,14 @@ def _parse_product(product: dict) -> TacoFood | None:
     if generic and generic.lower() != name.lower() and len(generic) <= 200:
         aliases.append(generic)
 
+    # Extrai marcas como aliases para melhorar busca trigrama
+    brands_raw = (product.get("brands") or "").strip()
+    if brands_raw:
+        for brand in brands_raw.split(","):
+            brand = brand.strip()
+            if brand and brand.lower() != name.lower() and brand not in aliases and len(brand) <= 100:
+                aliases.append(brand)
+
     return TacoFood(
         name=name,
         aliases=aliases,
@@ -170,7 +178,7 @@ async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
         "tag_0": "brazil",
         "fields": (
             "code,product_name,product_name_pt,generic_name,generic_name_pt,"
-            "categories_tags,nutriments"
+            "brands,categories_tags,nutriments"
         ),
         "json": "1",
         "page_size": PAGE_SIZE,
