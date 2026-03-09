@@ -54,36 +54,96 @@ PAGE_SIZE = 500
 DEFAULT_LIMIT = 5_000
 REQUEST_TIMEOUT = 30.0
 
-# Mapeamento de categorias OFF → categorias internas
-_CATEGORY_MAP: dict[str, str] = {
-    "en:beverages": "bebidas",
-    "en:drinks": "bebidas",
-    "en:alcoholic-beverages": "bebidas",
-    "en:dairy": "laticinios",
-    "en:cheeses": "laticinios",
-    "en:yogurts": "laticinios",
-    "en:milks": "laticinios",
-    "en:meats": "carnes",
-    "en:poultry": "carnes",
-    "en:fish": "peixes",
-    "en:seafood": "peixes",
-    "en:fruits": "frutas",
-    "en:vegetables": "vegetais",
-    "en:cereals": "cereais",
-    "en:breads": "paes",
-    "en:pastas": "massas",
-    "en:legumes": "leguminosas",
-    "en:sugary-snacks": "acucares",
-    "en:chocolates": "acucares",
-    "en:biscuits-and-cakes": "acucares",
-    "en:fats": "gorduras",
-    "en:oils": "gorduras",
-    "en:nuts": "gorduras",
-    "en:frozen-foods": "pratos",
-    "en:meals": "pratos",
-    "en:soups": "pratos",
-    "en:fast-foods": "fastfood",
-}
+# Mapeamento por palavra-chave: se qualquer tag OFF contiver a chave, mapeia para a categoria.
+# Ordenado do mais específico para o mais genérico — primeira correspondência vence.
+_CATEGORY_KEYWORDS: list[tuple[str, str]] = [
+    # Carnes e proteínas animais
+    ("meat", "carnes"),
+    ("poultry", "carnes"),
+    ("beef", "carnes"),
+    ("pork", "carnes"),
+    ("chicken", "carnes"),
+    ("turkey", "carnes"),
+    ("lamb", "carnes"),
+    ("sausage", "carnes"),
+    ("ham", "carnes"),
+    ("deli", "carnes"),
+    # Peixes e frutos do mar
+    ("fish", "peixes"),
+    ("seafood", "peixes"),
+    ("shrimp", "peixes"),
+    ("tuna", "peixes"),
+    ("salmon", "peixes"),
+    # Laticínios
+    ("dairy", "laticinios"),
+    ("cheese", "laticinios"),
+    ("yogurt", "laticinios"),
+    ("milk", "laticinios"),
+    ("butter", "laticinios"),
+    ("cream", "laticinios"),
+    ("whey", "laticinios"),
+    ("fermented-milk", "laticinios"),
+    # Bebidas
+    ("beverage", "bebidas"),
+    ("drink", "bebidas"),
+    ("juice", "bebidas"),
+    ("water", "bebidas"),
+    ("coffee", "bebidas"),
+    ("tea", "bebidas"),
+    ("soda", "bebidas"),
+    ("beer", "bebidas"),
+    ("wine", "bebidas"),
+    ("alcoholic", "bebidas"),
+    ("smoothie", "bebidas"),
+    # Frutas
+    ("fruit", "frutas"),
+    # Vegetais e plantas
+    ("vegetable", "vegetais"),
+    ("plant-based", "vegetais"),
+    ("legume", "leguminosas"),
+    ("bean", "leguminosas"),
+    ("lentil", "leguminosas"),
+    ("chickpea", "leguminosas"),
+    # Pães e massas
+    ("bread", "paes"),
+    ("toast", "paes"),
+    ("pasta", "massas"),
+    ("noodle", "massas"),
+    # Cereais e farinhas
+    ("cereal", "cereais"),
+    ("oat", "cereais"),
+    ("flour", "cereais"),
+    ("grain", "cereais"),
+    ("rice", "cereais"),
+    # Doces e snacks açucarados
+    ("chocolate", "acucares"),
+    ("candy", "acucares"),
+    ("sweet", "acucares"),
+    ("biscuit", "acucares"),
+    ("cookie", "acucares"),
+    ("cake", "acucares"),
+    ("sugar", "acucares"),
+    ("confection", "acucares"),
+    ("dessert", "acucares"),
+    ("ice-cream", "acucares"),
+    ("snack", "acucares"),
+    # Gorduras e óleos
+    ("fat", "gorduras"),
+    ("oil", "gorduras"),
+    ("nut", "gorduras"),
+    ("seed", "gorduras"),
+    ("margarine", "gorduras"),
+    # Pratos e refeições
+    ("meal", "pratos"),
+    ("soup", "pratos"),
+    ("stew", "pratos"),
+    ("frozen", "pratos"),
+    ("pizza", "pratos"),
+    ("sandwich", "pratos"),
+    # Fast food
+    ("fast-food", "fastfood"),
+    ("burger", "fastfood"),
+]
 
 
 def _normalize(text: str) -> str:
@@ -92,9 +152,10 @@ def _normalize(text: str) -> str:
 
 
 def _map_category(tags: list[str]) -> str:
-    for tag in tags:
-        if tag in _CATEGORY_MAP:
-            return _CATEGORY_MAP[tag]
+    for keyword, category in _CATEGORY_KEYWORDS:
+        for tag in tags:
+            if keyword in tag:
+                return category
     return "outros"
 
 
