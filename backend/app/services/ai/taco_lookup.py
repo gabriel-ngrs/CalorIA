@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 _MIN_SIMILARITY = 0.18
 # Máximo de alimentos a injetar no prompt (evita tokens demais)
 _MAX_RESULTS = 20
+# Boost aplicado ao score de fontes mais confiáveis para desempate
+# TACO = tabela oficial brasileira com valores controlados e padronizados
+_SOURCE_BOOST: dict[str, float] = {"taco": 1.35}
 
 
 def _normalize(text_: str) -> str:
@@ -76,13 +79,14 @@ async def find_foods_in_text(text_: str, db: AsyncSession) -> list[TacoMatch]:
                 WHERE search_text %>> :q
                    OR similarity(search_text, :q) >= :min_score
                 ORDER BY score DESC
-                LIMIT 5
+                LIMIT 10
             """),
             {"q": candidate, "min_score": _MIN_SIMILARITY},
         )
         for row in rows.mappings():
             food_id = row["id"]
-            score = float(row["score"])
+            # Aplica boost de fonte: TACO tem valores oficiais da tabela brasileira
+            score = float(row["score"]) * _SOURCE_BOOST.get(row["source"], 1.0)
             if food_id not in matched or matched[food_id].score < score:
                 food = TacoFood(
                     id=food_id,
