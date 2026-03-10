@@ -213,6 +213,12 @@ def _parse_product(product: dict) -> TacoFood | None:
     if calories > 900 and not nutriments.get("energy-kcal_100g"):
         calories = calories / 4.184
 
+    # Descarta valores fisicamente impossíveis (dados corrompidos no OFF)
+    # Nenhum alimento sólido/líquido pode ter >950 kcal/100g (gordura pura = 900)
+    # Macronutrientes individualmente não podem exceder 100g em 100g de alimento
+    if calories > 950 or protein > 100 or carbs > 100 or fat > 100:
+        return None
+
     barcode = str(product.get("code") or "").strip() or None
     category_tags = product.get("categories_tags") or []
     category = _map_category(category_tags)
