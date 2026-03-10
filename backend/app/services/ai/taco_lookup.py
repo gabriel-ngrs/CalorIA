@@ -25,7 +25,7 @@ _MIN_SIMILARITY = 0.18
 _MAX_RESULTS = 20
 # Boost aplicado ao score de fontes mais confiáveis para desempate
 # TACO = tabela oficial brasileira com valores controlados e padronizados
-_SOURCE_BOOST: dict[str, float] = {"taco": 1.35}
+_SOURCE_BOOST: dict[str, float] = {"taco": 1.40}
 
 
 def _normalize(text_: str) -> str:
@@ -34,15 +34,15 @@ def _normalize(text_: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
 
-def _extract_candidates(text_: str) -> list[str]:
+def _extract_candidates(text_: str, min_n: int = 1) -> list[str]:
     """Extrai possíveis nomes de alimentos de um texto livre.
 
-    Gera n-gramas de 1 a 4 palavras para maximizar o recall.
+    Gera n-gramas de min_n a 4 palavras para maximizar o recall.
     """
     clean = re.sub(r"[,;:()\[\]\"']", " ", text_.lower())
     words = clean.split()
     candidates: list[str] = []
-    for n in range(1, 5):
+    for n in range(min_n, 5):
         for i in range(len(words) - n + 1):
             phrase = " ".join(words[i : i + n])
             if len(phrase) >= 3:
@@ -62,7 +62,10 @@ async def find_foods_in_text(text_: str, db: AsyncSession) -> list[TacoMatch]:
     Para cada n-grama extraído do texto, executa uma query pg_trgm e agrega
     o melhor score por alimento. Retorna lista ordenada por score, sem duplicatas.
     """
-    candidates = _extract_candidates(_normalize(text_))
+    normalized = _normalize(text_)
+    # Para queries de múltiplas palavras, ignora 1-gramas: evita que produtos com
+    # nomes curtíssimos (ex: "Leite") dominem buscas por "leite condensado".
+    candidates = _extract_candidates(normalized, min_n=1 if len(normalized.split()) == 1 else 2)
     if not candidates:
         return []
 
@@ -79,7 +82,7 @@ async def find_foods_in_text(text_: str, db: AsyncSession) -> list[TacoMatch]:
                 WHERE search_text %>> :q
                    OR similarity(search_text, :q) >= :min_score
                 ORDER BY score DESC
-                LIMIT 10
+                LIMIT 20
             """),
             {"q": candidate, "min_score": _MIN_SIMILARITY},
         )
@@ -106,7 +109,12 @@ async def find_foods_in_text(text_: str, db: AsyncSession) -> list[TacoMatch]:
                 )
                 matched[food_id] = TacoMatch(food=food, score=score)
 
-    results = sorted(matched.values(), key=lambda m: m.score, reverse=True)
+    # Em caso de empate no score, TACO (tabela oficial) tem prioridade sobre OFF
+    results = sorted(
+        matched.values(),
+        key=lambda m: (m.score, m.food.source == "taco"),
+        reverse=True,
+    )
     top = results[:_MAX_RESULTS]
 
     if top:
