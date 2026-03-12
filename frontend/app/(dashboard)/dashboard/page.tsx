@@ -157,7 +157,7 @@ export default function DashboardPage() {
         {/* Humor — metade no mobile, lado a lado com Peso */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
+            <CardTitle className="text-sm flex items-center justify-center sm:justify-start gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-400/10">
                 <Smile className="h-4 w-4 text-yellow-400" />
               </span>
@@ -167,22 +167,22 @@ export default function DashboardPage() {
           <CardContent>
             {dashboard.mood ? (
               <div className="space-y-2">
-                {/* Mobile: só números */}
-                <div className="flex gap-3 sm:hidden">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
+                {/* Mobile: só números centralizados */}
+                <div className="flex justify-around sm:hidden">
+                  <div className="text-center">
+                    <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
                       <Zap className="h-2.5 w-2.5 text-orange-400" /> Energia
                     </p>
-                    <span className="text-base font-bold text-orange-400">
+                    <span className="text-xl font-bold text-orange-400">
                       {dashboard.mood.energy_level}
                       <span className="text-[10px] font-normal text-muted-foreground">/5</span>
                     </span>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
+                  <div className="text-center">
+                    <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
                       <Smile className="h-2.5 w-2.5 text-blue-400" /> Humor
                     </p>
-                    <span className="text-base font-bold text-blue-400">
+                    <span className="text-xl font-bold text-blue-400">
                       {dashboard.mood.mood_level}
                       <span className="text-[10px] font-normal text-muted-foreground">/5</span>
                     </span>
@@ -224,7 +224,7 @@ export default function DashboardPage() {
         {/* Peso */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
+            <CardTitle className="text-sm flex items-center justify-center sm:justify-start gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
                 <Scale className="h-4 w-4 text-primary" />
               </span>
@@ -233,14 +233,14 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {dashboard.latest_weight ? (
-              <>
+              <div className="text-center sm:text-left">
                 <p className="text-2xl font-bold">
                   {dashboard.latest_weight.weight_kg}
                   <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
                 </p>
                 {user?.weight_goal && weightDelta !== null && (
                   <div className={`text-xs mt-1 ${weightDelta > 0 ? "text-orange-400" : weightDelta < 0 ? "text-green-500" : "text-muted-foreground"}`}>
-                    <p className="flex items-center gap-1">
+                    <p className="flex items-center justify-center sm:justify-start gap-1">
                       {weightDelta > 0
                         ? <TrendingUp className="h-3 w-3 shrink-0" />
                         : weightDelta < 0
@@ -248,12 +248,12 @@ export default function DashboardPage() {
                         : <Minus className="h-3 w-3 shrink-0" />}
                       Meta: {user.weight_goal} kg
                     </p>
-                    <p className="pl-4">{weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg</p>
+                    <p className="pl-0 sm:pl-4">{weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg</p>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Sem registro de peso</p>
+              <p className="text-sm text-muted-foreground">Sem registro</p>
             )}
           </CardContent>
         </Card>
