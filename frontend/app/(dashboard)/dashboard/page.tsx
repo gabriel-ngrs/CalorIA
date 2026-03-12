@@ -170,21 +170,21 @@ export default function DashboardPage() {
                 {/* Mobile: só números centralizados */}
                 <div className="flex justify-around sm:hidden">
                   <div className="text-center">
-                    <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
-                      <Zap className="h-2.5 w-2.5 text-orange-400" /> Energia
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
+                      <Zap className="h-3 w-3 text-orange-400" /> Energia
                     </p>
-                    <span className="text-xl font-bold text-orange-400">
+                    <span className="text-2xl font-bold text-orange-400">
                       {dashboard.mood.energy_level}
-                      <span className="text-[10px] font-normal text-muted-foreground">/5</span>
+                      <span className="text-xs font-normal text-muted-foreground">/5</span>
                     </span>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
-                      <Smile className="h-2.5 w-2.5 text-blue-400" /> Humor
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
+                      <Smile className="h-3 w-3 text-blue-400" /> Humor
                     </p>
-                    <span className="text-xl font-bold text-blue-400">
+                    <span className="text-2xl font-bold text-blue-400">
                       {dashboard.mood.mood_level}
-                      <span className="text-[10px] font-normal text-muted-foreground">/5</span>
+                      <span className="text-xs font-normal text-muted-foreground">/5</span>
                     </span>
                   </div>
                 </div>

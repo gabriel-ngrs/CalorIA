@@ -86,7 +86,7 @@ export function MacroCards({ nutrition, user }: Props) {
             )}
           >
             <CardHeader className="pb-1.5 pt-4 px-4">
-              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-center sm:justify-start gap-1.5">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-center sm:justify-start gap-1.5">
                 <span className={`flex items-center justify-center w-6 h-6 rounded-lg shrink-0 ${bgColor}`}>
                   <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
                 </span>
@@ -95,7 +95,7 @@ export function MacroCards({ nutrition, user }: Props) {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 text-center sm:text-left">
-              <p className="text-xl sm:text-2xl font-bold" style={{ color }}>
+              <p className="text-2xl sm:text-2xl font-bold" style={{ color }}>
                 {value.toFixed(decimals)}
                 <span className="text-xs font-normal text-muted-foreground ml-1">{unit}</span>
               </p>
@@ -103,7 +103,7 @@ export function MacroCards({ nutrition, user }: Props) {
               {pct !== null && (
                 <div className="mt-1.5 space-y-0.5">
                   <Progress value={pct} />
-                  <p className="text-[10px] sm:text-xs text-muted-foreground text-left">
+                  <p className="text-xs text-muted-foreground text-left">
                     {pct.toFixed(0)}% · {calorieGoal} kcal
                   </p>
                 </div>
