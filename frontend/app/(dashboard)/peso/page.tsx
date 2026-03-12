@@ -177,7 +177,11 @@ export default function PesoPage() {
                 <Label className="sr-only" htmlFor="weight">Peso (kg)</Label>
                 <Input
                   id="weight"
+                  type="number"
+                  inputMode="decimal"
                   placeholder="Ex: 80.5"
+                  step="0.1"
+                  min="1"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                 />
@@ -195,7 +199,7 @@ export default function PesoPage() {
                       key={v}
                       type="button"
                       onClick={() => setWeight(String(val))}
-                      className={`py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer
+                      className={`py-3 rounded-lg text-xs font-medium border transition-colors cursor-pointer
                         ${v < 0
                           ? "border-green-500/30 text-green-500 hover:bg-green-500/10"
                           : "border-orange-500/30 text-orange-400 hover:bg-orange-500/10"

@@ -113,6 +113,22 @@
     scroll-behavior: smooth;
   }
 
+  /* Elimina delay de 300ms no tap mobile e previne zoom duplo-toque */
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Previne zoom automático do iOS ao focar em inputs (requer font-size >= 16px) */
+  input, textarea, select {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input, textarea, select {
+      font-size: 14px;
+    }
+  }
+
   body {
     @apply text-foreground;
     min-height: 100vh;

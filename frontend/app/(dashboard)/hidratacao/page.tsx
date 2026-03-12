@@ -159,6 +159,7 @@ export default function HidratacaoPage() {
                 <Input
                   placeholder="Outro valor (ml)"
                   type="number"
+                  inputMode="numeric"
                   min="1"
                   value={custom}
                   onChange={(e) => setCustom(e.target.value)}
@@ -255,7 +256,7 @@ export default function HidratacaoPage() {
                   key={d}
                   size="sm"
                   variant={historyDays === d ? "default" : "outline"}
-                  className="h-6 px-2 text-xs"
+                  className="h-9 px-3 text-xs"
                   onClick={() => setHistoryDays(d)}
                 >
                   {d}d

@@ -62,7 +62,7 @@ function LevelSelector({
             onClick={() => onChange(l.value)}
             title={l.label}
             className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all duration-150 cursor-pointer",
+              "flex-1 flex flex-col items-center gap-1 py-4 rounded-xl border transition-all duration-150 cursor-pointer",
               isSelected ? selectedMap[l.value] : colorMap[l.value]
             )}
           >
@@ -317,7 +317,7 @@ export default function HumorPage() {
                   key={d}
                   size="sm"
                   variant={period === d ? "default" : "outline"}
-                  className="h-6 px-2 text-xs"
+                  className="h-9 px-3 text-xs"
                   onClick={() => setPeriod(d)}
                 >
                   {d}d
