@@ -130,8 +130,8 @@ export default function DashboardPage() {
       {/* Linha secundária: Hidratação, Humor, Peso */}
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
 
-        {/* Hidratação */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
+        {/* Hidratação — full width no mobile */}
+        <Card className="col-span-2 md:col-span-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/10">
@@ -154,8 +154,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Humor — full width no mobile */}
-        <Card className="col-span-2 md:col-span-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
+        {/* Humor — metade no mobile, lado a lado com Peso */}
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-400/10">
@@ -166,38 +166,35 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {dashboard.mood ? (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="flex gap-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Zap className="h-3 w-3 text-orange-400" /> Energia
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
+                      <Zap className="h-2.5 w-2.5 text-orange-400" /> Energia
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <LevelDots value={dashboard.mood.energy_level} color="bg-orange-400" />
-                      <span className="text-sm font-semibold">{dashboard.mood.energy_level}/5</span>
+                      <span className="text-xs font-semibold">{dashboard.mood.energy_level}/5</span>
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Smile className="h-3 w-3 text-blue-400" /> Humor
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
+                      <Smile className="h-2.5 w-2.5 text-blue-400" /> Humor
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <LevelDots value={dashboard.mood.mood_level} color="bg-blue-400" />
-                      <span className="text-sm font-semibold">{dashboard.mood.mood_level}/5</span>
+                      <span className="text-xs font-semibold">{dashboard.mood.mood_level}/5</span>
                     </div>
                   </div>
                 </div>
                 {dashboard.mood.notes && (
-                  <p className="text-xs text-muted-foreground italic truncate">
+                  <p className="text-[10px] text-muted-foreground italic truncate hidden sm:block">
                     &ldquo;{dashboard.mood.notes}&rdquo;
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {LEVEL_LABELS[(dashboard.mood.energy_level + dashboard.mood.mood_level) / 2 > 3 ? 3 : Math.round((dashboard.mood.energy_level + dashboard.mood.mood_level) / 2) - 1]}
-                </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Não registrado hoje</p>
+              <p className="text-sm text-muted-foreground">Não registrado</p>
             )}
           </CardContent>
         </Card>
