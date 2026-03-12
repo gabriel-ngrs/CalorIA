@@ -1,23 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
   Bot,
   CalendarIcon,
+  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
   Dumbbell,
   Droplets,
   Flame,
+  Mic,
+  MicOff,
   Pencil,
   Plus,
   RefreshCw,
   Search,
   Trash2,
+  Type,
   UtensilsCrossed,
+  X,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,7 +56,7 @@ const Calendar = dynamic(
   () => import("@/components/ui/calendar").then((m) => m.Calendar),
   { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
 );
-import { useAnalyzeMeal, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
+import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
 import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -331,6 +336,22 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+type InputMode = "text" | "photo" | "audio";
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function RefeicoesPage() {
@@ -340,6 +361,7 @@ export default function RefeicoesPage() {
   const { data: meals, isLoading } = useMeals(filterDate);
   const deleteMeal = useDeleteMeal();
   const analyzeMeal = useAnalyzeMeal();
+  const analyzePhoto = useAnalyzePhoto();
   const createMeal = useCreateMeal();
   const updateMeal = useUpdateMeal();
 
@@ -347,9 +369,26 @@ export default function RefeicoesPage() {
 
   // Nova refeição
   const [open, setOpen] = useState(false);
-  const [description, setDescription] = useState("");
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [parsedItems, setParsedItems] = useState<ParsedFoodItem[] | null>(null);
+
+  // Modo de entrada
+  const [inputMode, setInputMode] = useState<InputMode>("text");
+
+  // Texto
+  const [description, setDescription] = useState("");
+
+  // Foto
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Áudio
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const speechRef = useRef<any>(null);
 
   // Edição
   const [editOpen, setEditOpen] = useState(false);
@@ -374,12 +413,66 @@ export default function RefeicoesPage() {
     setEditMeal(null);
   }
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    // reset input so same file can be selected again
+    e.target.value = "";
+  }
+
+  function startRecording() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      setSpeechError("Reconhecimento de voz não suportado. Use Chrome ou Edge.");
+      return;
+    }
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let final = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) final += event.results[i][0].transcript;
+      }
+      if (final) setTranscript((prev) => (prev + " " + final).trim());
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
+      setIsRecording(false);
+      if (event.error !== "aborted") setSpeechError("Erro no microfone. Verifique as permissões do navegador.");
+    };
+    recognition.onend = () => setIsRecording(false);
+    speechRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    setSpeechError(null);
+  }
+
+  function stopRecording() {
+    speechRef.current?.stop();
+    setIsRecording(false);
+  }
+
   async function handleAnalyze() {
     try {
-      const res = await analyzeMeal.mutateAsync(description);
-      setParsedItems(res.items);
+      if (inputMode === "text") {
+        const res = await analyzeMeal.mutateAsync(description);
+        setParsedItems(res.items);
+      } else if (inputMode === "photo" && imageFile) {
+        const base64 = await fileToBase64(imageFile);
+        const res = await analyzePhoto.mutateAsync({ image_base64: base64, mime_type: imageFile.type || "image/jpeg" });
+        setParsedItems(res.items);
+      } else if (inputMode === "audio" && transcript.trim()) {
+        const res = await analyzeMeal.mutateAsync(transcript);
+        setParsedItems(res.items);
+      }
     } catch {
-      // error shown via analyzeMeal.isError
+      // error shown via mutation.isError
     }
   }
 
@@ -419,6 +512,13 @@ export default function RefeicoesPage() {
     setParsedItems(null);
     setDescription("");
     setMealType("lunch");
+    setInputMode("text");
+    setImageFile(null);
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(null);
+    setTranscript("");
+    setSpeechError(null);
+    speechRef.current?.stop();
   }
 
   const dateLabel = formatDateDisplay(filterDate);
@@ -471,8 +571,34 @@ export default function RefeicoesPage() {
                 </Select>
               </div>
 
-              {/* Descrição — só exibe se ainda não analisou */}
+              {/* Seletor de modo — só exibe antes de analisar */}
               {!parsedItems && (
+                <div className="flex gap-1 p-1 rounded-lg bg-muted/40 border border-border/50">
+                  {([
+                    { mode: "text",  Icon: Type,   label: "Texto"  },
+                    { mode: "photo", Icon: Camera, label: "Foto"   },
+                    { mode: "audio", Icon: Mic,    label: "Áudio"  },
+                  ] as const).map(({ mode, Icon, label }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setInputMode(mode); setParsedItems(null); }}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer",
+                        inputMode === mode
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Modo Texto ── */}
+              {inputMode === "text" && !parsedItems && (
                 <div className="space-y-1.5">
                   <Label htmlFor="desc" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Descreva o que comeu
@@ -488,23 +614,120 @@ export default function RefeicoesPage() {
                 </div>
               )}
 
+              {/* ── Modo Foto ── */}
+              {inputMode === "photo" && !parsedItems && (
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                  {imagePreviewUrl ? (
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Preview da refeição"
+                        className="w-full rounded-lg object-cover max-h-48"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setImageFile(null); setImagePreviewUrl(null); }}
+                        className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1 hover:bg-background transition-colors cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors cursor-pointer"
+                    >
+                      <Camera className="h-8 w-8" />
+                      <span className="text-sm font-medium">Tirar foto ou escolher da galeria</span>
+                      <span className="text-xs">JPEG ou PNG</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ── Modo Áudio ── */}
+              {inputMode === "audio" && !parsedItems && (
+                <div className="space-y-3">
+                  <div className="flex flex-col items-center gap-3 py-3">
+                    <button
+                      type="button"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center transition-all cursor-pointer",
+                        isRecording
+                          ? "bg-red-500/20 border-2 border-red-500 text-red-400 animate-pulse"
+                          : "bg-primary/10 border-2 border-primary/30 text-primary hover:bg-primary/20"
+                      )}
+                    >
+                      {isRecording ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
+                    </button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      {isRecording ? "Gravando... clique para parar" : "Clique no microfone e fale o que comeu"}
+                    </p>
+                  </div>
+
+                  {transcript && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Transcrição
+                      </Label>
+                      <Textarea
+                        value={transcript}
+                        onChange={(e) => setTranscript(e.target.value)}
+                        className="resize-none"
+                        rows={3}
+                        placeholder="O que você falou aparecerá aqui..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTranscript("")}
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                      >
+                        Limpar transcrição
+                      </button>
+                    </div>
+                  )}
+
+                  {speechError && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      {speechError}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Erro IA */}
-              {analyzeMeal.isError && (
+              {(analyzeMeal.isError || analyzePhoto.isError) && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   Erro ao analisar. Verifique sua conexão e tente novamente.
                 </div>
               )}
 
-              {/* Analisar */}
+              {/* Botão Analisar */}
               {!parsedItems && (
                 <Button
                   onClick={handleAnalyze}
-                  disabled={!description.trim() || analyzeMeal.isPending}
+                  disabled={
+                    analyzeMeal.isPending || analyzePhoto.isPending ||
+                    (inputMode === "text" && description.trim().length < 3) ||
+                    (inputMode === "photo" && !imageFile) ||
+                    (inputMode === "audio" && transcript.trim().length < 3)
+                  }
                   className="w-full"
                 >
                   <Search className="h-4 w-4 mr-2" />
-                  {analyzeMeal.isPending ? "Analisando com IA..." : "Analisar com IA"}
+                  {(analyzeMeal.isPending || analyzePhoto.isPending) ? "Analisando com IA..." : "Analisar com IA"}
                 </Button>
               )}
 

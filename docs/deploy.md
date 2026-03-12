@@ -19,7 +19,7 @@ Guia passo a passo para hospedar o CalorIA de graça para sempre.
 ## Pré-requisitos (o que você já precisa ter)
 
 - [ ] Conta Google ou GitHub (para DuckDNS)
-- [ ] Groq API Key — [console.groq.com](https://console.groq.com) (gratuito)
+- [ ] Gemini API Key — [aistudio.google.com](https://aistudio.google.com/app/apikey) (gratuito)
 - [ ] Telegram Bot Token — fale com [@BotFather](https://t.me/BotFather) no Telegram
 - [ ] Cartão de crédito/débito (Oracle pede para verificar identidade — **não cobra nada**)
 
@@ -220,11 +220,11 @@ DATABASE_URL=postgresql+asyncpg://caloria:MESMA_SENHA_ACIMA@postgres:5432/calori
 # CORS
 BACKEND_CORS_ORIGINS=https://caloria-gabriel.duckdns.org
 
-# IA (Groq)
-GROQ_API_KEY=gsk_SUACHAVEGROQ
+# IA (Gemini)
+GEMINI_API_KEY=sua-chave-gemini-aqui
 
 # Telegram
-TELEGRAM_BOT_TOKEN=SEUBOTTOKEN
+TELEGRAM_BOT_TOKEN=seu-token-botfather-aqui
 ```
 
 Para gerar os secrets, abra outro terminal e rode:

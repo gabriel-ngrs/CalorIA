@@ -75,3 +75,12 @@ export function useAnalyzeMeal() {
     },
   });
 }
+
+export function useAnalyzePhoto() {
+  return useMutation({
+    mutationFn: async ({ image_base64, mime_type }: { image_base64: string; mime_type: string }) => {
+      const { data } = await api.post("/api/v1/ai/analyze-photo", { image_base64, mime_type });
+      return data;
+    },
+  });
+}
