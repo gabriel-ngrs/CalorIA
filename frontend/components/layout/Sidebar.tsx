@@ -13,6 +13,7 @@ import {
   User,
   MessageCircle,
   Sparkles,
+  BarChart2,
 } from "lucide-react";
 
 const nav = [
@@ -21,6 +22,7 @@ const nav = [
   { href: "/peso", label: "Peso", icon: Scale },
   { href: "/hidratacao", label: "Hidratação", icon: Droplets },
   { href: "/humor", label: "Humor", icon: Smile },
+  { href: "/relatorios", label: "Relatórios", icon: BarChart2 },
   { href: "/lembretes", label: "Lembretes", icon: Bell },
   { href: "/insights", label: "Insights IA", icon: Sparkles },
   { href: "/perfil", label: "Perfil", icon: User },

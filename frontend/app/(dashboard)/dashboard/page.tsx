@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -63,6 +64,13 @@ export default function DashboardPage() {
   const { data: macros } = useMacrosChart(7);
   const { data: user } = useMe();
   const [quickModal, setQuickModal] = useState<QuickModal>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user && !user.calorie_goal) {
+      router.replace("/onboarding");
+    }
+  }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
