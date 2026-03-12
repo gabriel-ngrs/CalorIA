@@ -14,6 +14,7 @@ interface Props {
 const macros = [
   {
     label: "Calorias",
+    shortLabel: "Calorias",
     key: "total_calories",
     unit: "kcal",
     Icon: Flame,
@@ -26,6 +27,7 @@ const macros = [
   },
   {
     label: "Proteína",
+    shortLabel: "Proteína",
     key: "total_protein",
     unit: "g",
     Icon: Dumbbell,
@@ -38,6 +40,7 @@ const macros = [
   },
   {
     label: "Carboidrato",
+    shortLabel: "Carbs",
     key: "total_carbs",
     unit: "g",
     Icon: Zap,
@@ -50,6 +53,7 @@ const macros = [
   },
   {
     label: "Gordura",
+    shortLabel: "Gordura",
     key: "total_fat",
     unit: "g",
     Icon: Droplets,
@@ -66,8 +70,8 @@ export function MacroCards({ nutrition, user }: Props) {
   const calorieGoal = user?.calorie_goal ?? 2000;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {macros.map(({ label, key, unit, Icon, color, bgColor, iconColor, decimals, hoverBorder, hoverShadow }) => {
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      {macros.map(({ label, shortLabel, key, unit, Icon, color, bgColor, iconColor, decimals, hoverBorder, hoverShadow }) => {
         const value = nutrition[key];
         const pct =
           key === "total_calories" ? Math.min((value / calorieGoal) * 100, 100) : null;
@@ -81,25 +85,26 @@ export function MacroCards({ nutrition, user }: Props) {
               hoverShadow
             )}
           >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <span className={`flex items-center justify-center w-7 h-7 rounded-lg ${bgColor}`}>
-                  <Icon className={`h-4 w-4 ${iconColor}`} />
+            <CardHeader className="pb-1.5 pt-4 px-4">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <span className={`flex items-center justify-center w-6 h-6 rounded-lg shrink-0 ${bgColor}`}>
+                  <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
                 </span>
-                {label}
+                <span className="sm:hidden">{shortLabel}</span>
+                <span className="hidden sm:inline">{label}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold" style={{ color }}>
+            <CardContent className="px-4 pb-4">
+              <p className="text-xl sm:text-2xl font-bold" style={{ color }}>
                 {value.toFixed(decimals)}
                 <span className="text-xs font-normal text-muted-foreground ml-1">{unit}</span>
               </p>
 
               {pct !== null && (
-                <div className="mt-2 space-y-1">
+                <div className="mt-1.5 space-y-0.5">
                   <Progress value={pct} />
-                  <p className="text-xs text-muted-foreground">
-                    {pct.toFixed(0)}% da meta · {calorieGoal} kcal
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    {pct.toFixed(0)}% · {calorieGoal} kcal
                   </p>
                 </div>
               )}

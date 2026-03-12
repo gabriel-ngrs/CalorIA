@@ -128,7 +128,7 @@ export default function DashboardPage() {
       <MacroCards nutrition={dashboard.nutrition} user={user} />
 
       {/* Linha secundária: Hidratação, Humor, Peso */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
 
         {/* Hidratação */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
@@ -154,8 +154,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Humor */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
+        {/* Humor — full width no mobile */}
+        <Card className="col-span-2 md:col-span-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-400/10">
