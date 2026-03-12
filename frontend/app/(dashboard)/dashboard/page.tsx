@@ -167,23 +167,45 @@ export default function DashboardPage() {
           <CardContent>
             {dashboard.mood ? (
               <div className="space-y-2">
-                <div className="flex gap-3">
+                {/* Mobile: só números */}
+                <div className="flex gap-3 sm:hidden">
                   <div>
                     <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
                       <Zap className="h-2.5 w-2.5 text-orange-400" /> Energia
                     </p>
-                    <div className="flex items-center gap-1.5">
-                      <LevelDots value={dashboard.mood.energy_level} color="bg-orange-400" />
-                      <span className="text-xs font-semibold">{dashboard.mood.energy_level}/5</span>
-                    </div>
+                    <span className="text-base font-bold text-orange-400">
+                      {dashboard.mood.energy_level}
+                      <span className="text-[10px] font-normal text-muted-foreground">/5</span>
+                    </span>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
                       <Smile className="h-2.5 w-2.5 text-blue-400" /> Humor
                     </p>
-                    <div className="flex items-center gap-1.5">
+                    <span className="text-base font-bold text-blue-400">
+                      {dashboard.mood.mood_level}
+                      <span className="text-[10px] font-normal text-muted-foreground">/5</span>
+                    </span>
+                  </div>
+                </div>
+                {/* Desktop: dots completos */}
+                <div className="hidden sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-orange-400" /> Energia
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <LevelDots value={dashboard.mood.energy_level} color="bg-orange-400" />
+                      <span className="text-sm font-semibold">{dashboard.mood.energy_level}/5</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Smile className="h-3 w-3 text-blue-400" /> Humor
+                    </p>
+                    <div className="flex items-center gap-2">
                       <LevelDots value={dashboard.mood.mood_level} color="bg-blue-400" />
-                      <span className="text-xs font-semibold">{dashboard.mood.mood_level}/5</span>
+                      <span className="text-sm font-semibold">{dashboard.mood.mood_level}/5</span>
                     </div>
                   </div>
                 </div>
@@ -217,14 +239,17 @@ export default function DashboardPage() {
                   <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
                 </p>
                 {user?.weight_goal && weightDelta !== null && (
-                  <p className={`text-xs mt-1 flex items-center gap-1 ${weightDelta > 0 ? "text-orange-400" : weightDelta < 0 ? "text-green-500" : "text-muted-foreground"}`}>
-                    {weightDelta > 0
-                      ? <TrendingUp className="h-3 w-3" />
-                      : weightDelta < 0
-                      ? <TrendingDown className="h-3 w-3" />
-                      : <Minus className="h-3 w-3" />}
-                    Meta: {user.weight_goal} kg ({weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg)
-                  </p>
+                  <div className={`text-xs mt-1 ${weightDelta > 0 ? "text-orange-400" : weightDelta < 0 ? "text-green-500" : "text-muted-foreground"}`}>
+                    <p className="flex items-center gap-1">
+                      {weightDelta > 0
+                        ? <TrendingUp className="h-3 w-3 shrink-0" />
+                        : weightDelta < 0
+                        ? <TrendingDown className="h-3 w-3 shrink-0" />
+                        : <Minus className="h-3 w-3 shrink-0" />}
+                      Meta: {user.weight_goal} kg
+                    </p>
+                    <p className="pl-4">{weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg</p>
+                  </div>
                 )}
               </>
             ) : (
