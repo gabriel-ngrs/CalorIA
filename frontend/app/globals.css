@@ -9,25 +9,25 @@
      Clean, arejado, whites com acento azul-aço suave
   ============================================================ */
   :root {
-    --background: 198 30% 97%;
-    --foreground: 198 40% 14%;
+    --background: 210 18% 91%;
+    --foreground: 210 35% 13%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 198 40% 14%;
+    --card: 210 14% 96%;
+    --card-foreground: 210 35% 13%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 198 40% 14%;
+    --popover: 210 14% 96%;
+    --popover-foreground: 210 35% 13%;
 
     /* Primary: #527787 — azul aço médio, bom contraste em branco */
     --primary: 198 24% 42%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: cinza-azulado suave */
-    --secondary: 198 20% 93%;
-    --secondary-foreground: 198 30% 28%;
+    --secondary: 210 16% 86%;
+    --secondary-foreground: 210 28% 26%;
 
-    --muted: 198 16% 91%;
-    --muted-foreground: 198 14% 50%;
+    --muted: 210 14% 87%;
+    --muted-foreground: 210 12% 44%;
 
     /* Accent: laranja quente — "Calor" de CalorIA */
     --accent: 28 88% 54%;
@@ -36,23 +36,23 @@
     --destructive: 0 78% 57%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 198 18% 88%;
-    --input: 198 16% 94%;
+    --border: 210 16% 81%;
+    --input: 210 14% 90%;
     --ring: 198 24% 42%;
 
     --radius: 0.875rem;
 
-    /* --- Neumorfismo light — quase imperceptível, toque de profundidade --- */
-    --neu-dark: rgba(124, 162, 178, 0.22);
-    --neu-light: rgba(255, 255, 255, 0.95);
-    --neu-dark-sm: rgba(124, 162, 178, 0.15);
-    --neu-light-sm: rgba(255, 255, 255, 0.9);
+    /* --- Neumorfismo light --- */
+    --neu-dark: rgba(110, 140, 160, 0.20);
+    --neu-light: rgba(255, 255, 255, 0.88);
+    --neu-dark-sm: rgba(110, 140, 160, 0.13);
+    --neu-light-sm: rgba(255, 255, 255, 0.82);
 
-    /* --- Vidro light — essencialmente branco limpo --- */
-    --glass-bg: rgba(255, 255, 255, 0.85);
-    --glass-bg-hover: rgba(255, 255, 255, 0.96);
-    --glass-border: rgba(145, 183, 199, 0.22);
-    --glass-shadow: rgba(82, 119, 135, 0.07);
+    /* --- Vidro light --- */
+    --glass-bg: rgba(240, 244, 248, 0.82);
+    --glass-bg-hover: rgba(245, 248, 251, 0.94);
+    --glass-border: rgba(145, 183, 199, 0.28);
+    --glass-shadow: rgba(82, 119, 135, 0.09);
   }
 
   /* ============================================================
@@ -134,10 +134,10 @@
     min-height: 100vh;
     font-feature-settings: "rlig" 1, "calt" 1;
 
-    /* Light mode — fundo quase branco com orbes azuis muito suaves */
+    /* Light mode — cinza-azulado com orbes suaves de profundidade */
     background:
-      radial-gradient(ellipse 70% 45% at 100% 0%, hsl(198 35% 88% / 0.45) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 35% at 0% 100%, hsl(198 30% 90% / 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse 70% 45% at 100% 0%, hsl(198 30% 80% / 0.30) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 35% at 0% 100%, hsl(210 25% 82% / 0.22) 0%, transparent 50%),
       hsl(var(--background));
   }
 
@@ -173,15 +173,15 @@
       0 4px 20px var(--glass-shadow);
   }
 
-  /* Em light mode, carta é simplesmente branca sem blur pesado */
+  /* Em light mode, carta é off-white suave sem blur pesado */
   :root .glass-card {
     background: hsl(var(--card));
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border: 1px solid hsl(var(--border));
     box-shadow:
-      0 1px 4px rgba(82, 119, 135, 0.06),
-      0 4px 20px rgba(82, 119, 135, 0.06);
+      0 1px 3px rgba(82, 119, 135, 0.08),
+      0 4px 16px rgba(82, 119, 135, 0.08);
   }
 
   .glass-hover {
