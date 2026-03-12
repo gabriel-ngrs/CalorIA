@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -7,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MacroCards } from "@/components/dashboard/MacroCards";
 import { MacroPieChart } from "@/components/dashboard/MacroPieChart";
 import { CaloriesBarChart } from "@/components/dashboard/CaloriesBarChart";
+import { QuickMealModal, QuickWaterModal, QuickWeightModal, QuickMoodModal } from "@/components/dashboard/QuickAddModals";
 import { useDashboardToday, useMacrosChart } from "@/lib/hooks/useDashboard";
 import { useMe } from "@/lib/hooks/useProfile";
 import type { MealType } from "@/types";
@@ -54,10 +56,13 @@ function LevelDots({ value, color }: { value: number; color: string }) {
   );
 }
 
+type QuickModal = "meal" | "water" | "weight" | "mood" | null;
+
 export default function DashboardPage() {
   const { data: dashboard, isLoading, isError } = useDashboardToday();
   const { data: macros } = useMacrosChart(7);
   const { data: user } = useMe();
+  const [quickModal, setQuickModal] = useState<QuickModal>(null);
 
   if (isLoading) {
     return (
@@ -125,13 +130,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Macro cards */}
-      <MacroCards nutrition={dashboard.nutrition} user={user} />
+      <MacroCards nutrition={dashboard.nutrition} user={user} onCaloriesClick={() => setQuickModal("meal")} />
 
       {/* Linha secundária: Hidratação, Humor, Peso */}
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
 
         {/* Hidratação — full width no mobile */}
-        <Card className="col-span-2 md:col-span-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
+        <Card onClick={() => setQuickModal("water")} className="col-span-2 md:col-span-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40 cursor-pointer">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/10">
@@ -155,7 +160,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Humor — metade no mobile, lado a lado com Peso */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
+        <Card onClick={() => setQuickModal("mood")} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40 cursor-pointer">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-center sm:justify-start gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-400/10">
@@ -222,7 +227,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Peso */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40">
+        <Card onClick={() => setQuickModal("weight")} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40 cursor-pointer">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-center sm:justify-start gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
@@ -264,6 +269,16 @@ export default function DashboardPage() {
         <MacroPieChart nutrition={dashboard.nutrition} />
         {macros && <CaloriesBarChart data={macros} calorieGoal={user?.calorie_goal ?? undefined} />}
       </div>
+
+      {/* Quick action modals */}
+      <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} />
+      <QuickWaterModal open={quickModal === "water"} onOpenChange={(v) => setQuickModal(v ? "water" : null)} />
+      <QuickWeightModal
+        open={quickModal === "weight"}
+        onOpenChange={(v) => setQuickModal(v ? "weight" : null)}
+        currentWeight={dashboard.latest_weight?.weight_kg}
+      />
+      <QuickMoodModal open={quickModal === "mood"} onOpenChange={(v) => setQuickModal(v ? "mood" : null)} />
 
       {/* Refeições do dia */}
       {dashboard.nutrition.meals.length > 0 && (

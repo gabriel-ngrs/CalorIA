@@ -9,6 +9,7 @@ import type { NutritionSummary, User } from "@/types";
 interface Props {
   nutrition: NutritionSummary;
   user: User | undefined;
+  onCaloriesClick?: () => void;
 }
 
 const macros = [
@@ -66,7 +67,7 @@ const macros = [
   },
 ] as const;
 
-export function MacroCards({ nutrition, user }: Props) {
+export function MacroCards({ nutrition, user, onCaloriesClick }: Props) {
   const calorieGoal = user?.calorie_goal ?? 2000;
 
   return (
@@ -76,13 +77,16 @@ export function MacroCards({ nutrition, user }: Props) {
         const pct =
           key === "total_calories" ? Math.min((value / calorieGoal) * 100, 100) : null;
 
+        const isCalories = key === "total_calories";
         return (
           <Card
             key={key}
+            onClick={isCalories && onCaloriesClick ? onCaloriesClick : undefined}
             className={cn(
               "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl",
               hoverBorder,
-              hoverShadow
+              hoverShadow,
+              isCalories && onCaloriesClick && "cursor-pointer"
             )}
           >
             <CardHeader className="pb-1.5 pt-4 px-4">
