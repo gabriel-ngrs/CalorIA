@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Camera,
@@ -143,6 +143,15 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const [speechError, setSpeechError] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const speechRef = useRef<any>(null);
+
+  // Revoga object URL ao desmontar para evitar memory leak
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      speechRef.current?.stop();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function reset() {
     setParsedItems(null);

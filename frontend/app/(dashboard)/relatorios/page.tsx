@@ -77,14 +77,8 @@ export default function RelatoriosPage() {
   const calorieGoal = user?.calorie_goal ?? undefined;
   const goalMl = user?.water_goal_ml ?? DEFAULT_GOAL_ML;
 
-  // ── Macro chart data ──────────────────────────────────────────────────────
-  const macroChartData: WeeklyMacroPoint[] = (macros ?? []).map((d) => ({
-    ...d,
-    date: new Date(d.date + "T12:00").toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-    }),
-  }));
+  // ── Macro chart data — dados brutos; CaloriesBarChart faz sua própria formatação ──
+  const macroChartData: WeeklyMacroPoint[] = macros ?? [];
 
   // ── Summary stats ─────────────────────────────────────────────────────────
   const avgCalories =
@@ -460,24 +454,24 @@ export default function RelatoriosPage() {
         </Card>
       </div>
 
-      {/* Macro chart */}
-      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/30">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <Flame className="h-4 w-4 text-orange-500" />
-            Calorias diárias
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {macroChartData.length > 0 ? (
-            <CaloriesBarChart data={macroChartData} calorieGoal={calorieGoal} />
-          ) : (
+      {/* Macro chart — CaloriesBarChart já inclui seu próprio Card */}
+      {macroChartData.length > 0 ? (
+        <CaloriesBarChart data={macroChartData} calorieGoal={calorieGoal} />
+      ) : (
+        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <Flame className="h-4 w-4 text-orange-500" />
+              Calorias diárias
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="h-[240px] flex items-center justify-center text-muted-foreground text-sm">
               Sem dados de refeições no período
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Weight chart */}
       {weightChartData.length > 1 && (
