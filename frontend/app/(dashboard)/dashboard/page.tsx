@@ -98,13 +98,54 @@ export default function DashboardPage() {
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
-        <UtensilsCrossed className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Nenhum dado para hoje</h2>
-        <p className="text-muted-foreground text-sm max-w-xs">
-          Registre sua primeira refeição pelo Telegram, WhatsApp ou pela página de Refeições.
-        </p>
-      </div>
+      <>
+        <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} />
+        <QuickWaterModal open={quickModal === "water"} onOpenChange={(v) => setQuickModal(v ? "water" : null)} />
+        <QuickWeightModal open={quickModal === "weight"} onOpenChange={(v) => setQuickModal(v ? "weight" : null)} />
+        <QuickMoodModal open={quickModal === "mood"} onOpenChange={(v) => setQuickModal(v ? "mood" : null)} />
+
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-4">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50">
+            <UtensilsCrossed className="h-8 w-8 text-muted-foreground/40" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Nenhum dado para hoje</h2>
+            <p className="text-muted-foreground text-sm max-w-xs mt-1">
+              Comece registrando uma refeição, sua hidratação, peso ou humor do dia.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
+            <button
+              onClick={() => setQuickModal("meal")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 transition-colors cursor-pointer"
+            >
+              <UtensilsCrossed className="h-5 w-5 text-orange-400" />
+              <span className="text-xs font-medium text-orange-400">Refeição</span>
+            </button>
+            <button
+              onClick={() => setQuickModal("water")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors cursor-pointer"
+            >
+              <Droplets className="h-5 w-5 text-blue-400" />
+              <span className="text-xs font-medium text-blue-400">Água</span>
+            </button>
+            <button
+              onClick={() => setQuickModal("weight")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
+            >
+              <Scale className="h-5 w-5 text-primary" />
+              <span className="text-xs font-medium text-primary">Peso</span>
+            </button>
+            <button
+              onClick={() => setQuickModal("mood")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 transition-colors cursor-pointer"
+            >
+              <Smile className="h-5 w-5 text-yellow-400" />
+              <span className="text-xs font-medium text-yellow-400">Humor</span>
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 
