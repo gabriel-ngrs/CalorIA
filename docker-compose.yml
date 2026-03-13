@@ -97,6 +97,8 @@ services:
         NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-insecure-secret-change-in-production}
     container_name: caloria_frontend
     restart: unless-stopped
+    ports:
+      - "3000:3000"
     env_file:
       - .env
     depends_on:

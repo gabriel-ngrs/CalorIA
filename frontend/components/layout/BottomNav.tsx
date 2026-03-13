@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   UtensilsCrossed,
   Droplets,
-  Smile,
   User,
   Plus,
 } from "lucide-react";
@@ -32,7 +31,7 @@ export function BottomNav() {
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden glass border-t border-[var(--glass-border)]">
         <div className="flex items-center">
-          {nav.map((item, i) => {
+          {nav.map((item) => {
             // FAB slot — botão de ação primária
             if (item === null) {
               return (

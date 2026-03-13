@@ -42,7 +42,6 @@ const MEAL_ACCENT: Record<MealType, { border: string; dot: string; cal: string }
   dessert:         { border: "border-l-pink-400",    dot: "bg-pink-400",    cal: "text-pink-400" },
 };
 
-const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];
 
 function LevelDots({ value, color }: { value: number; color: string }) {
   return (
