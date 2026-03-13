@@ -149,7 +149,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
   ]
 }}"""
 
-        raw = await self._client.generate_text(prompt, use_cache=False)
+        raw = await self._client.generate_text(prompt, use_cache=True)
         raw = raw.strip().strip("```json").strip("```").strip()
         try:
             data = json.loads(raw)
@@ -220,6 +220,13 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
                     severity=severity,  # type: ignore[arg-type]
                 ))
 
+        if not daily_totals:
+            return NutritionalAlertsResponse(
+                alerts=[],
+                analysis="Ainda não há refeições registradas no período para análise nutricional. Registre suas refeições para receber alertas personalizados!",
+                days_analyzed=0,
+            )
+
         alert_lines = "\n".join(
             f"- {a.nutrient}: média {a.average_daily}{a.unit}/dia "
             f"(mínimo recomendado: {a.recommended_min}{a.unit}, severidade: {a.severity})"
@@ -235,7 +242,7 @@ Deficiências detectadas:
 
 Em 2-3 parágrafos em português, explique as implicações e sugira alimentos concretos para corrigir cada deficiência."""
 
-        analysis = await self._client.generate_text(prompt, use_cache=False)
+        analysis = await self._client.generate_text(prompt, use_cache=True)
 
         return NutritionalAlertsResponse(
             alerts=alerts,
@@ -262,6 +269,16 @@ Em 2-3 parágrafos em português, explique as implicações e sugira alimentos c
             total_change = newest.weight_kg - oldest.weight_kg
             trend_kg_per_week = round(total_change / days_diff * 7, 2)
 
+        if len(weight_logs) < 2:
+            return GoalAdjustmentSuggestion(
+                current_calorie_goal=calorie_goal,
+                suggested_calorie_goal=None,
+                current_weight_goal=weight_goal,
+                weight_trend_kg_per_week=None,
+                adjustment_recommended=False,
+                suggestion="Registre pelo menos 2 pesagens para receber sugestões de ajuste de metas personalizadas.",
+            )
+
         trend_text = (
             f"{trend_kg_per_week:+.2f} kg/semana "
             f"({'perda' if trend_kg_per_week < 0 else 'ganho'})"
@@ -283,7 +300,7 @@ Com base nos dados:
 
 Responda em 2-3 parágrafos em português, sendo específico e motivador."""
 
-        suggestion_text = await self._client.generate_text(prompt, use_cache=False)
+        suggestion_text = await self._client.generate_text(prompt, use_cache=True)
 
         # Calcula sugestão de meta calórica baseada na tendência
         suggested_goal: int | None = None

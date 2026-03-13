@@ -32,6 +32,14 @@ class PatternAnalyzer:
         mood_logs = await self._fetch_mood_logs(user_id, start_date)
 
         frequent_foods = self._top_foods(meals, top_n=10)
+
+        if not meals:
+            return EatingPattern(
+                analysis="Ainda não há refeições registradas no período para análise. Comece registrando suas refeições para receber insights personalizados!",
+                frequent_foods=[],
+                days_analyzed=days,
+            )
+
         summary_text = self._build_summary(meals, mood_logs, start_date, days)
 
         prompt = f"""Você é um nutricionista analisando os hábitos alimentares de um usuário nos últimos {days} dias.
@@ -46,7 +54,7 @@ Dados:
 
 Seja específico, prático e motivador."""
 
-        analysis = await self._client.generate_text(prompt, use_cache=False)
+        analysis = await self._client.generate_text(prompt, use_cache=True)
 
         return EatingPattern(
             analysis=analysis,
