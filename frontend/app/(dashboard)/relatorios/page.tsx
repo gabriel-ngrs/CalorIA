@@ -14,6 +14,7 @@ import {
   Smile,
   Trophy,
   Target,
+  UtensilsCrossed,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -215,13 +216,28 @@ export default function RelatoriosPage() {
         ))}
       </div>
 
+      {/* Empty state quando não há dados no período */}
+      {avgCalories === 0 && avgProtein === 0 && !weightTrend && (
+        <div className="rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 px-5 py-6 flex flex-col items-center gap-3 text-center">
+          <span className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+            <UtensilsCrossed className="h-5 w-5 text-primary" />
+          </span>
+          <div>
+            <p className="font-semibold text-sm">Sem dados no período selecionado</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Registre refeições, peso e hidratação para ver seu progresso aqui.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Summary stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
         {/* Média calórica */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
                 <Flame className="h-3 w-3 text-orange-500" />
               </span>
@@ -239,7 +255,7 @@ export default function RelatoriosPage() {
         {/* Média proteína */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/40">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-green-500/10">
                 <Dumbbell className="h-3 w-3 text-green-500" />
               </span>
@@ -262,7 +278,7 @@ export default function RelatoriosPage() {
         {/* Dias com meta hídrica */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10">
                 <Droplets className="h-3 w-3 text-blue-500" />
               </span>
@@ -283,7 +299,7 @@ export default function RelatoriosPage() {
         {/* Tendência de peso */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary/10">
                 {weightTrend === null ? (
                   <Minus className="h-3 w-3 text-primary" />
@@ -332,7 +348,7 @@ export default function RelatoriosPage() {
         {/* Best weekday */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/30 rounded-xl border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
                 <Trophy className="h-3 w-3 text-orange-500" />
               </span>
@@ -362,7 +378,7 @@ export default function RelatoriosPage() {
         {/* Avg mood/energy */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30 rounded-xl border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-yellow-400/10">
                 <Smile className="h-3 w-3 text-yellow-400" />
               </span>
@@ -395,7 +411,7 @@ export default function RelatoriosPage() {
         {/* Hydration streak */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/30 rounded-xl border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10">
                 <Zap className="h-3 w-3 text-blue-500" />
               </span>
@@ -425,7 +441,7 @@ export default function RelatoriosPage() {
         {/* Days within calorie goal */}
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/30 rounded-xl border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <span className="flex items-center justify-center w-5 h-5 rounded-md bg-green-500/10">
                 <Target className="h-3 w-3 text-green-500" />
               </span>

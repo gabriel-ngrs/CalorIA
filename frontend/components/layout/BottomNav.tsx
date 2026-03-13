@@ -145,21 +145,29 @@ export function BottomNav() {
           })}
 
           {/* Botão "Mais" */}
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            className={cn(
-              "relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors duration-150",
-              isMoreActive ? "text-primary" : "text-muted-foreground"
-            )}
-            aria-label="Mais opções"
-          >
-            {isMoreActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 bg-primary rounded-b-full" />
-            )}
-            <MoreHorizontal className="h-5 w-5 shrink-0" />
-            <span className="text-[10px] font-medium whitespace-nowrap leading-tight">Mais</span>
-          </button>
+          {(() => {
+            const activeMaisItem = moreNav.find((item) => pathname === item.href);
+            const ActiveIcon = activeMaisItem?.icon ?? MoreHorizontal;
+            return (
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                className={cn(
+                  "relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors duration-150",
+                  isMoreActive ? "text-primary" : "text-muted-foreground"
+                )}
+                aria-label="Mais opções"
+              >
+                {isMoreActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 bg-primary rounded-b-full" />
+                )}
+                <ActiveIcon className="h-5 w-5 shrink-0" />
+                <span className="text-[10px] font-medium whitespace-nowrap leading-tight">
+                  {activeMaisItem?.label ?? "Mais"}
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </nav>
     </>

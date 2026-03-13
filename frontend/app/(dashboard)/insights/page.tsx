@@ -88,7 +88,7 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
@@ -97,8 +97,10 @@ export default function InsightsPage() {
         <p className="text-muted-foreground text-sm">Análises personalizadas sobre sua alimentação</p>
       </div>
 
-      {/* ── Linha superior: Insight diário + Sugestão de refeição ──────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Seção: Hoje ─────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Hoje</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
       {/* ── Insight diário ─────────────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
@@ -158,7 +160,12 @@ export default function InsightsPage() {
         </CardContent>
       </Card>
 
-      </div>{/* fim grid 2 colunas */}
+        </div>{/* fim grid 2 colunas */}
+      </div>{/* fim seção Hoje */}
+
+      {/* ── Seção: Análise de período ───────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Análise de período</p>
 
       {/* ── Alertas nutricionais ──────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
@@ -227,6 +234,12 @@ export default function InsightsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      </div>{/* fim seção Análise de período */}
+
+      {/* ── Seção: Relatórios ──────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Relatórios</p>
 
       {/* ── Análise semanal ───────────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-400/30">
@@ -335,6 +348,12 @@ export default function InsightsPage() {
         </CardContent>
       </Card>
 
+      </div>{/* fim seção Relatórios */}
+
+      {/* ── Seção: Chat ────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Pergunte à IA</p>
+
       {/* ── Pergunte à IA ─────────────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
         <CardHeader>
@@ -379,6 +398,7 @@ export default function InsightsPage() {
           </form>
         </CardContent>
       </Card>
+      </div>{/* fim seção Chat */}
     </div>
   );
 }

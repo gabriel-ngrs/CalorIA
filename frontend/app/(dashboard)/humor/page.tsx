@@ -62,7 +62,7 @@ function LevelSelector({
             onClick={() => onChange(l.value)}
             title={l.label}
             className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-4 rounded-xl border transition-all duration-150 cursor-pointer",
+              "flex-1 flex flex-col items-center gap-0.5 py-3 rounded-xl border transition-all duration-150 cursor-pointer",
               isSelected ? selectedMap[l.value] : colorMap[l.value]
             )}
           >
@@ -217,7 +217,7 @@ export default function HumorPage() {
           {/* Média energia */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
                   <Zap className="h-3 w-3 text-orange-500" />
                 </span>
@@ -238,7 +238,7 @@ export default function HumorPage() {
           {/* Média humor */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10">
                   <Smile className="h-3 w-3 text-blue-400" />
                 </span>
@@ -260,7 +260,7 @@ export default function HumorPage() {
           {bestDay && (
             <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
               <CardHeader className="pb-1">
-                <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                   <span className="flex items-center justify-center w-5 h-5 rounded-md bg-yellow-400/10">
                     <Star className="h-3 w-3 text-yellow-400" />
                   </span>
@@ -289,7 +289,7 @@ export default function HumorPage() {
           {/* Dias registrados */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary/10">
                   <CalendarDays className="h-3 w-3 text-primary" />
                 </span>
