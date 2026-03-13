@@ -57,15 +57,20 @@ export function BottomNav() {
         />
       )}
 
-      {/* Drawer "Mais" — desliza de baixo */}
+      {/* Drawer "Mais" — aparece acima da navbar */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 md:hidden glass border-t border-[var(--glass-border)]",
+          "fixed bottom-[60px] left-0 right-0 z-40 md:hidden glass border-t border-[var(--glass-border)] rounded-t-2xl shadow-2xl",
           "transition-transform duration-300 ease-out",
           moreOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
         )}
       >
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        {/* Handle visual */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+        </div>
+
+        <div className="flex items-center justify-between px-4 pt-1 pb-2">
           <span className="text-sm font-semibold text-foreground">Mais opções</span>
           <button
             onClick={() => setMoreOpen(false)}
@@ -76,7 +81,7 @@ export function BottomNav() {
           </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-1 px-2 pb-8">
+        <div className="grid grid-cols-4 gap-1 px-2 pb-4">
           {moreNav.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
