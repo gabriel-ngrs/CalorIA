@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal } from "@/lib/hooks/useMeals";
@@ -362,6 +363,16 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />{speechError}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Loading state durante análise IA */}
+          {(analyzeMeal.isPending || analyzePhoto.isPending) && (
+            <div className="space-y-2 py-1">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+              <p className="text-xs text-muted-foreground text-center pt-1">A IA está analisando sua refeição…</p>
             </div>
           )}
 

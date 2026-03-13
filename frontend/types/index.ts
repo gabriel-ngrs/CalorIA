@@ -312,6 +312,7 @@ declare module "next-auth" {
     accessToken: string;
     refreshToken: string;
     error?: string;
+    accessTokenExpires?: number;
     user: {
       id: string;
       name: string;

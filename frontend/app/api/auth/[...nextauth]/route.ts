@@ -99,6 +99,7 @@ const handler = NextAuth({
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
       session.error = token.error as string | undefined;
+      session.accessTokenExpires = token.accessTokenExpires as number;
       if (session.user) {
         session.user.id = token.id as string;
       }

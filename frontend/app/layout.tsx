@@ -10,9 +10,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "CalorIA",
   description: "Diário alimentar inteligente com IA",
-  manifest: "/manifest.json",
   appleWebApp: {
-    capable: true,
     statusBarStyle: "black-translucent",
     title: "CalorIA",
   },

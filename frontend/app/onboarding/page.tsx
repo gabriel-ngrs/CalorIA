@@ -630,8 +630,14 @@ export default function OnboardingPage() {
     }
   }
 
-  function handleSkip() {
-    if (step < 3) {
+  async function handleSkip() {
+    if (step === 2) {
+      // Salva meta calórica padrão para evitar loop no redirect do dashboard
+      try {
+        await updateMe.mutateAsync({ calorie_goal: 2000 } as Parameters<typeof updateMe.mutateAsync>[0]);
+      } catch { /* silencia — usuário pode configurar depois */ }
+      setStep(3);
+    } else if (step < 3) {
       setStep((s) => s + 1);
     } else {
       router.replace("/dashboard");

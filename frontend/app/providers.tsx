@@ -12,8 +12,8 @@ import { setApiToken } from "@/lib/api";
 function SessionSync() {
   const { data: session } = useSession();
   useEffect(() => {
-    setApiToken(session?.accessToken ?? null, session?.error);
-  }, [session?.accessToken, session?.error]);
+    setApiToken(session?.accessToken ?? null, session?.error, session?.accessTokenExpires);
+  }, [session?.accessToken, session?.error, session?.accessTokenExpires]);
   return null;
 }
 
