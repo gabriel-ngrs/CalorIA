@@ -4,6 +4,18 @@ import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LogOut, User } from "lucide-react";
+import api from "@/lib/api";
+
+async function handleLogout(refreshToken?: string) {
+  if (refreshToken) {
+    try {
+      await api.post("/api/v1/auth/logout", { refresh_token: refreshToken });
+    } catch {
+      // Ignora erro — invalida sessão local de qualquer forma
+    }
+  }
+  await signOut({ callbackUrl: "/login" });
+}
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -28,7 +40,7 @@ export function Navbar() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => handleLogout(session?.refreshToken)}
             className="gap-1.5 text-muted-foreground hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
