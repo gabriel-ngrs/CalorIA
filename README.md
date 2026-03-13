@@ -146,12 +146,23 @@ CalorIA/
 │   │   ├── services/     # Lógica de negócio + IA
 │   │   └── workers/      # Tasks Celery
 │   ├── alembic/          # Migrações
+│   ├── scripts/          # Scripts de manutenção e seed
 │   └── tests/
 ├── frontend/
 │   ├── app/              # Next.js App Router
 │   ├── components/       # Componentes React
-│   └── lib/              # Utils e API client
+│   ├── lib/              # Utils, API client e hooks
+│   ├── public/           # Ícones e assets estáticos
+│   ├── scripts/          # Scripts de utilidade (warmup)
+│   └── types/            # TypeScript types e augmentations
 ├── docs/                 # Documentação técnica
+│   ├── architecture.md   # Decisões de arquitetura (ADRs)
+│   ├── setup.md          # Guia de setup do zero
+│   ├── deploy.md         # Guia de deploy em produção
+│   ├── flow.md           # Fluxo da mensagem ao banco
+│   └── project-plan.md   # Plano e especificação do projeto
+├── scripts/              # Scripts de deploy e servidor
+├── Caddyfile             # Reverse proxy (produção)
 ├── CLAUDE.md             # Instruções para Claude Code
 ├── Roadmap.md            # Etapas de desenvolvimento
 └── CHANGELOG.md          # Histórico de mudanças

@@ -191,8 +191,8 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] `/lembrete cafe 07:30` — configurar lembrete de café da manhã
 - [x] `/lembretes` — listar lembretes ativos
 - [x] `/remover-lembrete <id>` — remover lembrete
-- [ ] Workers Celery enviam mensagens nos horários configurados (Fase 6)
-- [ ] Resumo automático às 22h (Fase 6)
+- [x] Workers Celery enviam mensagens nos horários configurados (Fase 6)
+- [x] Resumo automático às 22h (Fase 6)
 
 ---
 

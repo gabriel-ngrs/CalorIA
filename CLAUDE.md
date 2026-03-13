@@ -31,22 +31,32 @@ CalorIA/
 │   │   │   └── reminders/# Lógica de lembretes
 │   │   └── workers/      # Tasks Celery
 │   ├── alembic/          # Migrações de banco
+│   ├── scripts/          # Utilitários: seed, importação de dados
 │   ├── tests/
 │   └── Dockerfile
 ├── frontend/             # Next.js 14 + shadcn/ui
-│   ├── app/              # App Router
+│   ├── app/              # App Router (páginas + manifest.ts)
 │   ├── components/
 │   ├── lib/              # Utils, API client, hooks
+│   ├── public/           # Assets estáticos (ícones PWA)
+│   ├── scripts/          # Warmup de rotas
+│   ├── types/            # TypeScript types e augmentations
 │   └── Dockerfile
 ├── docs/                 # Documentação técnica
+│   ├── architecture.md   # Decisões de arquitetura (ADRs)
+│   ├── setup.md          # Guia de setup do zero
+│   ├── deploy.md         # Guia de deploy em produção
+│   ├── flow.md           # Fluxo da mensagem ao banco
+│   └── project-plan.md   # Plano e especificação do projeto
+├── scripts/              # Scripts de deploy e configuração de servidor
+├── Caddyfile             # Reverse proxy (produção com HTTPS)
 ├── docker-compose.yml    # Produção local
 ├── docker-compose.dev.yml# Desenvolvimento
 ├── .env.example
 ├── CLAUDE.md             ← este arquivo
 ├── README.md
 ├── CHANGELOG.md
-├── Roadmap.md
-└── Prompt.md
+└── Roadmap.md
 ```
 
 ### Serviços Docker
