@@ -1,7 +1,8 @@
 import logging
 import time
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,7 +49,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def timing_middleware(request: Request, call_next):
+async def timing_middleware(request: Request, call_next: Any) -> Any:
     """Loga método, path, status e duração de cada requisição HTTP."""
     start = time.perf_counter()
     response = await call_next(request)

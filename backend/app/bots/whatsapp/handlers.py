@@ -53,17 +53,17 @@ _REMINDER_TYPE_MAP = {
 
 
 async def _store_pending(number: str, items_json: str) -> None:
-    async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+    async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
         await r.setex(f"{_PENDING_PREFIX}{number}", _PENDING_TTL, items_json)
 
 
 async def _load_pending(number: str) -> str | None:
-    async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
-        return await r.get(f"{_PENDING_PREFIX}{number}")
+    async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
+        return await r.get(f"{_PENDING_PREFIX}{number}")  # type: ignore[no-any-return]
 
 
 async def _clear_pending(number: str) -> None:
-    async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+    async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
         await r.delete(f"{_PENDING_PREFIX}{number}")
 
 
@@ -121,7 +121,7 @@ async def handle_image_message(number: str, image_bytes: bytes, caption: str = "
 # Confirmação de refeição
 # ---------------------------------------------------------------------------
 
-async def _present_meal_for_confirmation(number: str, result, source: str = "text") -> None:
+async def _present_meal_for_confirmation(number: str, result: Any, source: str = "text") -> None:
     import json
 
     items_data = [
@@ -262,7 +262,7 @@ async def _dispatch_command(number: str, command_line: str) -> None:
     cmd = parts[0].lower()
     args = parts[1:]
 
-    dispatch: dict[str, Any] = {  # type: ignore[misc]
+    dispatch: dict[str, Any] = {
         "start": _cmd_start,
         "ajuda": _cmd_ajuda,
         "help": _cmd_ajuda,

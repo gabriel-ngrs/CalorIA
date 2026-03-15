@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import date
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -13,13 +14,13 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
-def _run(coro):
+def _run(coro: Any) -> Any:
     """Executa uma coroutine de dentro de uma task Celery (thread síncrona)."""
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-@shared_task(name="app.workers.tasks.reports.send_daily_summaries", bind=True, max_retries=3)
-def send_daily_summaries(self):
+@shared_task(name="app.workers.tasks.reports.send_daily_summaries", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+def send_daily_summaries(self: Any) -> None:
     """Envia resumo diário com insight da IA para todos os usuários ativos (22h)."""
     try:
         _run(_send_daily_summaries_async())
@@ -66,8 +67,8 @@ async def _send_daily_summary_to_user(user: User, today: date) -> None:
         await send_text(user.whatsapp_number, message)
 
 
-@shared_task(name="app.workers.tasks.reports.send_weekly_reports", bind=True, max_retries=3)
-def send_weekly_reports(self):
+@shared_task(name="app.workers.tasks.reports.send_weekly_reports", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+def send_weekly_reports(self: Any) -> None:
     """Envia relatório semanal com insights da IA para todos os usuários ativos (domingo 20h)."""
     try:
         _run(_send_weekly_reports_async())

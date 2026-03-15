@@ -31,6 +31,8 @@ _REMINDER_TYPE_MAP = {
 
 
 async def resumo_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     chat_id = str(update.effective_chat.id)
     today = date.today()
 
@@ -67,6 +69,8 @@ async def resumo_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def semana_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     chat_id = str(update.effective_chat.id)
     async with AsyncSessionLocal() as db:
         user = await TelegramService(db).get_user_by_chat_id(chat_id)
@@ -85,6 +89,8 @@ async def semana_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def relatorio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     chat_id = str(update.effective_chat.id)
     await update.message.reply_html("🤖 <i>Gerando insight com IA...</i>")
 
@@ -102,6 +108,8 @@ async def relatorio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def historico_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     chat_id = str(update.effective_chat.id)
     async with AsyncSessionLocal() as db:
         user = await TelegramService(db).get_user_by_chat_id(chat_id)
@@ -129,7 +137,9 @@ async def historico_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def lembrete_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if len(context.args) < 2:
+    if update.message is None or update.effective_chat is None:
+        return
+    if not context.args or len(context.args) < 2:
         await update.message.reply_html(
             "ℹ️ Use: <code>/lembrete TIPO HH:MM</code>\n"
             "Tipos: cafe, almoco, janta, agua, peso, resumo\n"
@@ -179,6 +189,8 @@ async def lembrete_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def lembretes_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     from app.services.reminder_service import ReminderService
 
     chat_id = str(update.effective_chat.id)
@@ -204,6 +216,8 @@ async def lembretes_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def remover_lembrete_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     from app.services.reminder_service import ReminderService
 
     if not context.args:

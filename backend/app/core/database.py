@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any
 
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
@@ -24,12 +25,12 @@ engine = create_async_engine(
 
 # ─── Query timing via sync_engine events ──────────────────────────────────────
 @event.listens_for(engine.sync_engine, "before_cursor_execute")
-def _before_query(conn, cursor, statement, parameters, context, executemany):
+def _before_query(conn: Any, cursor: Any, statement: Any, parameters: Any, context: Any, executemany: Any) -> None:
     conn.info.setdefault("_qstart", []).append(time.perf_counter())
 
 
 @event.listens_for(engine.sync_engine, "after_cursor_execute")
-def _after_query(conn, cursor, statement, parameters, context, executemany):
+def _after_query(conn: Any, cursor: Any, statement: Any, parameters: Any, context: Any, executemany: Any) -> None:
     ms = (time.perf_counter() - conn.info["_qstart"].pop()) * 1000
     # Extrai primeira linha do SQL para identificar a operação
     first_line = statement.strip().splitlines()[0][:80]

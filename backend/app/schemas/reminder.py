@@ -37,7 +37,7 @@ class ReminderCreate(BaseModel):
 
     @field_validator("days_of_week", mode="before")
     @classmethod
-    def validate_days(cls, v: list) -> list[int]:
+    def validate_days(cls, v: list[Union[int, str]]) -> list[int]:
         if not v:
             raise ValueError("days_of_week não pode ser vazio")
         parsed = [_parse_day(d) for d in v]
@@ -54,7 +54,7 @@ class ReminderUpdate(BaseModel):
 
     @field_validator("days_of_week", mode="before")
     @classmethod
-    def validate_days(cls, v: list | None) -> list[int] | None:
+    def validate_days(cls, v: list[Union[int, str]] | None) -> list[int] | None:
         if v is None:
             return v
         if not v:

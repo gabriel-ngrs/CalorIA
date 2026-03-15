@@ -84,15 +84,15 @@ class GeminiClient:
 
     async def _get_cached(self, key: str) -> str | None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
-                return await r.get(key)
+            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
+                return await r.get(key)  # type: ignore[no-any-return]
         except Exception as exc:
             logger.warning("Falha ao ler cache (Redis): %s", exc)
             return None
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
                 await r.setex(key, _CACHE_TTL, value)
         except Exception as exc:
             logger.warning("Falha ao gravar cache (Redis): %s", exc)
@@ -143,11 +143,11 @@ class GeminiClient:
         self, prompt: str, b64: str, mime_type: str, *, system: str | None = None
     ) -> str:
         last_error: Exception | None = None
-        user_content: list[dict] = [
+        user_content: list[dict[str, object]] = [
             {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
             {"type": "text", "text": prompt},
         ]
-        messages: list[dict] = []
+        messages: list[dict[str, object]] = []
         if system:
             messages.append({"role": "system", "content": system})
             temperature = 0.1

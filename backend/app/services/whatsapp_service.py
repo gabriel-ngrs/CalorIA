@@ -35,7 +35,7 @@ class WhatsAppService:
     async def link_account(self, token: str, number: str) -> User | None:
         """Vincula número ao usuário dono do token. Retorna o User ou None."""
         normalized = normalize_number(number)
-        async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+        async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
             user_id_str = await r.get(f"{_LINK_PREFIX}{token}")
             if not user_id_str:
                 return None
@@ -50,6 +50,6 @@ class WhatsAppService:
     @staticmethod
     async def generate_link_token(user_id: int) -> str:
         token = uuid.uuid4().hex
-        async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+        async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
             await r.setex(f"{_LINK_PREFIX}{token}", _LINK_TTL, str(user_id))
         return token

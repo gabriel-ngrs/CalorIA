@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,7 +84,7 @@ async def _get_recent_meals_of_type(
     today: date,
     db: AsyncSession,
     limit: int = 3,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Retorna as últimas N refeições do mesmo tipo (excluindo hoje)."""
     result = await db.execute(
         select(Meal)
@@ -137,9 +138,11 @@ async def _get_meal_type_averages(
     )
     rows = result.all()
     return {
-        row.meal_type.value: round(float(row.total_cal) / max(int(row.count), 1))
+        row.meal_type.value: round(
+            float(row.total_cal) / max(int(row._mapping["count"] or 1), 1)
+        )
         for row in rows
-        if row.count >= 2  # só inclui se tem pelo menos 2 ocorrências
+        if int(row._mapping["count"] or 0) >= 2  # só inclui se tem pelo menos 2 ocorrências
     }
 
 

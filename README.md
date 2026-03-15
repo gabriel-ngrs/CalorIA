@@ -32,6 +32,28 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 
 ---
 
+## Screenshots
+
+### Dashboard Principal (Desktop)
+![Dashboard](screenshots/desktop-dashboard.png)
+
+### Refeições e Análise por IA (Desktop)
+![Refeições](screenshots/desktop-refeicoes.png)
+
+### Evolução de Peso (Desktop)
+![Peso](screenshots/desktop-peso.png)
+
+### Hidratação (Desktop)
+![Hidratação](screenshots/desktop-hidratacao.png)
+
+### Insights da IA (Desktop)
+![Insights](screenshots/desktop-insights.png)
+
+### Dashboard Mobile
+![Dashboard Mobile](screenshots/mobile-dashboard.png)
+
+---
+
 ## Pré-requisitos
 
 - Docker e Docker Compose

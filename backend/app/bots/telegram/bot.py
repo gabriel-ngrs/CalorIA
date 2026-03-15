@@ -79,6 +79,7 @@ async def start_polling() -> None:
     _application = build_application()
     await _application.initialize()
     await _application.start()
+    assert _application.updater is not None
     await _application.updater.start_polling(drop_pending_updates=True)
     logger.info("Telegram bot iniciado em modo polling.")
 
@@ -87,6 +88,7 @@ async def stop_polling() -> None:
     global _application
     if _application is None:
         return
+    assert _application.updater is not None
     await _application.updater.stop()
     await _application.stop()
     await _application.shutdown()

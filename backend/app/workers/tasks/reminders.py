@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal
 from app.models.reminder import Reminder, ReminderChannel
@@ -14,13 +16,13 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
-def _run(coro):
+def _run(coro: Any) -> Any:
     """Executa uma coroutine de dentro de uma task Celery (thread síncrona)."""
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-@shared_task(name="app.workers.tasks.reminders.dispatch_due_reminders", bind=True, max_retries=3)
-def dispatch_due_reminders(self):
+@shared_task(name="app.workers.tasks.reminders.dispatch_due_reminders", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+def dispatch_due_reminders(self: Any) -> None:
     """Verifica todos os lembretes ativos e envia os que estão no horário atual."""
     try:
         _run(_dispatch_due_reminders_async())
@@ -38,6 +40,7 @@ async def _dispatch_due_reminders_async() -> None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Reminder)
+            .options(selectinload(Reminder.user))
             .join(User)
             .where(
                 Reminder.active.is_(True),
@@ -55,8 +58,7 @@ async def _dispatch_due_reminders_async() -> None:
             if reminder.time.hour != current_hour or reminder.time.minute != current_minute:
                 continue
 
-            # Busca o usuário para obter o canal de envio
-            user = await db.get(User, reminder.user_id)
+            user = reminder.user
             if not user:
                 continue
 
@@ -98,8 +100,8 @@ async def _send_telegram(chat_id: str, message: str) -> None:
         logger.error("Erro ao enviar lembrete Telegram para %s: %s", chat_id, exc)
 
 
-@shared_task(name="app.workers.tasks.reminders.send_hydration_reminders", bind=True, max_retries=2)
-def send_hydration_reminders(self):
+@shared_task(name="app.workers.tasks.reminders.send_hydration_reminders", bind=True, max_retries=2)  # type: ignore[untyped-decorator]
+def send_hydration_reminders(self: Any) -> None:
     """Envia lembrete de hidratação para usuários que não atingiram a meta."""
     try:
         _run(_send_hydration_reminders_async())

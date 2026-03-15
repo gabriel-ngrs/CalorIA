@@ -12,6 +12,8 @@ from app.services.telegram_service import TelegramService
 
 
 async def peso_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     if not context.args:
         await update.message.reply_html("ℹ️ Use: <code>/peso 80.5</code>")
         return
@@ -36,6 +38,8 @@ async def peso_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def agua_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     if not context.args:
         await update.message.reply_html("ℹ️ Use: <code>/agua 300</code> (em ml)")
         return
@@ -72,6 +76,8 @@ async def agua_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def humor_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     if not context.args or len(context.args) < 2:
         await update.message.reply_html(
             "ℹ️ Use: <code>/humor ENERGIA HUMOR</code> (valores de 1 a 5)\n"

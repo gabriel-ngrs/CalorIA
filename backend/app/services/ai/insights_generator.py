@@ -4,6 +4,7 @@ import json
 import logging
 from calendar import monthrange
 from datetime import date, timedelta
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -122,7 +123,8 @@ Responda em 2-3 parágrafos no máximo, de forma acessível e personalizada."""
         user = await UserService(self._db).get_by_id(user_id)
         summary = await MealService(self._db).get_daily_summary(user_id, today)
 
-        remaining_kcal = (user.calorie_goal or 2000) - summary.total_calories
+        calorie_goal = user.calorie_goal if user else None
+        remaining_kcal = (calorie_goal or 2000) - summary.total_calories
 
         # Últimas refeições para contexto de preferências
         recent = await MealService(self._db).list_meals(user_id, limit=20)
@@ -217,7 +219,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
                     average_daily=round(avg_val, 1),
                     recommended_min=rec_min,
                     unit=unit,
-                    severity=severity,  # type: ignore[arg-type]
+                    severity=severity,
                 ))
 
         if not daily_totals:
@@ -441,7 +443,7 @@ O relatório deve:
 
     @staticmethod
     def _build_week_summaries(
-        daily_summaries: list,
+        daily_summaries: list[Any],
         month_start: date,
         calorie_goal: int | None,
     ) -> list[WeekSummary]:

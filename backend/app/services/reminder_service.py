@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +35,7 @@ class ReminderService:
         await self.db.refresh(reminder)
         return reminder
 
-    async def create_many(self, user_id: int, items: list[ReminderCreate]) -> list[Reminder]:
+    async def create_many(self, user_id: int, items: List[ReminderCreate]) -> List[Reminder]:
         reminders = [
             Reminder(
                 user_id=user_id,

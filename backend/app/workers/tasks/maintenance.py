@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import delete, select
+from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal
 from app.models.ai_conversation import AIConversation
@@ -14,13 +16,13 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
-def _run(coro):
+def _run(coro: Any) -> Any:
     """Executa uma coroutine de dentro de uma task Celery (thread síncrona)."""
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-@shared_task(name="app.workers.tasks.maintenance.cleanup_old_conversations", bind=True, max_retries=3)
-def cleanup_old_conversations(self):
+@shared_task(name="app.workers.tasks.maintenance.cleanup_old_conversations", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+def cleanup_old_conversations(self: Any) -> None:
     """Remove histórico de conversas com IA mais antigas que 90 dias."""
     try:
         _run(_cleanup_old_conversations_async())
@@ -48,8 +50,8 @@ async def _cleanup_old_conversations_async() -> None:
         logger.debug("cleanup_old_conversations: nenhuma conversa para remover.")
 
 
-@shared_task(name="app.workers.tasks.maintenance.recalculate_tdee", bind=True, max_retries=3)
-def recalculate_tdee(self):
+@shared_task(name="app.workers.tasks.maintenance.recalculate_tdee", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+def recalculate_tdee(self: Any) -> None:
     """Recalcula o TDEE dos usuários cujo peso registrado diverge mais de 2 kg do perfil."""
     try:
         _run(_recalculate_tdee_async())
@@ -64,7 +66,9 @@ async def _recalculate_tdee_async() -> None:
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(User).where(User.is_active.is_(True))
+            select(User)
+            .options(selectinload(User.profile))
+            .where(User.is_active.is_(True))
         )
         users = result.scalars().all()
 
