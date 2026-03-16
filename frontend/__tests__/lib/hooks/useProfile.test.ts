@@ -7,8 +7,6 @@ import {
   useProfile,
   useUpdateProfile,
   useUpdateMe,
-  useGenerateTelegramToken,
-  useGenerateWhatsAppToken,
 } from "@/lib/hooks/useProfile";
 
 jest.mock("@/lib/api", () => ({
@@ -43,8 +41,6 @@ const mockUser = {
   weight_goal: 70,
   water_goal_ml: 2000,
   goal_type: "maintain",
-  telegram_chat_id: null,
-  whatsapp_number: null,
   profile: null,
   created_at: "2026-01-01T00:00:00Z",
 };
@@ -58,11 +54,6 @@ const mockProfile = {
   activity_level: "moderate",
   dietary_restrictions: [],
   created_at: "2026-01-01T00:00:00Z",
-};
-
-const mockLinkToken = {
-  token: "abc-xyz-123",
-  expires_in: 600,
 };
 
 beforeEach(() => {
@@ -158,47 +149,5 @@ describe("useUpdateMe", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(mockedApi.patch).toHaveBeenCalledWith("/api/v1/users/me", payload);
-  });
-});
-
-// ─── useGenerateTelegramToken ─────────────────────────────────────────────────
-
-describe("useGenerateTelegramToken", () => {
-  it("faz POST em /api/v1/telegram/link-token e retorna token", async () => {
-    mockedApi.post.mockResolvedValueOnce({ data: mockLinkToken });
-
-    const { result } = renderHook(() => useGenerateTelegramToken(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync();
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(mockedApi.post).toHaveBeenCalledWith("/api/v1/telegram/link-token");
-    expect(result.current.data).toEqual(mockLinkToken);
-  });
-});
-
-// ─── useGenerateWhatsAppToken ─────────────────────────────────────────────────
-
-describe("useGenerateWhatsAppToken", () => {
-  it("faz POST em /api/v1/whatsapp/link-token e retorna token", async () => {
-    mockedApi.post.mockResolvedValueOnce({ data: mockLinkToken });
-
-    const { result } = renderHook(() => useGenerateWhatsAppToken(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync();
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(mockedApi.post).toHaveBeenCalledWith("/api/v1/whatsapp/link-token");
-    expect(result.current.data).toEqual(mockLinkToken);
   });
 });

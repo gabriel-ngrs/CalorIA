@@ -43,27 +43,6 @@ services:
       - caloria_net
 
   # ---------------------------------------------------------------------------
-  # Evolution API (WhatsApp)
-  # ---------------------------------------------------------------------------
-  evolution_api:
-    image: atendai/evolution-api:latest
-    container_name: caloria_evolution
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      SERVER_URL: ${EVOLUTION_API_URL:-http://localhost:8080}
-      AUTHENTICATION_TYPE: apikey
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-changeme}
-      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
-      DEL_INSTANCE: "false"
-      LANGUAGE: pt-BR
-    volumes:
-      - evolution_data:/evolution/instances
-    networks:
-      - caloria_net
-
-  # ---------------------------------------------------------------------------
   # Backend — FastAPI
   # ---------------------------------------------------------------------------
   backend:
@@ -103,26 +82,6 @@ services:
       - .env
     depends_on:
       - backend
-    networks:
-      - caloria_net
-
-  # ---------------------------------------------------------------------------
-  # Bot Telegram — polling dedicado
-  # ---------------------------------------------------------------------------
-  telegram_bot:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: caloria_telegram_bot
-    restart: unless-stopped
-    command: python -m app.bots.telegram.run_polling
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - caloria_net
 
@@ -195,7 +154,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  evolution_data:
   caddy_data:
   caddy_config:
 

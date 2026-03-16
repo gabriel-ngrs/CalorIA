@@ -20,8 +20,6 @@ const mockUser: User = {
   weight_goal: null,
   water_goal_ml: null,
   goal_type: null,
-  telegram_chat_id: null,
-  whatsapp_number: null,
   profile: null,
   created_at: "2024-01-01T00:00:00Z",
 };

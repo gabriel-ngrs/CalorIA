@@ -110,3 +110,4 @@ Thumbs.db
 logs/
 tmp/
 temp/
+vapid_private.pem
