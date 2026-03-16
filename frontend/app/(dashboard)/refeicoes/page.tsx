@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -357,6 +357,12 @@ function fileToBase64(file: File): Promise<string> {
 export default function RefeicoesPage() {
   const today = getLocalToday();
   const [filterDate, setFilterDate] = useState(today);
+
+  // Corrige a data para o timezone do cliente após a hidratação.
+  // O servidor (UTC) pode calcular uma data diferente da local do usuário.
+  useEffect(() => {
+    setFilterDate(getLocalToday());
+  }, []);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const { data: meals, isLoading } = useMeals(filterDate);
   const deleteMeal = useDeleteMeal();
