@@ -17,17 +17,25 @@ echo "========================================"
 # --- Verificar .env ------------------------------------------------------------
 if [ ! -f ".env" ]; then
     echo "[!] Arquivo .env não encontrado."
-    echo "    Copie o exemplo: cp .env.example .env"
+    echo "    Copie o exemplo: cp .env.production.example .env"
     echo "    Edite com suas credenciais: nano .env"
     exit 1
 fi
 
+# --- Verificar chave VAPID -----------------------------------------------------
+VAPID_KEY_PATH="${VAPID_KEY_PATH:-./vapid_private.pem}"
+if [ ! -f "$VAPID_KEY_PATH" ]; then
+    echo "[!] Chave VAPID não encontrada em: $VAPID_KEY_PATH"
+    echo "    Gere as chaves com o Passo 7 do docs/deploy.md"
+    exit 1
+fi
+
 # --- Garantir que estamos na main ----------------------------------------------
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 if [ "$BRANCH" != "main" ]; then
     echo "[!] Atenção: você está na branch '$BRANCH', não na 'main'."
-    echo "    No seu PC, faça: git checkout main && git merge dev && git push origin main"
-    echo "    No servidor, faça: git pull origin main"
+    echo "    No seu PC: git checkout main && git merge dev && git push origin main"
+    echo "    No servidor: git pull origin main"
     echo "    Continuando mesmo assim..."
 fi
 
@@ -62,7 +70,10 @@ echo ""
 echo "========================================"
 echo "  Deploy concluído!"
 echo ""
-echo "  Dashboard: https://\${APP_DOMAIN:-localhost}"
-echo "  API docs:  https://\${APP_DOMAIN:-localhost}/docs"
+# Lê APP_DOMAIN do .env se existir
+APP_DOMAIN_VAL=$(grep -E '^APP_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "localhost")
+echo "  Dashboard: https://${APP_DOMAIN_VAL}"
+echo "  API docs:  https://${APP_DOMAIN_VAL}/docs"
+echo "  Health:    https://${APP_DOMAIN_VAL}/health"
 echo "  Logs:      docker compose logs -f"
 echo "========================================"
