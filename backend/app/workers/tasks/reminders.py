@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal
-from app.models.reminder import Reminder, ReminderChannel
+from app.models.reminder import Reminder
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -66,38 +66,63 @@ async def _dispatch_due_reminders_async() -> None:
 
 
 async def _send_reminder_notification(user: User, reminder: Reminder) -> None:
-    from app.models.reminder import ReminderType
+    from sqlalchemy import delete
 
-    type_messages = {
-        ReminderType.MEAL: "🍽️ Hora de registrar sua refeição!",
-        ReminderType.WATER: "💧 Lembre-se de beber água!",
-        ReminderType.WEIGHT: "⚖️ Que tal registrar seu peso hoje?",
-        ReminderType.DAILY_SUMMARY: "📊 Confira o resumo do seu dia!",
-        ReminderType.CUSTOM: reminder.message or "⏰ Lembrete CalorIA",
+    from app.models.notification import Notification, NotificationType
+    from app.models.push_subscription import PushSubscription
+    from app.services.push_service import send_push_notification_sync
+
+    type_map = {
+        "meal": ("Hora da refeição!", "Não esqueça de registrar sua refeição."),
+        "water": ("Beba água!", "Lembre-se de se hidratar."),
+        "weight": ("Registrar peso", "Que tal registrar seu peso hoje?"),
+        "daily_summary": ("Resumo do dia", "Confira como foi seu dia alimentar."),
+        "custom": ("Lembrete", reminder.message or "Lembrete CalorIA"),
     }
+    title, body = type_map.get(reminder.type.value, ("Lembrete", "Lembrete CalorIA"))
 
-    msg = type_messages.get(reminder.type, "⏰ Lembrete CalorIA")
+    async with AsyncSessionLocal() as db:
+        # 1. Cria notificação in-app
+        notif = Notification(
+            user_id=user.id,
+            type=NotificationType.REMINDER,
+            title=title,
+            body=body,
+        )
+        db.add(notif)
+        await db.flush()
 
-    if reminder.channel == ReminderChannel.TELEGRAM and user.telegram_chat_id:
-        await _send_telegram(user.telegram_chat_id, msg)
-    elif reminder.channel == ReminderChannel.WHATSAPP and user.whatsapp_number:
-        from app.bots.whatsapp.sender import send_text
-        await send_text(user.whatsapp_number, msg)
+        # 2. Envia web push para todas as subscrições do usuário
+        result = await db.execute(
+            select(PushSubscription).where(PushSubscription.user_id == user.id)
+        )
+        subscriptions = result.scalars().all()
+        expired_ids: list[int] = []
 
+        for sub in subscriptions:
+            try:
+                await asyncio.to_thread(
+                    send_push_notification_sync,
+                    sub.endpoint,
+                    sub.p256dh,
+                    sub.auth,
+                    title,
+                    body,
+                )
+            except Exception as ex:  # noqa: BLE001
+                try:
+                    from pywebpush import WebPushException  # type: ignore[import-untyped]
+                    if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                        expired_ids.append(sub.id)
+                except ImportError:
+                    pass
 
-async def _send_telegram(chat_id: str, message: str) -> None:
-    from telegram import Bot
+        if expired_ids:
+            await db.execute(
+                delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+            )
 
-    from app.core.config import settings
-
-    if not settings.TELEGRAM_BOT_TOKEN:
-        logger.warning("TELEGRAM_BOT_TOKEN não configurado — lembrete não enviado.")
-        return
-    try:
-        async with Bot(token=settings.TELEGRAM_BOT_TOKEN) as bot:
-            await bot.send_message(chat_id=chat_id, text=message)
-    except Exception as exc:
-        logger.error("Erro ao enviar lembrete Telegram para %s: %s", chat_id, exc)
+        await db.commit()
 
 
 @shared_task(name="app.workers.tasks.reminders.send_hydration_reminders", bind=True, max_retries=2)  # type: ignore[untyped-decorator]
@@ -112,6 +137,11 @@ def send_hydration_reminders(self: Any) -> None:
 
 async def _send_hydration_reminders_async() -> None:
     from datetime import date
+    from sqlalchemy import delete
+
+    from app.models.notification import Notification, NotificationType
+    from app.models.push_subscription import PushSubscription
+    from app.services.push_service import send_push_notification_sync
 
     today = date.today()
 
@@ -122,22 +152,56 @@ async def _send_hydration_reminders_async() -> None:
         users = result.scalars().all()
 
         for user in users:
-            if not user.telegram_chat_id and not user.whatsapp_number:
-                continue
-
             from app.services.log_service import HydrationService
             summary = await HydrationService(db).get_day_summary(user.id, today)
 
             if summary.total_ml >= 2000:
                 continue  # Meta atingida
 
-            msg = (
-                f"💧 Hidratação: {summary.total_ml} ml / 2000 ml hoje.\n"
-                "Lembre-se de beber água! 🌊"
+            title = "Beba água!"
+            body = (
+                f"Hidratação: {summary.total_ml} ml / 2000 ml hoje. "
+                "Lembre-se de se hidratar!"
             )
 
-            if user.telegram_chat_id:
-                await _send_telegram(user.telegram_chat_id, msg)
-            elif user.whatsapp_number:
-                from app.bots.whatsapp.sender import send_text
-                await send_text(user.whatsapp_number, msg)
+            # Cria notificação in-app
+            notif = Notification(
+                user_id=user.id,
+                type=NotificationType.HYDRATION,
+                title=title,
+                body=body,
+            )
+            db.add(notif)
+            await db.flush()
+
+            # Envia web push
+            subs_result = await db.execute(
+                select(PushSubscription).where(PushSubscription.user_id == user.id)
+            )
+            subscriptions = subs_result.scalars().all()
+            expired_ids: list[int] = []
+
+            for sub in subscriptions:
+                try:
+                    await asyncio.to_thread(
+                        send_push_notification_sync,
+                        sub.endpoint,
+                        sub.p256dh,
+                        sub.auth,
+                        title,
+                        body,
+                    )
+                except Exception as ex:  # noqa: BLE001
+                    try:
+                        from pywebpush import WebPushException  # type: ignore[import-untyped]
+                        if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                            expired_ids.append(sub.id)
+                    except ImportError:
+                        pass
+
+            if expired_ids:
+                await db.execute(
+                    delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+                )
+
+        await db.commit()

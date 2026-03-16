@@ -39,8 +39,6 @@ async def _send_daily_summaries_async() -> None:
         users = result.scalars().all()
 
         for user in users:
-            if not user.telegram_chat_id and not user.whatsapp_number:
-                continue
             try:
                 await _send_daily_summary_to_user(user, today)
             except Exception as exc:
@@ -48,23 +46,66 @@ async def _send_daily_summaries_async() -> None:
 
 
 async def _send_daily_summary_to_user(user: User, today: date) -> None:
+    import asyncio
+    from sqlalchemy import delete
+
     from app.core.database import AsyncSessionLocal
+    from app.models.notification import Notification, NotificationType
+    from app.models.push_subscription import PushSubscription
     from app.services.ai.gemini_client import GeminiClient
     from app.services.ai.insights_generator import InsightsGenerator
+    from app.services.push_service import send_push_notification_sync
 
     async with AsyncSessionLocal() as db:
         client = GeminiClient()
         generator = InsightsGenerator(client=client, db=db)
         insight = await generator.daily_insight(user.id, today)
 
-    header = f"📊 *Resumo do dia — {today.strftime('%d/%m/%Y')}*\n\n"
-    message = header + insight.content
+        title = f"Resumo do dia — {today.strftime('%d/%m/%Y')}"
+        body = insight.content[:200]  # trunca para notificação
 
-    if user.telegram_chat_id:
-        await _send_telegram(user.telegram_chat_id, message)
-    elif user.whatsapp_number:
-        from app.bots.whatsapp.sender import send_text
-        await send_text(user.whatsapp_number, message)
+        # Cria notificação in-app
+        notif = Notification(
+            user_id=user.id,
+            type=NotificationType.DAILY_SUMMARY,
+            title=title,
+            body=insight.content,
+        )
+        db.add(notif)
+        await db.flush()
+
+        # Envia web push
+        subs_result = await db.execute(
+            select(PushSubscription).where(PushSubscription.user_id == user.id)
+        )
+        subscriptions = subs_result.scalars().all()
+        expired_ids: list[int] = []
+
+        for sub in subscriptions:
+            try:
+                await asyncio.to_thread(
+                    send_push_notification_sync,
+                    sub.endpoint,
+                    sub.p256dh,
+                    sub.auth,
+                    title,
+                    body,
+                    "/relatorios",
+                )
+            except Exception as ex:  # noqa: BLE001
+                try:
+                    from pywebpush import WebPushException  # type: ignore[import-untyped]
+                    if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                        expired_ids.append(sub.id)
+                except ImportError:
+                    pass
+
+        if expired_ids:
+            await db.execute(
+                delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+            )
+
+        await db.commit()
 
 
 @shared_task(name="app.workers.tasks.reports.send_weekly_reports", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
@@ -87,8 +128,6 @@ async def _send_weekly_reports_async() -> None:
         users = result.scalars().all()
 
         for user in users:
-            if not user.telegram_chat_id and not user.whatsapp_number:
-                continue
             try:
                 await _send_weekly_report_to_user(user, today)
             except Exception as exc:
@@ -96,33 +135,63 @@ async def _send_weekly_reports_async() -> None:
 
 
 async def _send_weekly_report_to_user(user: User, today: date) -> None:
+    import asyncio
+    from sqlalchemy import delete
+
     from app.core.database import AsyncSessionLocal
+    from app.models.notification import Notification, NotificationType
+    from app.models.push_subscription import PushSubscription
     from app.services.ai.gemini_client import GeminiClient
     from app.services.ai.insights_generator import InsightsGenerator
+    from app.services.push_service import send_push_notification_sync
 
     async with AsyncSessionLocal() as db:
         client = GeminiClient()
         generator = InsightsGenerator(client=client, db=db)
         insight = await generator.weekly_insight(user.id, today)
 
-    header = "📈 *Relatório Semanal CalorIA*\n\n"
-    message = header + insight.content
+        title = "Relatório Semanal CalorIA"
+        body = insight.content[:200]  # trunca para notificação
 
-    if user.telegram_chat_id:
-        await _send_telegram(user.telegram_chat_id, message)
-    elif user.whatsapp_number:
-        from app.bots.whatsapp.sender import send_text
-        await send_text(user.whatsapp_number, message)
+        # Cria notificação in-app
+        notif = Notification(
+            user_id=user.id,
+            type=NotificationType.WEEKLY_REPORT,
+            title=title,
+            body=insight.content,
+        )
+        db.add(notif)
+        await db.flush()
 
+        # Envia web push
+        subs_result = await db.execute(
+            select(PushSubscription).where(PushSubscription.user_id == user.id)
+        )
+        subscriptions = subs_result.scalars().all()
+        expired_ids: list[int] = []
 
-async def _send_telegram(chat_id: str, message: str) -> None:
-    from app.bots.telegram.bot import get_application
+        for sub in subscriptions:
+            try:
+                await asyncio.to_thread(
+                    send_push_notification_sync,
+                    sub.endpoint,
+                    sub.p256dh,
+                    sub.auth,
+                    title,
+                    body,
+                    "/relatorios",
+                )
+            except Exception as ex:  # noqa: BLE001
+                try:
+                    from pywebpush import WebPushException  # type: ignore[import-untyped]
+                    if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                        expired_ids.append(sub.id)
+                except ImportError:
+                    pass
 
-    app = get_application()
-    if app is None:
-        logger.warning("Bot Telegram não iniciado — não foi possível enviar relatório.")
-        return
-    try:
-        await app.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
-    except Exception as exc:
-        logger.error("Erro ao enviar relatório Telegram para %s: %s", chat_id, exc)
+        if expired_ids:
+            await db.execute(
+                delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+            )
+
+        await db.commit()
