@@ -9,6 +9,8 @@ from app.models.hydration_log import HydrationLog
 from app.models.mood_log import MoodLog
 from app.models.reminder import Reminder
 from app.models.ai_conversation import AIConversation
+from app.models.push_subscription import PushSubscription
+from app.models.notification import Notification
 
 __all__ = [
     "User",
@@ -20,4 +22,6 @@ __all__ = [
     "MoodLog",
     "Reminder",
     "AIConversation",
+    "PushSubscription",
+    "Notification",
 ]

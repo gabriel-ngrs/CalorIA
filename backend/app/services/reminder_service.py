@@ -27,7 +27,6 @@ class ReminderService:
             type=data.type,
             time=data.time,
             days_of_week=data.days_of_week,
-            channel=data.channel,
             message=data.message,
         )
         self.db.add(reminder)
@@ -42,7 +41,6 @@ class ReminderService:
                 type=item.type,
                 time=item.time,
                 days_of_week=item.days_of_week,
-                channel=item.channel,
                 message=item.message,
             )
             for item in items

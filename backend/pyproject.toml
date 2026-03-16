@@ -36,8 +36,8 @@ dependencies = [
     # IA — Groq (Llama)
     "groq>=0.11.0",
 
-    # Bots
-    "python-telegram-bot>=21.0",
+    # Web Push
+    "pywebpush>=2.0.0",
 
     # Imagens
     "pillow>=11.0.0",

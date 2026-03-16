@@ -22,11 +22,6 @@ class ReminderType(str, enum.Enum):
     CUSTOM = "custom"
 
 
-class ReminderChannel(str, enum.Enum):
-    TELEGRAM = "telegram"
-    WHATSAPP = "whatsapp"
-
-
 class Reminder(Base):
     __tablename__ = "reminders"
 
@@ -41,9 +36,6 @@ class Reminder(Base):
         ARRAY(Integer), nullable=False, default=list
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    channel: Mapped[ReminderChannel] = mapped_column(
-        SAEnum(ReminderChannel), nullable=False
-    )
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

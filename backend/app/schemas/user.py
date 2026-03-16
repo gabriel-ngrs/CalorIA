@@ -41,8 +41,6 @@ class UserResponse(BaseModel):
     water_goal_ml: int | None
     goal_type: GoalType | None
     is_active: bool
-    telegram_chat_id: str | None
-    whatsapp_number: str | None
     created_at: datetime
 
 

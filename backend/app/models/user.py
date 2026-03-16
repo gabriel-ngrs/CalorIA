@@ -23,7 +23,9 @@ if TYPE_CHECKING:
     from app.models.hydration_log import HydrationLog
     from app.models.meal import Meal
     from app.models.mood_log import MoodLog
+    from app.models.notification import Notification
     from app.models.profile import UserProfile
+    from app.models.push_subscription import PushSubscription
     from app.models.reminder import Reminder
     from app.models.weight_log import WeightLog
 
@@ -42,12 +44,6 @@ class User(Base):
     water_goal_ml: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal_type: Mapped[GoalType | None] = mapped_column(SAEnum(GoalType), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    telegram_chat_id: Mapped[str | None] = mapped_column(
-        String(50), nullable=True, unique=True, index=True
-    )
-    whatsapp_number: Mapped[str | None] = mapped_column(
-        String(30), nullable=True, unique=True, index=True
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -79,6 +75,12 @@ class User(Base):
     )
     ai_conversations: Mapped[list[AIConversation]] = relationship(
         "AIConversation", back_populates="user", cascade="all, delete-orphan"
+    )
+    push_subscriptions: Mapped[list[PushSubscription]] = relationship(
+        "PushSubscription", back_populates="user", cascade="all, delete-orphan"
+    )
+    notifications: Mapped[list[Notification]] = relationship(
+        "Notification", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

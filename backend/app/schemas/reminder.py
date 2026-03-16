@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.models.reminder import ReminderChannel, ReminderType
+from app.models.reminder import ReminderType
 
 # Mapeamento de nomes de dias (inglês e português) para inteiros 0-6 (seg=0, dom=6)
 _DAY_NAME_MAP: dict[str, int] = {
@@ -32,7 +32,6 @@ class ReminderCreate(BaseModel):
     type: ReminderType
     time: time
     days_of_week: list[Union[int, str]] = Field(default=[0, 1, 2, 3, 4, 5, 6])
-    channel: ReminderChannel
     message: str | None = None
 
     @field_validator("days_of_week", mode="before")
@@ -74,6 +73,5 @@ class ReminderResponse(BaseModel):
     time: time
     days_of_week: list[int]
     active: bool
-    channel: ReminderChannel
     message: str | None
     created_at: datetime

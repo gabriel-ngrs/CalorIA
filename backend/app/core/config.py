@@ -52,16 +52,11 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
 
     # --------------------------------------------------------------------------
-    # Telegram
+    # Web Push (VAPID)
     # --------------------------------------------------------------------------
-    TELEGRAM_BOT_TOKEN: str = ""
-
-    # --------------------------------------------------------------------------
-    # Evolution API (WhatsApp)
-    # --------------------------------------------------------------------------
-    EVOLUTION_API_URL: str = ""
-    EVOLUTION_API_KEY: str = ""
-    EVOLUTION_INSTANCE_NAME: str = "caloria"
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_CLAIMS_EMAIL: str = "admin@caloria.app"
 
     @property
     def is_development(self) -> bool:
