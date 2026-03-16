@@ -34,8 +34,6 @@ export interface User {
   weight_goal: number | null;
   water_goal_ml: number | null;
   goal_type: GoalType | null;
-  telegram_chat_id: string | null;
-  whatsapp_number: string | null;
   profile: UserProfile | null;
   created_at: string;
 }
@@ -136,7 +134,6 @@ export interface MoodLog {
 // ─── Reminders ─────────────────────────────────────────────────────────────
 
 export type ReminderType = "meal" | "water" | "weight" | "daily_summary" | "custom";
-export type ReminderChannel = "telegram" | "whatsapp";
 
 export interface Reminder {
   id: number;
@@ -144,8 +141,32 @@ export interface Reminder {
   time: string;
   days_of_week: number[];
   active: boolean;
-  channel: ReminderChannel;
   message: string | null;
+}
+
+// ─── Push Notifications ─────────────────────────────────────────────────────
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent?: string;
+}
+
+export type NotificationType =
+  | "reminder"
+  | "daily_summary"
+  | "weekly_report"
+  | "hydration"
+  | "system";
+
+export interface AppNotification {
+  id: number;
+  type: NotificationType;
+  title: string;
+  body: string;
+  read: boolean;
+  created_at: string;
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────

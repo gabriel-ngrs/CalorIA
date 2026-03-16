@@ -4,14 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Check,
+  Bell,
+  BellOff,
   CheckCircle2,
-  Clock,
-  Copy,
   Flame,
-  MessageSquare,
-  RefreshCw,
-  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,15 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   useMe,
   useProfile,
   useUpdateMe,
   useUpdateProfile,
-  useGenerateTelegramToken,
-  useGenerateWhatsAppToken,
 } from "@/lib/hooks/useProfile";
+import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 import type { ActivityLevel, GoalType, Sex } from "@/types";
 
 // ─── Label maps ──────────────────────────────────────────────────────────────
@@ -276,254 +270,78 @@ function Step2({
   );
 }
 
-// ─── Step 3 — Conectar bots ───────────────────────────────────────────────────
-
-function BotCard({
-  channel,
-  connected,
-  token,
-  isPending,
-  copied,
-  onGenerate,
-  onCopy,
-}: {
-  channel: "telegram" | "whatsapp";
-  connected: boolean;
-  token: string | null;
-  isPending: boolean;
-  copied: boolean;
-  onGenerate: () => void;
-  onCopy: () => void;
-}) {
-  const isTelegram = channel === "telegram";
-  const color = isTelegram ? "blue" : "green";
-
-  const colorMap = {
-    blue: {
-      icon: "bg-blue-500/10",
-      iconText: "text-blue-400",
-      badge: "bg-blue-500/15 text-blue-400 border-blue-500/30 border",
-      token: "border-blue-500/20 bg-blue-500/5",
-      tokenText: "text-blue-300",
-      copyHover: "hover:bg-blue-500/15 hover:text-blue-400",
-      code: "bg-blue-500/10 text-blue-400",
-      cardHover: connected ? "hover:border-blue-500/40" : "hover:border-blue-500/20",
-    },
-    green: {
-      icon: "bg-green-500/10",
-      iconText: "text-green-400",
-      badge: "bg-green-500/15 text-green-400 border-green-500/30 border",
-      token: "border-green-500/20 bg-green-500/5",
-      tokenText: "text-green-300",
-      copyHover: "hover:bg-green-500/15 hover:text-green-400",
-      code: "bg-green-500/10 text-green-400",
-      cardHover: connected ? "hover:border-green-500/40" : "hover:border-green-500/20",
-    },
-  };
-
-  const c = colorMap[color];
-  const prefix = isTelegram ? "/" : "!";
-
-  return (
-    <Card
-      className={cn(
-        "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl",
-        c.cardHover
-      )}
-    >
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-base">
-            <span
-              className={cn(
-                "flex items-center justify-center w-8 h-8 rounded-lg",
-                c.icon
-              )}
-            >
-              {isTelegram ? (
-                <Send className={cn("h-4 w-4", c.iconText)} />
-              ) : (
-                <MessageSquare className={cn("h-4 w-4", c.iconText)} />
-              )}
-            </span>
-            {isTelegram ? "Telegram" : "WhatsApp"}
-          </span>
-          {connected ? (
-            <Badge className={cn("text-xs", c.badge)}>
-              <CheckCircle2 className="h-3 w-3 mr-1" /> Conectado
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-xs">
-              Não conectado
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <ol className="space-y-2">
-          <li className="flex items-start gap-3">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-bold shrink-0 mt-0.5">
-              1
-            </span>
-            <span className="text-sm text-muted-foreground leading-relaxed">
-              {isTelegram ? (
-                <>
-                  Procure por{" "}
-                  <strong className="text-foreground font-mono">
-                    @CalorIA_bot
-                  </strong>{" "}
-                  no Telegram
-                </>
-              ) : (
-                "Salve o número do bot nos seus contatos"
-              )}
-            </span>
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-bold shrink-0 mt-0.5">
-              2
-            </span>
-            <span className="text-sm text-muted-foreground leading-relaxed">
-              Envie{" "}
-              <code
-                className={cn(
-                  "px-1.5 py-0.5 rounded text-xs font-mono",
-                  c.code
-                )}
-              >
-                {prefix}start
-              </code>
-            </span>
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-bold shrink-0 mt-0.5">
-              3
-            </span>
-            <span className="text-sm text-muted-foreground leading-relaxed">
-              Gere um token e envie{" "}
-              <code
-                className={cn(
-                  "px-1.5 py-0.5 rounded text-xs font-mono",
-                  c.code
-                )}
-              >
-                {prefix}conectar TOKEN
-              </code>
-            </span>
-          </li>
-        </ol>
-
-        {token && (
-          <div
-            className={cn(
-              "rounded-lg border p-3",
-              c.token
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <code
-                className={cn(
-                  "flex-1 text-sm font-mono break-all",
-                  c.tokenText
-                )}
-              >
-                {token}
-              </code>
-              <button
-                className={cn(
-                  "cursor-pointer p-1.5 rounded-md transition-colors text-muted-foreground shrink-0",
-                  c.copyHover
-                )}
-                onClick={onCopy}
-                title="Copiar"
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
-              <Clock className="h-3 w-3" /> Válido por 10 minutos
-            </p>
-          </div>
-        )}
-
-        <Button
-          onClick={onGenerate}
-          disabled={isPending}
-          variant={token ? "outline" : "default"}
-          className="gap-1.5 w-full"
-        >
-          <RefreshCw
-            className={cn("h-3.5 w-3.5", isPending && "animate-spin")}
-          />
-          {isPending
-            ? "Gerando..."
-            : token
-            ? "Gerar novo token"
-            : "Gerar token"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
+// ─── Step 3 — Notificações Push ───────────────────────────────────────────────
 
 function Step3() {
-  const { data: user } = useMe();
-  const generateTelegram = useGenerateTelegramToken();
-  const generateWhatsApp = useGenerateWhatsAppToken();
-  const [telegramToken, setTelegramToken] = useState<string | null>(null);
-  const [whatsappToken, setWhatsappToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"telegram" | "whatsapp" | null>(null);
+  const { isSupported, isSubscribed, permission, subscribeToPush } =
+    usePushNotifications();
+  const [subscribing, setSubscribing] = useState(false);
 
-  async function copyToClipboard(text: string, channel: "telegram" | "whatsapp") {
-    await navigator.clipboard.writeText(text);
-    setCopied(channel);
-    setTimeout(() => setCopied(null), 2000);
+  async function handleEnable() {
+    setSubscribing(true);
+    try {
+      const ok = await subscribeToPush();
+      if (!ok) toast.error("Não foi possível ativar as notificações.");
+    } catch {
+      toast.error("Erro ao ativar notificações.");
+    } finally {
+      setSubscribing(false);
+    }
   }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Conecte o bot do Telegram ou WhatsApp para registrar refeições por
-        mensagem. Você pode pular e conectar depois.
+        Receba lembretes e resumos diários diretamente no seu dispositivo, mesmo
+        com o app fechado. Você pode pular e ativar depois nas configurações.
       </p>
 
-      <BotCard
-        channel="telegram"
-        connected={!!user?.telegram_chat_id}
-        token={telegramToken}
-        isPending={generateTelegram.isPending}
-        copied={copied === "telegram"}
-        onGenerate={async () => {
-          try {
-            const res = await generateTelegram.mutateAsync();
-            setTelegramToken(res.token);
-          } catch {
-            toast.error("Erro ao gerar token do Telegram.");
-          }
-        }}
-        onCopy={() => telegramToken && copyToClipboard(telegramToken, "telegram")}
-      />
-
-      <BotCard
-        channel="whatsapp"
-        connected={!!user?.whatsapp_number}
-        token={whatsappToken}
-        isPending={generateWhatsApp.isPending}
-        copied={copied === "whatsapp"}
-        onGenerate={async () => {
-          try {
-            const res = await generateWhatsApp.mutateAsync();
-            setWhatsappToken(res.token);
-          } catch {
-            toast.error("Erro ao gerar token do WhatsApp.");
-          }
-        }}
-        onCopy={() => whatsappToken && copyToClipboard(whatsappToken, "whatsapp")}
-      />
+      {!isSupported ? (
+        <div className="flex items-center gap-3 px-3 py-3 rounded-lg border border-muted/30 bg-muted/10">
+          <BellOff className="h-5 w-5 text-muted-foreground shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            Seu navegador não suporta notificações push.
+          </p>
+        </div>
+      ) : isSubscribed || permission === "granted" ? (
+        <div className="flex items-center gap-3 px-3 py-3 rounded-lg border border-green-500/30 bg-green-500/10">
+          <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0" />
+          <p className="text-sm text-green-400 font-medium">
+            Notificações ativadas!
+          </p>
+        </div>
+      ) : permission === "denied" ? (
+        <div className="flex items-center gap-3 px-3 py-3 rounded-lg border border-destructive/30 bg-destructive/10">
+          <BellOff className="h-5 w-5 text-destructive shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            Notificações bloqueadas no navegador. Você pode permitir nas
+            configurações do browser.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+            {[
+              "Lembretes de refeições nos horários que você escolher",
+              "Alertas de hidratação quando estiver abaixo da meta",
+              "Resumo diário e relatórios semanais gerados pela IA",
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Bell className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+          <Button
+            className="w-full gap-2"
+            onClick={handleEnable}
+            disabled={subscribing}
+          >
+            <Bell className="h-4 w-4" />
+            {subscribing ? "Ativando..." : "Ativar notificações"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -533,12 +351,12 @@ function Step3() {
 const STEP_TITLES = [
   "Seus dados físicos",
   "Suas metas",
-  "Conectar bots",
+  "Notificações",
 ];
 const STEP_DESCRIPTIONS = [
   "Vamos calcular suas necessidades nutricionais",
   "Defina seus objetivos de saúde",
-  "Registre refeições pelo Telegram ou WhatsApp (opcional)",
+  "Receba lembretes e resumos no seu dispositivo (opcional)",
 ];
 
 function parseNum(value: string): number | null {

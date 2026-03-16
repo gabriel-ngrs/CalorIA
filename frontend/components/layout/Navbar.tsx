@@ -3,6 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { LogOut, User } from "lucide-react";
 import api from "@/lib/api";
 
@@ -32,6 +33,9 @@ export function Navbar() {
             <User className="h-3.5 w-3.5" />
             <span>{session?.user?.name ?? session?.user?.email}</span>
           </div>
+
+          {/* Notificações */}
+          <NotificationBell />
 
           {/* Toggle de tema */}
           <ThemeToggle />

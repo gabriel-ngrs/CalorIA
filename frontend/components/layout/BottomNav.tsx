@@ -16,7 +16,6 @@ import {
   Bell,
   Sparkles,
   User,
-  MessageCircle,
   X,
 } from "lucide-react";
 import { QuickMealModal } from "@/components/dashboard/QuickAddModals";
@@ -35,7 +34,6 @@ const moreNav = [
   { href: "/lembretes", label: "Lembretes",   icon: Bell },
   { href: "/insights",  label: "Insights IA", icon: Sparkles },
   { href: "/perfil",    label: "Perfil",      icon: User },
-  { href: "/conectar",  label: "Conectar Bot",icon: MessageCircle },
 ];
 
 export function BottomNav() {

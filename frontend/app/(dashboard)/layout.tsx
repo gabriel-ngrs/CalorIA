@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { PullToRefreshWrapper } from "@/components/layout/PullToRefreshWrapper";
+import { PushSubscriber } from "@/components/layout/PushSubscriber";
 
 export default function DashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default function DashboardLayout({
         </PullToRefreshWrapper>
       </div>
       <BottomNav />
+      <PushSubscriber />
     </div>
   );
 }

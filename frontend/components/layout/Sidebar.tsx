@@ -11,7 +11,6 @@ import {
   Smile,
   Bell,
   User,
-  MessageCircle,
   Sparkles,
   BarChart2,
 } from "lucide-react";
@@ -26,7 +25,6 @@ const nav = [
   { href: "/lembretes", label: "Lembretes", icon: Bell },
   { href: "/insights", label: "Insights IA", icon: Sparkles },
   { href: "/perfil", label: "Perfil", icon: User },
-  { href: "/conectar", label: "Conectar Bot", icon: MessageCircle },
 ];
 
 export function Sidebar() {
