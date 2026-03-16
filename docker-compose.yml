@@ -55,6 +55,13 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      TZ: America/Sao_Paulo
+      VAPID_PRIVATE_KEY: /run/secrets/vapid_private_key
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_CLAIMS_EMAIL: ${VAPID_CLAIMS_EMAIL:-admin@caloria.app}
+    volumes:
+      - ${VAPID_KEY_PATH:-./backend/vapid_private.pem}:/run/secrets/vapid_private_key:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,6 +127,13 @@ services:
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
     env_file:
       - .env
+    environment:
+      TZ: America/Sao_Paulo
+      VAPID_PRIVATE_KEY: /run/secrets/vapid_private_key
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_CLAIMS_EMAIL: ${VAPID_CLAIMS_EMAIL:-admin@caloria.app}
+    volumes:
+      - ${VAPID_KEY_PATH:-./backend/vapid_private.pem}:/run/secrets/vapid_private_key:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -140,6 +154,8 @@ services:
     command: celery -A app.workers.celery_app beat --loglevel=info
     env_file:
       - .env
+    environment:
+      TZ: America/Sao_Paulo
     depends_on:
       postgres:
         condition: service_healthy
