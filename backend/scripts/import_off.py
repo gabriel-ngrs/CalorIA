@@ -1,4 +1,4 @@
-"""Importa produtos brasileiros do Open Food Facts para taco_foods.
+"""Importa produtos brasileiros do Open Food Facts para a tabela foods.
 
 Faz download paginado da API pública do OFF filtrando por país Brasil.
 Apenas produtos com calorias, proteínas, carboidratos e gorduras preenchidos
