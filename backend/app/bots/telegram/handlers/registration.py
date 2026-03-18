@@ -145,13 +145,13 @@ async def photo_meal_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         user_context = await build_meal_context(user.id, db, date.today())
 
-    try:
-        client = get_gemini_client()
-        result = await VisionParser(client).parse_base64(b64, "image/jpeg", user_context)
-    except Exception as exc:
-        logger.error("Erro ao analisar foto: %s", exc)
-        await update.message.reply_html("❌ Não consegui analisar a foto.")
-        return ConversationHandler.END
+        try:
+            client = get_gemini_client()
+            result = await VisionParser(client).parse_base64(b64, "image/jpeg", user_context, db=db)
+        except Exception as exc:
+            logger.error("Erro ao analisar foto: %s", exc)
+            await update.message.reply_html("❌ Não consegui analisar a foto.")
+            return ConversationHandler.END
 
     if not result.items:
         await update.message.reply_html("🤔 Não identifiquei alimentos na foto.")

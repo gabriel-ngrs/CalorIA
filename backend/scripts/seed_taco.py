@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -401,36 +401,56 @@ def _build_search_text(name: str, aliases: list[str]) -> str:
 
 
 async def seed(db: AsyncSession) -> None:
-    existing = await db.scalar(select(Food).limit(1))
-    if existing:
-        print("✓ Tabela foods já populada. Use --force para recriar.")
-        return
-
-    foods = []
+    batch = []
     for item in TACO_DATA:
         aliases = item.get("aliases", [])
-        food = Food(
-            name=item["name"],
-            aliases=aliases,
-            category=item["category"],
-            preparation=item.get("preparation"),
-            notes=item.get("notes"),
-            source="taco",
-            search_text=_build_search_text(item["name"], aliases),
-            calories_100g=item["calories_100g"],
-            protein_100g=item["protein_100g"],
-            carbs_100g=item["carbs_100g"],
-            fat_100g=item["fat_100g"],
-            fiber_100g=item.get("fiber_100g", 0.0),
-            sodium_100g=item.get("sodium_100g"),
-            sugar_100g=item.get("sugar_100g"),
-            saturated_fat_100g=item.get("saturated_fat_100g"),
-        )
-        foods.append(food)
+        batch.append({
+            "name": item["name"],
+            "aliases": aliases,
+            "category": item["category"],
+            "preparation": item.get("preparation"),
+            "notes": item.get("notes"),
+            "source": "taco",
+            "search_text": _build_search_text(item["name"], aliases),
+            "calories_100g": item["calories_100g"],
+            "protein_100g": item["protein_100g"],
+            "carbs_100g": item["carbs_100g"],
+            "fat_100g": item["fat_100g"],
+            "fiber_100g": item.get("fiber_100g", 0.0),
+            "sodium_100g": item.get("sodium_100g"),
+            "sugar_100g": item.get("sugar_100g"),
+            "saturated_fat_100g": item.get("saturated_fat_100g"),
+        })
 
-    db.add_all(foods)
+    result = await db.execute(
+        sa_text("""
+            INSERT INTO foods
+                (name, aliases, category, preparation, notes, source, search_text,
+                 calories_100g, protein_100g, carbs_100g, fat_100g, fiber_100g,
+                 sodium_100g, sugar_100g, saturated_fat_100g)
+            VALUES
+                (:name, :aliases, :category, :preparation, :notes, :source, :search_text,
+                 :calories_100g, :protein_100g, :carbs_100g, :fat_100g, :fiber_100g,
+                 :sodium_100g, :sugar_100g, :saturated_fat_100g)
+            ON CONFLICT (name) DO UPDATE SET
+                aliases          = EXCLUDED.aliases,
+                category         = EXCLUDED.category,
+                preparation      = EXCLUDED.preparation,
+                notes            = EXCLUDED.notes,
+                search_text      = EXCLUDED.search_text,
+                calories_100g    = EXCLUDED.calories_100g,
+                protein_100g     = EXCLUDED.protein_100g,
+                carbs_100g       = EXCLUDED.carbs_100g,
+                fat_100g         = EXCLUDED.fat_100g,
+                fiber_100g       = EXCLUDED.fiber_100g,
+                sodium_100g      = EXCLUDED.sodium_100g,
+                sugar_100g       = EXCLUDED.sugar_100g,
+                saturated_fat_100g = EXCLUDED.saturated_fat_100g
+        """),
+        batch,
+    )
     await db.commit()
-    print(f"✓ {len(foods)} alimentos inseridos na tabela foods.")
+    print(f"✓ {len(batch)} alimentos inseridos/atualizados na tabela foods (TACO).")
 
 
 async def seed_force(db: AsyncSession) -> None:
