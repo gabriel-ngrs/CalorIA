@@ -373,12 +373,12 @@ cd frontend && npm run lint
 
 ## Status
 
-- [ ] GRUPO 1 — Migrações do banco
-- [ ] GRUPO 2 — Modelos Python
-- [ ] GRUPO 3 — Schemas Pydantic
-- [ ] GRUPO 4 — Serviço food_lookup
-- [ ] GRUPO 5 — Pipeline de IA (meal_parser + vision_parser)
-- [ ] GRUPO 6 — Verificação meal_service
-- [ ] GRUPO 7 — Scripts de ingestão (seed_taco, import_off, import_usda)
-- [ ] GRUPO 8 — Frontend types
-- [ ] GRUPO 9 — Limpeza de stubs
+- [x] GRUPO 1 — Migrações do banco
+- [x] GRUPO 2 — Modelos Python
+- [x] GRUPO 3 — Schemas Pydantic
+- [x] GRUPO 4 — Serviço food_lookup
+- [x] GRUPO 5 — Pipeline de IA (meal_parser + vision_parser)
+- [x] GRUPO 6 — Verificação meal_service
+- [x] GRUPO 7 — Scripts de ingestão (seed_taco, import_off, import_usda)
+- [x] GRUPO 8 — Frontend types
+- [x] GRUPO 9 — Limpeza de stubs
