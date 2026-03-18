@@ -16,6 +16,11 @@ class MealItemCreate(BaseModel):
     fat: float = Field(default=0.0, ge=0)
     fiber: float = Field(default=0.0, ge=0)
     raw_input: str | None = None
+    food_id: int | None = None
+    data_source: str | None = None
+    sodium: float | None = None
+    sugar: float | None = None
+    saturated_fat: float | None = None
 
 
 class MealItemResponse(BaseModel):
@@ -32,6 +37,11 @@ class MealItemResponse(BaseModel):
     fat: float
     fiber: float
     raw_input: str | None
+    food_id: int | None
+    data_source: str | None
+    sodium: float | None
+    sugar: float | None
+    saturated_fat: float | None
 
 
 class MealCreate(BaseModel):
