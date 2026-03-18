@@ -64,6 +64,11 @@ export interface MealItem {
   carbs: number;
   fat: number;
   fiber: number | null;
+  food_id: number | null;
+  data_source: string | null; // "taco" | "openfoodfacts" | "usda" | "ai_estimated" | null
+  sodium: number | null;
+  sugar: number | null;
+  saturated_fat: number | null;
 }
 
 export interface Meal {
@@ -84,6 +89,11 @@ export interface MealItemCreate {
   carbs: number;
   fat: number;
   fiber?: number;
+  food_id?: number | null;
+  data_source?: string | null;
+  sodium?: number | null;
+  sugar?: number | null;
+  saturated_fat?: number | null;
 }
 
 export interface MealCreate {
@@ -241,6 +251,11 @@ export interface ParsedFoodItem {
   fat: number;
   fiber: number;
   confidence: number;
+  food_id: number | null;
+  data_source: string | null; // "taco" | "openfoodfacts" | "usda" | "ai_estimated" | null
+  sodium: number | null;
+  sugar: number | null;
+  saturated_fat: number | null;
 }
 
 export interface MealAnalysisResponse {
