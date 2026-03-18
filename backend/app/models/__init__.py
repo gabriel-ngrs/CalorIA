@@ -4,6 +4,7 @@ from app.models.user import User
 from app.models.profile import UserProfile
 from app.models.meal import Meal
 from app.models.meal_item import MealItem
+from app.models.food import Food
 from app.models.weight_log import WeightLog
 from app.models.hydration_log import HydrationLog
 from app.models.mood_log import MoodLog
@@ -17,6 +18,7 @@ __all__ = [
     "UserProfile",
     "Meal",
     "MealItem",
+    "Food",
     "WeightLog",
     "HydrationLog",
     "MoodLog",
