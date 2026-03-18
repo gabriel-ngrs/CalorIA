@@ -42,7 +42,7 @@ from sqlalchemy import delete, select, text as sa_text
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.database import AsyncSessionLocal  # noqa: E402
-from app.models.taco_food import TacoFood  # noqa: E402
+from app.models.food import Food  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -179,8 +179,8 @@ def _is_latin_name(name: str) -> bool:
     return non_latin / len(name) < 0.2
 
 
-def _parse_product(product: dict) -> TacoFood | None:
-    """Converte um produto OFF em TacoFood. Retorna None se dados insuficientes."""
+def _parse_product(product: dict) -> Food | None:
+    """Converte um produto OFF em Food. Retorna None se dados insuficientes."""
     name = (
         product.get("product_name_pt")
         or product.get("product_name")
@@ -202,6 +202,9 @@ def _parse_product(product: dict) -> TacoFood | None:
         carbs = float(nutriments.get("carbohydrates_100g") or 0)
         fat = float(nutriments.get("fat_100g") or 0)
         fiber = float(nutriments.get("fiber_100g") or 0)
+        sodium = float(nutriments.get("sodium_100g") or 0)
+        sugar = float(nutriments.get("sugars_100g") or 0)
+        saturated_fat = float(nutriments.get("saturated-fat_100g") or 0)
     except (ValueError, TypeError):
         return None
 
@@ -216,7 +219,8 @@ def _parse_product(product: dict) -> TacoFood | None:
     # Descarta valores fisicamente impossíveis (dados corrompidos no OFF)
     # Nenhum alimento sólido/líquido pode ter >950 kcal/100g (gordura pura = 900)
     # Macronutrientes individualmente não podem exceder 100g em 100g de alimento
-    if calories > 950 or protein > 100 or carbs > 100 or fat > 100:
+    # Sódio > 10g/100g é fisicamente impossível (sal de cozinha tem ~39g Na/100g)
+    if calories > 950 or protein > 100 or carbs > 100 or fat > 100 or sodium > 10:
         return None
 
     barcode = str(product.get("code") or "").strip() or None
@@ -236,7 +240,7 @@ def _parse_product(product: dict) -> TacoFood | None:
             if brand and brand.lower() != name.lower() and brand not in aliases and len(brand) <= 100:
                 aliases.append(brand)
 
-    return TacoFood(
+    return Food(
         name=name,
         aliases=aliases,
         category=category,
@@ -250,6 +254,9 @@ def _parse_product(product: dict) -> TacoFood | None:
         carbs_100g=round(carbs, 2),
         fat_100g=round(fat, 2),
         fiber_100g=round(fiber, 2),
+        sodium_100g=round(sodium, 3) if sodium > 0 else None,
+        sugar_100g=round(sugar, 2) if sugar > 0 else None,
+        saturated_fat_100g=round(saturated_fat, 2) if saturated_fat > 0 else None,
     )
 
 
@@ -291,19 +298,19 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
     async with AsyncSessionLocal() as db:
         if force:
             deleted = await db.execute(
-                delete(TacoFood).where(TacoFood.source == "openfoodfacts")
+                delete(Food).where(Food.source == "openfoodfacts")
             )
             await db.commit()
             logger.info("Removidos %d registros existentes do Open Food Facts.", deleted.rowcount)
 
         # Carrega nomes já existentes para evitar duplicatas (unique constraint)
         existing_names: set[str] = set(
-            row[0] for row in (await db.execute(select(TacoFood.name))).all()
+            row[0] for row in (await db.execute(select(Food.name))).all()
         )
         existing_barcodes: set[str] = set(
             row[0]
             for row in (
-                await db.execute(select(TacoFood.external_id).where(TacoFood.external_id.isnot(None)))
+                await db.execute(select(Food.external_id).where(Food.external_id.isnot(None)))
             ).all()
         )
 
@@ -371,6 +378,9 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
                         "carbs_100g": food.carbs_100g,
                         "fat_100g": food.fat_100g,
                         "fiber_100g": food.fiber_100g,
+                        "sodium_100g": food.sodium_100g,
+                        "sugar_100g": food.sugar_100g,
+                        "saturated_fat_100g": food.saturated_fat_100g,
                     })
 
                 if not batch:
@@ -388,14 +398,16 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
                     # ON CONFLICT DO NOTHING: duplicatas residuais dentro do batch não crasham
                     result = await db.execute(
                         sa_text("""
-                            INSERT INTO taco_foods
+                            INSERT INTO foods
                                 (name, aliases, category, preparation, notes, source,
                                  external_id, search_text,
-                                 calories_100g, protein_100g, carbs_100g, fat_100g, fiber_100g)
+                                 calories_100g, protein_100g, carbs_100g, fat_100g, fiber_100g,
+                                 sodium_100g, sugar_100g, saturated_fat_100g)
                             VALUES
                                 (:name, :aliases, :category, :preparation, :notes, :source,
                                  :external_id, :search_text,
-                                 :calories_100g, :protein_100g, :carbs_100g, :fat_100g, :fiber_100g)
+                                 :calories_100g, :protein_100g, :carbs_100g, :fat_100g, :fiber_100g,
+                                 :sodium_100g, :sugar_100g, :saturated_fat_100g)
                             ON CONFLICT (name) DO NOTHING
                         """),
                         batch,

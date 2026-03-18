@@ -1,4 +1,4 @@
-"""Popula a tabela taco_foods com dados da TACO (UNICAMP) + alimentos processados comuns.
+"""Popula a tabela foods com dados da TACO (UNICAMP) + alimentos processados comuns.
 
 Uso:
     cd backend
@@ -16,7 +16,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
-from app.models.taco_food import TacoFood
+from app.models.food import Food
 
 # ---------------------------------------------------------------------------
 # Base de dados: (name, aliases, category, preparation, notes, cal, prot, carb, fat, fiber)
@@ -401,15 +401,15 @@ def _build_search_text(name: str, aliases: list[str]) -> str:
 
 
 async def seed(db: AsyncSession) -> None:
-    existing = await db.scalar(select(TacoFood).limit(1))
+    existing = await db.scalar(select(Food).limit(1))
     if existing:
-        print("✓ Tabela taco_foods já populada. Use --force para recriar.")
+        print("✓ Tabela foods já populada. Use --force para recriar.")
         return
 
     foods = []
     for item in TACO_DATA:
         aliases = item.get("aliases", [])
-        food = TacoFood(
+        food = Food(
             name=item["name"],
             aliases=aliases,
             category=item["category"],
@@ -422,16 +422,19 @@ async def seed(db: AsyncSession) -> None:
             carbs_100g=item["carbs_100g"],
             fat_100g=item["fat_100g"],
             fiber_100g=item.get("fiber_100g", 0.0),
+            sodium_100g=item.get("sodium_100g"),
+            sugar_100g=item.get("sugar_100g"),
+            saturated_fat_100g=item.get("saturated_fat_100g"),
         )
         foods.append(food)
 
     db.add_all(foods)
     await db.commit()
-    print(f"✓ {len(foods)} alimentos inseridos na tabela taco_foods.")
+    print(f"✓ {len(foods)} alimentos inseridos na tabela foods.")
 
 
 async def seed_force(db: AsyncSession) -> None:
-    await db.execute(delete(TacoFood))
+    await db.execute(delete(Food))
     await db.commit()
     await seed(db)
 
@@ -440,7 +443,7 @@ async def main() -> None:
     force = "--force" in sys.argv
     async with AsyncSessionLocal() as db:
         if force:
-            print("Recriando tabela taco_foods...")
+            print("Recriando tabela foods...")
             await seed_force(db)
         else:
             await seed(db)
