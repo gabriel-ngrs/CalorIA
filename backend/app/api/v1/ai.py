@@ -29,7 +29,7 @@ from app.services.ai.vision_parser import VisionParser
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-def _require_gemini() -> None:
+def _require_ai() -> None:
     """Dependência FastAPI: garante que GROQ_API_KEY está configurada."""
     if not settings.GROQ_API_KEY:
         raise HTTPException(
@@ -43,7 +43,7 @@ async def analyze_meal(
     data: MealAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
     client = get_gemini_client()
@@ -65,14 +65,16 @@ async def analyze_photo(
     data: PhotoAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa foto de refeição (base64) e retorna itens nutricionais."""
     client = get_gemini_client()
     try:
+        user_context = await build_meal_context(user_id, db, date.today())
         return await VisionParser(client).parse_base64(
             image_base64=data.image_base64,
             mime_type=data.mime_type,
+            user_context=user_context,
             db=db,
         )
     except ValueError as exc:
@@ -85,7 +87,7 @@ async def generate_insight(
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> InsightResponse:
     """Gera insight personalizado: diário, semanal ou resposta a uma pergunta."""
     if data.type == "question" and not data.question:
@@ -116,7 +118,7 @@ async def suggest_meal(
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MealSuggestion:
     """Sugere uma refeição com base no histórico e calorias restantes do dia."""
     client = get_gemini_client()
@@ -137,7 +139,7 @@ async def eating_patterns(
     days: int = Query(default=30, ge=7, le=90),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> EatingPattern:
     """Analisa padrões alimentares dos últimos N dias (7-90)."""
     client = get_gemini_client()
@@ -155,7 +157,7 @@ async def nutritional_alerts(
     days: int = Query(default=14, ge=7, le=30),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> NutritionalAlertsResponse:
     """Detecta deficiências nutricionais recorrentes nos últimos N dias."""
     client = get_gemini_client()
@@ -172,7 +174,7 @@ async def nutritional_alerts(
 async def goal_adjustment(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> GoalAdjustmentSuggestion:
     """Sugere ajuste de metas com base na tendência real de peso dos últimos 30 dias."""
     client = get_gemini_client()
@@ -191,7 +193,7 @@ async def monthly_report(
     year: int = Query(default=None, ge=2020),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MonthlyReport:
     """Gera relatório mensal com score de aderência e análise semanal.
 
