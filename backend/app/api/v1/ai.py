@@ -30,11 +30,11 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 def _require_ai() -> None:
-    """Dependência FastAPI: garante que GROQ_API_KEY está configurada."""
-    if not settings.GROQ_API_KEY:
+    """Dependência FastAPI: garante que GEMINI_API_KEY está configurada."""
+    if not settings.GEMINI_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serviço de IA não configurado. Defina GROQ_API_KEY.",
+            detail="Serviço de IA não configurado. Defina GEMINI_API_KEY.",
         )
 
 
