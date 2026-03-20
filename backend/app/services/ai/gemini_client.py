@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 
@@ -86,18 +87,28 @@ class GeminiClient:
             system_instruction=system,
             temperature=0.1 if system else 0.3,
         )
-        response = await self._client.aio.models.generate_content(
-            model=_MODEL,
-            contents=prompt,
-            config=config,
-        )
-        if response.usage_metadata:
-            logger.info(
-                "Gemini tokens — entrada: %d, saída: %d",
-                response.usage_metadata.prompt_token_count or 0,
-                response.usage_metadata.candidates_token_count or 0,
-            )
-        return response.text or ""
+        for attempt in range(4):
+            try:
+                response = await self._client.aio.models.generate_content(
+                    model=_MODEL,
+                    contents=prompt,
+                    config=config,
+                )
+                if response.usage_metadata:
+                    logger.info(
+                        "Gemini tokens — entrada: %d, saída: %d",
+                        response.usage_metadata.prompt_token_count or 0,
+                        response.usage_metadata.candidates_token_count or 0,
+                    )
+                return response.text or ""
+            except Exception as exc:
+                if "429" in str(exc) and attempt < 3:
+                    wait = 15 * (2 ** attempt)
+                    logger.warning("Rate limit Gemini — aguardando %ds (tentativa %d/4)", wait, attempt + 1)
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+        raise RuntimeError("Gemini falhou após 4 tentativas")
 
     # ------------------------------------------------------------------
     # Cache Redis
