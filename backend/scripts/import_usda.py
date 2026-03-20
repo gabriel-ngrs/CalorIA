@@ -45,6 +45,9 @@ REQUEST_TIMEOUT = 30.0
 
 # Mapeamento de nutrientes USDA → campos do modelo Food
 _NUTRIENT_MAP: dict[str, str] = {
+    # O endpoint /foods/list retorna "Energy (Atwater General Factors)" ou específico
+    "Energy (Atwater General Factors)": "calories",
+    "Energy (Atwater Specific Factors)": "calories",
     "Energy": "calories",
     "Protein": "protein",
     "Carbohydrate, by difference": "carbs",
@@ -140,8 +143,9 @@ def _extract_nutrients(food_nutrients: list[dict]) -> dict[str, float]:
     }
 
     for item in food_nutrients:
-        nutrient = item.get("nutrient", {})
-        nutrient_name = nutrient.get("name", "")
+        # /foods/list retorna estrutura plana: {"name": "...", "amount": ...}
+        # /food/{id} retorna aninhada: {"nutrient": {"name": "..."}, "amount": ...}
+        nutrient_name = item.get("name") or (item.get("nutrient") or {}).get("name", "")
         field = _NUTRIENT_MAP.get(nutrient_name)
         if field is None:
             continue
