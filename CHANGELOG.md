@@ -9,6 +9,25 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+
+- **Sanity check calórico no pipeline dois estágios** — após lookup no banco, compara `kcal_estimate` da IA com as calorias calculadas do registro encontrado; divergência > 35% descarta o match e usa estimativa da IA como fallback. Evita que registros incorretos do OpenFoodFacts contaminem resultados. Aplicado em `meal_parser.py` e `vision_parser.py`.
+- **Campo `kcal_estimate` em `IdentifiedFood`** — estágio 1 da IA agora retorna estimativa calórica usada exclusivamente como sanity check do banco, sem substituir os macros reais do TACO.
+- **Migração `20260320_e6f7a8b9c0d1`** — corrige `search_text` de 7 registros TACO (feijão carioca, ovo cozido/mexido/frito/clara, mandioca cozida/frita) para aumentar score pg_trgm de ~0.4 para ~0.8; remove registro OpenFoodFacts de feijão carioca com valor calórico incorreto (44 kcal vs TACO 76 kcal).
+
+### Alterado
+
+- **Refatoração do banco de alimentos** — `taco_foods` renomeada para `foods`, adicionados campos de micronutrientes (`sodium_100g`, `sugar_100g`, `saturated_fat_100g`), campo `source` para rastrear origem (taco/openfoodfacts/ai_estimated), campo `food_id` em `meal_items` para referência direta ao alimento.
+- **Busca fuzzy via pg_trgm** — substituiu rapidfuzz in-memory por busca trigrama diretamente no PostgreSQL com índice GIN; boost 1.40× para registros TACO em desempates contra OpenFoodFacts; threshold mínimo 0.65 para match válido.
+- **Timeout da API no frontend** — aumentado de 10s para 45s para acomodar análises de foto com múltiplos alimentos.
+
+### Corrigido
+
+- Feijão carioca retornando 40 kcal (registro OpenFoodFacts incorreto sobrescrevia TACO 76 kcal).
+- Ovo cozido sem match no banco (score 0.57 < 0.65 por `search_text` longo diluindo trigrama).
+- Aipim/mandioca mapeando para alimento errado (Chuchu cozido).
+- `db` não repassado ao `VisionParser` no handler de fotos do bot Telegram/WhatsApp.
+
 ---
 
 ## [0.4.0] - 2026-03-05
