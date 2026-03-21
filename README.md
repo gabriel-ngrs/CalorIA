@@ -2,11 +2,13 @@
 
 Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Telegram, acompanhe macros, peso, hidratação e humor pelo dashboard web.
 
+[![CI](https://github.com/gabriel-ngrs/CalorIA/actions/workflows/ci.yml/badge.svg)](https://github.com/gabriel-ngrs/CalorIA/actions/workflows/ci.yml)
+
 ---
 
 ## Funcionalidades
 
-- **Registro via mensagem** — envie texto ou foto da refeição no WhatsApp ou Telegram; a IA consulta o banco TACO (~600 alimentos brasileiros) e injeta contexto histórico antes de calcular os macros
+- **Registro via mensagem** — envie texto ou foto da refeição no WhatsApp ou Telegram; a IA consulta o banco TACO (~600 alimentos brasileiros) e calcula os macros com sanity check calórico
 - **Dashboard web** — interface glassmorphism com gráficos de calorias, macros, evolução de peso e hidratação
 - **Tracking completo** — peso corporal, hidratação, humor e energia com métricas de período
 - **Lembretes inteligentes** — notificações de refeição, água e resumo diário via Telegram/WhatsApp
@@ -23,12 +25,13 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 | Banco de dados | PostgreSQL 16 |
 | Cache / Filas | Redis 7 |
 | Workers | Celery + Celery Beat |
-| IA | Google Gemini Flash 1.5 + Vision |
+| IA | Google Gemini 2.5 Flash |
 | Bot Telegram | python-telegram-bot |
 | Bot WhatsApp | Evolution API (self-hosted) |
-| Frontend | Next.js 14 + TypeScript + shadcn/ui (Glassmorphism) |
+| Frontend | Next.js 14 + TypeScript + shadcn/ui |
 | ORM | SQLAlchemy 2 (async) + Alembic |
-| Infra | Docker Compose |
+| Infra | Docker Compose + Caddy (HTTPS) |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -70,7 +73,7 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 ### 1. Clonar o repositório
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/gabriel-ngrs/CalorIA.git
 cd CalorIA
 ```
 
@@ -83,27 +86,14 @@ cp .env.example .env
 Edite o `.env` com suas credenciais:
 
 ```env
-# Banco de dados
 DATABASE_URL=postgresql+asyncpg://caloria:caloria@postgres:5432/caloria_db
 REDIS_URL=redis://redis:6379/0
-
-# Segurança
 SECRET_KEY=sua-chave-secreta-aqui-min-32-chars
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=30
-
-# Google Gemini (gratuito)
 GEMINI_API_KEY=sua-chave-gemini-aqui
-
-# Telegram
 TELEGRAM_BOT_TOKEN=seu-token-do-botfather
-
-# Evolution API (WhatsApp)
 EVOLUTION_API_URL=http://evolution_api:8080
 EVOLUTION_API_KEY=sua-chave-evolution
 EVOLUTION_INSTANCE_NAME=caloria
-
-# Frontend
 NEXTAUTH_SECRET=sua-chave-nextauth
 NEXTAUTH_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -112,10 +102,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ### 3. Subir os serviços
 
 ```bash
-# Ambiente de desenvolvimento
+# Desenvolvimento (hot reload)
 docker compose -f docker-compose.dev.yml up
 
-# Ou em produção local
+# Produção local
 docker compose up -d
 ```
 
@@ -129,28 +119,24 @@ docker compose exec backend alembic upgrade head
 
 | Serviço | URL |
 |---|---|
-| Frontend (Dashboard) | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| API Docs (Swagger) | http://localhost:8000/docs |
+| Dashboard | http://localhost:3000 |
+| API | http://localhost:8000 |
+| Swagger | http://localhost:8000/docs |
 | Evolution API | http://localhost:8080 |
 
 ---
+
+## Conectar o Telegram
+
+1. Crie o bot no BotFather e configure `TELEGRAM_BOT_TOKEN` no `.env`
+2. No dashboard web → **Conectar Bot** → gere um token
+3. Envie `/conectar <token>` no Telegram
 
 ## Conectar o WhatsApp
 
 1. Acesse `http://localhost:8080` (Evolution API)
 2. Crie uma instância chamada `caloria`
 3. Escaneie o QR Code com seu WhatsApp
-4. A sessão fica salva no volume Docker
-
----
-
-## Conectar o Telegram
-
-1. Abra o bot no Telegram (busque pelo nome configurado no BotFather)
-2. Envie `/start`
-3. No dashboard web, acesse **Conectar Bot** → gere um token
-4. Envie `/conectar <token>` no Telegram
 
 ---
 
@@ -158,36 +144,38 @@ docker compose exec backend alembic upgrade head
 
 ```
 CalorIA/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml          # CI: lint, testes, build (push dev / PR main)
+│       └── cd.yml          # CD: deploy automático (merge main)
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # Endpoints REST
-│   │   ├── bots/         # Handlers Telegram e WhatsApp
-│   │   ├── core/         # Config, DB, segurança
-│   │   ├── models/       # Modelos SQLAlchemy
-│   │   ├── schemas/      # Schemas Pydantic
-│   │   ├── services/     # Lógica de negócio + IA
-│   │   └── workers/      # Tasks Celery
-│   ├── alembic/          # Migrações
-│   ├── scripts/          # Scripts de manutenção e seed
+│   │   ├── api/            # Endpoints REST (v1)
+│   │   ├── bots/           # Handlers Telegram e WhatsApp
+│   │   ├── core/           # Config, DB, segurança
+│   │   ├── models/         # Modelos SQLAlchemy
+│   │   ├── schemas/        # Schemas Pydantic
+│   │   ├── services/       # Lógica de negócio + IA (Gemini)
+│   │   └── workers/        # Tasks Celery
+│   ├── alembic/            # Migrações de banco
+│   ├── scripts/            # Seed e utilitários
 │   └── tests/
 ├── frontend/
-│   ├── app/              # Next.js App Router
-│   ├── components/       # Componentes React
-│   ├── lib/              # Utils, API client e hooks
-│   ├── public/           # Ícones e assets estáticos
-│   ├── scripts/          # Scripts de utilidade (warmup)
-│   └── types/            # TypeScript types e augmentations
-├── docs/                 # Documentação técnica
-│   ├── architecture.md   # Decisões de arquitetura (ADRs)
-│   ├── setup.md          # Guia de setup do zero
-│   ├── deploy.md         # Guia de deploy em produção
-│   ├── flow.md           # Fluxo da mensagem ao banco
-│   └── project-plan.md   # Plano e especificação do projeto
-├── scripts/              # Scripts de deploy e servidor
-├── Caddyfile             # Reverse proxy (produção)
-├── CLAUDE.md             # Instruções para Claude Code
-├── Roadmap.md            # Etapas de desenvolvimento
-└── CHANGELOG.md          # Histórico de mudanças
+│   ├── app/                # Next.js App Router (páginas)
+│   ├── components/         # Componentes React
+│   ├── lib/                # Utils, API client, hooks
+│   └── types/              # TypeScript types
+├── docs/
+│   ├── architecture.md     # Decisões de arquitetura (ADRs)
+│   ├── setup.md            # Guia de setup do zero
+│   ├── deploy.md           # Guia de deploy em produção (Hetzner)
+│   ├── git-workflow.md     # Estratégia de branches e CI/CD
+│   └── flow.md             # Fluxo da mensagem ao banco
+├── scripts/                # Scripts de servidor e deploy
+├── Caddyfile               # Reverse proxy (HTTPS produção)
+├── docker-compose.yml      # Produção
+├── docker-compose.dev.yml  # Desenvolvimento
+└── .env.example
 ```
 
 ---
@@ -195,30 +183,39 @@ CalorIA/
 ## Desenvolvimento
 
 ```bash
-# Rodar testes backend
+# Testes backend
 cd backend && pytest
 
-# Rodar testes com cobertura
+# Testes com cobertura
 cd backend && pytest --cov=app --cov-report=html
 
-# Linting backend
+# Lint e type check
 cd backend && ruff check . && mypy app/
 
-# Rodar testes frontend
-cd frontend && npm run test
+# Testes frontend
+cd frontend && npm test
 
-# Linting frontend
+# Lint frontend
 cd frontend && npm run lint
-
-# Nova migração de banco
-cd backend && alembic revision --autogenerate -m "descricao"
 ```
+
+---
+
+## Deploy
+
+Ver [`docs/deploy.md`](docs/deploy.md) para o guia completo de deploy no Hetzner.
+
+O CI/CD está configurado via GitHub Actions:
+- **Push na `dev`** → roda lint, testes e build
+- **Merge na `main`** → deploy automático no servidor via SSH
+
+Ver [`docs/git-workflow.md`](docs/git-workflow.md) para a estratégia de branches.
 
 ---
 
 ## Convenções de Commit
 
-Conventional Commits em português, sem mencionar autor.
+Conventional Commits em português:
 
 ```bash
 feat(bots): adiciona suporte a fotos no Telegram
@@ -226,8 +223,6 @@ fix(api): corrige cálculo de macros para refeições compostas
 docs(readme): atualiza instruções de instalação
 chore(deps): atualiza dependências do backend
 ```
-
-A cada mudança significativa, fazer commit. Ver CLAUDE.md para detalhes completos.
 
 ---
 
@@ -239,13 +234,7 @@ A cada mudança significativa, fazer commit. Ver CLAUDE.md para detalhes complet
 | Tokens por minuto | 1.000.000 |
 | Requisições por dia | 1.500 |
 
-O projeto implementa cache Redis para alimentos frequentes e reduz o consumo. O banco TACO embutido (~600 alimentos) reduz dependência do Gemini para alimentos brasileiros comuns.
-
----
-
-## Roadmap
-
-Ver [Roadmap.md](Roadmap.md) para o plano completo de desenvolvimento dividido em 9 fases.
+O projeto implementa cache Redis para alimentos frequentes e banco TACO embutido (~600 alimentos brasileiros) para reduzir dependência do Gemini.
 
 ---
 

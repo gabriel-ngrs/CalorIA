@@ -395,20 +395,37 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ---
 
-## Fase 9 — Preparação para Escala (Futuro)
+## Fase 9 — Deploy e Escala
 
-> Itens a considerar quando o projeto crescer para múltiplos usuários.
+> Preparar o projeto para produção e crescimento.
 
+### 9.1 CI/CD
+- [x] GitHub Actions — CI: lint (ruff + mypy + eslint), testes (pytest + jest), build Next.js
+- [x] GitHub Actions — CD: deploy automático via SSH ao mergear na `main`
+- [x] Estratégia de branches: `main` (produção), `dev` (integração), `hotfix/*`
+- [x] Documentação do workflow em `docs/git-workflow.md`
+- [ ] Proteção da branch `main` no GitHub (PR obrigatório + CI obrigatório)
+
+### 9.2 Deploy em Produção
+- [ ] Provisionar servidor (Hetzner CX22 — ~R$22/mês)
+- [ ] Configurar secrets no GitHub (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`)
+- [ ] Configurar environment `production` no GitHub Actions
+- [ ] Primeiro deploy manual (ver `docs/deploy.md`)
+- [ ] HTTPS com Let's Encrypt via Caddy
+- [ ] Backups automáticos do PostgreSQL (cron diário)
+- [ ] Conectar WhatsApp (escanear QR Code via Evolution API)
+
+### 9.3 Observabilidade
+- [ ] Sentry para erros em produção (backend + frontend)
+- [ ] Health check endpoint monitorado (UptimeRobot ou similar)
+- [ ] Logs estruturados com nível configurável
+
+### 9.4 Escala Futura
 - [ ] Autenticação social (Google OAuth)
-- [ ] Multi-tenancy: garantir isolamento total de dados por usuário
+- [ ] Multi-tenancy: isolamento total de dados por usuário
 - [ ] Rate limiting por usuário na API
 - [ ] Otimização de queries + índices no banco
-- [ ] Migração de armazenamento de fotos para S3/R2
 - [ ] CDN para assets do frontend
-- [ ] Monitoramento: Sentry para erros, Prometheus + Grafana para métricas
-- [ ] Deploy em VPS (Coolify/Caprover) ou cloud (Railway, Render, Fly.io)
-- [ ] HTTPS com Let's Encrypt
-- [ ] Backups automáticos do PostgreSQL
 - [ ] Monetização: plano premium com features avançadas de IA
 
 ---
@@ -426,4 +443,4 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 6 | Notificações e Lembretes | `[x]` |
 | 7 | Insights Avançados de IA | `[x]` |
 | 8 | Qualidade e Testes | `[x]` |
-| 9 | Preparação para Escala | `[ ]` |
+| 9 | Deploy e Escala | `[~]` |

@@ -310,21 +310,22 @@ ls -lh /opt/caloria/backup_*.sql
 
 ## Fluxo de desenvolvimento → produção
 
+Com CI/CD ativo, o deploy acontece **automaticamente** ao mergear na `main`.
+
 ```
-dev (local)  →  main (produção)
-     │                │
-  desenvolve       roda no servidor
-  commita          git pull + rebuild
+dev  →  PR para main  →  CI passa  →  merge  →  CD faz deploy automático
 ```
+
+Você não precisa fazer mais nada no servidor. O GitHub Actions cuida do:
+1. `git pull origin main`
+2. `docker compose up -d --build`
+3. `docker exec caloria_backend alembic upgrade head`
+
+Ver [`docs/git-workflow.md`](git-workflow.md) para a estratégia completa de branches.
+
+### Deploy manual (emergência ou primeiro setup)
 
 ```bash
-# Local — quando terminar uma feature
-git checkout main
-git merge dev
-git push origin main
-git checkout dev   # volta para continuar desenvolvendo
-
-# Servidor — para puxar as mudanças
 cd /opt/caloria
 git pull origin main
 docker compose up -d --build
