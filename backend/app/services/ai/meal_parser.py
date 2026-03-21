@@ -43,15 +43,18 @@ _PORTIONS_REF = """
 
 _IDENTIFY_SYSTEM_PROMPT = f"""Você é especialista em alimentação brasileira.
 Dada uma descrição de refeição, identifique cada alimento, estime a quantidade
-em gramas e o método de preparo.
+em gramas, o método de preparo e as calorias totais para a porção.
 
 REGRAS ABSOLUTAS — nunca viole:
 1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
 2. Liste CADA ingrediente separadamente, mesmo em pratos compostos.
 3. Diferencie SEMPRE o método de preparo: grelhado ≠ frito ≠ cozido ≠ assado.
 4. Quando a porção for vaga ("um prato", "uma porção"), use as porções típicas abaixo.
-5. NÃO calcule macronutrientes — apenas identifique e estime quantidades.
+5. NÃO calcule macronutrientes detalhados — apenas calorias totais da porção.
 6. confidence: 0.9 = porção exata informada; 0.8 = porção estimada com boa referência; 0.6 = muito incerta.
+7. kcal_estimate: calorias totais da porção com base no seu conhecimento nutricional.
+   Exemplos de referência (por 100g): arroz cozido≈130, feijão cozido≈77, frango grelhado≈165,
+   leite integral≈61, leite desnatado≈35, pão de forma≈270, batata frita≈540, whey protein≈370.
 
 FORMATO OBRIGATÓRIO (array JSON):
 [
@@ -60,7 +63,8 @@ FORMATO OBRIGATÓRIO (array JSON):
     "quantity": 200,
     "unit": "g",
     "preparation": "cozido",
-    "confidence": 0.85
+    "confidence": 0.85,
+    "kcal_estimate": 260
   }}
 ]
 
@@ -140,11 +144,25 @@ class MealParser:
             if match:
                 food = match.food
                 factor = item.quantity / 100.0
+                db_kcal = food.calories_100g * factor
+
+                # Sanity check: compara calorias do banco com estimativa da IA
+                if item.kcal_estimate and item.kcal_estimate > 0 and db_kcal > 0:
+                    divergence = abs(db_kcal - item.kcal_estimate) / item.kcal_estimate
+                    if divergence > 0.35:
+                        logger.warning(
+                            "Sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
+                            "(divergência=%.0f%%, source=%s) — descartando banco, usando estimativa IA",
+                            item.food_name, db_kcal, item.kcal_estimate, divergence * 100, food.source,
+                        )
+                        to_estimate_idx.append(i)
+                        continue
+
                 result[i] = ParsedFoodItem(
                     food_name=item.food_name,
                     quantity=item.quantity,
                     unit=item.unit,
-                    calories=round(food.calories_100g * factor, 1),
+                    calories=round(db_kcal, 1),
                     protein=round(food.protein_100g * factor, 2),
                     carbs=round(food.carbs_100g * factor, 2),
                     fat=round(food.fat_100g * factor, 2),

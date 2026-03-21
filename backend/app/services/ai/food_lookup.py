@@ -53,13 +53,14 @@ def _extract_candidates(text_: str, min_n: int = 1) -> list[str]:
 
 
 class IdentifiedFood(BaseModel):
-    """Alimento identificado pela IA — apenas nome, quantidade e preparo, sem macros."""
+    """Alimento identificado pela IA — nome, quantidade, preparo e estimativa calórica."""
 
     food_name: str
     quantity: float
     unit: str = "g"
     preparation: str | None = None
     confidence: float = 0.8
+    kcal_estimate: float | None = None  # estimativa IA usada como sanity check do banco
 
 
 @dataclass

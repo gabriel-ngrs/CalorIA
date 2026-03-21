@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Estágio 1 — Identificação visual (sem macros)
 # ---------------------------------------------------------------------------
 _IDENTIFY_SYSTEM_PROMPT = """Você é um nutricionista analisando fotos de refeições brasileiras.
-Identifique todos os alimentos visíveis e estime as porções usando referências visuais.
+Identifique todos os alimentos visíveis, estime as porções e as calorias totais de cada item.
 
 REGRAS ABSOLUTAS — nunca viole:
 1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
@@ -27,8 +27,9 @@ REGRAS ABSOLUTAS — nunca viole:
 3. Diferencie método de preparo pelo aspecto: dourado/crocante = frito; marcas de grelha = grelhado; pálido/úmido = cozido.
 4. Liste cada alimento separadamente, mesmo em pratos compostos.
 5. Estime porções sempre em gramas (unit="g").
-6. NÃO calcule macronutrientes — apenas identifique, estime quantidade e preparo.
+6. NÃO calcule macros detalhados — apenas calorias totais da porção (kcal_estimate).
 7. confidence: 0.9 = claramente identificado + porção bem visível; 0.7 = identificado mas porção incerta; 0.5 = difícil de identificar.
+8. kcal_estimate: calorias totais da porção com base no seu conhecimento nutricional.
 
 FORMATO OBRIGATÓRIO (array JSON):
 [
@@ -37,7 +38,8 @@ FORMATO OBRIGATÓRIO (array JSON):
     "quantity": 150,
     "unit": "g",
     "preparation": "grelhado",
-    "confidence": 0.75
+    "confidence": 0.75,
+    "kcal_estimate": 245
   }
 ]
 
@@ -141,11 +143,25 @@ class VisionParser:
             if match:
                 food = match.food
                 factor = item.quantity / 100.0
+                db_kcal = food.calories_100g * factor
+
+                # Sanity check: compara calorias do banco com estimativa da IA
+                if item.kcal_estimate and item.kcal_estimate > 0 and db_kcal > 0:
+                    divergence = abs(db_kcal - item.kcal_estimate) / item.kcal_estimate
+                    if divergence > 0.35:
+                        logger.warning(
+                            "Vision sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
+                            "(divergência=%.0f%%, source=%s) — descartando banco, usando estimativa IA",
+                            item.food_name, db_kcal, item.kcal_estimate, divergence * 100, food.source,
+                        )
+                        to_estimate_idx.append(i)
+                        continue
+
                 result[i] = ParsedFoodItem(
                     food_name=item.food_name,
                     quantity=item.quantity,
                     unit=item.unit,
-                    calories=round(food.calories_100g * factor, 1),
+                    calories=round(db_kcal, 1),
                     protein=round(food.protein_100g * factor, 2),
                     carbs=round(food.carbs_100g * factor, 2),
                     fat=round(food.fat_100g * factor, 2),
