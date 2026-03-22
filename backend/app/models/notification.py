@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import enum
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, Integer, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class NotificationType(str, enum.Enum):
+class NotificationType(StrEnum):
     REMINDER = "reminder"
     DAILY_SUMMARY = "daily_summary"
     WEEKLY_REPORT = "weekly_report"
@@ -28,7 +29,9 @@ class Notification(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    type: Mapped[NotificationType] = mapped_column(SAEnum(NotificationType), nullable=False)
+    type: Mapped[NotificationType] = mapped_column(
+        SAEnum(NotificationType), nullable=False
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

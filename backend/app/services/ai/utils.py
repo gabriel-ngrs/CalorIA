@@ -22,7 +22,6 @@ def correct_calories(items: list) -> list:  # type: ignore[type-arg]
     garante consistência matemática: calories = protein×4 + carbs×4 + fat×9.
     Aceita qualquer lista de objetos com os atributos esperados.
     """
-    from app.schemas.ai import ParsedFoodItem
 
     corrected = []
     for item in items:
@@ -30,7 +29,9 @@ def correct_calories(items: list) -> list:  # type: ignore[type-arg]
         if item.calories > 0 and abs(calculated - item.calories) > item.calories * 0.10:
             logger.warning(
                 "Divergência calórica em '%s': IA=%s kcal, calculado=%.1f kcal. Usando calculado.",
-                item.food_name, item.calories, calculated,
+                item.food_name,
+                item.calories,
+                calculated,
             )
             item = item.model_copy(update={"calories": round(calculated, 1)})
         corrected.append(item)

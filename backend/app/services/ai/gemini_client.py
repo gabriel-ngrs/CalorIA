@@ -68,8 +68,8 @@ class GeminiClient:
             temperature=0.1,
         )
         contents: list[types.PartUnionDict] = [
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),  # type: ignore[list-item]
-            prompt,  # type: ignore[list-item]
+            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            prompt,
         ]
         response = await self._client.aio.models.generate_content(
             model=_MODEL,
@@ -103,8 +103,12 @@ class GeminiClient:
                 return response.text or ""
             except Exception as exc:
                 if "429" in str(exc) and attempt < 3:
-                    wait = 15 * (2 ** attempt)
-                    logger.warning("Rate limit Gemini — aguardando %ds (tentativa %d/4)", wait, attempt + 1)
+                    wait = 15 * (2**attempt)
+                    logger.warning(
+                        "Rate limit Gemini — aguardando %ds (tentativa %d/4)",
+                        wait,
+                        attempt + 1,
+                    )
                     await asyncio.sleep(wait)
                 else:
                     raise
@@ -120,7 +124,9 @@ class GeminiClient:
 
     async def _get_cached(self, key: str) -> str | None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
+            async with aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            ) as r:  # type: ignore[no-untyped-call]
                 return await r.get(key)  # type: ignore[no-any-return]
         except Exception as exc:
             logger.warning("Falha ao ler cache (Redis): %s", exc)
@@ -128,7 +134,9 @@ class GeminiClient:
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:  # type: ignore[no-untyped-call]
+            async with aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            ) as r:  # type: ignore[no-untyped-call]
                 await r.setex(key, _CACHE_TTL, value)
         except Exception as exc:
             logger.warning("Falha ao gravar cache (Redis): %s", exc)

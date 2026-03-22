@@ -115,7 +115,7 @@ describe("useUpdateProfile", () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { height_cm: 176, activity_level: "active" };
+    const payload = { height_cm: 176, activity_level: "moderately_active" as const };
 
     await act(async () => {
       await result.current.mutateAsync(payload);

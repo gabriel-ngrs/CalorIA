@@ -21,14 +21,16 @@ def _run(coro: Any) -> Any:
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-@shared_task(name="app.workers.tasks.reminders.dispatch_due_reminders", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+@shared_task(
+    name="app.workers.tasks.reminders.dispatch_due_reminders", bind=True, max_retries=3
+)  # type: ignore[untyped-decorator]
 def dispatch_due_reminders(self: Any) -> None:
     """Verifica todos os lembretes ativos e envia os que estão no horário atual."""
     try:
         _run(_dispatch_due_reminders_async())
     except Exception as exc:
         logger.error("Erro em dispatch_due_reminders: %s", exc)
-        raise self.retry(exc=exc, countdown=30)
+        raise self.retry(exc=exc, countdown=30) from exc
 
 
 async def _dispatch_due_reminders_async() -> None:
@@ -55,7 +57,10 @@ async def _dispatch_due_reminders_async() -> None:
                 continue
 
             # Verifica hora e minuto (tolerância de 0 min — executa a cada 60s)
-            if reminder.time.hour != current_hour or reminder.time.minute != current_minute:
+            if (
+                reminder.time.hour != current_hour
+                or reminder.time.minute != current_minute
+            ):
                 continue
 
             user = reminder.user
@@ -111,8 +116,15 @@ async def _send_reminder_notification(user: User, reminder: Reminder) -> None:
                 )
             except Exception as ex:  # noqa: BLE001
                 try:
-                    from pywebpush import WebPushException  # type: ignore[import-untyped]
-                    if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                    from pywebpush import (
+                        WebPushException,
+                    )
+
+                    if (
+                        isinstance(ex, WebPushException)
+                        and ex.response
+                        and ex.response.status_code == 410
+                    ):
                         expired_ids.append(sub.id)
                 except ImportError:
                     pass
@@ -125,18 +137,23 @@ async def _send_reminder_notification(user: User, reminder: Reminder) -> None:
         await db.commit()
 
 
-@shared_task(name="app.workers.tasks.reminders.send_hydration_reminders", bind=True, max_retries=2)  # type: ignore[untyped-decorator]
+@shared_task(
+    name="app.workers.tasks.reminders.send_hydration_reminders",
+    bind=True,
+    max_retries=2,
+)  # type: ignore[untyped-decorator]
 def send_hydration_reminders(self: Any) -> None:
     """Envia lembrete de hidratação para usuários que não atingiram a meta."""
     try:
         _run(_send_hydration_reminders_async())
     except Exception as exc:
         logger.error("Erro em send_hydration_reminders: %s", exc)
-        raise self.retry(exc=exc, countdown=60)
+        raise self.retry(exc=exc, countdown=60) from exc
 
 
 async def _send_hydration_reminders_async() -> None:
     from datetime import date
+
     from sqlalchemy import delete
 
     from app.models.notification import Notification, NotificationType
@@ -146,13 +163,12 @@ async def _send_hydration_reminders_async() -> None:
     today = date.today()
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(User).where(User.is_active.is_(True))
-        )
+        result = await db.execute(select(User).where(User.is_active.is_(True)))
         users = result.scalars().all()
 
         for user in users:
             from app.services.log_service import HydrationService
+
             summary = await HydrationService(db).get_day_summary(user.id, today)
 
             if summary.total_ml >= 2000:
@@ -193,8 +209,15 @@ async def _send_hydration_reminders_async() -> None:
                     )
                 except Exception as ex:  # noqa: BLE001
                     try:
-                        from pywebpush import WebPushException  # type: ignore[import-untyped]
-                        if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                        from pywebpush import (
+                            WebPushException,
+                        )
+
+                        if (
+                            isinstance(ex, WebPushException)
+                            and ex.response
+                            and ex.response.status_code == 410
+                        ):
                             expired_ids.append(sub.id)
                     except ImportError:
                         pass

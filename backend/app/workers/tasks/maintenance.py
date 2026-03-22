@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from celery import shared_task
@@ -21,18 +21,22 @@ def _run(coro: Any) -> Any:
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-@shared_task(name="app.workers.tasks.maintenance.cleanup_old_conversations", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+@shared_task(
+    name="app.workers.tasks.maintenance.cleanup_old_conversations",
+    bind=True,
+    max_retries=3,
+)  # type: ignore[untyped-decorator]
 def cleanup_old_conversations(self: Any) -> None:
     """Remove histórico de conversas com IA mais antigas que 90 dias."""
     try:
         _run(_cleanup_old_conversations_async())
     except Exception as exc:
         logger.error("Erro em cleanup_old_conversations: %s", exc)
-        raise self.retry(exc=exc, countdown=300)
+        raise self.retry(exc=exc, countdown=300) from exc
 
 
 async def _cleanup_old_conversations_async() -> None:
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=90)
+    cutoff = datetime.now(tz=UTC) - timedelta(days=90)
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -50,14 +54,16 @@ async def _cleanup_old_conversations_async() -> None:
         logger.debug("cleanup_old_conversations: nenhuma conversa para remover.")
 
 
-@shared_task(name="app.workers.tasks.maintenance.recalculate_tdee", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+@shared_task(
+    name="app.workers.tasks.maintenance.recalculate_tdee", bind=True, max_retries=3
+)  # type: ignore[untyped-decorator]
 def recalculate_tdee(self: Any) -> None:
     """Recalcula o TDEE dos usuários cujo peso registrado diverge mais de 2 kg do perfil."""
     try:
         _run(_recalculate_tdee_async())
     except Exception as exc:
         logger.error("Erro em recalculate_tdee: %s", exc)
-        raise self.retry(exc=exc, countdown=300)
+        raise self.retry(exc=exc, countdown=300) from exc
 
 
 async def _recalculate_tdee_async() -> None:
@@ -115,6 +121,8 @@ async def _recalculate_tdee_async() -> None:
 
         if updated:
             await db.commit()
-            logger.info("recalculate_tdee: TDEE atualizado para %d usuário(s).", updated)
+            logger.info(
+                "recalculate_tdee: TDEE atualizado para %d usuário(s).", updated
+            )
         else:
             logger.debug("recalculate_tdee: nenhum usuário precisou de atualização.")

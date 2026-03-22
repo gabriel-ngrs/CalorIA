@@ -52,7 +52,7 @@ export function usePushNotifications() {
       if (!data.public_key) return false;
 
       // 4. Subscribe
-      const applicationServerKey = urlBase64ToUint8Array(data.public_key);
+      const applicationServerKey = urlBase64ToUint8Array(data.public_key).buffer as ArrayBuffer;
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey,

@@ -39,7 +39,6 @@ const mockReminder = {
   id: 1,
   type: "meal",
   time: "08:00",
-  channel: "telegram",
   days_of_week: [1, 2, 3, 4, 5],
   message: "Hora do café da manhã!",
   is_active: true,
@@ -49,7 +48,6 @@ const mockReminder = {
 const mockReminderPayload: ReminderPayload = {
   type: "meal",
   time: "08:00",
-  channel: "telegram",
   days_of_week: [1, 2, 3, 4, 5],
   message: "Hora do café da manhã!",
 };

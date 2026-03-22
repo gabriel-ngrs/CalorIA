@@ -54,7 +54,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: caloria_backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
     ports:
@@ -111,7 +111,7 @@ services:
   celery_worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: caloria_celery_worker
     command: celery -A app.workers.celery_app worker --loglevel=debug --concurrency=1
     volumes:
@@ -137,7 +137,7 @@ services:
   celery_beat:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: caloria_celery_beat
     command: celery -A app.workers.celery_app beat --loglevel=debug
     volumes:

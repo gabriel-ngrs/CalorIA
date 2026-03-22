@@ -21,9 +21,7 @@ class TestGetMe:
 
 
 class TestUpdateMe:
-    async def test_atualiza_nome(
-        self, client: AsyncClient, test_user: User
-    ) -> None:
+    async def test_atualiza_nome(self, client: AsyncClient, test_user: User) -> None:
         resp = await client.patch("/api/v1/users/me", json={"name": "Novo Nome"})
         assert resp.status_code == 200
         assert resp.json()["name"] == "Novo Nome"

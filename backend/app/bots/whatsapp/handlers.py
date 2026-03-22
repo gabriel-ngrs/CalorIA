@@ -7,6 +7,12 @@ from typing import Any
 
 import redis.asyncio as aioredis
 
+from app.bots.telegram.utils import (
+    guess_meal_type,
+    meal_type_emoji,
+    meal_type_label,
+)
+from app.bots.whatsapp.sender import send_text
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.models.meal import MealSource
@@ -15,23 +21,14 @@ from app.schemas.logs import HydrationLogCreate, MoodLogCreate, WeightLogCreate
 from app.schemas.meal import MealCreate, MealItemCreate
 from app.schemas.reminder import ReminderCreate
 from app.services.ai.gemini_client import get_gemini_client
+from app.services.ai.insights_generator import InsightsGenerator
 from app.services.ai.meal_parser import MealParser
 from app.services.ai.vision_parser import VisionParser
-from app.services.ai.insights_generator import InsightsGenerator
 from app.services.dashboard_service import DashboardService
 from app.services.log_service import HydrationService, MoodService, WeightService
 from app.services.meal_service import MealService
 from app.services.reminder_service import ReminderService
 from app.services.whatsapp_service import WhatsAppService
-from app.bots.whatsapp.sender import send_text, send_buttons
-from app.bots.telegram.utils import (
-    detect_meal_type_from_text,
-    format_items_list,
-    format_macros_line,
-    guess_meal_type,
-    meal_type_emoji,
-    meal_type_label,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +68,7 @@ async def _clear_pending(number: str) -> None:
 # Dispatcher principal
 # ---------------------------------------------------------------------------
 
+
 async def handle_text_message(number: str, text: str) -> None:
     """Roteia mensagem de texto: comandos (!) ou análise de refeição."""
     stripped = text.strip()
@@ -90,7 +88,9 @@ async def handle_text_message(number: str, text: str) -> None:
         await _handle_meal_text(number, stripped)
 
 
-async def handle_image_message(number: str, image_bytes: bytes, caption: str = "") -> None:
+async def handle_image_message(
+    number: str, image_bytes: bytes, caption: str = ""
+) -> None:
     """Analisa foto de prato com IA e pede confirmação."""
     await send_text(number, "📸 _Analisando foto com IA..._")
 
@@ -121,7 +121,10 @@ async def handle_image_message(number: str, image_bytes: bytes, caption: str = "
 # Confirmação de refeição
 # ---------------------------------------------------------------------------
 
-async def _present_meal_for_confirmation(number: str, result: Any, source: str = "text") -> None:
+
+async def _present_meal_for_confirmation(
+    number: str, result: Any, source: str = "text"
+) -> None:
     import json
 
     items_data = [
@@ -145,9 +148,15 @@ async def _present_meal_for_confirmation(number: str, result: Any, source: str =
     total_fat = sum(it.fat for it in result.items)
 
     title = "📸 *Foto analisada*" if source == "photo" else "🍽️ *Refeição identificada*"
-    low_conf = "\n⚠️ _Alguns itens têm baixa confiança — verifique._" if result.low_confidence else ""
+    low_conf = (
+        "\n⚠️ _Alguns itens têm baixa confiança — verifique._"
+        if result.low_confidence
+        else ""
+    )
 
-    items_text = "\n".join(f"• {it.food_name} — {it.quantity:.0f}{it.unit}" for it in result.items)
+    items_text = "\n".join(
+        f"• {it.food_name} — {it.quantity:.0f}{it.unit}" for it in result.items
+    )
     macros = (
         f"🔥 {total_cal:.0f} kcal | 🥩 {total_prot:.1f}g prot | "
         f"🍞 {total_carb:.1f}g carb | 🧈 {total_fat:.1f}g gord"
@@ -169,7 +178,9 @@ async def _confirm_pending_meal(number: str) -> None:
     try:
         items_data = json.loads(data)
     except (json.JSONDecodeError, ValueError):
-        await send_text(number, "❌ Erro ao processar refeição. Tente registrar novamente.")
+        await send_text(
+            number, "❌ Erro ao processar refeição. Tente registrar novamente."
+        )
         return
 
     async with AsyncSessionLocal() as db:
@@ -202,7 +213,7 @@ async def _confirm_pending_meal(number: str) -> None:
     total_cal = sum(it["calories"] for it in items_data)
     await send_text(
         number,
-        f"✅ Refeição salva! ({total_cal:.0f} kcal)\n\nUse *!hoje* para ver o resumo do dia."
+        f"✅ Refeição salva! ({total_cal:.0f} kcal)\n\nUse *!hoje* para ver o resumo do dia.",
     )
 
 
@@ -215,6 +226,7 @@ async def _cancel_pending_meal(number: str) -> None:
 # Análise de texto → refeição
 # ---------------------------------------------------------------------------
 
+
 async def _handle_meal_text(number: str, text: str) -> None:
     async with AsyncSessionLocal() as db:
         user = await WhatsAppService(db).get_user_by_number(number)
@@ -223,7 +235,7 @@ async def _handle_meal_text(number: str, text: str) -> None:
         await send_text(
             number,
             "👋 Olá! Para começar, vincule sua conta com *!conectar TOKEN*.\n"
-            "Gere o token em *Configurações → Conectar Bot* no dashboard web."
+            "Gere o token em *Configurações → Conectar Bot* no dashboard web.",
         )
         return
 
@@ -237,14 +249,16 @@ async def _handle_meal_text(number: str, text: str) -> None:
         )
     except Exception as exc:
         logger.error("Erro ao analisar refeição WhatsApp: %s", exc)
-        await send_text(number, "❌ Não consegui analisar. Tente descrever de forma diferente.")
+        await send_text(
+            number, "❌ Não consegui analisar. Tente descrever de forma diferente."
+        )
         return
 
     if not result.items:
         await send_text(
             number,
             "🤔 Não identifiquei alimentos na mensagem.\n"
-            'Tente: _"200g de arroz com frango"_'
+            'Tente: _"200g de arroz com frango"_',
         )
         return
 
@@ -254,6 +268,7 @@ async def _handle_meal_text(number: str, text: str) -> None:
 # ---------------------------------------------------------------------------
 # Dispatcher de comandos
 # ---------------------------------------------------------------------------
+
 
 async def _dispatch_command(number: str, command_line: str) -> None:
     parts = command_line.strip().split()
@@ -287,22 +302,26 @@ async def _dispatch_command(number: str, command_line: str) -> None:
     if handler:
         await handler(number, args)
     else:
-        await send_text(number, f"❓ Comando desconhecido: *!{cmd}*\nUse *!ajuda* para ver os comandos.")
+        await send_text(
+            number,
+            f"❓ Comando desconhecido: *!{cmd}*\nUse *!ajuda* para ver os comandos.",
+        )
 
 
 # ---------------------------------------------------------------------------
 # Handlers de comando individuais  # noqa: E265
 # ---------------------------------------------------------------------------
 
+
 async def _cmd_start(number: str, args: list[str]) -> None:
     await send_text(
         number,
         "👋 Olá! Sou o *CalorIA*, seu diário alimentar inteligente.\n\n"
         "*Como usar:*\n"
-        "• Envie o que comeu: _\"200g de arroz com frango\"_\n"
+        '• Envie o que comeu: _"200g de arroz com frango"_\n'
         "• Envie uma foto do prato\n"
         "• Eu analiso com IA e registro automaticamente!\n\n"
-        "Use *!ajuda* para ver todos os comandos."
+        "Use *!ajuda* para ver todos os comandos.",
     )
 
 
@@ -327,7 +346,7 @@ async def _cmd_ajuda(number: str, args: list[str]) -> None:
         "!lembrete cafe 07:30 — criar lembrete\n"
         "!lembretes — listar lembretes\n"
         "!remover-lembrete ID — remover\n\n"
-        "*Refeição:* envie texto ou foto direto!"
+        "*Refeição:* envie texto ou foto direto!",
     )
 
 
@@ -336,7 +355,7 @@ async def _cmd_conectar(number: str, args: list[str]) -> None:
         await send_text(
             number,
             "ℹ️ Use: *!conectar TOKEN*\n\n"
-            "Gere o token em *Configurações → Conectar Bot* no dashboard web."
+            "Gere o token em *Configurações → Conectar Bot* no dashboard web.",
         )
         return
 
@@ -348,13 +367,13 @@ async def _cmd_conectar(number: str, args: list[str]) -> None:
         await send_text(
             number,
             f"✅ Conta vinculada com sucesso!\n\nBem-vindo, *{user.name}*! 🎉\n\n"
-            "Agora você pode enviar textos ou fotos de refeições para registrar."
+            "Agora você pode enviar textos ou fotos de refeições para registrar.",
         )
     else:
         await send_text(
             number,
             "❌ Token inválido ou expirado.\n\n"
-            "Gere um novo token no dashboard web (válido por 10 minutos)."
+            "Gere um novo token no dashboard web (válido por 10 minutos).",
         )
 
 
@@ -367,7 +386,11 @@ async def _cmd_perfil(number: str, args: list[str]) -> None:
         return
 
     profile = user.profile
-    tdee_text = f"{profile.tdee_calculated:.0f} kcal/dia" if (profile and profile.tdee_calculated) else "não calculado"
+    tdee_text = (
+        f"{profile.tdee_calculated:.0f} kcal/dia"
+        if (profile and profile.tdee_calculated)
+        else "não calculado"
+    )
     calorie_goal = f"{user.calorie_goal} kcal" if user.calorie_goal else "não definida"
     weight_goal = f"{user.weight_goal} kg" if user.weight_goal else "não definida"
 
@@ -377,7 +400,7 @@ async def _cmd_perfil(number: str, args: list[str]) -> None:
         f"📧 E-mail: {user.email}\n"
         f"🎯 Meta calórica: {calorie_goal}\n"
         f"⚖️ Meta de peso: {weight_goal}\n"
-        f"🔥 TDEE estimado: {tdee_text}"
+        f"🔥 TDEE estimado: {tdee_text}",
     )
 
 
@@ -417,7 +440,7 @@ async def _cmd_hoje(number: str, args: list[str]) -> None:
         f"📅 *Hoje — {today.strftime('%d/%m/%Y')}*\n\n"
         f"{macros}{goal_text}\n"
         f"💧 Hidratação: {hydration.total_ml} ml"
-        + (meals_text if meals_text else "\n\n_Nenhuma refeição registrada ainda._")
+        + (meals_text if meals_text else "\n\n_Nenhuma refeição registrada ainda._"),
     )
 
 
@@ -458,7 +481,7 @@ async def _cmd_resumo(number: str, args: list[str]) -> None:
         f"{macros}"
         f"{goal_line}\n"
         f"💧 Água: *{h.total_ml} ml*\n"
-        f"🍽️ Refeições ({n.meals_count}):{meals_text or ' nenhuma'}"
+        f"🍽️ Refeições ({n.meals_count}):{meals_text or ' nenhuma'}",
     )
 
 
@@ -481,7 +504,7 @@ async def _cmd_semana(number: str, args: list[str]) -> None:
         number,
         f"📅 *Semana — {summary.start_date.strftime('%d/%m')} a {summary.end_date.strftime('%d/%m/%Y')}*\n\n"
         f"Dias registrados: *{summary.total_days_logged}/7*\n\n"
-        f"*Médias diárias:*\n{macros}"
+        f"*Médias diárias:*\n{macros}",
     )
 
 
@@ -497,7 +520,9 @@ async def _cmd_relatorio(number: str, args: list[str]) -> None:
             insight = await gen.daily_insight(user.id, date.today())
             await send_text(number, f"🧠 *Insight do dia*\n\n{insight.content}")
         except Exception:
-            await send_text(number, "❌ Não foi possível gerar o insight agora. Tente novamente.")
+            await send_text(
+                number, "❌ Não foi possível gerar o insight agora. Tente novamente."
+            )
 
 
 async def _cmd_historico(number: str, args: list[str]) -> None:
@@ -545,7 +570,11 @@ async def _cmd_peso(number: str, args: list[str]) -> None:
             user.id, WeightLogCreate(weight_kg=weight, date=date.today())
         )
 
-    motivation = "Continue assim! 💪" if (user.weight_goal and weight <= user.weight_goal) else "Registrado! 📊"
+    motivation = (
+        "Continue assim! 💪"
+        if (user.weight_goal and weight <= user.weight_goal)
+        else "Registrado! 📊"
+    )
     await send_text(number, f"⚖️ Peso *{weight:.1f} kg* registrado. {motivation}")
 
 
@@ -569,7 +598,9 @@ async def _cmd_agua(number: str, args: list[str]) -> None:
         now = datetime.now()
         await HydrationService(db).create(
             user.id,
-            HydrationLogCreate(amount_ml=ml, date=date.today(), time=time(now.hour, now.minute)),
+            HydrationLogCreate(
+                amount_ml=ml, date=date.today(), time=time(now.hour, now.minute)
+            ),
         )
         summary = await HydrationService(db).get_day_summary(user.id, date.today())
 
@@ -581,7 +612,7 @@ async def _cmd_agua(number: str, args: list[str]) -> None:
         number,
         f"💧 *+{ml} ml* registrado!\n\n"
         f"{bar}\n"
-        f"Total hoje: *{total} ml* / {goal} ml ({pct:.0f}%)"
+        f"Total hoje: *{total} ml* / {goal} ml ({pct:.0f}%)",
     )
 
 
@@ -589,8 +620,7 @@ async def _cmd_humor(number: str, args: list[str]) -> None:
     if len(args) < 2:
         await send_text(
             number,
-            "ℹ️ Use: *!humor ENERGIA HUMOR* (valores de 1 a 5)\n"
-            "Exemplo: *!humor 4 5*"
+            "ℹ️ Use: *!humor ENERGIA HUMOR* (valores de 1 a 5)\nExemplo: *!humor 4 5*",
         )
         return
     try:
@@ -611,7 +641,9 @@ async def _cmd_humor(number: str, args: list[str]) -> None:
             return
         await MoodService(db).create(
             user.id,
-            MoodLogCreate(date=date.today(), energy_level=energy, mood_level=mood, notes=notes),
+            MoodLogCreate(
+                date=date.today(), energy_level=energy, mood_level=mood, notes=notes
+            ),
         )
 
     energy_emoji = ["😴", "😪", "😐", "😊", "⚡"][energy - 1]
@@ -620,8 +652,7 @@ async def _cmd_humor(number: str, args: list[str]) -> None:
         number,
         f"✅ Registrado!\n\n"
         f"⚡ Energia: {energy_emoji} {energy}/5\n"
-        f"😊 Humor: {mood_emoji} {mood}/5"
-        + (f"\n📝 {notes}" if notes else "")
+        f"😊 Humor: {mood_emoji} {mood}/5" + (f"\n📝 {notes}" if notes else ""),
     )
 
 
@@ -631,7 +662,7 @@ async def _cmd_lembrete(number: str, args: list[str]) -> None:
             number,
             "ℹ️ Use: *!lembrete TIPO HH:MM*\n"
             "Tipos: cafe, almoco, janta, agua, peso, resumo\n"
-            "Exemplo: *!lembrete cafe 07:30*"
+            "Exemplo: *!lembrete cafe 07:30*",
         )
         return
 
@@ -670,7 +701,7 @@ async def _cmd_lembrete(number: str, args: list[str]) -> None:
         f"⏰ Tipo: *{type_str}*\n"
         f"🕐 Hora: *{time_str}*\n"
         f"📅 Todos os dias\n"
-        f"🆔 ID: {reminder.id}"
+        f"🆔 ID: {reminder.id}",
     )
 
 
@@ -689,9 +720,15 @@ async def _cmd_lembretes(number: str, args: list[str]) -> None:
     days_abbr = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
     lines = []
     for r in reminders:
-        days = ", ".join(days_abbr[d] for d in r.days_of_week) if r.days_of_week != list(range(7)) else "Todos os dias"
+        days = (
+            ", ".join(days_abbr[d] for d in r.days_of_week)
+            if r.days_of_week != list(range(7))
+            else "Todos os dias"
+        )
         status = "✅" if r.active else "⏸️"
-        lines.append(f"{status} #{r.id} {r.type.value} — {r.time.strftime('%H:%M')} ({days})")
+        lines.append(
+            f"{status} #{r.id} {r.type.value} — {r.time.strftime('%H:%M')} ({days})"
+        )
 
     await send_text(number, "⏰ *Seus lembretes*\n\n" + "\n".join(lines))
 

@@ -26,6 +26,7 @@ Uso:
     # Retoma da página 90 (após queda anterior)
     python scripts/import_off.py --start-page 90 --limit 200000
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -34,10 +35,10 @@ import re
 import sys
 import unicodedata
 from pathlib import Path
-from time import sleep
 
 import httpx
-from sqlalchemy import delete, select, text as sa_text
+from sqlalchemy import delete, select
+from sqlalchemy import text as sa_text
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -181,11 +182,7 @@ def _is_latin_name(name: str) -> bool:
 
 def _parse_product(product: dict) -> Food | None:
     """Converte um produto OFF em Food. Retorna None se dados insuficientes."""
-    name = (
-        product.get("product_name_pt")
-        or product.get("product_name")
-        or ""
-    ).strip()
+    name = (product.get("product_name_pt") or product.get("product_name") or "").strip()
 
     if not name or len(name) > 200:
         return None
@@ -197,7 +194,9 @@ def _parse_product(product: dict) -> Food | None:
     nutriments = product.get("nutriments", {})
 
     try:
-        calories = float(nutriments.get("energy-kcal_100g") or nutriments.get("energy_100g", 0) or 0)
+        calories = float(
+            nutriments.get("energy-kcal_100g") or nutriments.get("energy_100g", 0) or 0
+        )
         protein = float(nutriments.get("proteins_100g") or 0)
         carbs = float(nutriments.get("carbohydrates_100g") or 0)
         fat = float(nutriments.get("fat_100g") or 0)
@@ -228,7 +227,9 @@ def _parse_product(product: dict) -> Food | None:
     category = _map_category(category_tags)
 
     aliases: list[str] = []
-    generic = (product.get("generic_name_pt") or product.get("generic_name") or "").strip()
+    generic = (
+        product.get("generic_name_pt") or product.get("generic_name") or ""
+    ).strip()
     if generic and generic.lower() != name.lower() and len(generic) <= 200:
         aliases.append(generic)
 
@@ -237,7 +238,12 @@ def _parse_product(product: dict) -> Food | None:
     if brands_raw:
         for brand in brands_raw.split(","):
             brand = brand.strip()
-            if brand and brand.lower() != name.lower() and brand not in aliases and len(brand) <= 100:
+            if (
+                brand
+                and brand.lower() != name.lower()
+                and brand not in aliases
+                and len(brand) <= 100
+            ):
                 aliases.append(brand)
 
     return Food(
@@ -248,7 +254,9 @@ def _parse_product(product: dict) -> Food | None:
         notes=None,
         source="openfoodfacts",
         external_id=barcode,
-        search_text=_build_search_text(_normalize(name), [_normalize(a) for a in aliases]),
+        search_text=_build_search_text(
+            _normalize(name), [_normalize(a) for a in aliases]
+        ),
         calories_100g=round(calories, 1),
         protein_100g=round(protein, 2),
         carbs_100g=round(carbs, 2),
@@ -281,8 +289,13 @@ async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
     last_exc: Exception | None = None
     for attempt in range(4):
         if attempt > 0:
-            wait = 2 ** attempt  # 2s, 4s, 8s
-            logger.warning("Tentativa %d/4 para página %d (aguardando %ds)...", attempt + 1, page, wait)
+            wait = 2**attempt  # 2s, 4s, 8s
+            logger.warning(
+                "Tentativa %d/4 para página %d (aguardando %ds)...",
+                attempt + 1,
+                page,
+                wait,
+            )
             await asyncio.sleep(wait)
         try:
             resp = await client.get(OFF_API, params=params, timeout=REQUEST_TIMEOUT)
@@ -294,14 +307,19 @@ async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
     raise last_exc  # type: ignore[misc]
 
 
-async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1) -> None:
+async def import_off(
+    limit: int, dry_run: bool, force: bool, start_page: int = 1
+) -> None:
     async with AsyncSessionLocal() as db:
         if force:
             deleted = await db.execute(
                 delete(Food).where(Food.source == "openfoodfacts")
             )
             await db.commit()
-            logger.info("Removidos %d registros existentes do Open Food Facts.", deleted.rowcount)
+            logger.info(
+                "Removidos %d registros existentes do Open Food Facts.",
+                deleted.rowcount,
+            )
 
         # Carrega nomes já existentes para evitar duplicatas (unique constraint)
         existing_names: set[str] = set(
@@ -310,7 +328,9 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
         existing_barcodes: set[str] = set(
             row[0]
             for row in (
-                await db.execute(select(Food.external_id).where(Food.external_id.isnot(None)))
+                await db.execute(
+                    select(Food.external_id).where(Food.external_id.isnot(None))
+                )
             ).all()
         )
 
@@ -325,7 +345,9 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
 
         async with httpx.AsyncClient() as client:
             while inserted < limit:
-                logger.info("Buscando página %d (importados: %d/%d)...", page, inserted, limit)
+                logger.info(
+                    "Buscando página %d (importados: %d/%d)...", page, inserted, limit
+                )
 
                 try:
                     products = await fetch_page(client, page)
@@ -334,7 +356,9 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
                     break
 
                 if not products:
-                    logger.info("Sem mais produtos na API. Total de páginas: %d", page - 1)
+                    logger.info(
+                        "Sem mais produtos na API. Total de páginas: %d", page - 1
+                    )
                     break
 
                 batch: list[dict] = []
@@ -364,30 +388,34 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
                     if food.external_id:
                         existing_barcodes.add(food.external_id)
 
-                    batch.append({
-                        "name": food.name,
-                        "aliases": food.aliases,
-                        "category": food.category,
-                        "preparation": food.preparation,
-                        "notes": food.notes,
-                        "source": food.source,
-                        "external_id": food.external_id,
-                        "search_text": food.search_text,
-                        "calories_100g": food.calories_100g,
-                        "protein_100g": food.protein_100g,
-                        "carbs_100g": food.carbs_100g,
-                        "fat_100g": food.fat_100g,
-                        "fiber_100g": food.fiber_100g,
-                        "sodium_100g": food.sodium_100g,
-                        "sugar_100g": food.sugar_100g,
-                        "saturated_fat_100g": food.saturated_fat_100g,
-                    })
+                    batch.append(
+                        {
+                            "name": food.name,
+                            "aliases": food.aliases,
+                            "category": food.category,
+                            "preparation": food.preparation,
+                            "notes": food.notes,
+                            "source": food.source,
+                            "external_id": food.external_id,
+                            "search_text": food.search_text,
+                            "calories_100g": food.calories_100g,
+                            "protein_100g": food.protein_100g,
+                            "carbs_100g": food.carbs_100g,
+                            "fat_100g": food.fat_100g,
+                            "fiber_100g": food.fiber_100g,
+                            "sodium_100g": food.sodium_100g,
+                            "sugar_100g": food.sugar_100g,
+                            "saturated_fat_100g": food.saturated_fat_100g,
+                        }
+                    )
 
                 if not batch:
                     consecutive_empty += 1
                     # Se 5 páginas seguidas não trouxeram nada novo, esgotamos o catálogo
                     if consecutive_empty >= 5:
-                        logger.info("5 páginas consecutivas sem novos produtos. Encerrando.")
+                        logger.info(
+                            "5 páginas consecutivas sem novos produtos. Encerrando."
+                        )
                         break
                     page += 1
                     continue
@@ -413,7 +441,9 @@ async def import_off(limit: int, dry_run: bool, force: bool, start_page: int = 1
                         batch,
                     )
                     await db.commit()
-                    actually_inserted = result.rowcount if result.rowcount >= 0 else len(batch)
+                    actually_inserted = (
+                        result.rowcount if result.rowcount >= 0 else len(batch)
+                    )
                     skipped_duplicate += len(batch) - actually_inserted
                     inserted += actually_inserted
                 else:
@@ -453,9 +483,14 @@ def main() -> None:
     logger.info("Iniciando importação Open Food Facts Brasil")
     logger.info(
         "  Limite: %d | página inicial: %d | dry-run: %s | force: %s",
-        limit, start_page, dry_run, force,
+        limit,
+        start_page,
+        dry_run,
+        force,
     )
-    asyncio.run(import_off(limit=limit, dry_run=dry_run, force=force, start_page=start_page))
+    asyncio.run(
+        import_off(limit=limit, dry_run=dry_run, force=force, start_page=start_page)
+    )
 
 
 if __name__ == "__main__":

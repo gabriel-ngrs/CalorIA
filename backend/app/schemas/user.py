@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -22,7 +21,7 @@ class UserUpdate(BaseModel):
     calorie_goal: int | None = Field(default=None, gt=0)
     weight_goal: float | None = Field(default=None, gt=0)
     water_goal_ml: int | None = Field(default=None, gt=0)
-    goal_type: Optional[GoalType] = None
+    goal_type: GoalType | None = None
 
 
 class UserLogin(BaseModel):

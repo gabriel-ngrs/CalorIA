@@ -1,5 +1,5 @@
-from datetime import date, datetime
-from typing import Optional
+from datetime import date as _date
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +47,7 @@ class MealItemResponse(BaseModel):
 class MealCreate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     meal_type: MealType
-    date: date
+    date: _date
     source: MealSource = MealSource.MANUAL
     notes: str | None = None
     items: list[MealItemCreate] = Field(default_factory=list)
@@ -56,7 +56,7 @@ class MealCreate(BaseModel):
 class MealUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     meal_type: MealType | None = None
-    date: Optional[date] = None
+    date: _date | None = None
     notes: str | None = None
 
 
@@ -67,7 +67,7 @@ class MealResponse(BaseModel):
     user_id: int
     name: str | None
     meal_type: MealType
-    date: date
+    date: _date
     source: MealSource
     notes: str | None
     created_at: datetime
@@ -91,7 +91,7 @@ class MealResponse(BaseModel):
 
 
 class DailySummary(BaseModel):
-    date: date
+    date: _date
     total_calories: float
     total_protein: float
     total_carbs: float

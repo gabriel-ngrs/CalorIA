@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+import builtins
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,9 +15,7 @@ class ReminderService:
 
     async def list(self, user_id: int) -> list[Reminder]:
         result = await self.db.execute(
-            select(Reminder)
-            .where(Reminder.user_id == user_id)
-            .order_by(Reminder.time)
+            select(Reminder).where(Reminder.user_id == user_id).order_by(Reminder.time)
         )
         return list(result.scalars().all())
 
@@ -34,7 +32,9 @@ class ReminderService:
         await self.db.refresh(reminder)
         return reminder
 
-    async def create_many(self, user_id: int, items: List[ReminderCreate]) -> List[Reminder]:
+    async def create_many(
+        self, user_id: int, items: builtins.list[ReminderCreate]
+    ) -> builtins.list[Reminder]:
         reminders = [
             Reminder(
                 user_id=user_id,

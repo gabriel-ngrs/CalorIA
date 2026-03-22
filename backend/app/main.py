@@ -24,6 +24,7 @@ http_logger = logging.getLogger("caloria.http")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Aquece a pool de conexões no startup — evita cold start na primeira requisição
     from app.core.database import AsyncSessionLocal
+
     async with AsyncSessionLocal() as session:
         await session.execute(text("SELECT 1"))
     yield
@@ -63,7 +64,7 @@ async def timing_middleware(request: Request, call_next: Any) -> Any:
     return response
 
 
-from app.api.v1 import router as api_v1_router
+from app.api.v1 import router as api_v1_router  # noqa: E402
 
 app.include_router(api_v1_router, prefix="/api/v1")
 

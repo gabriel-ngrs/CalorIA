@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import delete, select
@@ -19,6 +17,7 @@ router = APIRouter(tags=["push"])
 # Schemas
 # ---------------------------------------------------------------------------
 
+
 class VapidPublicKeyResponse(BaseModel):
     public_key: str
 
@@ -27,7 +26,7 @@ class SubscribePayload(BaseModel):
     endpoint: str
     p256dh: str
     auth: str
-    user_agent: Optional[str] = None
+    user_agent: str | None = None
 
 
 class UnsubscribePayload(BaseModel):
@@ -45,7 +44,7 @@ class NotificationResponse(BaseModel):
     created_at: str
 
     @classmethod
-    def from_orm_obj(cls, n: Notification) -> "NotificationResponse":
+    def from_orm_obj(cls, n: Notification) -> NotificationResponse:
         return cls(
             id=n.id,
             type=n.type.value,
@@ -63,6 +62,7 @@ class UnreadCountResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints — VAPID / subscriptions
 # ---------------------------------------------------------------------------
+
 
 @router.get("/push/vapid-public-key", response_model=VapidPublicKeyResponse)
 async def get_vapid_public_key() -> VapidPublicKeyResponse:
@@ -122,6 +122,7 @@ async def unsubscribe_push(
 # Endpoints — In-app notifications
 # ---------------------------------------------------------------------------
 
+
 @router.get("/notifications", response_model=list[NotificationResponse])
 async def list_notifications(
     unread_only: bool = Query(False),
@@ -157,7 +158,9 @@ async def unread_count(
     return UnreadCountResponse(count=count)
 
 
-@router.patch("/notifications/{notification_id}/read", response_model=NotificationResponse)
+@router.patch(
+    "/notifications/{notification_id}/read", response_model=NotificationResponse
+)
 async def mark_notification_read(
     notification_id: int,
     user_id: int = Depends(get_current_user_id),
@@ -172,7 +175,9 @@ async def mark_notification_read(
     )
     notif = result.scalar_one_or_none()
     if not notif:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notificação não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notificação não encontrada"
+        )
     notif.read = True
     await db.commit()
     await db.refresh(notif)

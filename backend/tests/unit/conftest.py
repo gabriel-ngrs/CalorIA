@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Configurações específicas para testes unitários.
 
 Sobrepõe fixtures do conftest raiz que dependem de banco de dados real,
 permitindo que testes unitários rodem sem infraestrutura Docker.
 """
+
+from __future__ import annotations
 
 import pytest
 

@@ -53,7 +53,9 @@ async def get_meal(
 ) -> MealResponse:
     meal = await MealService(db).get_meal(user_id, meal_id)
     if not meal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+        )
     return MealResponse.model_validate(meal)
 
 
@@ -66,7 +68,9 @@ async def update_meal(
 ) -> MealResponse:
     meal = await MealService(db).update_meal(user_id, meal_id, data)
     if not meal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+        )
     return MealResponse.model_validate(meal)
 
 
@@ -78,4 +82,6 @@ async def delete_meal(
 ) -> None:
     deleted = await MealService(db).delete_meal(user_id, meal_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+        )

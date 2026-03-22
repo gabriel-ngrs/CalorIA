@@ -128,7 +128,7 @@ class MealParser:
     async def _lookup_and_fill(
         self,
         items: list[IdentifiedFood],
-        db: "AsyncSession",
+        db: AsyncSession,
     ) -> list[ParsedFoodItem]:
         """Estágio 2: lookup no banco + fallback IA agrupado para itens sem match."""
         result: list[ParsedFoodItem | None] = [None] * len(items)
@@ -153,7 +153,11 @@ class MealParser:
                         logger.warning(
                             "Sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
                             "(divergência=%.0f%%, source=%s) — descartando banco, usando estimativa IA",
-                            item.food_name, db_kcal, item.kcal_estimate, divergence * 100, food.source,
+                            item.food_name,
+                            db_kcal,
+                            item.kcal_estimate,
+                            divergence * 100,
+                            food.source,
                         )
                         to_estimate_idx.append(i)
                         continue
@@ -172,20 +176,26 @@ class MealParser:
                     data_source=food.source,
                     sodium=(
                         round(food.sodium_100g * factor, 2)
-                        if food.sodium_100g is not None else None
+                        if food.sodium_100g is not None
+                        else None
                     ),
                     sugar=(
                         round(food.sugar_100g * factor, 2)
-                        if food.sugar_100g is not None else None
+                        if food.sugar_100g is not None
+                        else None
                     ),
                     saturated_fat=(
                         round(food.saturated_fat_100g * factor, 2)
-                        if food.saturated_fat_100g is not None else None
+                        if food.saturated_fat_100g is not None
+                        else None
                     ),
                 )
                 logger.info(
                     "Banco: '%s' → '%s' (score=%.2f, source=%s)",
-                    item.food_name, food.name, match.score, food.source,
+                    item.food_name,
+                    food.name,
+                    match.score,
+                    food.source,
                 )
             else:
                 to_estimate_idx.append(i)
@@ -193,7 +203,7 @@ class MealParser:
         if to_estimate_idx:
             to_estimate = [items[i] for i in to_estimate_idx]
             estimated = await self._estimate_macros_batch(to_estimate)
-            for idx, parsed in zip(to_estimate_idx, estimated):
+            for idx, parsed in zip(to_estimate_idx, estimated, strict=False):
                 result[idx] = parsed
 
         return [item for item in result if item is not None]
@@ -217,20 +227,22 @@ class MealParser:
         data = extract_json_from_ai_response(raw)
 
         parsed: list[ParsedFoodItem] = []
-        for d, original in zip(data, items):
-            parsed.append(ParsedFoodItem(
-                food_name=original.food_name,
-                quantity=original.quantity,
-                unit=original.unit,
-                calories=float(d.get("calories", 0)),
-                protein=float(d.get("protein", 0)),
-                carbs=float(d.get("carbs", 0)),
-                fat=float(d.get("fat", 0)),
-                fiber=float(d.get("fiber", 0)),
-                confidence=float(d.get("confidence", 0.5)),
-                data_source="ai_estimated",
-                food_id=None,
-            ))
+        for d, original in zip(data, items, strict=False):
+            parsed.append(
+                ParsedFoodItem(
+                    food_name=original.food_name,
+                    quantity=original.quantity,
+                    unit=original.unit,
+                    calories=float(d.get("calories", 0)),  # type: ignore[arg-type]
+                    protein=float(d.get("protein", 0)),  # type: ignore[arg-type]
+                    carbs=float(d.get("carbs", 0)),  # type: ignore[arg-type]
+                    fat=float(d.get("fat", 0)),  # type: ignore[arg-type]
+                    fiber=float(d.get("fiber", 0)),  # type: ignore[arg-type]
+                    confidence=float(d.get("confidence", 0.5)),  # type: ignore[arg-type]
+                    data_source="ai_estimated",
+                    food_id=None,
+                )
+            )
 
         return correct_calories(parsed)
 
@@ -238,13 +250,15 @@ class MealParser:
         self,
         description: str,
         user_context: str = "usuário sem histórico",
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> MealAnalysisResponse:
         try:
             identified = await self._identify_foods(description, user_context)
         except json.JSONDecodeError as exc:
             logger.error("IA retornou JSON inválido na identificação: %s", exc)
-            raise ValueError("A IA não conseguiu identificar os alimentos da descrição.") from exc
+            raise ValueError(
+                "A IA não conseguiu identificar os alimentos da descrição."
+            ) from exc
 
         try:
             if db is not None:

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-import enum
-
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, Float, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
 
-class GoalType(str, enum.Enum):
+class GoalType(StrEnum):
     LOSE_WEIGHT = "lose_weight"
     GAIN_MUSCLE = "gain_muscle"
     MAINTAIN = "maintain"
@@ -56,7 +56,10 @@ class User(Base):
 
     # Relationships — targets resolvidos pelo registro SQLAlchemy via models/__init__.py
     profile: Mapped[UserProfile] = relationship(
-        "UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+        "UserProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     meals: Mapped[list[Meal]] = relationship(
         "Meal", back_populates="user", cascade="all, delete-orphan"

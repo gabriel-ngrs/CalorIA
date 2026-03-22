@@ -18,6 +18,7 @@ Uso:
     # Retoma da página 5
     python scripts/import_usda.py --api-key SUA_CHAVE --start-page 5
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -29,7 +30,6 @@ from pathlib import Path
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -53,7 +53,7 @@ _NUTRIENT_MAP: dict[str, str] = {
     "Carbohydrate, by difference": "carbs",
     "Total lipid (fat)": "fat",
     "Fiber, total dietary": "fiber",
-    "Sodium, Na": "sodium",           # mg — dividir por 1000 para g
+    "Sodium, Na": "sodium",  # mg — dividir por 1000 para g
     "Sugars, total including NLEA": "sugar",
     "Fatty acids, total saturated": "saturated_fat",
 }
@@ -218,7 +218,9 @@ def _parse_food(item: dict) -> Food | None:
         sodium_100g=round(nutrients["sodium"], 3) if nutrients["sodium"] > 0 else None,
         sugar_100g=round(nutrients["sugar"], 2) if nutrients["sugar"] > 0 else None,
         saturated_fat_100g=(
-            round(nutrients["saturated_fat"], 2) if nutrients["saturated_fat"] > 0 else None
+            round(nutrients["saturated_fat"], 2)
+            if nutrients["saturated_fat"] > 0
+            else None
         ),
     )
 
@@ -238,8 +240,13 @@ async def fetch_page(
     last_exc: Exception | None = None
     for attempt in range(4):
         if attempt > 0:
-            wait = 2 ** attempt
-            logger.warning("Tentativa %d/4 para página %d (aguardando %ds)...", attempt + 1, page, wait)
+            wait = 2**attempt
+            logger.warning(
+                "Tentativa %d/4 para página %d (aguardando %ds)...",
+                attempt + 1,
+                page,
+                wait,
+            )
             await asyncio.sleep(wait)
         try:
             resp = await client.get(
@@ -280,7 +287,9 @@ async def import_usda(
 
         async with httpx.AsyncClient() as client:
             while inserted < limit:
-                logger.info("Buscando página %d (importados: %d/%d)...", page, inserted, limit)
+                logger.info(
+                    "Buscando página %d (importados: %d/%d)...", page, inserted, limit
+                )
 
                 try:
                     items = await fetch_page(client, api_key, page)
@@ -289,7 +298,9 @@ async def import_usda(
                     break
 
                 if not items:
-                    logger.info("Sem mais alimentos na API. Total de páginas: %d", page - 1)
+                    logger.info(
+                        "Sem mais alimentos na API. Total de páginas: %d", page - 1
+                    )
                     break
 
                 batch: list[Food] = []
@@ -360,14 +371,18 @@ def main() -> None:
     logger.info("Iniciando importação USDA Foundation Foods")
     logger.info(
         "  Limite: %d | página inicial: %d | dry-run: %s",
-        limit, start_page, dry_run,
+        limit,
+        start_page,
+        dry_run,
     )
-    asyncio.run(import_usda(
-        api_key=api_key,
-        limit=limit,
-        dry_run=dry_run,
-        start_page=start_page,
-    ))
+    asyncio.run(
+        import_usda(
+            api_key=api_key,
+            limit=limit,
+            dry_run=dry_run,
+            start_page=start_page,
+        )
+    )
 
 
 if __name__ == "__main__":

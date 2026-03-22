@@ -16,36 +16,73 @@ from app.services.user_service import UserService
 # ---------------------------------------------------------------------------
 _MEAL_TYPE_KEYWORDS: dict[MealType, list[str]] = {
     MealType.BREAKFAST: [
-        "café da manhã", "café", "desjejum", "manhã", "breakfast",
-        "acordei", "acordar", "tomei café", "tomei o café",
+        "café da manhã",
+        "café",
+        "desjejum",
+        "manhã",
+        "breakfast",
+        "acordei",
+        "acordar",
+        "tomei café",
+        "tomei o café",
     ],
     MealType.MORNING_SNACK: [
-        "lanche da manhã", "lanche manhã", "lanchinho da manhã",
+        "lanche da manhã",
+        "lanche manhã",
+        "lanchinho da manhã",
     ],
     MealType.LUNCH: [
-        "almoço", "almocei", "almoçar", "meio dia", "lunch",
-        "almoço de hoje", "almoçamos",
+        "almoço",
+        "almocei",
+        "almoçar",
+        "meio dia",
+        "lunch",
+        "almoço de hoje",
+        "almoçamos",
     ],
     MealType.AFTERNOON_SNACK: [
-        "lanche da tarde", "lanche tarde", "lanchinho", "lanche",
+        "lanche da tarde",
+        "lanche tarde",
+        "lanchinho",
+        "lanche",
     ],
     MealType.DINNER: [
-        "jantar", "jantei", "jantamos", "dinner", "noite",
+        "jantar",
+        "jantei",
+        "jantamos",
+        "dinner",
+        "noite",
         "jantar de hoje",
     ],
     MealType.SUPPER: [
-        "ceia", "cear", "ceei", "antes de dormir", "antes de deitar",
+        "ceia",
+        "cear",
+        "ceei",
+        "antes de dormir",
+        "antes de deitar",
     ],
     MealType.PRE_WORKOUT: [
-        "pré-treino", "pre treino", "pré treino", "antes do treino",
+        "pré-treino",
+        "pre treino",
+        "pré treino",
+        "antes do treino",
         "pre-workout",
     ],
     MealType.POST_WORKOUT: [
-        "pós-treino", "pos treino", "pós treino", "depois do treino",
-        "após o treino", "post workout", "pós workout",
+        "pós-treino",
+        "pos treino",
+        "pós treino",
+        "depois do treino",
+        "após o treino",
+        "post workout",
+        "pós workout",
     ],
     MealType.SUPPLEMENT: [
-        "suplemento", "whey", "creatina", "bcaa", "proteína em pó",
+        "suplemento",
+        "whey",
+        "creatina",
+        "bcaa",
+        "proteína em pó",
     ],
 }
 
@@ -78,6 +115,7 @@ def _infer_meal_type(description: str) -> MealType | None:
 # Queries de histórico
 # ---------------------------------------------------------------------------
 
+
 async def _get_recent_meals_of_type(
     user_id: int,
     meal_type: MealType,
@@ -107,12 +145,14 @@ async def _get_recent_meals_of_type(
             f"{item.food_name} {item.quantity:.0f}{item.unit} ({item.calories:.0f} kcal)"
             for item in meal.items
         ]
-        records.append({
-            "date": meal.date.strftime("%d/%m"),
-            "total_cal": total_cal,
-            "total_prot": total_prot,
-            "items": item_strs,
-        })
+        records.append(
+            {
+                "date": meal.date.strftime("%d/%m"),
+                "total_cal": total_cal,
+                "total_prot": total_prot,
+                "items": item_strs,
+            }
+        )
     return records
 
 
@@ -142,13 +182,15 @@ async def _get_meal_type_averages(
             float(row.total_cal) / max(int(row._mapping["count"] or 1), 1)
         )
         for row in rows
-        if int(row._mapping["count"] or 0) >= 2  # só inclui se tem pelo menos 2 ocorrências
+        if int(row._mapping["count"] or 0)
+        >= 2  # só inclui se tem pelo menos 2 ocorrências
     }
 
 
 # ---------------------------------------------------------------------------
 # Builder principal
 # ---------------------------------------------------------------------------
+
 
 async def build_meal_context(
     user_id: int,
@@ -188,17 +230,23 @@ async def build_meal_context(
                 sections.append("Perfil físico: " + ", ".join(bio))
 
     # ── 2. Consumo de hoje ────────────────────────────────────────────────
-    cal_today = await db.scalar(
-        select(func.sum(MealItem.calories))
-        .join(Meal, Meal.id == MealItem.meal_id)
-        .where(Meal.user_id == user_id, Meal.date == today)
-    ) or 0.0
+    cal_today = (
+        await db.scalar(
+            select(func.sum(MealItem.calories))
+            .join(Meal, Meal.id == MealItem.meal_id)
+            .where(Meal.user_id == user_id, Meal.date == today)
+        )
+        or 0.0
+    )
 
-    prot_today = await db.scalar(
-        select(func.sum(MealItem.protein))
-        .join(Meal, Meal.id == MealItem.meal_id)
-        .where(Meal.user_id == user_id, Meal.date == today)
-    ) or 0.0
+    prot_today = (
+        await db.scalar(
+            select(func.sum(MealItem.protein))
+            .join(Meal, Meal.id == MealItem.meal_id)
+            .where(Meal.user_id == user_id, Meal.date == today)
+        )
+        or 0.0
+    )
 
     if cal_today > 0:
         sections.append(

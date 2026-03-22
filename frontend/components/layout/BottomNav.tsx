@@ -105,7 +105,7 @@ export function BottomNav() {
       {/* Barra de navegação principal */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden glass border-t border-[var(--glass-border)]">
         <div className="flex items-center">
-          {primaryNav.map((item, idx) => {
+          {primaryNav.map((item) => {
             if (item === null) {
               return (
                 <div key="fab" className="flex-1 flex justify-center -mt-5">

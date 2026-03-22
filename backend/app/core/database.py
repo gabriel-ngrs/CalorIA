@@ -16,7 +16,7 @@ db_logger = logging.getLogger("caloria.db")
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=False,          # desligamos o echo nativo — usamos nosso próprio log com timing
+    echo=False,  # desligamos o echo nativo — usamos nosso próprio log com timing
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
@@ -25,17 +25,33 @@ engine = create_async_engine(
 
 # ─── Query timing via sync_engine events ──────────────────────────────────────
 @event.listens_for(engine.sync_engine, "before_cursor_execute")
-def _before_query(conn: Any, cursor: Any, statement: Any, parameters: Any, context: Any, executemany: Any) -> None:
+def _before_query(
+    conn: Any,
+    cursor: Any,
+    statement: Any,
+    parameters: Any,
+    context: Any,
+    executemany: Any,
+) -> None:
     conn.info.setdefault("_qstart", []).append(time.perf_counter())
 
 
 @event.listens_for(engine.sync_engine, "after_cursor_execute")
-def _after_query(conn: Any, cursor: Any, statement: Any, parameters: Any, context: Any, executemany: Any) -> None:
+def _after_query(
+    conn: Any,
+    cursor: Any,
+    statement: Any,
+    parameters: Any,
+    context: Any,
+    executemany: Any,
+) -> None:
     ms = (time.perf_counter() - conn.info["_qstart"].pop()) * 1000
     # Extrai primeira linha do SQL para identificar a operação
     first_line = statement.strip().splitlines()[0][:80]
     flag = "  ⚠️ LENTO" if ms > 100 else ""
     db_logger.info(f"[DB] {ms:7.1f}ms | {first_line}{flag}")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 
 AsyncSessionLocal = async_sessionmaker(

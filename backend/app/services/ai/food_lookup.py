@@ -5,6 +5,7 @@ similaridade trigrama diretamente no PostgreSQL — sem carregar dados em memór
 O índice GIN em search_text garante latência <20ms mesmo com centenas de milhares
 de registros.
 """
+
 from __future__ import annotations
 
 import logging
@@ -77,7 +78,9 @@ async def find_foods_in_text(text_: str, db: AsyncSession) -> list[FoodMatch]:
     o melhor score por alimento. Retorna lista ordenada por score, sem duplicatas.
     """
     normalized = _normalize(text_)
-    candidates = _extract_candidates(normalized, min_n=1 if len(normalized.split()) == 1 else 2)
+    candidates = _extract_candidates(
+        normalized, min_n=1 if len(normalized.split()) == 1 else 2
+    )
     if not candidates:
         return []
 

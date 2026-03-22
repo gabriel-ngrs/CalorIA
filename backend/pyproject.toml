@@ -57,13 +57,20 @@ packages = ["app"]
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+extend-exclude = ["alembic/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "B", "UP"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line too long (formatação fica com o ruff format)
+    "B008",   # function call in argument defaults — padrão FastAPI (Depends, Query, Body)
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/*" = ["UP035", "UP007", "I001"]  # arquivos gerados pelo alembic
 
 # =============================================================================
 # Mypy — type checking
@@ -73,6 +80,17 @@ python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# Bots usam libs externas com tipagem incompleta (python-telegram-bot, httpx)
+module = ["app.bots.*"]
+disallow_untyped_defs = false
+disable_error_code = ["no-any-return", "attr-defined", "arg-type", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+# Scripts utilitários não fazem parte do código de produção
+module = ["scripts.*"]
+ignore_errors = true
 
 # =============================================================================
 # Pytest

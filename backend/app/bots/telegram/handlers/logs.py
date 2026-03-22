@@ -20,21 +20,31 @@ async def peso_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     try:
         weight = float(context.args[0].replace(",", "."))
     except ValueError:
-        await update.message.reply_html("❌ Peso inválido. Exemplo: <code>/peso 80.5</code>")
+        await update.message.reply_html(
+            "❌ Peso inválido. Exemplo: <code>/peso 80.5</code>"
+        )
         return
 
     chat_id = str(update.effective_chat.id)
     async with AsyncSessionLocal() as db:
         user = await TelegramService(db).get_user_by_chat_id(chat_id)
         if not user:
-            await update.message.reply_html("⚠️ Conta não vinculada. Use <code>/conectar TOKEN</code>.")
+            await update.message.reply_html(
+                "⚠️ Conta não vinculada. Use <code>/conectar TOKEN</code>."
+            )
             return
         await WeightService(db).create(
             user.id, WeightLogCreate(weight_kg=weight, date=date.today())
         )
 
-    motivation = "Continue assim! 💪" if (user.weight_goal and weight <= user.weight_goal) else "Registrado! 📊"
-    await update.message.reply_html(f"⚖️ Peso <b>{weight:.1f} kg</b> registrado. {motivation}")
+    motivation = (
+        "Continue assim! 💪"
+        if (user.weight_goal and weight <= user.weight_goal)
+        else "Registrado! 📊"
+    )
+    await update.message.reply_html(
+        f"⚖️ Peso <b>{weight:.1f} kg</b> registrado. {motivation}"
+    )
 
 
 async def agua_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -48,19 +58,25 @@ async def agua_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if ml <= 0:
             raise ValueError
     except ValueError:
-        await update.message.reply_html("❌ Valor inválido. Exemplo: <code>/agua 300</code>")
+        await update.message.reply_html(
+            "❌ Valor inválido. Exemplo: <code>/agua 300</code>"
+        )
         return
 
     chat_id = str(update.effective_chat.id)
     async with AsyncSessionLocal() as db:
         user = await TelegramService(db).get_user_by_chat_id(chat_id)
         if not user:
-            await update.message.reply_html("⚠️ Conta não vinculada. Use <code>/conectar TOKEN</code>.")
+            await update.message.reply_html(
+                "⚠️ Conta não vinculada. Use <code>/conectar TOKEN</code>."
+            )
             return
         now = datetime.now()
         await HydrationService(db).create(
             user.id,
-            HydrationLogCreate(amount_ml=ml, date=date.today(), time=time(now.hour, now.minute)),
+            HydrationLogCreate(
+                amount_ml=ml, date=date.today(), time=time(now.hour, now.minute)
+            ),
         )
         summary = await HydrationService(db).get_day_summary(user.id, date.today())
 
@@ -99,11 +115,15 @@ async def humor_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     async with AsyncSessionLocal() as db:
         user = await TelegramService(db).get_user_by_chat_id(chat_id)
         if not user:
-            await update.message.reply_html("⚠️ Conta não vinculada. Use <code>/conectar TOKEN</code>.")
+            await update.message.reply_html(
+                "⚠️ Conta não vinculada. Use <code>/conectar TOKEN</code>."
+            )
             return
         await MoodService(db).create(
             user.id,
-            MoodLogCreate(date=date.today(), energy_level=energy, mood_level=mood, notes=notes),
+            MoodLogCreate(
+                date=date.today(), energy_level=energy, mood_level=mood, notes=notes
+            ),
         )
 
     energy_emoji = ["😴", "😪", "😐", "😊", "⚡"][energy - 1]
@@ -111,6 +131,5 @@ async def humor_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_html(
         f"✅ Registrado!\n\n"
         f"⚡ Energia: {energy_emoji} {energy}/5\n"
-        f"😊 Humor: {mood_emoji} {mood}/5"
-        + (f"\n📝 {notes}" if notes else "")
+        f"😊 Humor: {mood_emoji} {mood}/5" + (f"\n📝 {notes}" if notes else "")
     )

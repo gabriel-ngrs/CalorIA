@@ -268,7 +268,7 @@ lint-check:
 	@$(COMPOSE_DEV) exec backend ruff check .
 	@$(COMPOSE_DEV) exec backend ruff format --check .
 	@echo "$(BLUE)Lint check frontend (sem corrigir)...$(NC)"
-	@cd frontend && npm run lint
+	@cd frontend && npm run lint -- --no-cache
 
 fmt:
 	@echo "$(BLUE)Formatando código...$(NC)"
@@ -281,7 +281,7 @@ typecheck:
 	@echo "$(BLUE)Type check frontend (tsc)...$(NC)"
 	@cd frontend && npx tsc --noEmit
 
-check: lint-check typecheck test
+check: lint-check typecheck test-unit test-frontend
 	@echo ""
 	@echo "$(BOLD)$(GREEN)Tudo OK — igual ao CI.$(NC)"
 

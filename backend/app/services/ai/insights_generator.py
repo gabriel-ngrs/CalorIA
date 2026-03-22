@@ -77,7 +77,9 @@ Feedback deve:
         if len(weight_logs) >= 2:
             diff = weight_logs[0].weight_kg - weight_logs[-1].weight_kg
             direction = "perdeu" if diff > 0 else "ganhou"
-            weight_trend = f"Tendência de peso: {direction} {abs(diff):.1f}kg recentemente"
+            weight_trend = (
+                f"Tendência de peso: {direction} {abs(diff):.1f}kg recentemente"
+            )
 
         prompt = f"""Você é um nutricionista pessoal. Analise a semana alimentar abaixo e gere um relatório de insights em português (3-5 parágrafos).
 
@@ -102,11 +104,15 @@ O relatório deve:
         summary = await MealService(self._db).get_daily_summary(user_id, today)
 
         context = (
-            f"Usuário: meta de {user.calorie_goal or 'não definida'} kcal/dia. "
-            f"Hoje consumiu: {summary.total_calories:.0f} kcal, "
-            f"{summary.total_protein:.1f}g proteína, {summary.total_carbs:.1f}g carboidrato, "
-            f"{summary.total_fat:.1f}g gordura."
-        ) if user else ""
+            (
+                f"Usuário: meta de {user.calorie_goal or 'não definida'} kcal/dia. "
+                f"Hoje consumiu: {summary.total_calories:.0f} kcal, "
+                f"{summary.total_protein:.1f}g proteína, {summary.total_carbs:.1f}g carboidrato, "
+                f"{summary.total_fat:.1f}g gordura."
+            )
+            if user
+            else ""
+        )
 
         prompt = f"""Você é um nutricionista pessoal respondendo uma pergunta do usuário em português.
 Seja direto, prático e baseado em evidências científicas.
@@ -128,11 +134,9 @@ Responda em 2-3 parágrafos no máximo, de forma acessível e personalizada."""
 
         # Últimas refeições para contexto de preferências
         recent = await MealService(self._db).list_meals(user_id, limit=20)
-        recent_foods = list({
-            item.food_name
-            for meal in recent
-            for item in meal.items
-        })[:15]
+        recent_foods = list({item.food_name for meal in recent for item in meal.items})[
+            :15
+        ]
 
         prompt = f"""Você é um nutricionista sugerindo uma refeição equilibrada.
 
@@ -152,11 +156,13 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
 }}"""
 
         raw = await self._client.generate_text(prompt, use_cache=True)
-        raw = raw.strip().strip("```json").strip("```").strip()
+        raw = raw.strip().strip("```json").strip("```").strip()  # noqa: B005
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
-            logger.error("Gemini retornou JSON inválido para sugestão de refeição: %s", raw[:200])
+            logger.error(
+                "Gemini retornou JSON inválido para sugestão de refeição: %s", raw[:200]
+            )
             raise ValueError("A IA não conseguiu gerar uma sugestão válida.") from exc
 
         return MealSuggestion(
@@ -180,13 +186,15 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
             d = start + timedelta(days=i)
             summary = await MealService(self._db).get_daily_summary(user_id, d)
             if summary.meals_count > 0:
-                daily_totals.append({
-                    "calories": summary.total_calories,
-                    "protein": summary.total_protein,
-                    "carbs": summary.total_carbs,
-                    "fat": summary.total_fat,
-                    "fiber": summary.total_fiber,
-                })
+                daily_totals.append(
+                    {
+                        "calories": summary.total_calories,
+                        "protein": summary.total_protein,
+                        "carbs": summary.total_carbs,
+                        "fat": summary.total_fat,
+                        "fiber": summary.total_fiber,
+                    }
+                )
 
         n = len(daily_totals) or 1
         avg: dict[str, float] = {
@@ -195,7 +203,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
         }
 
         # Referências mínimas diárias (adulto médio)
-        _RECOMMENDED: list[tuple[str, str, float, str]] = [
+        _recommended: list[tuple[str, str, float, str]] = [
             ("proteína", "protein", 50.0, "g"),
             ("fibra", "fiber", 25.0, "g"),
             ("carboidrato", "carbs", 130.0, "g"),
@@ -203,7 +211,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
         ]
 
         alerts: list[NutritionalAlert] = []
-        for label, key, rec_min, unit in _RECOMMENDED:
+        for label, key, rec_min, unit in _recommended:
             avg_val = avg[key]
             if avg_val < rec_min:
                 gap = (rec_min - avg_val) / rec_min
@@ -214,13 +222,15 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
                     severity = "medium"
                 else:
                     severity = "low"
-                alerts.append(NutritionalAlert(
-                    nutrient=label,
-                    average_daily=round(avg_val, 1),
-                    recommended_min=rec_min,
-                    unit=unit,
-                    severity=severity,
-                ))
+                alerts.append(
+                    NutritionalAlert(
+                        nutrient=label,
+                        average_daily=round(avg_val, 1),
+                        recommended_min=rec_min,
+                        unit=unit,
+                        severity=severity,
+                    )
+                )
 
         if not daily_totals:
             return NutritionalAlertsResponse(
@@ -229,15 +239,18 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
                 days_analyzed=0,
             )
 
-        alert_lines = "\n".join(
-            f"- {a.nutrient}: média {a.average_daily}{a.unit}/dia "
-            f"(mínimo recomendado: {a.recommended_min}{a.unit}, severidade: {a.severity})"
-            for a in alerts
-        ) or "Nenhuma deficiência detectada."
+        alert_lines = (
+            "\n".join(
+                f"- {a.nutrient}: média {a.average_daily}{a.unit}/dia "
+                f"(mínimo recomendado: {a.recommended_min}{a.unit}, severidade: {a.severity})"
+                for a in alerts
+            )
+            or "Nenhuma deficiência detectada."
+        )
 
         prompt = f"""Você é um nutricionista analisando possíveis deficiências alimentares de um usuário.
 Período analisado: {days} dias ({len(daily_totals)} dias com registros).
-Médias diárias: {avg['calories']:.0f} kcal, {avg['protein']:.1f}g prot, {avg['carbs']:.1f}g carb, {avg['fat']:.1f}g gord, {avg['fiber']:.1f}g fibra.
+Médias diárias: {avg["calories"]:.0f} kcal, {avg["protein"]:.1f}g prot, {avg["carbs"]:.1f}g carb, {avg["fat"]:.1f}g gord, {avg["fiber"]:.1f}g fibra.
 
 Deficiências detectadas:
 {alert_lines}
@@ -388,7 +401,8 @@ Responda em 2-3 parágrafos em português, sendo específico e motivador."""
         # Score de aderência: dias dentro de ±15% da meta calórica
         if calorie_goal:
             adherent_days = sum(
-                1 for _, s in daily_summaries
+                1
+                for _, s in daily_summaries
                 if abs(s.total_calories - calorie_goal) / calorie_goal <= 0.15
             )
             adherence_score = round(adherent_days / n * 100, 1)
@@ -451,37 +465,40 @@ O relatório deve:
         for week_num in range(1, 6):
             w_start = month_start + timedelta(days=(week_num - 1) * 7)
             w_end = w_start + timedelta(days=6)
-            week_data = [
-                s for d, s in daily_summaries if w_start <= d <= w_end
-            ]
+            week_data = [s for d, s in daily_summaries if w_start <= d <= w_end]
             if not week_data:
                 continue
             wn = len(week_data)
             w_avg_cal = sum(s.total_calories for s in week_data) / wn
             if calorie_goal:
                 adherent = sum(
-                    1 for s in week_data
+                    1
+                    for s in week_data
                     if abs(s.total_calories - calorie_goal) / calorie_goal <= 0.15
                 )
                 adherence_pct = round(adherent / wn * 100, 1)
             else:
                 adherence_pct = 0.0
-            weeks.append(WeekSummary(
-                week_number=week_num,
-                start_date=w_start,
-                end_date=min(w_end, date.today()),
-                avg_calories=round(w_avg_cal, 1),
-                days_logged=wn,
-                adherence_pct=adherence_pct,
-            ))
+            weeks.append(
+                WeekSummary(
+                    week_number=week_num,
+                    start_date=w_start,
+                    end_date=min(w_end, date.today()),
+                    avg_calories=round(w_avg_cal, 1),
+                    days_logged=wn,
+                    adherence_pct=adherence_pct,
+                )
+            )
         # Garante pelo menos uma semana mesmo sem dados
         if not weeks:
-            weeks.append(WeekSummary(
-                week_number=1,
-                start_date=month_start,
-                end_date=month_start,
-                avg_calories=0.0,
-                days_logged=0,
-                adherence_pct=0.0,
-            ))
+            weeks.append(
+                WeekSummary(
+                    week_number=1,
+                    start_date=month_start,
+                    end_date=month_start,
+                    avg_calories=0.0,
+                    days_logged=0,
+                    adherence_pct=0.0,
+                )
+            )
         return weeks

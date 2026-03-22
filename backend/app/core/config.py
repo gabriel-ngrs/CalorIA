@@ -46,6 +46,18 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
 
     # --------------------------------------------------------------------------
+    # Telegram Bot
+    # --------------------------------------------------------------------------
+    TELEGRAM_BOT_TOKEN: str = ""
+
+    # --------------------------------------------------------------------------
+    # WhatsApp — Evolution API
+    # --------------------------------------------------------------------------
+    EVOLUTION_API_URL: str = "http://evolution_api:8080"
+    EVOLUTION_API_KEY: str = ""
+    EVOLUTION_INSTANCE_NAME: str = "caloria"
+
+    # --------------------------------------------------------------------------
     # Google Gemini API (IA)
     # --------------------------------------------------------------------------
     GEMINI_API_KEY: str = ""

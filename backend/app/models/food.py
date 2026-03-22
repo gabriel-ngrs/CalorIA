@@ -26,7 +26,9 @@ class Food(Base):
     # Origem do registro
     source: Mapped[str] = mapped_column(String(20), default="taco")
     # Código de barras (EAN/UPC) para produtos do Open Food Facts
-    external_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    external_id: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, index=True
+    )
     # Texto desnormalizado para busca trigrama (name + aliases em minúsculas)
     search_text: Mapped[str] = mapped_column(Text)
 

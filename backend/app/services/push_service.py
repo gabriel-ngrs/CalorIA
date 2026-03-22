@@ -25,7 +25,7 @@ def send_push_notification_sync(
         logger.warning("VAPID keys not configured — push notification skipped.")
         return False
     try:
-        from pywebpush import WebPushException, webpush  # type: ignore[import-untyped]
+        from pywebpush import WebPushException, webpush
 
         webpush(
             subscription_info={
@@ -38,7 +38,7 @@ def send_push_notification_sync(
         )
         return True
     except Exception as ex:  # noqa: BLE001
-        from pywebpush import WebPushException  # type: ignore[import-untyped]
+        from pywebpush import WebPushException
 
         if isinstance(ex, WebPushException):
             logger.error("WebPush error: %s", ex)

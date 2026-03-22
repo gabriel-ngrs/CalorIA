@@ -74,9 +74,7 @@ class TestHydrationLog:
 
 
 class TestMoodLog:
-    async def test_registra_humor(
-        self, client: AsyncClient, test_user: User
-    ) -> None:
+    async def test_registra_humor(self, client: AsyncClient, test_user: User) -> None:
         resp = await client.post(
             "/api/v1/mood",
             json={
@@ -106,7 +104,9 @@ class TestMoodLog:
         )
         assert resp.status_code == 422
 
-    async def test_nivel_abaixo_do_limite_retorna_422(self, client: AsyncClient) -> None:
+    async def test_nivel_abaixo_do_limite_retorna_422(
+        self, client: AsyncClient
+    ) -> None:
         resp = await client.post(
             "/api/v1/mood",
             json={

@@ -73,9 +73,7 @@ Seja específico, prático e motivador."""
         )
         return list(result.scalars().all())
 
-    async def _fetch_mood_logs(
-        self, user_id: int, start_date: date
-    ) -> list[MoodLog]:
+    async def _fetch_mood_logs(self, user_id: int, start_date: date) -> list[MoodLog]:
         result = await self._db.execute(
             select(MoodLog)
             .where(MoodLog.user_id == user_id, MoodLog.date >= start_date)
@@ -112,9 +110,7 @@ Seja específico, prático e motivador."""
         # Dias registrados
         days_with_data = len(calories_by_date)
         avg_calories = (
-            sum(calories_by_date.values()) / days_with_data
-            if days_with_data
-            else 0.0
+            sum(calories_by_date.values()) / days_with_data if days_with_data else 0.0
         )
 
         # Contagem de tipos de refeição
@@ -159,12 +155,16 @@ Seja específico, prático e motivador."""
                 avg_cal_high = sum(
                     calories_by_date.get(d, 0) for d in high_mood_days
                 ) / len(high_mood_days)
-                mood_text += f" Calorias médias em dias de bom humor: {avg_cal_high:.0f} kcal."
+                mood_text += (
+                    f" Calorias médias em dias de bom humor: {avg_cal_high:.0f} kcal."
+                )
             if low_mood_days:
                 avg_cal_low = sum(
                     calories_by_date.get(d, 0) for d in low_mood_days
                 ) / len(low_mood_days)
-                mood_text += f" Calorias médias em dias de baixo humor: {avg_cal_low:.0f} kcal."
+                mood_text += (
+                    f" Calorias médias em dias de baixo humor: {avg_cal_low:.0f} kcal."
+                )
         else:
             mood_text = "Sem registros de humor no período."
 

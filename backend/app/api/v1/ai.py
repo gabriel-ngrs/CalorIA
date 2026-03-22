@@ -57,7 +57,9 @@ async def analyze_meal(
             db=db,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
 
 @router.post("/analyze-photo", response_model=MealAnalysisResponse)
@@ -78,7 +80,9 @@ async def analyze_photo(
             db=db,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
 
 @router.post("/insights", response_model=InsightResponse)
@@ -110,7 +114,7 @@ async def generate_insight(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao consultar a IA: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/suggest-meal", response_model=MealSuggestion)
@@ -128,7 +132,7 @@ async def suggest_meal(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar sugestão: {exc}",
-        )
+        ) from exc
 
 
 # ── Fase 7 — Insights Avançados ───────────────────────────────────────────────
@@ -149,7 +153,7 @@ async def eating_patterns(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao analisar padrões: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/nutritional-alerts", response_model=NutritionalAlertsResponse)
@@ -167,7 +171,7 @@ async def nutritional_alerts(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao verificar alertas nutricionais: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/goal-adjustment", response_model=GoalAdjustmentSuggestion)
@@ -184,7 +188,7 @@ async def goal_adjustment(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar sugestão de ajuste: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/monthly-report", response_model=MonthlyReport)
@@ -211,4 +215,4 @@ async def monthly_report(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar relatório mensal: {exc}",
-        )
+        ) from exc

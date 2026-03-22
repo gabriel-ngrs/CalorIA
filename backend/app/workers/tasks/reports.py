@@ -19,34 +19,37 @@ def _run(coro: Any) -> Any:
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-@shared_task(name="app.workers.tasks.reports.send_daily_summaries", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+@shared_task(
+    name="app.workers.tasks.reports.send_daily_summaries", bind=True, max_retries=3
+)  # type: ignore[untyped-decorator]
 def send_daily_summaries(self: Any) -> None:
     """Envia resumo diário com insight da IA para todos os usuários ativos (22h)."""
     try:
         _run(_send_daily_summaries_async())
     except Exception as exc:
         logger.error("Erro em send_daily_summaries: %s", exc)
-        raise self.retry(exc=exc, countdown=120)
+        raise self.retry(exc=exc, countdown=120) from exc
 
 
 async def _send_daily_summaries_async() -> None:
     today = date.today()
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(User).where(User.is_active.is_(True))
-        )
+        result = await db.execute(select(User).where(User.is_active.is_(True)))
         users = result.scalars().all()
 
         for user in users:
             try:
                 await _send_daily_summary_to_user(user, today)
             except Exception as exc:
-                logger.error("Erro ao enviar resumo diário para user_id=%s: %s", user.id, exc)
+                logger.error(
+                    "Erro ao enviar resumo diário para user_id=%s: %s", user.id, exc
+                )
 
 
 async def _send_daily_summary_to_user(user: User, today: date) -> None:
     import asyncio
+
     from sqlalchemy import delete
 
     from app.core.database import AsyncSessionLocal
@@ -94,8 +97,15 @@ async def _send_daily_summary_to_user(user: User, today: date) -> None:
                 )
             except Exception as ex:  # noqa: BLE001
                 try:
-                    from pywebpush import WebPushException  # type: ignore[import-untyped]
-                    if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                    from pywebpush import (
+                        WebPushException,
+                    )
+
+                    if (
+                        isinstance(ex, WebPushException)
+                        and ex.response
+                        and ex.response.status_code == 410
+                    ):
                         expired_ids.append(sub.id)
                 except ImportError:
                     pass
@@ -108,34 +118,37 @@ async def _send_daily_summary_to_user(user: User, today: date) -> None:
         await db.commit()
 
 
-@shared_task(name="app.workers.tasks.reports.send_weekly_reports", bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+@shared_task(
+    name="app.workers.tasks.reports.send_weekly_reports", bind=True, max_retries=3
+)  # type: ignore[untyped-decorator]
 def send_weekly_reports(self: Any) -> None:
     """Envia relatório semanal com insights da IA para todos os usuários ativos (domingo 20h)."""
     try:
         _run(_send_weekly_reports_async())
     except Exception as exc:
         logger.error("Erro em send_weekly_reports: %s", exc)
-        raise self.retry(exc=exc, countdown=120)
+        raise self.retry(exc=exc, countdown=120) from exc
 
 
 async def _send_weekly_reports_async() -> None:
     today = date.today()
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(User).where(User.is_active.is_(True))
-        )
+        result = await db.execute(select(User).where(User.is_active.is_(True)))
         users = result.scalars().all()
 
         for user in users:
             try:
                 await _send_weekly_report_to_user(user, today)
             except Exception as exc:
-                logger.error("Erro ao enviar relatório semanal para user_id=%s: %s", user.id, exc)
+                logger.error(
+                    "Erro ao enviar relatório semanal para user_id=%s: %s", user.id, exc
+                )
 
 
 async def _send_weekly_report_to_user(user: User, today: date) -> None:
     import asyncio
+
     from sqlalchemy import delete
 
     from app.core.database import AsyncSessionLocal
@@ -183,8 +196,15 @@ async def _send_weekly_report_to_user(user: User, today: date) -> None:
                 )
             except Exception as ex:  # noqa: BLE001
                 try:
-                    from pywebpush import WebPushException  # type: ignore[import-untyped]
-                    if isinstance(ex, WebPushException) and ex.response and ex.response.status_code == 410:
+                    from pywebpush import (
+                        WebPushException,
+                    )
+
+                    if (
+                        isinstance(ex, WebPushException)
+                        and ex.response
+                        and ex.response.status_code == 410
+                    ):
                         expired_ids.append(sub.id)
                 except ImportError:
                     pass
