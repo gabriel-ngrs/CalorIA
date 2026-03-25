@@ -221,12 +221,27 @@ O build do frontend leva ~3–5 minutos na primeira vez.
 
 ---
 
-## Parte 10 — Rodar as migrações do banco
+## Parte 10 — Rodar as migrações e seed do banco
 
 ```bash
 # Aguarda o backend inicializar (~15s) e roda as migrations
 sleep 15 && docker exec caloria_backend alembic upgrade head
 ```
+
+### Seed do banco nutricional (obrigatório — só na primeira vez)
+
+Após as migrações, a tabela `foods` existe mas está vazia. Sem o seed, a IA não consegue buscar macros no banco e cai sempre no fallback de estimativa.
+
+```bash
+# 1. Seed TACO — ~307 alimentos, hardcoded, rápido (~5s)
+docker exec caloria_backend python scripts/seed_taco.py
+
+# 2. Importar Open Food Facts — ~19.500 produtos brasileiros (opcional, recomendado)
+#    Faz download da API do OFF — leva ~5-10 minutos dependendo da conexão
+docker exec caloria_backend python scripts/import_off.py
+```
+
+> Só é necessário rodar uma vez. Os dados ficam no volume `postgres_data` e persistem entre reinicializações e deploys.
 
 ---
 
