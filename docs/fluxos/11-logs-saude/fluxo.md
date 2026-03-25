@@ -13,10 +13,6 @@ O usuario pode registrar peso, hidratacao e humor/energia. Esses dados alimentam
 2. Frontend chama `POST /api/v1/weight {weight_kg, date}`
 3. Backend insere em `weight_logs`
 
-**Via Telegram:**
-1. Usuario envia `/peso 75.5`
-2. Handler chama `WeightService.create()`
-
 **Uso do peso:**
 - Grafico de evolucao no dashboard
 - Recalculo mensal de TDEE (Celery)
@@ -32,10 +28,6 @@ O usuario pode registrar peso, hidratacao e humor/energia. Esses dados alimentam
 2. Frontend chama `POST /api/v1/hydration {amount_ml}`
 3. Backend insere em `hydration_logs`
 
-**Via Telegram:**
-1. Usuario envia `/agua 500`
-2. Handler chama `HydrationService.create()`
-
 **Ciclo de hidratacao:**
 - Cada registro acumula no total do dia
 - Barra de progresso no dashboard
@@ -50,10 +42,6 @@ O usuario pode registrar peso, hidratacao e humor/energia. Esses dados alimentam
 1. Usuario seleciona energia (1-5) + humor (1-5) no modal
 2. Frontend chama `POST /api/v1/mood {energy_level, mood_level, date}`
 3. Backend insere em `mood_logs`
-
-**Via Telegram:**
-1. Usuario envia `/humor 4 3`
-2. Handler chama `MoodService.create()`
 
 **Uso do humor:**
 - Exibido no dashboard do dia
@@ -108,4 +96,3 @@ O usuario pode registrar peso, hidratacao e humor/energia. Esses dados alimentam
 | `models/weight_log.py` | Modelo WeightLog |
 | `models/hydration_log.py` | Modelo HydrationLog |
 | `models/mood_log.py` | Modelo MoodLog |
-| `bots/telegram/handlers/logs.py` | Handlers /peso, /agua, /humor |

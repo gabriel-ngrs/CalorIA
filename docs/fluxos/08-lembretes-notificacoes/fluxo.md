@@ -13,10 +13,6 @@ O sistema de lembretes permite ao usuario configurar notificacoes recorrentes (r
 2. Frontend chama `POST /api/v1/reminders` com tipo, horario, dias da semana, canal
 3. Backend insere em `reminders`
 
-**Via Telegram:**
-1. Usuario envia `/lembrete cafe 07:30`
-2. Handler cria lembrete via `ReminderService`
-
 **Via batch:**
 - `POST /api/v1/reminders/batch` aceita lista de lembretes
 
