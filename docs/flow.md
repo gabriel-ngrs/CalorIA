@@ -1,31 +1,31 @@
-# CalorIA — Fluxo Completo: da Mensagem ao Banco
+# CalorIA — Fluxo Completo: do Registro ao Banco
 
-Este documento descreve, de forma objetiva e didática, o caminho percorrido desde a mensagem do usuário até a persistência da refeição no banco de dados.
+Este documento descreve o caminho percorrido desde o input do usuário no dashboard até a persistência da refeição no banco de dados.
 
 ---
 
 ## Visão Geral
 
 ```
-Usuário (WhatsApp / Telegram / Web)
+Usuário (Dashboard Web)
         │
         ▼
-  [1] Recepção da mensagem
+  [1] Recepção da entrada (texto ou foto)
         │
         ▼
   [2] Contexto do usuário
         │
         ▼
-  [3] Lookup nutricional (pg_trgm)
+  [3] Estágio 1 — IA identifica alimentos (sem macros)
         │
         ▼
-  [4] Análise de IA (Groq / Llama)
+  [4] Estágio 2 — Lookup nutricional (pg_trgm) + sanity check
+        │           └── Fallback: estimativa em batch pela IA
+        ▼
+  [5] Pós-processamento (Atwater)
         │
         ▼
-  [5] Pós-processamento
-        │
-        ▼
-  [6] Confirmação (bots)
+  [6] Confirmação no frontend
         │
         ▼
   [7] Persistência no banco (PostgreSQL)
@@ -33,39 +33,14 @@ Usuário (WhatsApp / Telegram / Web)
 
 ---
 
-## [1] Recepção da Mensagem
-
-### WhatsApp (via Evolution API)
-
-O Evolution API é um serviço self-hosted que gerencia a sessão WhatsApp. Quando o usuário envia uma mensagem, ele faz um `POST` para o backend:
-
-```
-POST /webhook/whatsapp
-```
-
-**`bots/whatsapp/webhook.py`** recebe o payload e roteia:
-- Mensagem de texto → `handle_text_message(number, text)`
-- Imagem → faz download da mídia, então `handle_image_message(number, image_bytes)`
-- Mensagens do próprio bot e grupos são ignoradas.
-
-Se o texto for `"sim"` ou `"não"`, é verificado se há uma refeição pendente de confirmação no Redis antes de prosseguir para análise.
-
-### Telegram
-
-**`bots/telegram/bot.py`** usa polling (python-telegram-bot). O handler principal fica em `handlers/registration.py` e usa um `ConversationHandler` com três estados:
-
-- **ANALYZING**: recebe texto ou foto, chama a IA.
-- **CONFIRMING**: exibe botões ✅ Confirmar / ✏️ Corrigir / ❌ Cancelar.
-- **EDITING**: permite corrigir itens antes de confirmar.
-
-### API Web (Dashboard)
+## [1] Recepção da Entrada
 
 O frontend chama diretamente:
 
 ```
 POST /api/v1/ai/analyze-meal    — análise por texto
 POST /api/v1/ai/analyze-photo   — análise por foto
-POST /api/v1/meals              — persistência da refeição
+POST /api/v1/meals              — persistência da refeição confirmada
 ```
 
 ---
@@ -86,125 +61,76 @@ Antes de chamar a IA, o sistema monta um contexto personalizado com 5 seções:
 
 O tipo de refeição é inferido a partir da descrição (ex: "café com pão" → `breakfast`).
 
-Esse contexto é injetado no prompt da IA para que ela calibre as porções com base no histórico real do usuário.
-
 ---
 
-## [3] Lookup Nutricional (pg_trgm)
+## [3] Estágio 1 — Identificação pela IA
 
-**`services/ai/taco_lookup.py`** → `find_foods_in_text(text, db)`
+**`services/ai/meal_parser.py`** (texto) / **`services/ai/vision_parser.py`** (foto)
 
-Antes de chamar a IA (no caso de texto), o sistema faz uma busca fuzzy no banco nutricional usando o índice trigrama do PostgreSQL.
+A IA (Gemini 2.5 Flash) recebe a descrição/foto + contexto e retorna apenas a **identificação** dos alimentos, sem calcular macros:
 
-### Como funciona
-
-**a) Normalização**
-```
-"Frango Grelhado com Batata" → "frango grelhado com batata"
-```
-Remove acentos e converte para minúsculas.
-
-**b) Extração de candidatos (n-gramas)**
-
-Para queries com múltiplas palavras, gera bigramas a 4-gramas:
-```
-"frango grelhado" → "frango grelhado com", "grelhado com batata",
-                    "frango grelhado com batata", etc.
-```
-Para queries de uma única palavra, também gera 1-gramas.
-
-**c) Query SQL por candidato**
-```sql
-SELECT id, name, calories_100g, protein_100g, carbs_100g, fat_100g, fiber_100g,
-       similarity(search_text, :q) AS score
-FROM taco_foods
-WHERE search_text %>> :q OR similarity(search_text, :q) >= 0.18
-ORDER BY score DESC
-LIMIT 20
-```
-
-- `%>>` é o operador de similaridade por palavras do pg_trgm.
-- O índice GIN em `search_text` garante latência < 20ms mesmo com 20k registros.
-
-**d) Boost por fonte**
-
-O banco contém dados de duas origens com qualidades diferentes:
-
-| Fonte | Descrição | Boost |
-|---|---|---|
-| `taco` | Tabela TACO — base oficial brasileira, valores de laboratório | **1.40×** |
-| `openfoodfacts` | Open Food Facts — 19k produtos, valores de fabricantes | 1.00× |
-
-O boost garante que os dados da TACO sempre prevalecem sobre o OFF quando o mesmo alimento existe nas duas fontes.
-
-**e) Resultado**
-
-Lista de até 20 `TacoMatch` ordenados por score boosted. Usada de duas formas:
-- **meal_parser**: injetada no prompt como valores exatos antes da chamada à IA.
-- **vision_parser**: usada depois da IA para substituir estimativas visuais por valores do banco.
-
----
-
-## [4] Análise de IA
-
-### 4a. Análise de texto — `MealParser`
-
-**`services/ai/meal_parser.py`** → `MealParser(client).parse(description, user_context, db)`
-
-O prompt enviado à IA tem três camadas:
-
-```
-[System Prompt]
-Você é um nutricionista brasileiro. Regras: retorne APENAS JSON, calcule
-macros para a porção total, diferencie método de preparo, use banco
-nutricional quando disponível, etc.
-
-[User Message]
-=== CONTEXTO DO USUÁRIO ===
-Meta: 2000 kcal | Consumido hoje: 500 kcal
-Suas porções habituais: arroz branco cozido ~180g (~230 kcal)...
-
-=== BANCO NUTRICIONAL (USE ESTES VALORES — NÃO ESTIME) ===
-Arroz branco cozido: 128 kcal | prot 2.5g | carb 28.1g | gord 0.2g (por 100g)
-Frango peito grelhado: 163 kcal | prot 28.6g | carb 0.0g | gord 4.8g (por 100g)
-
-Descrição: 200g de arroz com frango grelhado
-```
-
-A IA retorna um array JSON:
 ```json
 [
-  {"food_name": "arroz branco cozido", "quantity": 200, "unit": "g",
-   "calories": 256, "protein": 5.0, "carbs": 56.2, "fat": 0.4, "confidence": 0.95},
-  {"food_name": "frango peito grelhado", "quantity": 130, "unit": "g",
-   "calories": 212, "protein": 37.2, "carbs": 0.0, "fat": 6.2, "confidence": 0.90}
+  {
+    "food_name": "arroz branco cozido",
+    "quantity": 200,
+    "unit": "g",
+    "preparation": "cozido",
+    "kcal_estimate": 256,
+    "confidence": 0.85
+  },
+  {
+    "food_name": "frango peito grelhado",
+    "quantity": 130,
+    "unit": "g",
+    "preparation": "grelhado",
+    "kcal_estimate": 212,
+    "confidence": 0.90
+  }
 ]
 ```
 
-### 4b. Análise de foto — `VisionParser`
+O campo `kcal_estimate` é uma estimativa bruta da IA usada **exclusivamente** como sanity check no estágio seguinte — não substitui os macros reais do banco.
 
-**`services/ai/vision_parser.py`** → `VisionParser(client).parse_base64(image_base64, db=db)`
+Para fotos, o system prompt inclui referências visuais de calibração (tamanhos de pratos brasileiros, espessura de proteínas, recipientes comuns).
 
-O fluxo é diferente:
+---
 
-1. A foto é enviada diretamente para o modelo de visão (Llama 4 Scout via Groq).
-2. O system prompt inclui **referências visuais de calibração**:
-   - Tamanhos de pratos brasileiros (26-28cm)
-   - Espessura de proteínas (bife fino ~1cm → 80-100g)
-   - Recipientes comuns (tigela 300ml, copo 200ml)
-3. A IA estima os alimentos visíveis e as porções em gramas.
-4. **Após** a resposta da IA, o sistema enriquece com o banco (veja seção 5).
+## [4] Estágio 2 — Lookup Nutricional + Sanity Check
 
-### 4c. Cliente de IA — `GeminiClient`
+**`services/ai/food_lookup.py`** → `lookup_food(query, db)`
 
-**`services/ai/gemini_client.py`**
+Para cada alimento identificado no Estágio 1:
 
-| Tipo | Modelo | Cache |
-|---|---|---|
-| Texto | `llama-3.3-70b-versatile` (Groq) | Redis 7 dias (SHA256 do prompt) |
-| Visão | `meta-llama/llama-4-scout-17b-16e-instruct` (Groq) | Sem cache |
+### a) Query SQL
 
-Texto de análise de refeição sempre é chamado com `use_cache=False` — cada refeição é única.
+```sql
+SELECT id, name, calories_100g, protein_100g, carbs_100g, fat_100g,
+       fiber_100g, sodium_100g, sugar_100g, saturated_fat_100g,
+       source, similarity(search_text, :q) AS score
+FROM foods
+WHERE search_text %>> :q OR similarity(search_text, :q) >= 0.18
+ORDER BY score * CASE WHEN source='taco' THEN 1.4 ELSE 1.0 END DESC
+LIMIT 5
+```
+
+- `%>>` é o operador word similarity do pg_trgm
+- Índice GIN em `search_text` garante latência < 20ms com ~19.800 registros
+- Dados TACO recebem boost **1.40×** para prevalecerem sobre Open Food Facts
+
+### b) Threshold e sanity check
+
+Se o melhor match tiver score ≥ 0.65:
+- Calcula macros como `valor_100g × (quantity / 100)`
+- Compara as calorias calculadas com `kcal_estimate` da IA
+- Se divergência > **35%**: descarta o match e usa estimativa da IA (`data_source="ai_estimated"`)
+- Se divergência ≤ 35%: usa macros do banco (`data_source = food.source`)
+
+Isso evita que registros incorretos do Open Food Facts (ex: feijão carioca a 40 kcal vs TACO 76 kcal) contaminem o resultado.
+
+### c) Itens sem match
+
+Enviados juntos para `_estimate_macros_batch` — uma única chamada à IA com todos os itens sem match. Resultado com `data_source="ai_estimated"`, `food_id=None`.
 
 ---
 
@@ -212,73 +138,28 @@ Texto de análise de refeição sempre é chamado com `use_cache=False` — cada
 
 ### Correção de calorias (Atwater)
 
-Após a resposta da IA (em ambos os parsers):
+Aplicada após ambos os parsers:
 
 ```python
-def _correct_calories(items):
+def correct_calories(items):
     for item in items:
         expected = item.protein * 4 + item.carbs * 4 + item.fat * 9
-        # Se divergência > 10%, substitui pelo valor calculado
-        if abs(item.calories - expected) / expected > 0.10:
+        if abs(item.calories - expected) / max(expected, 1) > 0.10:
             item.calories = round(expected, 1)
 ```
 
-### Enriquecimento por banco (vision_parser)
-
-Para cada item identificado pela IA na foto:
-
-```python
-if item.unit in ("g", "gramas", "gr"):
-    matches = await find_foods_in_text(item.food_name, db)
-    if matches and matches[0].score >= 0.50:
-        food = matches[0].food
-        factor = item.quantity / 100.0
-        item.calories = round(food.calories_100g * factor, 1)
-        item.protein  = round(food.protein_100g  * factor, 2)
-        # ... demais macros
-        item.confidence = min(item.confidence + 0.1, 1.0)
-```
-
-Se o banco reconhece "frango grelhado" com score ≥ 0.50 e a IA estimou 200g, os macros são recalculados com precisão: `valor_100g × (200/100)`.
-
 ### Flag de baixa confiança
 
-Se qualquer item tiver `confidence < 0.6`, `MealAnalysisResponse.low_confidence = True`. Os bots usam isso para alertar o usuário de que a análise pode ser imprecisa.
+Se qualquer item tiver `confidence < 0.6`, `MealAnalysisResponse.low_confidence = True`. O frontend usa isso para alertar o usuário.
 
 ---
 
-## [6] Confirmação (bots)
+## [6] Confirmação no Frontend
 
-### WhatsApp
-
-O resultado da análise **não é salvo imediatamente**. É armazenado no Redis por 5 minutos:
-
-```
-Redis key: wa_pending:{number}
-TTL: 300s
-Value: JSON dos itens analisados
-```
-
-O bot envia a mensagem de confirmação:
-```
-📊 Refeição analisada
-
-• arroz branco cozido — 200g
-• frango peito grelhado — 130g
-
-🔥 468 kcal | 🥩 42.2g prot | 🍞 56.2g carb | 🧈 6.6g gord
-
-Está correto? Responda sim ou não.
-```
-
-Quando o usuário responde "sim", os dados são recuperados do Redis e persistidos.
-
-### Telegram
-
-Usa botões inline (ConversationHandler):
-- **✅ Confirmar** → persiste
-- **✏️ Corrigir** → solicita edição por texto
-- **❌ Cancelar** → descarta
+O resultado é exibido no modal de refeição. O usuário pode:
+- **Confirmar** → `POST /api/v1/meals` com os dados
+- **Editar** → ajustar itens antes de confirmar
+- **Cancelar** → descartar
 
 ---
 
@@ -287,19 +168,10 @@ Usa botões inline (ConversationHandler):
 **`services/meal_service.py`** → `MealService.create_meal(user_id, data)`
 
 ```python
-# 1. Cria o registro da refeição
-meal = Meal(
-    user_id=user_id,
-    meal_type=data.meal_type,   # breakfast, lunch, dinner, snack...
-    date=data.date,
-    source=data.source,          # telegram, whatsapp, manual
-    name=data.name,
-    notes=data.notes,
-)
+meal = Meal(user_id=user_id, meal_type=..., date=..., source="manual", ...)
 db.add(meal)
-await db.flush()  # obtém o ID sem commitar
+await db.flush()
 
-# 2. Cria os itens individuais
 for item in data.items:
     db.add(MealItem(
         meal_id=meal.id,
@@ -311,6 +183,11 @@ for item in data.items:
         carbs=item.carbs,
         fat=item.fat,
         fiber=item.fiber,
+        sodium=item.sodium,
+        sugar=item.sugar,
+        saturated_fat=item.saturated_fat,
+        food_id=item.food_id,            # FK → foods (None se estimado)
+        data_source=item.data_source,    # "taco", "openfoodfacts", "ai_estimated"
     ))
 
 await db.commit()
@@ -326,7 +203,7 @@ await db.commit()
 | `user_id` | FK → users | |
 | `meal_type` | ENUM | breakfast, lunch, dinner, snack, etc. |
 | `date` | DATE | Data da refeição (indexada) |
-| `source` | ENUM | telegram, whatsapp, manual |
+| `source` | ENUM | manual |
 | `name` | TEXT | Nome opcional |
 | `notes` | TEXT | Observações |
 | `created_at` | TIMESTAMP | Automático |
@@ -341,88 +218,39 @@ await db.commit()
 | `quantity` | FLOAT | Quantidade na porção |
 | `unit` | VARCHAR(50) | Unidade (padrão: "g") |
 | `calories` | FLOAT | Calorias totais da porção |
-| `protein` | FLOAT | Proteínas totais (g) |
-| `carbs` | FLOAT | Carboidratos totais (g) |
-| `fat` | FLOAT | Gorduras totais (g) |
-| `fiber` | FLOAT | Fibras totais (g) |
-
----
-
-## Exemplo completo: "200g arroz com frango grelhado" via WhatsApp
-
-```
-Usuário → WhatsApp → Evolution API → POST /webhook/whatsapp
-                                              │
-                                    webhook.py roteia para
-                                    handle_text_message()
-                                              │
-                                    ┌─────────▼──────────┐
-                                    │ Busca usuário por  │
-                                    │ número no banco    │
-                                    └─────────┬──────────┘
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ build_meal_context()                   │
-                                    │ → Meta: 2000 kcal                      │
-                                    │ → Consumido hoje: 500 kcal             │
-                                    │ → Porção habitual de arroz: ~180g      │
-                                    └─────────┬──────────────────────────────┘
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ find_foods_in_text() via pg_trgm       │
-                                    │ → Arroz branco cozido  score=0.95 TACO │
-                                    │ → Frango peito grelhado score=0.91 TACO│
-                                    └─────────┬──────────────────────────────┘
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ MealParser.parse()                     │
-                                    │ → Prompt: contexto + TACO + descrição  │
-                                    │ → Groq API (Llama 70B)                 │
-                                    │ → JSON: arroz 200g, frango 130g        │
-                                    └─────────┬──────────────────────────────┘
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ _correct_calories()                    │
-                                    │ → Valida protein×4 + carbs×4 + fat×9  │
-                                    └─────────┬──────────────────────────────┘
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ Redis: wa_pending:{number} = JSON      │
-                                    │ TTL: 300s                              │
-                                    └─────────┬──────────────────────────────┘
-                                              │
-                              Mensagem ao usuário: "468 kcal — confirmar?"
-                                              │
-                                    Usuário responde "sim"
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ _confirm_pending_meal()                │
-                                    │ → Lê Redis, monta MealCreate           │
-                                    │ → MealService.create_meal()            │
-                                    └─────────┬──────────────────────────────┘
-                                              │
-                                    ┌─────────▼──────────────────────────────┐
-                                    │ PostgreSQL                             │
-                                    │ INSERT INTO meals (...)                │
-                                    │ INSERT INTO meal_items (...) × 2       │
-                                    │ COMMIT                                 │
-                                    └────────────────────────────────────────┘
-                                              │
-                              "✅ Refeição salva! (468 kcal)"
-```
+| `protein` | FLOAT | Proteínas (g) |
+| `carbs` | FLOAT | Carboidratos (g) |
+| `fat` | FLOAT | Gorduras (g) |
+| `fiber` | FLOAT | Fibras (g) |
+| `sodium` | FLOAT | Sódio (mg) |
+| `sugar` | FLOAT | Açúcares (g) |
+| `saturated_fat` | FLOAT | Gordura saturada (g) |
+| `food_id` | FK → foods | Nulo se estimado pela IA |
+| `data_source` | VARCHAR | "taco", "openfoodfacts" ou "ai_estimated" |
 
 ---
 
 ## Banco Nutricional
 
-O banco de dados nutricional (`taco_foods`) alimenta o lookup em [3] e o enriquecimento em [5]:
+A tabela `foods` alimenta o lookup em [4]:
 
 | Fonte | Registros | Descrição |
 |---|---|---|
-| **TACO** | 307 | Tabela Brasileira de Composição de Alimentos — valores de laboratório, alta confiabilidade |
+| **TACO** | ~307 | Tabela Brasileira de Composição de Alimentos — valores de laboratório, alta confiabilidade, boost 1.40× |
 | **Open Food Facts** | ~19.500 | Produtos industrializados brasileiros com código de barras — valores de fabricantes |
 
-Dados TACO recebem boost de **1.40×** no score de busca para sempre prevalecerem sobre OFF quando ambos têm o mesmo alimento.
+---
+
+## Cliente de IA — `GeminiClient`
+
+**`services/ai/gemini_client.py`**
+
+| Tipo | Modelo | Cache |
+|---|---|---|
+| Texto | `models/gemini-2.5-flash` | Redis 7 dias (SHA-256) para insights; sem cache para análise de refeição |
+| Visão | `models/gemini-2.5-flash` | Sem cache |
+
+Retry em 429: espera 15s → 30s → 60s → 120s (4 tentativas total).
 
 ---
 
@@ -430,16 +258,16 @@ Dados TACO recebem boost de **1.40×** no score de busca para sempre prevalecere
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `bots/whatsapp/webhook.py` | Recebe webhook da Evolution API, roteia eventos |
-| `bots/whatsapp/handlers.py` | Processa texto/foto, gerencia confirmação via Redis |
-| `bots/telegram/handlers/registration.py` | ConversationHandler para refeições no Telegram |
 | `services/ai/context_builder.py` | Monta contexto personalizado do usuário |
-| `services/ai/taco_lookup.py` | Busca fuzzy via pg_trgm no banco nutricional |
-| `services/ai/meal_parser.py` | Analisa texto com IA + contexto TACO |
-| `services/ai/vision_parser.py` | Analisa foto com IA + enriquecimento pós-análise |
-| `services/ai/gemini_client.py` | Cliente Groq com cache Redis e retry exponencial |
+| `services/ai/food_lookup.py` | Busca fuzzy via pg_trgm + sanity check |
+| `services/ai/meal_parser.py` | Pipeline dois estágios para texto |
+| `services/ai/vision_parser.py` | Pipeline dois estágios para fotos |
+| `services/ai/gemini_client.py` | Cliente Gemini 2.5 Flash com cache Redis e retry |
+| `services/ai/utils.py` | `correct_calories`, `extract_json_from_ai_response` |
 | `services/meal_service.py` | CRUD de refeições e resumo diário |
+| `services/push_service.py` | Envio de notificações Web Push VAPID |
 | `api/v1/ai.py` | Endpoints `/analyze-meal` e `/analyze-photo` |
 | `api/v1/meals.py` | Endpoints CRUD `/meals` |
-| `models/meal.py` | Tabela `meals` (SQLAlchemy) |
-| `models/meal_item.py` | Tabela `meal_items` (SQLAlchemy) |
+| `api/v1/push.py` | Endpoints de subscription Web Push |
+| `models/food.py` | Tabela `foods` — banco nutricional unificado |
+| `models/meal_item.py` | Tabela `meal_items` com food_id e data_source |

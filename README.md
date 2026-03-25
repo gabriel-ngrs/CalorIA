@@ -1,6 +1,6 @@
 # CalorIA
 
-Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Telegram, acompanhe macros, peso, hidratação e humor pelo dashboard web.
+Diário alimentar inteligente com IA. Registre refeições pelo dashboard web, acompanhe macros, peso, hidratação e humor.
 
 [![CI](https://github.com/gabriel-ngrs/CalorIA/actions/workflows/ci.yml/badge.svg)](https://github.com/gabriel-ngrs/CalorIA/actions/workflows/ci.yml)
 
@@ -8,12 +8,12 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 
 ## Funcionalidades
 
-- **Registro via mensagem** — envie texto ou foto da refeição no WhatsApp ou Telegram; a IA consulta o banco TACO (~600 alimentos brasileiros) e calcula os macros com sanity check calórico
+- **Registro via web** — descreva em texto ou envie foto da refeição; a IA consulta o banco nutricional (TACO + Open Food Facts, ~19.800 alimentos) com sanity check calórico antes de calcular os macros
 - **Dashboard web** — interface glassmorphism com gráficos de calorias, macros, evolução de peso e hidratação
 - **Tracking completo** — peso corporal, hidratação, humor e energia com métricas de período
-- **Lembretes inteligentes** — notificações de refeição, água e resumo diário via Telegram/WhatsApp
+- **Lembretes com Web Push** — notificações nativas no browser/mobile para refeições, água e resumo diário
 - **Insights personalizados** — IA analisa padrões, detecta deficiências nutricionais e sugere ajuste de metas
-- **Multi-canal** — use Telegram e WhatsApp simultaneamente
+- **PWA** — instalável no celular como app nativo
 
 ---
 
@@ -25,35 +25,12 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 | Banco de dados | PostgreSQL 16 |
 | Cache / Filas | Redis 7 |
 | Workers | Celery + Celery Beat |
-| IA | Google Gemini 2.5 Flash |
-| Bot Telegram | python-telegram-bot |
-| Bot WhatsApp | Evolution API (self-hosted) |
-| Frontend | Next.js 14 + TypeScript + shadcn/ui |
+| IA | Google Gemini 2.5 Flash (`google-genai`) |
+| Notificações | Web Push VAPID (pywebpush) |
+| Frontend | Next.js 14 + TypeScript + shadcn/ui (Glassmorphism) |
 | ORM | SQLAlchemy 2 (async) + Alembic |
 | Infra | Docker Compose + Caddy (HTTPS) |
 | CI/CD | GitHub Actions |
-
----
-
-## Screenshots
-
-### Dashboard Principal (Desktop)
-![Dashboard](screenshots/desktop-dashboard.png)
-
-### Refeições e Análise por IA (Desktop)
-![Refeições](screenshots/desktop-refeicoes.png)
-
-### Evolução de Peso (Desktop)
-![Peso](screenshots/desktop-peso.png)
-
-### Hidratação (Desktop)
-![Hidratação](screenshots/desktop-hidratacao.png)
-
-### Insights da IA (Desktop)
-![Insights](screenshots/desktop-insights.png)
-
-### Dashboard Mobile
-![Dashboard Mobile](screenshots/mobile-dashboard.png)
 
 ---
 
@@ -62,9 +39,7 @@ Diário alimentar inteligente com IA. Registre refeições via WhatsApp ou Teleg
 - Docker e Docker Compose
 - Python 3.12+ (para desenvolvimento local sem Docker)
 - Node.js 20+ (para desenvolvimento do frontend sem Docker)
-- Conta Google Cloud com Gemini API habilitada (gratuito)
-- Conta Telegram para criar o bot via BotFather
-- WhatsApp ativo para conectar via Evolution API
+- Google Gemini API Key — gratuito em [aistudio.google.com](https://aistudio.google.com/app/apikey)
 
 ---
 
@@ -90,13 +65,14 @@ DATABASE_URL=postgresql+asyncpg://caloria:caloria@postgres:5432/caloria_db
 REDIS_URL=redis://redis:6379/0
 SECRET_KEY=sua-chave-secreta-aqui-min-32-chars
 GEMINI_API_KEY=sua-chave-gemini-aqui
-TELEGRAM_BOT_TOKEN=seu-token-do-botfather
-EVOLUTION_API_URL=http://evolution_api:8080
-EVOLUTION_API_KEY=sua-chave-evolution
-EVOLUTION_INSTANCE_NAME=caloria
 NEXTAUTH_SECRET=sua-chave-nextauth
 NEXTAUTH_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Web Push VAPID (necessário para notificações)
+VAPID_PUBLIC_KEY=sua-chave-publica-vapid
+VAPID_KEY_PATH=/caminho/para/vapid_private.pem
+VAPID_CLAIMS_EMAIL=seu@email.com
 ```
 
 ### 3. Subir os serviços
@@ -122,21 +98,6 @@ docker compose exec backend alembic upgrade head
 | Dashboard | http://localhost:3000 |
 | API | http://localhost:8000 |
 | Swagger | http://localhost:8000/docs |
-| Evolution API | http://localhost:8080 |
-
----
-
-## Conectar o Telegram
-
-1. Crie o bot no BotFather e configure `TELEGRAM_BOT_TOKEN` no `.env`
-2. No dashboard web → **Conectar Bot** → gere um token
-3. Envie `/conectar <token>` no Telegram
-
-## Conectar o WhatsApp
-
-1. Acesse `http://localhost:8080` (Evolution API)
-2. Crie uma instância chamada `caloria`
-3. Escaneie o QR Code com seu WhatsApp
 
 ---
 
@@ -151,7 +112,6 @@ CalorIA/
 ├── backend/
 │   ├── app/
 │   │   ├── api/            # Endpoints REST (v1)
-│   │   ├── bots/           # Handlers Telegram e WhatsApp
 │   │   ├── core/           # Config, DB, segurança
 │   │   ├── models/         # Modelos SQLAlchemy
 │   │   ├── schemas/        # Schemas Pydantic
@@ -170,7 +130,7 @@ CalorIA/
 │   ├── setup.md            # Guia de setup do zero
 │   ├── deploy.md           # Guia de deploy em produção (Hetzner)
 │   ├── git-workflow.md     # Estratégia de branches e CI/CD
-│   └── flow.md             # Fluxo da mensagem ao banco
+│   └── flow.md             # Fluxo do registro ao banco
 ├── scripts/                # Scripts de servidor e deploy
 ├── Caddyfile               # Reverse proxy (HTTPS produção)
 ├── docker-compose.yml      # Produção
@@ -218,7 +178,7 @@ Ver [`docs/git-workflow.md`](docs/git-workflow.md) para a estratégia de branche
 Conventional Commits em português:
 
 ```bash
-feat(bots): adiciona suporte a fotos no Telegram
+feat(frontend): adiciona suporte a análise de foto na web
 fix(api): corrige cálculo de macros para refeições compostas
 docs(readme): atualiza instruções de instalação
 chore(deps): atualiza dependências do backend
@@ -226,15 +186,15 @@ chore(deps): atualiza dependências do backend
 
 ---
 
-## Limites do Free Tier (Gemini)
+## Limites do Free Tier (Gemini 2.5 Flash)
 
 | Recurso | Limite |
 |---|---|
-| Requisições por minuto | 15 RPM |
-| Tokens por minuto | 1.000.000 |
-| Requisições por dia | 1.500 |
+| Requisições por minuto | 10 RPM |
+| Tokens por minuto | 250.000 |
+| Requisições por dia | 500 |
 
-O projeto implementa cache Redis para alimentos frequentes e banco TACO embutido (~600 alimentos brasileiros) para reduzir dependência do Gemini.
+O projeto implementa cache Redis (7 dias, SHA-256) para reduzir chamadas redundantes, e o banco nutricional local (~19.800 alimentos) evita chamadas à IA para cálculo de macros de alimentos comuns.
 
 ---
 

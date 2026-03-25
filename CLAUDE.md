@@ -6,9 +6,9 @@ Instruções para o agente Claude Code trabalhar neste projeto.
 
 ## Visão Geral do Projeto
 
-**CalorIA** é um diário alimentar inteligente pessoal. O usuário registra refeições via WhatsApp ou Telegram (texto ou foto), e a IA (Google Gemini) analisa os macronutrientes, aprende os hábitos alimentares e gera insights personalizados. Um dashboard web permite visualizar histórico, evolução de peso, hidratação, humor/energia e relatórios.
+**CalorIA** é um diário alimentar inteligente pessoal. O usuário registra refeições pelo dashboard web (texto ou foto), e a IA (Google Gemini 2.5 Flash) analisa os macronutrientes, aprende os hábitos alimentares e gera insights personalizados. Um dashboard web permite visualizar histórico, evolução de peso, hidratação, humor/energia e relatórios.
 
-**Uso atual:** projeto pessoal de estudo. Sem necessidade de multi-tenancy robusto agora, mas arquitetura deve permitir escalar no futuro.
+**Uso atual:** projeto pessoal de estudo. Arquitetura pensada para escalar para múltiplos usuários no futuro.
 
 ---
 
@@ -16,18 +16,19 @@ Instruções para o agente Claude Code trabalhar neste projeto.
 
 ```
 CalorIA/
-├── backend/              # FastAPI + Celery + Bots
+├── .github/
+│   └── workflows/
+│       ├── ci.yml            # lint + testes + build (push dev / PR main)
+│       └── cd.yml            # deploy SSH automático (merge main)
+├── backend/              # FastAPI + Celery
 │   ├── app/
 │   │   ├── api/          # Endpoints REST (v1)
-│   │   ├── bots/
-│   │   │   ├── telegram/ # Handler Telegram
-│   │   │   └── whatsapp/ # Webhook Evolution API
 │   │   ├── core/         # Config, segurança, DB, dependências
 │   │   ├── models/       # Modelos SQLAlchemy
 │   │   ├── schemas/      # Schemas Pydantic
 │   │   ├── services/
-│   │   │   ├── ai/       # Integração Google Gemini
-│   │   │   ├── nutrition/# Lógica de cálculo nutricional
+│   │   │   ├── ai/       # GeminiClient, MealParser, VisionParser, FoodLookup, ContextBuilder
+│   │   │   ├── nutrition/# Lógica de cálculo nutricional (TDEE)
 │   │   │   └── reminders/# Lógica de lembretes
 │   │   └── workers/      # Tasks Celery
 │   ├── alembic/          # Migrações de banco
@@ -45,12 +46,13 @@ CalorIA/
 ├── docs/                 # Documentação técnica
 │   ├── architecture.md   # Decisões de arquitetura (ADRs)
 │   ├── setup.md          # Guia de setup do zero
-│   ├── deploy.md         # Guia de deploy em produção
-│   ├── flow.md           # Fluxo da mensagem ao banco
-│   └── project-plan.md   # Plano e especificação do projeto
+│   ├── deploy.md         # Guia de deploy em produção (Hetzner)
+│   ├── git-workflow.md   # Estratégia de branches e CI/CD
+│   ├── flow.md           # Fluxo do registro ao banco
+│   └── fluxos/           # Fluxos detalhados com diagramas Mermaid
 ├── scripts/              # Scripts de deploy e configuração de servidor
 ├── Caddyfile             # Reverse proxy (produção com HTTPS)
-├── docker-compose.yml    # Produção local
+├── docker-compose.yml    # Produção
 ├── docker-compose.dev.yml# Desenvolvimento
 ├── .env.example
 ├── CLAUDE.md             ← este arquivo
@@ -69,7 +71,7 @@ CalorIA/
 | `redis` | Redis 7 | 6379 |
 | `celery_worker` | Celery | — |
 | `celery_beat` | Celery Beat | — |
-| `evolution_api` | Evolution API | 8080 |
+| `caddy` | Caddy (HTTPS) | 80/443 |
 
 ---
 
@@ -79,30 +81,36 @@ CalorIA/
 - **Python 3.12** + **FastAPI** — API REST principal
 - **SQLAlchemy 2.x** (async) + **Alembic** — ORM e migrações
 - **Celery** + **Redis** — Filas de tarefas e agendamento
-- **python-telegram-bot** — Integração Telegram
-- **httpx** — Chamadas HTTP (Evolution API, Gemini)
+- **httpx** — Chamadas HTTP
 - **Pydantic v2** — Validação de dados
-- **python-jose** + **passlib** — JWT e hashing de senhas
+- **python-jose** + **passlib[bcrypt]** — JWT e hashing de senhas
+- **pywebpush** — Envio de notificações Web Push VAPID
 
 ### IA
-- **Google Gemini Flash 1.5** — Análise de texto de refeições, insights, relatórios
-- **Google Gemini Pro Vision** — Análise de fotos de comida
-- **Free tier:** 15 RPM, 1 milhão de tokens/min, 1500 requisições/dia
+- **Google Gemini 2.5 Flash** — `google-genai>=1.0.0`, modelo `models/gemini-2.5-flash`
+- Chave: `GEMINI_API_KEY`
+- Pipeline dois estágios: IA identifica alimentos → lookup pg_trgm no banco com sanity check → fallback estimativa IA agrupada
 
-### WhatsApp
-- **Evolution API** (self-hosted Docker) — Gerencia sessão WhatsApp
-- Backend recebe webhooks da Evolution API e responde via API REST dela
+### Banco Nutricional
+- Tabela `foods` no PostgreSQL: TACO (~307) + Open Food Facts (~19.500 alimentos)
+- Índice GIN trigrama em `search_text` para busca fuzzy (`similarity()` + `%>>`)
+- Threshold 0.65; dados TACO recebem boost 1.40× sobre Open Food Facts
+- Sanity check calórico: divergência > 35% entre banco e estimativa da IA descarta o match
 
 ### Frontend
 - **Next.js 14** (App Router) + **TypeScript**
-- **Tailwind CSS** + **shadcn/ui** — UI components
+- **Tailwind CSS** + **shadcn/ui** — UI components (Glassmorphism + Neumorphism)
 - **Recharts** — Gráficos (macros, peso, hidratação)
 - **React Query (TanStack Query)** — Cache e sync de dados
-- **next-auth** — Autenticação
+- Auth via JWT próprio (sem next-auth)
 
 ### Banco de Dados
 - **PostgreSQL 16** — Dados primários
-- **Redis 7** — Cache, filas Celery, sessões
+- **Redis 7** — Cache, filas Celery, JWT blacklist
+
+### CI/CD
+- **GitHub Actions** — `ci.yml` (lint + testes + build), `cd.yml` (deploy SSH)
+- Ver `docs/git-workflow.md` para estratégia de branches
 
 ---
 
@@ -110,13 +118,16 @@ CalorIA/
 
 ```
 User — perfil, metas calóricas, dados físicos
-Meal — refeição (tipo, horário, fonte: manual/telegram/whatsapp)
-MealItem — alimento individual dentro de uma refeição
+Meal — refeição (tipo, horário, fonte: manual)
+MealItem — alimento individual com food_id, data_source e micronutrientes
+Food — banco nutricional unificado (TACO + Open Food Facts)
 WeightLog — registro periódico de peso
 HydrationLog — consumo de água por dia
 MoodLog — humor/energia associado ao dia
-Reminder — lembretes configurados pelo usuário
-AIConversation — histórico de mensagens com a IA por canal
+Reminder — lembretes configurados pelo usuário (Web Push)
+PushSubscription — subscriptions Web Push por usuário/dispositivo
+Notification — histórico de notificações in-app
+AIConversation — histórico de mensagens com a IA
 ```
 
 ---
@@ -128,8 +139,8 @@ AIConversation — histórico de mensagens com a IA por canal
 # Subir todos os serviços
 docker compose -f docker-compose.dev.yml up
 
-# Apenas infraestrutura (postgres, redis, evolution_api)
-docker compose -f docker-compose.dev.yml up postgres redis evolution_api
+# Apenas infraestrutura (postgres, redis)
+docker compose -f docker-compose.dev.yml up postgres redis
 
 # Backend em modo dev (hot reload)
 cd backend && uvicorn app.main:app --reload --port 8000
@@ -173,7 +184,7 @@ docker exec -it caloria_postgres psql -U caloria -d caloria_db
 
 # Ver logs dos serviços
 docker compose logs -f backend
-docker compose logs -f evolution_api
+docker compose logs -f celery_worker
 
 # Resetar banco (desenvolvimento)
 docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up
@@ -190,10 +201,17 @@ Variáveis obrigatórias:
 DATABASE_URL
 REDIS_URL
 GEMINI_API_KEY
-TELEGRAM_BOT_TOKEN
-EVOLUTION_API_URL
-EVOLUTION_API_KEY
 SECRET_KEY
+NEXTAUTH_SECRET
+NEXTAUTH_URL
+NEXT_PUBLIC_API_URL
+```
+
+Variáveis para Web Push (necessárias para notificações):
+```
+VAPID_PUBLIC_KEY
+VAPID_KEY_PATH
+VAPID_CLAIMS_EMAIL
 ```
 
 ---
@@ -227,16 +245,7 @@ DELETE /api/v1/meals/{id}     # deletar refeição
 
 ## Convenções de Commit
 
-Usar **Conventional Commits em português**. Não mencionar autor (Claude Code, agente, usuário, etc.).
-
-### Formato
-```
-<tipo>(<escopo>): <descrição curta no imperativo>
-
-[corpo opcional — o quê e por quê, não como]
-
-[rodapé opcional — breaking changes, issues]
-```
+Usar **Conventional Commits em português**. Não mencionar autor (Claude Code, agente, usuário, etc.) nem adicionar Co-Authored-By.
 
 ### Tipos
 | Tipo | Uso |
@@ -253,20 +262,19 @@ Usar **Conventional Commits em português**. Não mencionar autor (Claude Code, 
 
 ### Exemplos
 ```bash
-feat(bots): adiciona suporte a fotos no bot do Telegram
-fix(api): corrige cálculo de calorias para alimentos compostos
-refactor(services): extrai lógica de análise de IA para serviço dedicado
-docs(readme): atualiza instruções de instalação
-chore(deps): atualiza dependências do backend
-feat(frontend): implementa dashboard de evolução de peso
+feat(frontend): adiciona análise de foto na página de refeições
+fix(ai): corrige sanity check para alimentos com gordura alta
+refactor(ai): extrai food_lookup como serviço independente
+docs(architecture): atualiza ADRs para Gemini 2.5 Flash
+chore(deps): atualiza google-genai para 1.x
+ci(github): adiciona workflow de deploy automático
 ```
 
 ### Regras
 - Descrição em minúsculas, sem ponto final
-- Imperativo: "adiciona", "corrige", "remove", "atualiza" (não "adicionando" ou "adicionado")
+- Imperativo: "adiciona", "corrige", "remove", "atualiza"
 - Máximo 72 caracteres na primeira linha
-- Commitar a cada mudança significativa (não acumular dias de trabalho)
-- `BREAKING CHANGE:` no rodapé para mudanças que quebram compatibilidade
+- Commitar a cada mudança significativa
 
 ---
 
@@ -279,13 +287,15 @@ feat(frontend): implementa dashboard de evolução de peso
 5. Commitar com Conventional Commits em português
 6. Atualizar `CHANGELOG.md` para mudanças relevantes
 7. Marcar etapa como concluída no `Roadmap.md`
+8. Push na `dev` → CI valida automaticamente
+9. PR dev → main para release → CD faz deploy automático
 
 ---
 
 ## Notas Importantes
 
-- **Segurança:** Nunca expor `GEMINI_API_KEY` ou tokens no frontend. Todas as chamadas de IA passam pelo backend.
+- **Segurança:** Nunca expor `GEMINI_API_KEY` no frontend. Todas as chamadas de IA passam pelo backend.
 - **Privacidade:** Fotos de comida não são armazenadas permanentemente — apenas os dados nutricionais extraídos.
-- **Evolution API:** Requer escanear QR Code uma vez para conectar a sessão WhatsApp. Sessão persiste em volume Docker.
-- **Free tier Gemini:** Monitorar uso. Implementar rate limiting e cache de respostas para alimentos frequentes.
-- **Escalabilidade futura:** Manter User como entidade central desde o início para facilitar multi-usuário no futuro.
+- **Web Push:** Chaves VAPID geradas uma vez e armazenadas no servidor. Subscriptions expiradas (HTTP 410) são removidas automaticamente pelo PushService.
+- **Banco nutricional:** Tabela `foods` (não `taco_foods`). Sanity check calórico protege contra registros incorretos do Open Food Facts.
+- **Escalabilidade futura:** Manter User como entidade central para facilitar multi-usuário no futuro.
