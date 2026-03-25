@@ -15,9 +15,9 @@ class TestGetMe:
         assert data["email"] == test_user.email
         assert data["name"] == test_user.name
 
-    async def test_sem_autenticacao_retorna_403(self, anon_client: AsyncClient) -> None:
+    async def test_sem_autenticacao_retorna_401(self, anon_client: AsyncClient) -> None:
         resp = await anon_client.get("/api/v1/users/me")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestUpdateMe:

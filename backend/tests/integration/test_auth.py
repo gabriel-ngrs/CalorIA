@@ -76,18 +76,18 @@ class TestMe:
         assert resp.status_code == 200
         assert resp.json()["email"] == test_user.email
 
-    async def test_me_sem_token_retorna_403(self, anon_client: AsyncClient) -> None:
+    async def test_me_sem_token_retorna_401(self, anon_client: AsyncClient) -> None:
         resp = await anon_client.get("/api/v1/auth/me")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
-    async def test_me_token_invalido_retorna_403(
+    async def test_me_token_invalido_retorna_401(
         self, anon_client: AsyncClient
     ) -> None:
         resp = await anon_client.get(
             "/api/v1/auth/me",
             headers={"Authorization": "Bearer token.invalido.mesmo"},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestLogout:
