@@ -5,6 +5,21 @@ import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 
+const DISMISSED_KEY = "push_banner_dismissed_until";
+const DISMISS_DAYS = 7;
+
+function isDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  const val = localStorage.getItem(DISMISSED_KEY);
+  if (!val) return false;
+  return Date.now() < Number(val);
+}
+
+function markDismissed() {
+  const until = Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000;
+  localStorage.setItem(DISMISSED_KEY, String(until));
+}
+
 /**
  * PushSubscriber — mounts silently in the dashboard layout.
  *
@@ -12,6 +27,7 @@ import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
  * - If push is not supported, does nothing.
  * - If Notification.permission === 'granted' and not yet subscribed, auto-subscribes silently.
  * - If Notification.permission === 'default', shows a subtle dismissible banner once per session.
+ *   After dismissal, does not reappear for 7 days (persisted in localStorage).
  * - If Notification.permission === 'denied', does nothing.
  */
 export function PushSubscriber() {
@@ -29,8 +45,8 @@ export function PushSubscriber() {
       subscribeToPush().catch(() => {
         // Silently ignore — push is optional
       });
-    } else if (permission === "default" && !isSubscribed) {
-      // Show subtle banner
+    } else if (permission === "default" && !isSubscribed && !isDismissed()) {
+      // Show subtle banner only if not recently dismissed
       setShowBanner(true);
     }
   }, [isSupported, permission, isSubscribed, subscribeToPush]);
@@ -66,7 +82,7 @@ export function PushSubscriber() {
               variant="ghost"
               size="sm"
               className="h-7 text-xs px-2 text-muted-foreground"
-              onClick={() => setShowBanner(false)}
+              onClick={() => { setShowBanner(false); markDismissed(); }}
             >
               Agora não
             </Button>
@@ -74,7 +90,7 @@ export function PushSubscriber() {
         </div>
         <button
           type="button"
-          onClick={() => setShowBanner(false)}
+          onClick={() => { setShowBanner(false); markDismissed(); }}
           className="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5"
           aria-label="Fechar"
         >
