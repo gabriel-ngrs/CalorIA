@@ -135,10 +135,10 @@ export function NotificationBell() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-80 p-0 bg-white border border-gray-100 shadow-card-hover"
+        className="w-80 p-0 bg-card border border-border shadow-card-hover"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
           <span className="text-sm font-semibold text-foreground">
             Notificações
           </span>

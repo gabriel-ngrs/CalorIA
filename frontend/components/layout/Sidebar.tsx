@@ -31,7 +31,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex flex-col md:w-14 lg:w-56 min-h-screen sticky top-0 h-screen bg-white border-r border-gray-100 py-5 md:px-1.5 lg:px-3 transition-all duration-200">
+    <aside className="hidden md:flex flex-col md:w-14 lg:w-56 min-h-screen sticky top-0 h-screen bg-card border-r border-border py-5 md:px-1.5 lg:px-3 transition-all duration-200">
       {/* Logo — visível apenas em lg+ */}
       <div className="hidden lg:block px-2 mb-6">
         <h1 className="text-xl font-bold gradient-text tracking-tight">CalorIA</h1>

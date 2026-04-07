@@ -18,11 +18,11 @@ const buttonVariants = cva(
 
         /* Contorno */
         outline:
-          "border border-gray-200 bg-white text-foreground hover:bg-gray-50",
+          "border border-border bg-card text-foreground hover:bg-muted",
 
         /* Secundário */
         secondary:
-          "bg-gray-100 text-gray-700 hover:bg-gray-200",
+          "bg-muted text-muted-foreground hover:bg-muted/70",
 
         /* Ghost */
         ghost:

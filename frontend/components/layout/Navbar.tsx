@@ -3,6 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LogOut } from "lucide-react";
 import api from "@/lib/api";
 
@@ -21,7 +22,7 @@ export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+    <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo visível apenas no mobile */}
         <span className="font-bold text-lg gradient-text md:hidden">CalorIA</span>
@@ -38,6 +39,9 @@ export function Navbar() {
               </span>
             </div>
           )}
+
+          {/* Tema */}
+          <ThemeToggle />
 
           {/* Notificações */}
           <NotificationBell />

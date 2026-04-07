@@ -58,7 +58,7 @@ export function BottomNav() {
       {/* Drawer "Mais" — aparece acima da navbar */}
       <div
         className={cn(
-          "fixed bottom-[60px] left-0 right-0 z-40 md:hidden bg-white border-t border-gray-100 rounded-t-2xl shadow-2xl",
+          "fixed bottom-[60px] left-0 right-0 z-40 md:hidden bg-card border-t border-border rounded-t-2xl shadow-2xl",
           "transition-transform duration-300 ease-out",
           moreOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
         )}
@@ -103,7 +103,7 @@ export function BottomNav() {
       </div>
 
       {/* Barra de navegação principal */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card border-t border-border">
         <div className="flex items-center">
           {primaryNav.map((item) => {
             if (item === null) {

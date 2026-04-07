@@ -3,6 +3,7 @@
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SessionProvider, useSession } from "next-auth/react";
+import { ThemeProvider } from "@/components/theme-provider";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { isAxiosError } from "axios";
@@ -67,13 +68,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-      <SessionSync />
-      <QueryClientProvider client={queryClient}>
-        <NavTimer />
-        {children}
-        {process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
-      </QueryClientProvider>
-    </SessionProvider>
+    <ThemeProvider>
+      <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
+        <SessionSync />
+        <QueryClientProvider client={queryClient}>
+          <NavTimer />
+          {children}
+          {process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
+        </QueryClientProvider>
+      </SessionProvider>
+    </ThemeProvider>
   );
 }
