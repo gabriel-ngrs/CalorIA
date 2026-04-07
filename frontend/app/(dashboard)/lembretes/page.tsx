@@ -465,7 +465,7 @@ export default function LembretesPage() {
           )}
         </div>
       </div>
-      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open: boolean) => { if (!open) setPendingDeleteId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir lembrete?</AlertDialogTitle>

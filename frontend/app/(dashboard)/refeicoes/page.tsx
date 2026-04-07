@@ -1014,7 +1014,7 @@ export default function RefeicoesPage() {
       </div>
 
       {/* ── Confirmação de exclusão ────────────────────────────────────────── */}
-      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open: boolean) => { if (!open) setPendingDeleteId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir refeição?</AlertDialogTitle>
