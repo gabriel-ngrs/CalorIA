@@ -188,7 +188,7 @@ export default function InsightsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {nutritionalAlerts.isPending && <LoadingLines lines={4} />}
-          {nutritionalAlerts.data && <NutritionalAlertsCard data={nutritionalAlerts.data} />}
+          {nutritionalAlerts.data && <NutritionalAlertsCard data={nutritionalAlerts.data} requestedDays={alertDays} />}
           {nutritionalAlerts.isError && (
             <p className="text-sm text-destructive">Erro ao verificar alertas. Tente novamente.</p>
           )}
@@ -479,11 +479,12 @@ function MealSuggestionCard({ data }: { data: MealSuggestion }) {
   );
 }
 
-function NutritionalAlertsCard({ data }: { data: NutritionalAlertsResponse }) {
+function NutritionalAlertsCard({ data, requestedDays }: { data: NutritionalAlertsResponse; requestedDays: number }) {
+  const daysLabel = data.days_analyzed > 0 ? data.days_analyzed : requestedDays;
   return (
     <div className="space-y-3">
       {data.alerts.length === 0 ? (
-        <p className="text-sm text-emerald-500 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Nenhuma deficiência significativa detectada nos últimos {data.days_analyzed} dias.</p>
+        <p className="text-sm text-emerald-500 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Nenhuma deficiência significativa detectada nos últimos {daysLabel} dias.</p>
       ) : (
         <div className="space-y-2">
           {data.alerts.map((alert, i) => {

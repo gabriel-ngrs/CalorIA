@@ -472,7 +472,7 @@ export default function RelatoriosPage() {
 
       {/* Macro chart — CaloriesBarChart já inclui seu próprio Card */}
       {macroChartData.length > 0 ? (
-        <CaloriesBarChart data={macroChartData} calorieGoal={calorieGoal} />
+        <CaloriesBarChart data={macroChartData} calorieGoal={calorieGoal} period={period} />
       ) : (
         <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/30">
           <CardHeader className="pb-2">

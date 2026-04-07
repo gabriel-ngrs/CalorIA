@@ -17,6 +17,7 @@ import type { WeeklyMacroPoint } from "@/types";
 interface Props {
   data: WeeklyMacroPoint[];
   calorieGoal?: number;
+  period?: number;
 }
 
 function BarTooltip({ active, payload, label }: TooltipProps<number, string>) {
@@ -43,7 +44,7 @@ function BarTooltip({ active, payload, label }: TooltipProps<number, string>) {
   );
 }
 
-export function CaloriesBarChart({ data, calorieGoal }: Props) {
+export function CaloriesBarChart({ data, calorieGoal, period }: Props) {
   const formatted = data.map((d) => ({
     ...d,
     date: new Date(d.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
@@ -52,7 +53,7 @@ export function CaloriesBarChart({ data, calorieGoal }: Props) {
   return (
     <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-accent/40">
       <CardHeader>
-        <CardTitle className="text-sm">Calorias — últimos 7 dias</CardTitle>
+        <CardTitle className="text-sm">Calorias — últimos {period ?? 7} dias</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>

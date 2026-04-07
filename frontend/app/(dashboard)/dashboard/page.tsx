@@ -156,11 +156,13 @@ export default function DashboardPage() {
     );
   }
 
-  const today = new Date().toLocaleDateString("pt-BR", {
+  const todayRaw = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
     month: "long",
   });
+  // pt-BR já retorna minúsculas; capitaliza apenas a primeira letra
+  const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
 
   const calorieGoal = user?.calorie_goal ?? 2000;
   const pctCalories = Math.min((dashboard.nutrition.total_calories / calorieGoal) * 100, 100);
@@ -177,7 +179,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 capitalize" suppressHydrationWarning>{today}</h1>
+          <h1 className="text-2xl font-black text-gray-900" suppressHydrationWarning>{today}</h1>
           <p className="text-sm text-gray-400">Resumo do seu dia</p>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">

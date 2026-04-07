@@ -231,8 +231,8 @@ export default function HidratacaoPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-orange-500">
-                {streak}
-                <span className="text-sm font-normal text-muted-foreground ml-1">dias</span>
+                {streak}{" "}
+                <span className="text-sm font-normal text-muted-foreground">dias</span>
               </p>
               {streak >= 3 && (
                 <p className="text-xs text-orange-400 mt-1 flex items-center gap-1">
