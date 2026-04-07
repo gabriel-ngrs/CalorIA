@@ -90,11 +90,11 @@ export default function InsightsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
           Insights IA
         </h1>
-        <p className="text-muted-foreground text-sm">Análises personalizadas sobre sua alimentação</p>
+        <p className="text-gray-400 text-sm">Análises personalizadas sobre sua alimentação</p>
       </div>
 
       {/* ── Seção: Hoje ─────────────────────────────────────────────────── */}
@@ -103,13 +103,18 @@ export default function InsightsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
       {/* ── Insight diário ─────────────────────────────────────────────── */}
-      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
+      <Card className="border-l-4 border-emerald-400 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl">
         <CardHeader>
-          <SectionHeader
-            icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
-            title="Insight do dia"
-            description="Análise rápida com base nos seus dados de hoje"
-          />
+          <div className="flex items-start justify-between">
+            <SectionHeader
+              icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
+              title="Insight do dia"
+              description="Análise rápida com base nos seus dados de hoje"
+            />
+            <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+              ✨ Gerado por IA
+            </span>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {dailyInsight.isPending && <LoadingLines />}

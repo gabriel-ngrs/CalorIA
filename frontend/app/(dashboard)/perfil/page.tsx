@@ -113,11 +113,11 @@ export default function PerfilPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <User className="h-6 w-6 text-primary" />
           Perfil
         </h1>
-        <p className="text-muted-foreground text-sm">Seus dados e metas</p>
+        <p className="text-gray-400 text-sm">Seus dados e metas</p>
       </div>
 
       {/* TDEE banner — destaque quando disponível */}

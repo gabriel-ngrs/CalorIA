@@ -69,11 +69,11 @@ export default function PesoPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Scale className="h-6 w-6 text-primary" />
           Peso
         </h1>
-        <p className="text-muted-foreground text-sm">Acompanhe sua evolução</p>
+        <p className="text-gray-400 text-sm">Acompanhe sua evolução</p>
       </div>
 
       {/* Empty state — nenhum registro ainda */}

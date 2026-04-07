@@ -81,11 +81,11 @@ export default function HidratacaoPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Droplets className="h-6 w-6 text-blue-500" />
           Hidratação
         </h1>
-        <p className="text-muted-foreground text-sm">Controle seu consumo de água</p>
+        <p className="text-gray-400 text-sm">Controle seu consumo de água</p>
       </div>
 
       {/* Layout principal: 2 colunas */}

@@ -192,11 +192,11 @@ export default function RelatoriosPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <BarChart2 className="h-6 w-6 text-primary" />
           Relatórios
         </h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-gray-400 text-sm">
           Visão geral do seu progresso no período
         </p>
       </div>

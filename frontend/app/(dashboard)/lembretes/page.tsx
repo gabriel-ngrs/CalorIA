@@ -130,11 +130,11 @@ export default function LembretesPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Bell className="h-6 w-6 text-primary" />
           Lembretes
         </h1>
-        <p className="text-muted-foreground text-sm">Configure notificações via web push</p>
+        <p className="text-gray-400 text-sm">Configure notificações via web push</p>
       </div>
 
       {/* Stat chips */}
