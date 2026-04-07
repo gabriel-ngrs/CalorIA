@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus, Flame, Camera, MessageSquare, Mic } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,43 +112,43 @@ export default function DashboardPage() {
         <QuickMoodModal open={quickModal === "mood"} onOpenChange={(v) => setQuickModal(v ? "mood" : null)} />
 
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-4">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50">
-            <UtensilsCrossed className="h-8 w-8 text-muted-foreground/40" />
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 opacity-40">
+            <UtensilsCrossed className="h-8 w-8 text-gray-400" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold">Nenhum dado para hoje</h2>
-            <p className="text-muted-foreground text-sm max-w-xs mt-1">
+            <h2 className="text-xl font-semibold text-gray-900">Nenhum dado para hoje</h2>
+            <p className="text-gray-400 text-sm max-w-xs mt-1">
               Comece registrando uma refeição, sua hidratação, peso ou humor do dia.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
             <button
               onClick={() => setQuickModal("meal")}
-              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 transition-colors cursor-pointer"
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-orange-500/30 transition-all duration-200 cursor-pointer"
             >
-              <UtensilsCrossed className="h-5 w-5 text-orange-400" />
-              <span className="text-xs font-medium text-orange-400">Refeição</span>
+              <UtensilsCrossed className="h-5 w-5 text-orange-500" />
+              <span className="text-xs font-medium text-gray-600">Refeição</span>
             </button>
             <button
               onClick={() => setQuickModal("water")}
-              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors cursor-pointer"
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-blue-500/30 transition-all duration-200 cursor-pointer"
             >
-              <Droplets className="h-5 w-5 text-blue-400" />
-              <span className="text-xs font-medium text-blue-400">Água</span>
+              <Droplets className="h-5 w-5 text-blue-500" />
+              <span className="text-xs font-medium text-gray-600">Água</span>
             </button>
             <button
               onClick={() => setQuickModal("weight")}
-              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-primary/30 transition-all duration-200 cursor-pointer"
             >
               <Scale className="h-5 w-5 text-primary" />
-              <span className="text-xs font-medium text-primary">Peso</span>
+              <span className="text-xs font-medium text-gray-600">Peso</span>
             </button>
             <button
               onClick={() => setQuickModal("mood")}
-              className="flex flex-col items-center gap-1.5 py-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 transition-colors cursor-pointer"
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-yellow-400/30 transition-all duration-200 cursor-pointer"
             >
-              <Smile className="h-5 w-5 text-yellow-400" />
-              <span className="text-xs font-medium text-yellow-400">Humor</span>
+              <Smile className="h-5 w-5 text-yellow-500" />
+              <span className="text-xs font-medium text-gray-600">Humor</span>
             </button>
           </div>
         </div>
@@ -162,6 +162,9 @@ export default function DashboardPage() {
     month: "long",
   });
 
+  const calorieGoal = user?.calorie_goal ?? 2000;
+  const pctCalories = Math.min((dashboard.nutrition.total_calories / calorieGoal) * 100, 100);
+
   const goalMl = user?.water_goal_ml ?? 2000;
   const hydPct = Math.min((dashboard.hydration.total_ml / goalMl) * 100, 100);
 
@@ -172,9 +175,15 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold capitalize" suppressHydrationWarning>{today}</h1>
-        <p className="text-muted-foreground text-sm">Resumo do seu dia</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 capitalize" suppressHydrationWarning>{today}</h1>
+          <p className="text-sm text-gray-400">Resumo do seu dia</p>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">
+          <Flame className="h-3.5 w-3.5" />
+          {pctCalories.toFixed(0)}% da meta
+        </div>
       </div>
 
       {/* Macro cards */}
@@ -311,6 +320,42 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Ações Rápidas */}
+      <section>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          Registrar agora
+        </h2>
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => setQuickModal("meal")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Camera className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Foto</span>
+          </button>
+          <button
+            onClick={() => setQuickModal("meal")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <MessageSquare className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Texto</span>
+          </button>
+          <button
+            onClick={() => setQuickModal("meal")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Mic className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Áudio</span>
+          </button>
+        </div>
+      </section>
 
       {/* Gráficos */}
       <div className="grid gap-4 md:grid-cols-2">

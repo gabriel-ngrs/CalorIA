@@ -9,7 +9,7 @@ interface Props {
   nutrition: NutritionSummary;
 }
 
-const COLORS = ["#f97316", "#ef4444", "#eab308"];
+const COLORS = ["#22C55E", "#EAB308", "#EF4444"];
 
 function PieTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
@@ -21,13 +21,11 @@ function PieTooltip({ active, payload }: TooltipProps<number, string>) {
   return (
     <div
       style={{
-        background: "rgba(15, 28, 38, 0.88)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
-        border: "1px solid rgba(145, 183, 199, 0.16)",
+        background: "#FFFFFF",
+        border: "1px solid #E5E7EB",
         borderRadius: "10px",
         padding: "10px 14px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
         minWidth: "130px",
       }}
     >
@@ -42,14 +40,14 @@ function PieTooltip({ active, payload }: TooltipProps<number, string>) {
             flexShrink: 0,
           }}
         />
-        <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 500 }}>{item.name}</span>
+        <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>{item.name}</span>
       </div>
       <p style={{ margin: 0, fontSize: "20px", fontWeight: 700, color, lineHeight: 1.2 }}>
         {item.value}
-        <span style={{ fontSize: "12px", fontWeight: 400, color: "#64748b", marginLeft: "4px" }}>kcal</span>
+        <span style={{ fontSize: "12px", fontWeight: 400, color: "#9CA3AF", marginLeft: "4px" }}>kcal</span>
       </p>
       {pct && (
-        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#64748b" }}>{pct}% do total</p>
+        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#9CA3AF" }}>{pct}% do total</p>
       )}
     </div>
   );

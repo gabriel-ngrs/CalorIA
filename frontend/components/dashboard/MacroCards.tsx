@@ -58,24 +58,36 @@ const macros = [
     key: "total_fat",
     unit: "g",
     Icon: Droplets,
-    color: "#7CA2B2",
-    bgColor: "bg-sky-400/10",
-    iconColor: "text-sky-400",
+    color: "#EF4444",
+    bgColor: "bg-red-500/10",
+    iconColor: "text-red-500",
     decimals: 1,
-    hoverBorder: "hover:border-sky-400/40",
-    hoverShadow: "hover:shadow-sky-400/10",
+    hoverBorder: "hover:border-red-500/40",
+    hoverShadow: "hover:shadow-red-500/10",
   },
 ] as const;
 
 export function MacroCards({ nutrition, user, onCaloriesClick }: Props) {
   const calorieGoal = user?.calorie_goal ?? 2000;
 
+  // Metas estimadas por macro (proteína 30%, carbs 45%, gordura 25% do TDEE)
+  const proteinGoal = Math.round((calorieGoal * 0.30) / 4);
+  const carbsGoal = Math.round((calorieGoal * 0.45) / 4);
+  const fatGoal = Math.round((calorieGoal * 0.25) / 9);
+
+  const goals: Record<string, number> = {
+    total_calories: calorieGoal,
+    total_protein: proteinGoal,
+    total_carbs: carbsGoal,
+    total_fat: fatGoal,
+  };
+
   return (
     <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
       {macros.map(({ label, shortLabel, key, unit, Icon, color, bgColor, iconColor, decimals, hoverBorder, hoverShadow }) => {
         const value = nutrition[key];
-        const pct =
-          key === "total_calories" ? Math.min((value / calorieGoal) * 100, 100) : null;
+        const goal = goals[key];
+        const pct = Math.min((value / goal) * 100, 100);
 
         const isCalories = key === "total_calories";
         return (
@@ -99,19 +111,17 @@ export function MacroCards({ nutrition, user, onCaloriesClick }: Props) {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 text-center sm:text-left">
-              <p className="text-2xl sm:text-2xl font-bold" style={{ color }}>
+              <p className="text-2xl font-black" style={{ color }}>
                 {value.toFixed(decimals)}
                 <span className="text-xs font-normal text-muted-foreground ml-1">{unit}</span>
               </p>
 
-              {pct !== null && (
-                <div className="mt-1.5 space-y-0.5">
-                  <Progress value={pct} />
-                  <p className="text-xs text-muted-foreground text-left">
-                    {pct.toFixed(0)}% · {calorieGoal} kcal
-                  </p>
-                </div>
-              )}
+              <div className="mt-1.5 space-y-0.5">
+                <Progress value={pct} indicatorColor={color} />
+                <p className="text-xs text-muted-foreground text-left">
+                  {pct.toFixed(0)}% · meta {goal}{unit}
+                </p>
+              </div>
             </CardContent>
           </Card>
         );
