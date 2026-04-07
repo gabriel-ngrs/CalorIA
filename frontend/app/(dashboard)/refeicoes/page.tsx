@@ -56,7 +56,7 @@ const Calendar = dynamic(
   () => import("@/components/ui/calendar").then((m) => m.Calendar),
   { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
 );
-import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
+import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal, useDeleteMeal, useDeleteMealItem, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -376,6 +376,7 @@ export default function RefeicoesPage() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const { data: meals, isLoading } = useMeals(filterDate);
   const deleteMeal = useDeleteMeal();
+  const deleteMealItem = useDeleteMealItem();
   const analyzeMeal = useAnalyzeMeal();
   const analyzePhoto = useAnalyzePhoto();
   const createMeal = useCreateMeal();
@@ -835,6 +836,35 @@ export default function RefeicoesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Alimentos da refeição */}
+            {editMeal && editMeal.items.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Alimentos
+                </Label>
+                <div className="rounded-lg border border-border divide-y divide-border/50 overflow-hidden">
+                  {editMeal.items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.food_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.quantity}{item.unit} · {item.calories.toFixed(0)} kcal</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 ml-2"
+                        disabled={deleteMealItem.isPending}
+                        onClick={() => deleteMealItem.mutate({ mealId: editMeal.id, itemId: item.id })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="edit-notes" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Notas (opcional)

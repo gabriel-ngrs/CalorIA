@@ -75,6 +75,20 @@ export function useDeleteMeal() {
   });
 }
 
+export function useDeleteMealItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ mealId, itemId }: { mealId: number; itemId: number }) => {
+      await api.delete(`/api/v1/meals/${mealId}/items/${itemId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meals"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => toast.error("Erro ao remover item"),
+  });
+}
+
 export function useAnalyzeMeal() {
   return useMutation({
     mutationFn: async (description: string) => {
