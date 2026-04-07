@@ -39,7 +39,7 @@ export function PushSubscriber() {
 
   return (
     <div className="fixed bottom-[72px] md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 animate-fade-in">
-      <div className="glass border border-primary/20 rounded-xl p-3 shadow-2xl flex items-start gap-3">
+      <div className="bg-white border border-primary/20 rounded-xl p-3 shadow-card-hover flex items-start gap-3">
         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 shrink-0">
           <Bell className="h-4 w-4 text-primary" />
         </div>
