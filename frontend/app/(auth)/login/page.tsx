@@ -49,10 +49,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md rounded-3xl animate-scale-in">
+    <div className="w-full max-w-md">
+      <Card className="rounded-3xl animate-scale-in">
         <CardHeader className="text-center pb-2">
-          <h1 className="text-2xl font-bold gradient-text mb-1">CalorIA</h1>
           <CardTitle className="text-base font-medium">Bem-vindo de volta</CardTitle>
           <CardDescription>Entre na sua conta para continuar</CardDescription>
         </CardHeader>
