@@ -329,7 +329,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => setQuickModal("meal")}
-            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 cursor-pointer"
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Camera className="h-5 w-5 text-primary" />
@@ -338,7 +338,7 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={() => setQuickModal("meal")}
-            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 cursor-pointer"
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <MessageSquare className="h-5 w-5 text-primary" />
@@ -347,7 +347,7 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={() => setQuickModal("meal")}
-            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 cursor-pointer"
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Mic className="h-5 w-5 text-primary" />

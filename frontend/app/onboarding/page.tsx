@@ -61,21 +61,25 @@ const GOAL_LABELS: Record<GoalType, string> = {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StepDots({ step }: { step: number }) {
+  const TOTAL = 3;
   return (
-    <div className="flex gap-2 mb-6">
-      {[1, 2, 3].map((n) => (
-        <span
-          key={n}
-          className={cn(
-            "h-2 rounded-full transition-all duration-300",
-            n === step
-              ? "w-8 bg-primary"
-              : n < step
-              ? "w-4 bg-primary/60"
-              : "w-4 bg-muted"
-          )}
-        />
-      ))}
+    <div className="mb-6">
+      <p className="text-xs text-muted-foreground mb-2">Passo {step} de {TOTAL}</p>
+      <div className="flex gap-2">
+        {[1, 2, 3].map((n) => (
+          <span
+            key={n}
+            className={cn(
+              "h-2 rounded-full transition-all duration-300",
+              n === step
+                ? "w-8 bg-primary"
+                : n < step
+                ? "w-4 bg-primary/60"
+                : "w-4 bg-muted"
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 }

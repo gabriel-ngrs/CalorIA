@@ -2,7 +2,10 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { TooltipProps } from "recharts";
+import Link from "next/link";
+import { UtensilsCrossed } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import type { NutritionSummary } from "@/types";
 
 interface Props {
@@ -69,8 +72,17 @@ export function MacroPieChart({ nutrition }: Props) {
         <CardHeader>
           <CardTitle className="text-sm">Distribuição de macros</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-          Sem dados hoje
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+          <span className="flex items-center justify-center w-12 h-12 rounded-full bg-muted/40">
+            <UtensilsCrossed className="h-6 w-6 text-muted-foreground/50" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-foreground/70">Nenhuma refeição registrada hoje</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Registre o que comeu para ver a distribuição</p>
+          </div>
+          <Button asChild size="sm" variant="outline" className="gap-1.5 mt-1">
+            <Link href="/refeicoes">Registrar refeição</Link>
+          </Button>
         </CardContent>
       </Card>
     );
