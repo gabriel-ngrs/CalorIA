@@ -390,6 +390,11 @@ export default function InsightsPage() {
               <LoadingLines lines={2} />
             </div>
           )}
+          {askQuestion.isError && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+              <p className="text-sm text-destructive">Não foi possível obter resposta da IA. Tente novamente.</p>
+            </div>
+          )}
           <form onSubmit={handleAsk} className="flex gap-2">
             <Input
               placeholder="Ex: posso comer pizza hoje? quais alimentos tenho evitado?"
@@ -397,7 +402,7 @@ export default function InsightsPage() {
               onChange={(e) => setQuestion(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit" size="icon" disabled={!question.trim() || askQuestion.isPending}>
+            <Button type="submit" size="icon" disabled={!question.trim() || askQuestion.isPending} aria-label="Enviar pergunta">
               <Send className="h-4 w-4" />
             </Button>
           </form>

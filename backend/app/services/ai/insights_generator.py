@@ -156,7 +156,14 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
 }}"""
 
         raw = await self._client.generate_text(prompt, use_cache=True)
-        raw = raw.strip().strip("```json").strip("```").strip()  # noqa: B005
+        raw = raw.strip()
+        if raw.startswith("```json"):
+            raw = raw[7:]
+        elif raw.startswith("```"):
+            raw = raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
