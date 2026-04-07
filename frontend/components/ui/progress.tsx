@@ -21,16 +21,15 @@ const Progress = React.forwardRef<
       }
     : {
         transform: `translateX(-${100 - (value || 0)}%)`,
-        background: "linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)",
-        boxShadow: "0 0 8px hsl(var(--primary) / 0.45)",
+        background: "hsl(var(--primary))",
       };
 
   return (
     <ProgressPrimitive.Root
       ref={ref}
       className={cn(
-        "relative h-2.5 w-full overflow-hidden rounded-full neu-inset-sm",
-        "bg-muted/60",
+        "relative h-2.5 w-full overflow-hidden rounded-full",
+        "bg-gray-100",
         className
       )}
       {...props}

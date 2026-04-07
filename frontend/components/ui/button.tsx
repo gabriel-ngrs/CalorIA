@@ -4,26 +4,25 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-95",
   {
     variants: {
       variant: {
-        /* Primário: cor sólida da paleta */
+        /* Primário: verde saúde */
         default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/88 hover:shadow-md",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary-dark",
 
         /* Destrutivo */
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
 
-        /* Contorno clean */
+        /* Contorno */
         outline:
-          "border border-border bg-transparent text-foreground " +
-          "hover:bg-muted hover:border-primary/30",
+          "border border-gray-200 bg-white text-foreground hover:bg-gray-50",
 
-        /* Secundário suave */
+        /* Secundário */
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+          "bg-gray-100 text-gray-700 hover:bg-gray-200",
 
         /* Ghost */
         ghost:
@@ -32,9 +31,9 @@ const buttonVariants = cva(
         /* Link */
         link: "text-primary underline-offset-4 hover:underline",
 
-        /* Glass — para contextos escuros / overlay */
-        glass:
-          "glass text-foreground glass-hover hover:border-primary/30 hover:text-primary",
+        /* AI — gradiente para ações de IA */
+        ai:
+          "bg-gradient-to-r from-primary to-secondary text-white shadow-sm hover:opacity-90",
       },
       size: {
         default: "h-9 px-4 py-2",
