@@ -57,6 +57,16 @@ const Calendar = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
 );
 import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -372,6 +382,7 @@ export default function RefeicoesPage() {
   const updateMeal = useUpdateMeal();
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   // Nova refeição
   const [open, setOpen] = useState(false);
@@ -966,11 +977,27 @@ export default function RefeicoesPage() {
             key={meal.id}
             meal={meal}
             onEdit={() => openEdit(meal)}
-            onDelete={() => handleDelete(meal.id)}
+            onDelete={() => setPendingDeleteId(meal.id)}
             deleting={deletingId === meal.id}
           />
         ))}
       </div>
+
+      {/* ── Confirmação de exclusão ────────────────────────────────────────── */}
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir refeição?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pendingDeleteId !== null) { handleDelete(pendingDeleteId); setPendingDeleteId(null); } }}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       </div>{/* fim col-span-2 */}
 

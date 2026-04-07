@@ -33,6 +33,16 @@ import {
   useDeleteReminder,
   type ReminderPayload,
 } from "@/lib/hooks/useReminders";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { ReminderType } from "@/types";
 
 const DAYS_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -73,6 +83,7 @@ export default function LembretesPage() {
   const toggleReminder = useToggleReminder();
   const deleteReminder = useDeleteReminder();
 
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [type, setType] = useState<ReminderType>("meal");
   const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
@@ -428,7 +439,7 @@ export default function LembretesPage() {
                             }
                           </button>
                           <button
-                            onClick={() => deleteReminder.mutate(r.id)}
+                            onClick={() => setPendingDeleteId(r.id)}
                             className="cursor-pointer p-1.5 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
                             title="Excluir"
                           >
@@ -454,6 +465,20 @@ export default function LembretesPage() {
           )}
         </div>
       </div>
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lembrete?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pendingDeleteId !== null) { deleteReminder.mutate(pendingDeleteId); setPendingDeleteId(null); } }}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
