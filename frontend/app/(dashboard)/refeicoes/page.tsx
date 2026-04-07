@@ -201,12 +201,12 @@ function DayStats({ meals }: { meals: Meal[] }) {
       </Card>
 
       {/* Gordura */}
-      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-sky-400/40">
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-red-500/40">
         <CardContent className="pt-4 pb-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
-            <Droplets className="h-3 w-3 text-sky-400" /> Gordura
+            <Droplets className="h-3 w-3 text-red-500" /> Gordura
           </p>
-          <p className="text-2xl font-bold text-sky-400">
+          <p className="text-2xl font-bold text-red-500">
             {totalFat.toFixed(0)}
             <span className="text-sm font-normal text-muted-foreground ml-1">g</span>
           </p>
@@ -305,7 +305,7 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
         <div className="flex gap-1.5 flex-wrap mb-3">
           <MacroPill icon={<Dumbbell className="h-3 w-3" />} value={totalProt} unit="g P" color="bg-green-500/10 text-green-400" />
           <MacroPill icon={<Zap className="h-3 w-3" />} value={totalCarb} unit="g C" color="bg-yellow-500/10 text-yellow-400" />
-          <MacroPill icon={<Droplets className="h-3 w-3" />} value={totalFat} unit="g G" color="bg-sky-400/10 text-sky-400" />
+          <MacroPill icon={<Droplets className="h-3 w-3" />} value={totalFat} unit="g G" color="bg-red-500/10 text-red-500" />
         </div>
 
         {/* Food items */}
@@ -536,11 +536,11 @@ export default function RefeicoesPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
             <UtensilsCrossed className="h-6 w-6 text-primary" />
             Refeições
           </h1>
-          <p className="text-muted-foreground text-sm">Registro e histórico alimentar</p>
+          <p className="text-gray-400 text-sm">Registro e histórico alimentar</p>
         </div>
 
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetDialog(); }}>
@@ -579,7 +579,7 @@ export default function RefeicoesPage() {
 
               {/* Seletor de modo — só exibe antes de analisar */}
               {!parsedItems && (
-                <div className="flex gap-1 p-1 rounded-lg bg-muted/40 border border-border/50">
+                <div className="flex gap-2">
                   {([
                     { mode: "text",  Icon: Type,   label: "Texto"  },
                     { mode: "photo", Icon: Camera, label: "Foto"   },
@@ -590,14 +590,14 @@ export default function RefeicoesPage() {
                       type="button"
                       onClick={() => { setInputMode(mode); setParsedItems(null); }}
                       className={cn(
-                        "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer",
+                        "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer",
                         inputMode === mode
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-dashed border-gray-200 text-gray-400 hover:border-primary hover:bg-primary/5 hover:text-primary"
                       )}
                     >
-                      <Icon className="h-3.5 w-3.5" />
-                      {label}
+                      <Icon className="h-5 w-5" />
+                      <span className="text-xs font-medium">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -740,9 +740,14 @@ export default function RefeicoesPage() {
               {/* Resultado da análise */}
               {parsedItems && (
                 <div className="space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Itens identificados
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Itens identificados
+                    </p>
+                    <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      ✨ Analisado por IA
+                    </span>
+                  </div>
 
                   <div className="rounded-lg border border-border overflow-hidden">
                     {parsedItems.map((item, i) => (
@@ -850,7 +855,7 @@ export default function RefeicoesPage() {
       <div className="lg:col-span-2 space-y-4">
 
       {/* ── Date navigator ─────────────────────────────────────────────────── */}
-      <div className="glass-card rounded-xl px-3 py-2.5 flex items-center gap-2">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-card px-3 py-2.5 flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -930,12 +935,12 @@ export default function RefeicoesPage() {
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {meals?.length === 0 && !isLoading && (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-muted/50">
-            <UtensilsCrossed className="h-8 w-8 text-muted-foreground/40" />
+          <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gray-100 opacity-40">
+            <UtensilsCrossed className="h-8 w-8 text-gray-400" />
           </div>
           <div>
-            <p className="font-semibold text-foreground/80">Nenhuma refeição registrada</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="font-semibold text-gray-900">Nenhuma refeição registrada</p>
+            <p className="text-sm text-gray-400 mt-1">
               {isTodaySelected
                 ? "Adicione sua primeira refeição do dia"
                 : `Sem registros em ${new Date(filterDate + "T12:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}`}
