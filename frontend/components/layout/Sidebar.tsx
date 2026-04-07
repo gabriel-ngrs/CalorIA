@@ -31,7 +31,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex flex-col w-56 min-h-screen sticky top-0 h-screen glass border-r border-[var(--glass-border)] py-5 px-3">
+    <aside className="hidden md:flex flex-col w-56 min-h-screen sticky top-0 h-screen bg-white border-r border-gray-100 py-5 px-3">
       {/* Logo */}
       <div className="px-2 mb-6">
         <h1 className="text-xl font-bold gradient-text tracking-tight">CalorIA</h1>
