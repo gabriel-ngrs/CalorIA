@@ -47,8 +47,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <Card className="w-full max-w-sm animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+      <Card className="w-full max-w-md rounded-3xl animate-scale-in">
         <CardHeader className="text-center pb-2">
           <h1 className="text-2xl font-bold gradient-text mb-1">CalorIA</h1>
           <CardTitle className="text-base font-medium">Criar conta</CardTitle>
