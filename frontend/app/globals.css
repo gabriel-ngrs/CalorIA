@@ -4,103 +4,54 @@
 
 @layer base {
   /* ============================================================
-     LIGHT MODE — padrão
-     Paleta: família #91B7C7–#3D6271 (azul aço)
-     Clean, arejado, whites com acento azul-aço suave
+     WELLNESS CLEAN — Light Mode (único)
+     Paleta: Verde esmeralda (#10B981) como primary
+     Design: Cards brancos, sombras suaves, cores semânticas
   ============================================================ */
   :root {
-    --background: 210 18% 91%;
-    --foreground: 210 35% 13%;
+    --background: 210 40% 98%;       /* #F8FAFC */
+    --foreground: 220 39% 11%;       /* #111827 */
 
-    --card: 210 14% 96%;
-    --card-foreground: 210 35% 13%;
+    --card: 0 0% 100%;               /* #FFFFFF */
+    --card-foreground: 220 39% 11%;  /* #111827 */
 
-    --popover: 210 14% 96%;
-    --popover-foreground: 210 35% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 39% 11%;
 
-    /* Primary: #527787 — azul aço médio, bom contraste em branco */
-    --primary: 198 24% 42%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary — verde saúde */
+    --primary: 160 84% 39%;          /* #10B981 */
+    --primary-light: 152 76% 67%;    /* #6EE7B7 */
+    --primary-dark: 161 94% 30%;     /* #059669 */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
 
-    /* Secondary: cinza-azulado suave */
-    --secondary: 210 16% 86%;
-    --secondary-foreground: 210 28% 26%;
+    /* Secondary — azul */
+    --secondary: 213 93% 68%;        /* #60A5FA */
+    --secondary-soft: 214 95% 93%;   /* #DBEAFE */
+    --secondary-foreground: 224 76% 48%; /* #1E40AF */
 
-    --muted: 210 14% 87%;
-    --muted-foreground: 210 12% 44%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;  /* #6B7280 */
 
-    /* Accent: laranja quente — "Calor" de CalorIA */
-    --accent: 28 88% 54%;
+    --accent: 160 84% 39%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 78% 57%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 16% 81%;
-    --input: 210 14% 90%;
-    --ring: 198 24% 42%;
+    --border: 220 13% 91%;           /* #E5E7EB */
+    --input: 220 13% 91%;
+    --ring: 160 84% 39%;
 
-    --radius: 0.875rem;
+    --radius: 1rem; /* 16px base */
 
-    /* --- Neumorfismo light --- */
-    --neu-dark: rgba(110, 140, 160, 0.20);
-    --neu-light: rgba(255, 255, 255, 0.88);
-    --neu-dark-sm: rgba(110, 140, 160, 0.13);
-    --neu-light-sm: rgba(255, 255, 255, 0.82);
-
-    /* --- Vidro light --- */
-    --glass-bg: rgba(240, 244, 248, 0.82);
-    --glass-bg-hover: rgba(245, 248, 251, 0.94);
-    --glass-border: rgba(145, 183, 199, 0.28);
-    --glass-shadow: rgba(82, 119, 135, 0.09);
-  }
-
-  /* ============================================================
-     DARK MODE — ativado via toggle
-     Azul aço profundo, mas mais claro que antes
-  ============================================================ */
-  .dark {
-    --background: 198 32% 11%;
-    --foreground: 198 18% 90%;
-
-    --card: 198 30% 13%;
-    --card-foreground: 198 16% 88%;
-
-    --popover: 198 28% 14%;
-    --popover-foreground: 198 16% 88%;
-
-    /* Primary: #91B7C7 — o azul mais claro, brilha no escuro */
-    --primary: 198 33% 68%;
-    --primary-foreground: 198 32% 11%;
-
-    --secondary: 198 26% 19%;
-    --secondary-foreground: 198 18% 80%;
-
-    --muted: 198 22% 16%;
-    --muted-foreground: 198 14% 54%;
-
-    /* Accent: laranja quente */
-    --accent: 28 88% 60%;
-    --accent-foreground: 198 32% 11%;
-
-    --destructive: 0 62% 48%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 198 22% 20%;
-    --input: 198 26% 14%;
-    --ring: 198 33% 68%;
-
-    /* --- Neumorfismo dark --- */
-    --neu-dark: rgba(0, 0, 0, 0.42);
-    --neu-light: rgba(145, 183, 199, 0.045);
-    --neu-dark-sm: rgba(0, 0, 0, 0.28);
-    --neu-light-sm: rgba(145, 183, 199, 0.03);
-
-    /* --- Vidro dark --- */
-    --glass-bg: rgba(55, 90, 105, 0.28);
-    --glass-bg-hover: rgba(55, 90, 105, 0.42);
-    --glass-border: rgba(145, 183, 199, 0.14);
-    --glass-shadow: rgba(0, 0, 0, 0.28);
+    /* Cores semânticas de nutrientes */
+    --calories: #F97316;   /* laranja */
+    --protein:  #22C55E;   /* verde */
+    --carbs:    #EAB308;   /* amarelo */
+    --fat:      #EF4444;   /* vermelho */
+    --water:    #3B82F6;   /* azul */
+    --mood:     #8B5CF6;   /* violeta */
+    --weight:   #10B981;   /* primary verde */
   }
 }
 
@@ -133,176 +84,66 @@
     @apply text-foreground;
     min-height: 100vh;
     font-feature-settings: "rlig" 1, "calt" 1;
-
-    /* Light mode — cinza-azulado com orbes suaves de profundidade */
-    background:
-      radial-gradient(ellipse 70% 45% at 100% 0%, hsl(198 30% 80% / 0.30) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 35% at 0% 100%, hsl(210 25% 82% / 0.22) 0%, transparent 50%),
-      hsl(var(--background));
-  }
-
-  .dark body {
-    /* Dark mode — fundo teal escuro com profundidade */
-    background:
-      radial-gradient(ellipse 60% 40% at 8% 5%, hsl(198 38% 20% / 0.2) 0%, transparent 52%),
-      radial-gradient(ellipse 45% 30% at 92% 95%, hsl(215 40% 18% / 0.18) 0%, transparent 50%),
-      hsl(var(--background));
+    background-color: #F8FAFC;
+    /* Orbe suave verde no canto superior — presença sutil da natureza */
+    background-image:
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(16,185,129,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 0% 100%, rgba(96,165,250,0.04) 0%, transparent 50%);
   }
 }
 
 @layer components {
   /* ============================
-     GLASSMORPHISM
+     CARDS
   ============================= */
 
-  .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
+  .card-base {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+    transition: all 0.2s ease;
   }
 
-  /* Card principal — em light mode é branco limpo; em dark é glass */
-  .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    box-shadow:
-      0 1px 3px var(--glass-shadow),
-      0 4px 20px var(--glass-shadow);
+  .card-hover {
+    transition: all 0.2s ease;
   }
 
-  /* Em light mode, carta é off-white suave sem blur pesado */
-  :root .glass-card {
-    background: hsl(var(--card));
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border: 1px solid hsl(var(--border));
-    box-shadow:
-      0 1px 3px rgba(82, 119, 135, 0.08),
-      0 4px 16px rgba(82, 119, 135, 0.08);
-  }
-
-  .glass-hover {
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .glass-hover:hover {
-    background: var(--glass-bg-hover);
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow:
-      0 2px 8px var(--glass-shadow),
-      0 8px 28px var(--glass-shadow);
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10);
   }
 
   /* ============================
-     NEUMORFISMO
+     BADGE SEMÂNTICO
   ============================= */
 
-  .neu-raised {
-    box-shadow:
-      6px 6px 16px var(--neu-dark),
-      -4px -4px 12px var(--neu-light);
-  }
-
-  .neu-raised-sm {
-    box-shadow:
-      3px 3px 8px var(--neu-dark-sm),
-      -2px -2px 6px var(--neu-light-sm);
-  }
-
-  .neu-inset {
-    box-shadow:
-      inset 4px 4px 10px var(--neu-dark),
-      inset -3px -3px 8px var(--neu-light);
-  }
-
-  .neu-inset-sm {
-    box-shadow:
-      inset 2px 2px 6px var(--neu-dark-sm),
-      inset -2px -2px 5px var(--neu-light-sm);
-  }
-
-  /* ============================
-     GLASS + NEU COMBINADOS
-     (apenas nav/sidebar)
-  ============================= */
-
-  .glass-neu {
-    background: var(--glass-bg);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--glass-border);
-    box-shadow:
-      0 4px 24px var(--glass-shadow),
-      4px 4px 12px var(--neu-dark),
-      -1px -1px 6px var(--neu-light);
+  .semantic-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 
   /* ============================
      UTILITÁRIOS VISUAIS
   ============================= */
 
-  /* Logo: azul aço claro → laranja quente */
+  /* Logo: verde saúde → azul */
   .gradient-text {
-    background: linear-gradient(
-      135deg,
-      hsl(198 24% 42%) 0%,
-      hsl(28 88% 54%) 100%
-    );
+    background: linear-gradient(135deg, #10B981 0%, #60A5FA 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-  }
-
-  .dark .gradient-text {
-    background: linear-gradient(
-      135deg,
-      hsl(198 33% 72%) 0%,
-      hsl(28 88% 65%) 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .gradient-text-primary {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--primary)),
-      hsl(198 33% 72%)
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .glow-primary {
-    box-shadow:
-      0 0 14px hsl(var(--primary) / 0.28),
-      0 0 28px hsl(var(--primary) / 0.12);
-  }
-
-  .glow-accent {
-    box-shadow:
-      0 0 14px hsl(var(--accent) / 0.28),
-      0 0 28px hsl(var(--accent) / 0.12);
-  }
-
-  .glow-primary-sm {
-    box-shadow: 0 0 8px hsl(var(--primary) / 0.28);
   }
 
   /* Divisor com gradiente da paleta */
   .divider-gradient {
     height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--primary) / 0.35),
-      transparent
-    );
+    background: linear-gradient(90deg, transparent, #E5E7EB, transparent);
   }
 
   /* Scrollbar */
@@ -316,11 +157,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.3);
+    background: rgba(16,185,129,0.3);
     border-radius: 99px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.5);
+    background: rgba(16,185,129,0.5);
   }
 }
