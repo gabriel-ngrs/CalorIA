@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMe, useProfile, useUpdateProfile, useUpdateMe } from "@/lib/hooks/useProfile";
+import { toast } from "sonner";
 import type { ActivityLevel, GoalType, Sex } from "@/types";
 
 const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
@@ -104,6 +105,7 @@ export default function PerfilPage() {
     ]);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    toast.success("Perfil atualizado!");
   }
 
   const isPending = updateProfile.isPending || updateMe.isPending;

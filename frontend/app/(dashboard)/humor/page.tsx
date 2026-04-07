@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useMoodLogs, useLogMood } from "@/lib/hooks/useLogs";
+import { toast } from "sonner";
 
 const LEVELS = [
   { value: 1, label: "Muito baixo" },
@@ -103,6 +104,7 @@ export default function HumorPage() {
       notes: notes || undefined,
     });
     setNotes("");
+    toast.success("Humor registrado!");
   }
 
   const allLogs = logs ?? [];
