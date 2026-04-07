@@ -3,7 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 import api from "@/lib/api";
 
 async function handleLogout(refreshToken?: string) {
@@ -28,10 +28,16 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-2">
           {/* Usuário */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-muted-foreground text-sm">
-            <User className="h-3.5 w-3.5" />
-            <span>{session?.user?.name ?? session?.user?.email}</span>
-          </div>
+          {session?.user && (
+            <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg text-muted-foreground text-sm">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary font-semibold text-xs shrink-0 uppercase">
+                {(session.user.name ?? session.user.email ?? "?")[0]}
+              </span>
+              <span className="max-w-[120px] truncate">
+                {session.user.name ?? session.user.email}
+              </span>
+            </div>
+          )}
 
           {/* Notificações */}
           <NotificationBell />
