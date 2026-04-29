@@ -1,13 +1,6 @@
 "use client";
 
-import { Space_Grotesk } from "next/font/google";
 import { Plasma } from "@/components/auth/Plasma";
-
-const sg = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 const FEATURES = [
   {
@@ -80,7 +73,6 @@ export function AuthLeftPanel() {
 
       {/* Conteúdo */}
       <div
-        className={sg.className}
         style={{
           position: "relative",
           zIndex: 10,
