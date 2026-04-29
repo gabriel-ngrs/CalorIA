@@ -19,7 +19,9 @@ async def get_me(
 ) -> UserResponse:
     user = await UserService(db).get_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+        )
     return UserResponse.model_validate(user)
 
 
@@ -32,7 +34,9 @@ async def update_me(
     svc = UserService(db)
     user = await svc.get_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+        )
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(user, key, value)
     await db.commit()
@@ -47,7 +51,9 @@ async def get_profile(
 ) -> ProfileResponse:
     profile = await ProfileService(db).get_profile(user_id)
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Perfil não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Perfil não encontrado"
+        )
     return ProfileResponse.model_validate(profile)
 
 

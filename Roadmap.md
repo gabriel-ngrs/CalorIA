@@ -21,7 +21,6 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Criar `docker-compose.dev.yml` (desenvolvimento com hot reload)
 - [x] Serviço PostgreSQL 16 com volume persistente
 - [x] Serviço Redis 7 com volume persistente
-- [x] Serviço Evolution API com volume para sessão WhatsApp
 - [x] Serviço backend (FastAPI)
 - [x] Serviço frontend (Next.js)
 - [x] Serviço celery_worker
@@ -63,7 +62,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] `models/weight_log.py` — WeightLog (id, user_id, weight_kg, date, notes)
 - [x] `models/hydration_log.py` — HydrationLog (id, user_id, amount_ml, date, time)
 - [x] `models/mood_log.py` — MoodLog (id, user_id, date, energy_level 1-5, mood_level 1-5, notes)
-- [x] `models/reminder.py` — Reminder (id, user_id, type, time, days_of_week, active, channel: telegram/whatsapp)
+- [x] `models/reminder.py` — Reminder (id, user_id, type, time, days_of_week, active) — sem canal, sempre Web Push
 - [x] `models/ai_conversation.py` — AIConversation (id, user_id, channel, external_chat_id, messages JSON, created_at)
 - [x] Criar migração inicial com Alembic
 
@@ -116,7 +115,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ### 2.1 Configuração Gemini
 - [x] `services/ai/gemini_client.py` — cliente Gemini com retry e rate limit handling
-- [x] Configurar modelos: `gemini-1.5-flash` (texto) e `gemini-1.5-pro` (visão/fotos)
+- [x] Migrado para `gemini-2.5-flash` (modelo único via SDK `google-genai`, cobre texto e visão)
 - [x] Cache Redis para respostas de alimentos frequentes (TTL 7 dias)
 - [x] Logging de tokens utilizados para monitorar free tier
 
@@ -126,7 +125,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Prompt com contexto do usuário (metas calóricas, alimentos frequentes)
 - [x] Tratar ambiguidades ("um prato de arroz") com estimativas calibradas
 - [x] Retornar JSON: `[{food_name, quantity, unit, calories, protein, carbs, fat, confidence}]`
-- [x] `services/ai/taco_lookup.py` — banco TACO (~600 alimentos) com busca fuzzy (rapidfuzz ≥ 75); macros reais injetados no prompt antes do Gemini
+- [x] `services/ai/food_lookup.py` — tabela `foods` (TACO ~307 + Open Food Facts ~19.500) com busca pg_trgm (threshold 0.65), boost TACO 1.40×, sanity check calórico ±35%
 - [x] `services/ai/context_builder.py` — injeta tipo de refeição (inferido por keywords) + histórico das últimas 3 refeições do mesmo tipo + porções históricas
 
 ### 2.3 Análise de Foto
@@ -150,9 +149,9 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ---
 
-## Fase 3 — Bot Telegram
+## ~~Fase 3 — Bot Telegram~~ *(removido em v0.4.1 — substituído por Web Push VAPID)*
 
-> Objetivo: registrar refeições e receber informações via Telegram.
+> ~~Objetivo: registrar refeições e receber informações via Telegram.~~
 
 ### 3.1 Setup do Bot
 - [x] Criar bot no BotFather, obter token
@@ -191,14 +190,14 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] `/lembrete cafe 07:30` — configurar lembrete de café da manhã
 - [x] `/lembretes` — listar lembretes ativos
 - [x] `/remover-lembrete <id>` — remover lembrete
-- [ ] Workers Celery enviam mensagens nos horários configurados (Fase 6)
-- [ ] Resumo automático às 22h (Fase 6)
+- [x] Workers Celery enviam mensagens nos horários configurados (Fase 6)
+- [x] Resumo automático às 22h (Fase 6)
 
 ---
 
-## Fase 4 — Bot WhatsApp (Evolution API)
+## ~~Fase 4 — Bot WhatsApp (Evolution API)~~ *(removido em v0.4.1 — Evolution API removida)*
 
-> Objetivo: mesmas funcionalidades do Telegram via WhatsApp.
+> ~~Objetivo: mesmas funcionalidades do Telegram via WhatsApp.~~
 
 ### 4.1 Setup Evolution API
 - [x] Evolution API rodando via Docker Compose
@@ -282,8 +281,8 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Seletor de período (7/14/30 dias) com métricas: média, melhor dia
 
 ### 5.8 Lembretes (`/lembretes`)
-- [x] Lista de lembretes ativos por canal (Telegram/WhatsApp)
-- [x] Criar lembretes (tipo, canal, horário)
+- [x] Lista de lembretes ativos por tipo
+- [x] Criar lembretes (tipo, horário, dias da semana) via Web Push
 - [x] Deletar lembretes
 
 ### 5.9 Perfil e Metas (`/perfil`)
@@ -292,9 +291,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Meta calórica e meta de peso configuráveis
 
 ### 5.10 Conectar Bots (`/conectar`)
-- [x] Gerar token único de vinculação (válido 10 minutos) para Telegram e WhatsApp
-- [x] Status de conexão por canal
-- [x] Botão de cópia do token
+- [x] Página redireciona para configurações de notificações Web Push (Telegram/WhatsApp removidos)
 
 ### 5.11 Insights IA (`/insights`)
 - [x] Insight do dia gerado pela IA
@@ -373,42 +370,59 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] Testes unitários para meal_parser e vision_parser (mock Gemini)
 - [x] Testes de integração para todos os endpoints da API
 - [x] Fixtures compartilhadas (usuário de teste, refeições de teste)
-- [ ] Testes de integração para Celery tasks (mock de envio de mensagem)
-- [ ] Cobertura mínima: 80%
+- [x] Testes de integração para Celery tasks (mock de envio de mensagem)
+- [x] Cobertura mínima: 80%
 
 ### 8.2 Testes Frontend
 - [x] Testes de componentes com Testing Library (MacroCards, MacroPieChart, cn)
 - [x] Setup Jest + Testing Library + mocks (Recharts, CSS)
-- [ ] Testes de hooks customizados
-- [ ] Testes E2E com Playwright (fluxos críticos: login, registrar refeição, ver dashboard)
+- [x] Testes de hooks customizados
+- [x] Testes E2E com Playwright (fluxos críticos: login, registrar refeição, ver dashboard)
 
 ### 8.3 Qualidade de Código
 - [x] CI local: `pre-commit` hooks rodando ruff, mypy, eslint antes de cada commit
-- [ ] Corrigir todos os warnings do mypy
-- [ ] Revisar queries N+1 no banco (eager loading onde necessário)
+- [x] Corrigir todos os warnings do mypy
+- [x] Revisar queries N+1 no banco (eager loading onde necessário)
 
 ### 8.4 Documentação Técnica
 - [x] Documentação da API via Swagger/OpenAPI (automático no FastAPI)
 - [x] `docs/architecture.md` — decisões de arquitetura e ADRs
 - [x] `docs/setup.md` — guia completo de setup do zero
-- [ ] Atualizar README com screenshots do dashboard
+- [x] Atualizar README com screenshots do dashboard
 
 ---
 
-## Fase 9 — Preparação para Escala (Futuro)
+## Fase 9 — Deploy e Escala
 
-> Itens a considerar quando o projeto crescer para múltiplos usuários.
+> Preparar o projeto para produção e crescimento.
 
+### 9.1 CI/CD
+- [x] GitHub Actions — CI: lint (ruff + mypy + eslint), testes (pytest + jest), build Next.js
+- [x] GitHub Actions — CD: deploy automático via SSH ao mergear na `main`
+- [x] Estratégia de branches: `main` (produção), `dev` (integração), `hotfix/*`
+- [x] Documentação do workflow em `docs/git-workflow.md`
+- [ ] Proteção da branch `main` no GitHub (PR obrigatório + CI obrigatório)
+
+### 9.2 Deploy em Produção
+- [ ] Provisionar servidor (Hetzner CX22 — ~R$22/mês)
+- [ ] Configurar secrets no GitHub (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`)
+- [ ] Configurar environment `production` no GitHub Actions
+- [ ] Primeiro deploy manual (ver `docs/deploy.md`)
+- [ ] HTTPS com Let's Encrypt via Caddy
+- [ ] Backups automáticos do PostgreSQL (cron diário)
+- [ ] Configurar VAPID keys e Web Push no servidor de produção
+
+### 9.3 Observabilidade
+- [ ] Sentry para erros em produção (backend + frontend)
+- [ ] Health check endpoint monitorado (UptimeRobot ou similar)
+- [ ] Logs estruturados com nível configurável
+
+### 9.4 Escala Futura
 - [ ] Autenticação social (Google OAuth)
-- [ ] Multi-tenancy: garantir isolamento total de dados por usuário
+- [ ] Multi-tenancy: isolamento total de dados por usuário
 - [ ] Rate limiting por usuário na API
 - [ ] Otimização de queries + índices no banco
-- [ ] Migração de armazenamento de fotos para S3/R2
 - [ ] CDN para assets do frontend
-- [ ] Monitoramento: Sentry para erros, Prometheus + Grafana para métricas
-- [ ] Deploy em VPS (Coolify/Caprover) ou cloud (Railway, Render, Fly.io)
-- [ ] HTTPS com Let's Encrypt
-- [ ] Backups automáticos do PostgreSQL
 - [ ] Monetização: plano premium com features avançadas de IA
 
 ---
@@ -420,10 +434,10 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 0 | Setup e Fundação | `[x]` |
 | 1 | Modelos e API Base | `[x]` |
 | 2 | Integração com IA (Gemini) | `[x]` |
-| 3 | Bot Telegram | `[x]` |
-| 4 | Bot WhatsApp (Evolution API) | `[x]` |
+| 3 | ~~Bot Telegram~~ *(removido em v0.4.1)* | `[x]` |
+| 4 | ~~Bot WhatsApp~~ *(removido em v0.4.1)* | `[x]` |
 | 5 | Frontend Dashboard | `[x]` |
 | 6 | Notificações e Lembretes | `[x]` |
 | 7 | Insights Avançados de IA | `[x]` |
-| 8 | Qualidade e Testes | `[~]` |
-| 9 | Preparação para Escala | `[ ]` |
+| 8 | Qualidade e Testes | `[x]` |
+| 9 | Deploy e Escala | `[~]` |

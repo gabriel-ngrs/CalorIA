@@ -46,22 +46,29 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
 
     # --------------------------------------------------------------------------
-    # Groq API (IA — Llama)
-    # --------------------------------------------------------------------------
-    GEMINI_API_KEY: str = ""   # mantido por compatibilidade
-    GROQ_API_KEY: str = ""
-
-    # --------------------------------------------------------------------------
-    # Telegram
+    # Telegram Bot
     # --------------------------------------------------------------------------
     TELEGRAM_BOT_TOKEN: str = ""
 
     # --------------------------------------------------------------------------
-    # Evolution API (WhatsApp)
+    # WhatsApp — Evolution API
     # --------------------------------------------------------------------------
-    EVOLUTION_API_URL: str = ""
+    EVOLUTION_API_URL: str = "http://evolution_api:8080"
     EVOLUTION_API_KEY: str = ""
     EVOLUTION_INSTANCE_NAME: str = "caloria"
+
+    # --------------------------------------------------------------------------
+    # Google Gemini API (IA)
+    # --------------------------------------------------------------------------
+    GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""  # mantido por compatibilidade
+
+    # --------------------------------------------------------------------------
+    # Web Push (VAPID)
+    # --------------------------------------------------------------------------
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_CLAIMS_EMAIL: str = "admin@caloria.app"
 
     @property
     def is_development(self) -> bool:

@@ -81,11 +81,11 @@ export default function HidratacaoPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Droplets className="h-6 w-6 text-blue-500" />
           Hidratação
         </h1>
-        <p className="text-muted-foreground text-sm">Controle seu consumo de água</p>
+        <p className="text-gray-400 text-sm">Controle seu consumo de água</p>
       </div>
 
       {/* Layout principal: 2 colunas */}
@@ -159,6 +159,7 @@ export default function HidratacaoPage() {
                 <Input
                   placeholder="Outro valor (ml)"
                   type="number"
+                  inputMode="numeric"
                   min="1"
                   value={custom}
                   onChange={(e) => setCustom(e.target.value)}
@@ -230,8 +231,8 @@ export default function HidratacaoPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-orange-500">
-                {streak}
-                <span className="text-sm font-normal text-muted-foreground ml-1">dias</span>
+                {streak}{" "}
+                <span className="text-sm font-normal text-muted-foreground">dias</span>
               </p>
               {streak >= 3 && (
                 <p className="text-xs text-orange-400 mt-1 flex items-center gap-1">
@@ -255,7 +256,7 @@ export default function HidratacaoPage() {
                   key={d}
                   size="sm"
                   variant={historyDays === d ? "default" : "outline"}
-                  className="h-6 px-2 text-xs"
+                  className="h-9 px-3 text-xs"
                   onClick={() => setHistoryDays(d)}
                 >
                   {d}d

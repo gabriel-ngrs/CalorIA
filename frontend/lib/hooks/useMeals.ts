@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import api from "@/lib/api";
 import type { Meal, MealCreate, MealUpdate } from "@/types";
 
@@ -33,10 +34,15 @@ export function useCreateMeal() {
       const { data } = await api.post("/api/v1/meals", body);
       return data as Meal;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["meals"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      const totalCal = data.items.reduce((s: number, it: { calories: number }) => s + it.calories, 0);
+      toast.success("Refeição salva!", {
+        description: `${data.items.length} ${data.items.length === 1 ? "item" : "itens"} · ${totalCal.toFixed(0)} kcal`,
+      });
     },
+    onError: () => toast.error("Erro ao salvar refeição"),
   });
 }
 
@@ -63,7 +69,23 @@ export function useDeleteMeal() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["meals"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Refeição removida");
     },
+    onError: () => toast.error("Erro ao remover refeição"),
+  });
+}
+
+export function useDeleteMealItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ mealId, itemId }: { mealId: number; itemId: number }) => {
+      await api.delete(`/api/v1/meals/${mealId}/items/${itemId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meals"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => toast.error("Erro ao remover item"),
   });
 }
 
@@ -71,6 +93,15 @@ export function useAnalyzeMeal() {
   return useMutation({
     mutationFn: async (description: string) => {
       const { data } = await api.post("/api/v1/ai/analyze-meal", { description });
+      return data;
+    },
+  });
+}
+
+export function useAnalyzePhoto() {
+  return useMutation({
+    mutationFn: async ({ image_base64, mime_type }: { image_base64: string; mime_type: string }) => {
+      const { data } = await api.post("/api/v1/ai/analyze-photo", { image_base64, mime_type });
       return data;
     },
   });

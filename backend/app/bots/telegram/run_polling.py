@@ -6,6 +6,7 @@ com o hot-reload do Uvicorn.
 Uso:
     python -m app.bots.telegram.run_polling
 """
+
 from __future__ import annotations
 
 import asyncio

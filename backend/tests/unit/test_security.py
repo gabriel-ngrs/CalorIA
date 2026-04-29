@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import UTC
 
 import pytest
 from jose import JWTError, jwt
@@ -91,13 +92,15 @@ class TestDecodeToken:
             decode_token(".".join(partes))
 
     def test_token_expirado_levanta_excecao(self) -> None:
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         expired_payload = {
             "sub": "1",
             "type": "access",
-            "exp": datetime.now(timezone.utc) - timedelta(seconds=1),
+            "exp": datetime.now(UTC) - timedelta(seconds=1),
         }
-        token = jwt.encode(expired_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        token = jwt.encode(
+            expired_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+        )
         with pytest.raises(JWTError):
             decode_token(token)

@@ -7,6 +7,7 @@ const config = {
     "\\.(css|scss|sass)$": "<rootDir>/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|svg|webp)$": "<rootDir>/__mocks__/fileMock.js",
     "^recharts$": "<rootDir>/__mocks__/recharts.js",
+    "^sonner$": "<rootDir>/__mocks__/sonner.js",
   },
   transform: {
     "^.+\\.(ts|tsx|js|jsx)$": [

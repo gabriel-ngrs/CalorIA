@@ -1,0 +1,63 @@
+name: CD — Deploy em Produção
+
+on:
+  push:
+    branches: [main]
+
+# Garante que apenas um deploy rode por vez
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy no servidor
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/caloria
+
+            echo "==> Atualizando código..."
+            git pull origin main
+
+            echo "==> Subindo containers..."
+            docker compose -f docker-compose.backend.yml up -d --build
+
+            echo "==> Aguardando backend inicializar..."
+            sleep 10
+
+            echo "==> Rodando migrações..."
+            docker exec caloria_backend alembic upgrade head
+
+            echo "==> Limpando imagens antigas..."
+            docker image prune -f
+
+            echo "==> Deploy concluído."
+
+# ─────────────────────────────────────────────────────────────────────
+# CONFIGURAÇÃO NECESSÁRIA (fazer uma vez, antes do primeiro deploy):
+#
+# 1. No GitHub → Settings → Environments → criar "production"
+#
+# 2. Adicionar os Secrets no environment "production":
+#    SERVER_HOST  → IP do servidor (ex: 49.12.123.45)
+#    SERVER_USER  → usuário SSH (ex: root)
+#    SERVER_SSH_KEY → conteúdo da chave privada SSH (~/.ssh/id_ed25519)
+#
+# 3. No servidor, garantir que /opt/caloria existe e o repo está clonado:
+#    git clone -b main https://github.com/SEU_USUARIO/CalorIA.git /opt/caloria
+#    cp .env.production.example .env && nano .env   # preencher variáveis
+#    docker compose up -d --build
+#    docker exec caloria_backend alembic upgrade head
+#
+# Depois disso, todo push na main faz deploy automático.
+# ─────────────────────────────────────────────────────────────────────

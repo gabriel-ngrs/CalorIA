@@ -9,34 +9,42 @@ interface TimedRequestConfig extends InternalAxiosRequestConfig {
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
   headers: { "Content-Type": "application/json" },
-  timeout: 10000,
+  timeout: 45000,
 });
 
 // ─── Cache do token em memória ────────────────────────────────────────────────
 // Evita N chamadas HTTP para /api/auth/session por navegação.
-let _cache: { token: string | null; error?: string; until: number } | null = null;
+let _cache: { token: string | null; error?: string; until: number; accessTokenExpires?: number } | null = null;
 
 // Deduplicação: uma única Promise para getSession() quando múltiplas requests
 // disparam simultaneamente sem cache. Evita N×HTTP paralelos para /api/auth/session.
 let _pendingSession: Promise<{ token: string | null; error?: string }> | null = null;
 
+// Buffer de renovação proativa: 2 minutos antes do token expirar, força refresh
+const PROACTIVE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
 /** Chamado pelo SessionSync quando a sessão muda — atualiza o cache sem HTTP */
-export function setApiToken(token: string | null, error?: string) {
-  _cache = { token, error, until: Date.now() + 90 * 1000 };
+export function setApiToken(token: string | null, error?: string, accessTokenExpires?: number) {
+  _cache = { token, error, until: Date.now() + 90 * 1000, accessTokenExpires };
   _pendingSession = null; // cancela qualquer pending para usar o cache fresco
 }
 
-/** Resolve o token: usa cache se fresco, senão faz UMA chamada getSession() compartilhada */
+/** Resolve o token: usa cache se fresco e não prestes a expirar, senão faz UMA chamada getSession() compartilhada */
 async function resolveToken(): Promise<{ token: string | null; error?: string }> {
   if (_cache && Date.now() < _cache.until) {
-    return { token: _cache.token, error: _cache.error };
+    // Refresh proativo: se o access token expira em menos de 2 min, ignora cache
+    const expiresAt = _cache.accessTokenExpires;
+    if (!expiresAt || Date.now() < expiresAt - PROACTIVE_REFRESH_BUFFER_MS) {
+      return { token: _cache.token, error: _cache.error };
+    }
+    _cache = null; // força refresh
   }
   // Deduplicação: reutiliza Promise em voo se já existir
   if (!_pendingSession) {
     _pendingSession = getSession()
       .then((session) => {
         const result = { token: session?.accessToken ?? null, error: session?.error };
-        _cache = { ...result, until: Date.now() + 90 * 1000 };
+        _cache = { ...result, until: Date.now() + 90 * 1000, accessTokenExpires: session?.accessTokenExpires };
         return result;
       })
       .finally(() => { _pendingSession = null; });

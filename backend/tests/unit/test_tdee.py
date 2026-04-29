@@ -44,7 +44,9 @@ class TestCalculateTdee:
 
     def test_peso_maior_implica_tdee_maior(self) -> None:
         leve = calculate_tdee(60, 170, 30, Sex.FEMALE, ActivityLevel.MODERATELY_ACTIVE)
-        pesado = calculate_tdee(90, 170, 30, Sex.FEMALE, ActivityLevel.MODERATELY_ACTIVE)
+        pesado = calculate_tdee(
+            90, 170, 30, Sex.FEMALE, ActivityLevel.MODERATELY_ACTIVE
+        )
         assert pesado > leve
 
     def test_idade_maior_implica_tdee_menor(self) -> None:
