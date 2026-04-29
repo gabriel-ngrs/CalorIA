@@ -2,7 +2,6 @@
 
 import { Space_Grotesk } from "next/font/google";
 import { Plasma } from "@/components/auth/Plasma";
-import { useTheme } from "@/components/theme-provider";
 
 const sg = Space_Grotesk({
   subsets: ["latin"],
@@ -13,90 +12,70 @@ const sg = Space_Grotesk({
 const FEATURES = [
   {
     icon: "🤖",
-    accent: "#10b981",
+    accent: "#34d399",
     headline: "IA que entende o que você come",
-    body: "Descreva em texto ou mande uma foto. Gemini 2.5 Flash identifica calorias, proteínas e carbs na hora.",
+    body: "Foto ou texto: Gemini 2.5 Flash identifica calorias, proteínas e carbs em segundos.",
     badge: "Gemini 2.5 Flash",
   },
   {
     icon: "🍽️",
-    accent: "#34d399",
+    accent: "#6ee7b7",
     headline: "20 mil+ alimentos catalogados",
-    body: "Base TACO + Open Food Facts. Encontra arroz com feijão, frango grelhado ou qualquer prato brasileiro.",
+    body: "TACO + Open Food Facts. Arroz com feijão, frango grelhado, qualquer prato brasileiro.",
     badge: "Banco nacional",
   },
   {
     icon: "📊",
     accent: "#60a5fa",
     headline: "Veja sua evolução completa",
-    body: "Gráficos de peso, hidratação e humor em uma tela só. Descubra como sua dieta afeta como você se sente.",
+    body: "Peso, hidratação e humor num só lugar. Entenda como sua dieta afeta como você se sente.",
     badge: "Insights diários",
   },
   {
     icon: "🎯",
     accent: "#a78bfa",
     headline: "Metas calculadas para você",
-    body: "TDEE personalizado com base na sua altura, peso, idade e objetivo. Calorias e macros no seu ritmo.",
+    body: "TDEE personalizado com altura, peso, idade e objetivo. Calorias e macros no seu ritmo.",
     badge: "100% personalizado",
   },
   {
     icon: "🔔",
     accent: "#fb923c",
     headline: "Lembretes sem abrir o app",
-    body: "Notificações Web Push nativas no seu celular ou desktop. Você registra, a IA cuida do resto.",
+    body: "Notificações Web Push nativas no celular ou desktop. Você registra, a IA cuida do resto.",
     badge: "Web Push nativo",
   },
 ];
 
 export function AuthLeftPanel() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-
-  const bg = isDark
-    ? "linear-gradient(160deg, #061a10 0%, #0a1628 55%, #050e18 100%)"
-    : "linear-gradient(160deg, #f0fdf4 0%, #eff6ff 55%, #f8fafc 100%)";
-
-  const headingColor   = isDark ? "#f0fdf4"              : "#0f1f0f";
-  const bodyColor      = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.42)";
-  const cardBg         = isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)";
-  const cardBorder     = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
-  const taglineColor   = isDark ? "rgba(255,255,255,0.4)"  : "rgba(0,0,0,0.4)";
-  const footerColor    = isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.2)";
-  const dotColor       = isDark ? "rgba(52,211,153,0.5)"   : "#10b981";
-  const dotLabel       = isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.3)";
-  const sepColor       = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
-  const badgeBg = (accent: string) => isDark ? `${accent}18` : `${accent}15`;
-  const badgeBorder = (accent: string) => isDark ? `${accent}35` : `${accent}40`;
-
   return (
     <div
-      className="hidden lg:flex relative flex-col overflow-hidden overflow-y-auto"
-      style={{ width: "48%", minHeight: "100vh" }}
+      className="hidden lg:flex relative flex-col overflow-hidden"
+      style={{ width: "46%", minHeight: "100vh" }}
     >
-      {/* Fundo */}
-      <div className="absolute inset-0" style={{ background: bg }} />
+      {/* Fundo — sempre escuro, independente do tema */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "linear-gradient(160deg, #071f12 0%, #0b1e30 52%, #060e1a 100%)" }}
+      />
 
-      {/* Plasma — só no dark */}
-      {isDark && (
-        <div className="absolute inset-0" style={{ opacity: 0.22 }}>
-          <Plasma speed={0.2} scale={1.3} opacity={0.8} />
-        </div>
-      )}
+      {/* Plasma */}
+      <div className="absolute inset-0" style={{ opacity: 0.2 }}>
+        <Plasma speed={0.2} scale={1.3} opacity={0.85} />
+      </div>
 
-      {/* Glows */}
+      {/* Glow verde topo-esquerda */}
       <div className="absolute pointer-events-none" style={{
-        top: "-5%", left: "-15%", width: "65%", height: "45%",
-        background: isDark
-          ? "radial-gradient(ellipse, rgba(52,211,153,0.15) 0%, transparent 70%)"
-          : "radial-gradient(ellipse, rgba(16,185,129,0.12) 0%, transparent 70%)",
-        filter: "blur(40px)",
+        top: "-8%", left: "-10%", width: "60%", height: "50%",
+        background: "radial-gradient(ellipse, rgba(52,211,153,0.18) 0%, transparent 68%)",
+        filter: "blur(48px)",
       }} />
+
+      {/* Glow azul rodapé */}
       <div className="absolute pointer-events-none" style={{
-        bottom: "-8%", right: "-8%", width: "55%", height: "40%",
-        background: isDark
-          ? "radial-gradient(ellipse, rgba(96,165,250,0.1) 0%, transparent 70%)"
-          : "radial-gradient(ellipse, rgba(96,165,250,0.08) 0%, transparent 70%)",
-        filter: "blur(50px)",
+        bottom: "-8%", right: "-8%", width: "55%", height: "45%",
+        background: "radial-gradient(ellipse, rgba(96,165,250,0.12) 0%, transparent 68%)",
+        filter: "blur(56px)",
       }} />
 
       {/* Conteúdo */}
@@ -107,131 +86,111 @@ export function AuthLeftPanel() {
           zIndex: 10,
           display: "flex",
           flexDirection: "column",
-          minHeight: "100vh",
-          padding: "3rem 3rem 2.5rem",
-          gap: "2rem",
+          height: "100%",
+          padding: "3rem 2.75rem 2.5rem",
+          gap: "0",
         }}
       >
-        {/* ── CalorIA em evidência ── */}
-        <div>
+        {/* ── Brand ── */}
+        <div style={{ marginBottom: "2rem" }}>
+          {/* Nome em destaque — cor sólida, sem clip */}
           <h1
             style={{
-              fontSize: "clamp(3.5rem, 5.5vw, 5rem)",
+              fontSize: "clamp(3.2rem, 5vw, 4.5rem)",
               fontWeight: 700,
               lineHeight: 1,
               letterSpacing: "-0.045em",
               margin: 0,
-              background: isDark
-                ? "linear-gradient(135deg, #6ee7b7 0%, #34d399 45%, #60a5fa 100%)"
-                : "linear-gradient(135deg, #059669 0%, #10b981 50%, #3b82f6 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
+              color: "#34d399",
+              textShadow: "0 0 40px rgba(52,211,153,0.35)",
             }}
           >
             CalorIA
           </h1>
+
           <p style={{
-            marginTop: "0.6rem",
-            fontSize: "0.95rem",
+            marginTop: "0.55rem",
+            fontSize: "0.88rem",
             fontWeight: 400,
-            color: taglineColor,
+            color: "rgba(255,255,255,0.45)",
             letterSpacing: "0.01em",
           }}>
             Seu diário alimentar,{" "}
-            <span style={{
-              fontWeight: 600,
-              color: isDark ? "#34d399" : "#059669",
-            }}>
-              do jeito certo
-            </span>
+            <span style={{ fontWeight: 600, color: "#6ee7b7" }}>do jeito certo</span>
           </p>
 
           {/* Headline de impacto */}
-          <h2
-            style={{
-              marginTop: "1.75rem",
-              fontSize: "clamp(1.25rem, 2.2vw, 1.6rem)",
-              fontWeight: 700,
-              lineHeight: 1.25,
-              letterSpacing: "-0.025em",
-              color: headingColor,
-            }}
-          >
+          <h2 style={{
+            marginTop: "1.75rem",
+            fontSize: "clamp(1.2rem, 2vw, 1.5rem)",
+            fontWeight: 700,
+            lineHeight: 1.3,
+            letterSpacing: "-0.025em",
+            color: "#f0fdf4",
+            margin: "1.75rem 0 0",
+          }}>
             Controle o que você come.{" "}
-            <span style={{
-              background: isDark
-                ? "linear-gradient(135deg, #34d399, #60a5fa)"
-                : "linear-gradient(135deg, #059669, #3b82f6)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}>
-              Entenda seu corpo.
-            </span>
+            <span style={{ color: "#34d399" }}>Entenda seu corpo.</span>
           </h2>
         </div>
 
-        {/* ── Cards de feature ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", flex: 1 }}>
+        {/* ── Feature cards ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", flex: 1 }}>
           {FEATURES.map((f) => (
             <div
-              key={f.icon}
+              key={f.badge}
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: "1rem",
-                padding: "1rem 1.125rem",
-                borderRadius: "0.875rem",
-                background: cardBg,
-                border: `1px solid ${cardBorder}`,
+                gap: "0.875rem",
+                padding: "0.875rem 1rem",
+                borderRadius: "0.75rem",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
                 borderLeft: `3px solid ${f.accent}`,
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
                 position: "relative",
                 overflow: "hidden",
               }}
             >
-              {/* Glow atrás do card */}
+              {/* glow atrás */}
               <div style={{
                 position: "absolute", inset: 0, pointerEvents: "none",
-                background: `radial-gradient(ellipse 50% 100% at 0% 50%, ${f.accent}${isDark ? "0c" : "09"} 0%, transparent 70%)`,
+                background: `radial-gradient(ellipse 55% 100% at 0% 50%, ${f.accent}0a 0%, transparent 70%)`,
               }} />
 
-              {/* Ícone */}
+              {/* ícone */}
               <div style={{
-                width: 40, height: 40, borderRadius: "0.625rem", flexShrink: 0,
-                background: `${f.accent}${isDark ? "22" : "18"}`,
-                border: `1px solid ${f.accent}${isDark ? "40" : "35"}`,
+                width: 36, height: 36, borderRadius: "0.5rem", flexShrink: 0,
+                background: `${f.accent}20`,
+                border: `1px solid ${f.accent}38`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "1.2rem",
-                position: "relative", zIndex: 1,
+                fontSize: "1.1rem", position: "relative", zIndex: 1,
               }}>
                 {f.icon}
               </div>
 
-              {/* Texto */}
+              {/* texto */}
               <div style={{ position: "relative", zIndex: 1, minWidth: 0 }}>
                 <p style={{
-                  margin: 0, fontSize: "0.78rem", fontWeight: 700,
-                  color: headingColor, lineHeight: 1.3,
+                  margin: 0, fontSize: "0.75rem", fontWeight: 700,
+                  color: "rgba(255,255,255,0.88)", lineHeight: 1.3,
                 }}>
                   {f.headline}
                 </p>
                 <p style={{
-                  margin: "0.25rem 0 0.4rem", fontSize: "0.7rem",
-                  color: bodyColor, lineHeight: 1.55,
+                  margin: "0.2rem 0 0.35rem", fontSize: "0.67rem",
+                  color: "rgba(255,255,255,0.36)", lineHeight: 1.55,
                 }}>
                   {f.body}
                 </p>
                 <span style={{
                   display: "inline-block",
-                  fontSize: "0.62rem", fontWeight: 600,
+                  fontSize: "0.6rem", fontWeight: 600,
                   color: f.accent,
-                  background: badgeBg(f.accent),
-                  border: `1px solid ${badgeBorder(f.accent)}`,
+                  background: `${f.accent}15`,
+                  border: `1px solid ${f.accent}30`,
                   borderRadius: "99px",
-                  padding: "0.12rem 0.55rem",
+                  padding: "0.1rem 0.5rem",
                   letterSpacing: "0.02em",
                 }}>
                   {f.badge}
@@ -243,22 +202,24 @@ export function AuthLeftPanel() {
 
         {/* ── Rodapé ── */}
         <div style={{
-          borderTop: `1px solid ${sepColor}`,
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          marginTop: "1.5rem",
           paddingTop: "1rem",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}>
-          <p style={{ margin: 0, fontSize: "0.68rem", color: footerColor }}>
+          <p style={{ margin: 0, fontSize: "0.65rem", color: "rgba(255,255,255,0.18)" }}>
             CalorIA © {new Date().getFullYear()}
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
             <div style={{
               width: 6, height: 6, borderRadius: "50%",
-              background: dotColor,
-              boxShadow: `0 0 6px ${dotColor}`,
+              background: "#34d399", boxShadow: "0 0 8px #34d399aa",
             }} />
-            <span style={{ fontSize: "0.65rem", color: dotLabel }}>Serviço online</span>
+            <span style={{ fontSize: "0.63rem", color: "rgba(255,255,255,0.25)" }}>
+              Serviço online
+            </span>
           </div>
         </div>
       </div>
