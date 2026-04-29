@@ -18,8 +18,12 @@ from app.services.user_service import UserService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(data: UserCreate, db: AsyncSession = Depends(get_db)) -> UserResponse:
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
+async def register(
+    data: UserCreate, db: AsyncSession = Depends(get_db)
+) -> UserResponse:
     svc = UserService(db)
     if await svc.email_exists(data.email):
         raise HTTPException(
@@ -47,7 +51,9 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenRes
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(data: RefreshRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def refresh(
+    data: RefreshRequest, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Refresh token inválido ou expirado",
@@ -60,7 +66,7 @@ async def refresh(data: RefreshRequest, db: AsyncSession = Depends(get_db)) -> T
             raise credentials_exception
         user_id = int(payload["sub"])
     except Exception:
-        raise credentials_exception
+        raise credentials_exception from None
 
     svc = UserService(db)
     user = await svc.get_by_id(user_id)
@@ -92,5 +98,7 @@ async def me(
     svc = UserService(db)
     user = await svc.get_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+        )
     return UserResponse.model_validate(user)

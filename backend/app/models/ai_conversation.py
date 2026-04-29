@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import enum
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class ConversationChannel(str, enum.Enum):
+class ConversationChannel(StrEnum):
     TELEGRAM = "telegram"
     WHATSAPP = "whatsapp"
 
@@ -30,7 +31,9 @@ class AIConversation(Base):
         SAEnum(ConversationChannel), nullable=False
     )
     # ID externo do chat (telegram chat_id ou número whatsapp)
-    external_chat_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    external_chat_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, index=True
+    )
     # Lista de mensagens: [{"role": "user"|"model", "content": "...", "timestamp": "..."}]
     messages: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list

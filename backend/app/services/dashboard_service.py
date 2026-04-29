@@ -30,14 +30,18 @@ class DashboardService:
             nutrition=nutrition,
             hydration=hydration,
             mood=MoodLogResponse.model_validate(mood_log) if mood_log else None,
-            latest_weight=WeightLogResponse.model_validate(latest_wl) if latest_wl else None,
+            latest_weight=WeightLogResponse.model_validate(latest_wl)
+            if latest_wl
+            else None,
         )
 
     async def get_weekly(self, user_id: int, end_date: date) -> WeeklySummary:
         start_date = end_date - timedelta(days=6)
 
         # Uma única query SQL em vez de 7 chamadas em loop — N+1 eliminado
-        macros_by_date = await self._meals.get_macros_by_date_range(user_id, start_date, end_date)
+        macros_by_date = await self._meals.get_macros_by_date_range(
+            user_id, start_date, end_date
+        )
 
         days: list[WeeklyMacroPoint] = []
         current = start_date

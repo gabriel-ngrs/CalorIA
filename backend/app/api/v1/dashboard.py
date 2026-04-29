@@ -40,10 +40,13 @@ async def macros_chart(
     db: AsyncSession = Depends(get_db),
 ) -> list[WeeklyMacroPoint]:
     from datetime import timedelta
+
     from app.services.meal_service import MealService
 
     start_date = end_date - timedelta(days=days - 1)
-    macros_by_date = await MealService(db).get_macros_by_date_range(user_id, start_date, end_date)
+    macros_by_date = await MealService(db).get_macros_by_date_range(
+        user_id, start_date, end_date
+    )
 
     result: list[WeeklyMacroPoint] = []
     current = start_date

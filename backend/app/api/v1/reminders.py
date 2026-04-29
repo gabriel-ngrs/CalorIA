@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import time as dt_time
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -32,7 +31,9 @@ async def create_reminder(
     return ReminderResponse.model_validate(reminder)
 
 
-@router.post("/batch", response_model=list[ReminderResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/batch", response_model=list[ReminderResponse], status_code=status.HTTP_201_CREATED
+)
 async def create_reminders_batch(
     items: Annotated[list[ReminderCreate], Body()],
     user_id: int = Depends(get_current_user_id),
@@ -40,7 +41,9 @@ async def create_reminders_batch(
 ) -> list[ReminderResponse]:
     """Cria múltiplos lembretes de uma vez (ex: lembretes em vários horários do dia)."""
     if not items:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lista vazia")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lista vazia"
+        )
     reminders = await ReminderService(db).create_many(user_id, items)
     return [ReminderResponse.model_validate(r) for r in reminders]
 
@@ -53,7 +56,9 @@ async def toggle_reminder(
 ) -> ReminderResponse:
     reminder = await ReminderService(db).toggle(user_id, reminder_id)
     if not reminder:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado"
+        )
     return ReminderResponse.model_validate(reminder)
 
 
@@ -65,4 +70,6 @@ async def delete_reminder(
 ) -> None:
     deleted = await ReminderService(db).delete(user_id, reminder_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado"
+        )

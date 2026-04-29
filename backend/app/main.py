@@ -1,7 +1,8 @@
 import logging
 import time
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ http_logger = logging.getLogger("caloria.http")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Aquece a pool de conexões no startup — evita cold start na primeira requisição
     from app.core.database import AsyncSessionLocal
+
     async with AsyncSessionLocal() as session:
         await session.execute(text("SELECT 1"))
     yield
@@ -48,7 +50,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def timing_middleware(request: Request, call_next):
+async def timing_middleware(request: Request, call_next: Any) -> Any:
     """Loga método, path, status e duração de cada requisição HTTP."""
     start = time.perf_counter()
     response = await call_next(request)
@@ -62,7 +64,7 @@ async def timing_middleware(request: Request, call_next):
     return response
 
 
-from app.api.v1 import router as api_v1_router
+from app.api.v1 import router as api_v1_router  # noqa: E402
 
 app.include_router(api_v1_router, prefix="/api/v1")
 

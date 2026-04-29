@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#1a2a30"/>
+  <!-- Flame icon (Calorias) -->
+  <path d="M256 96c0 0-80 80-80 160c0 44.2 35.8 80 80 80s80-35.8 80-80
+    c0-24-12-44-28-60c-4 20-16 36-32 44c0-40 12-80 12-80
+    c-8 16-20 28-32 38c0-48 16-88 16-88
+    c-40 40-64 96-64 150c0 66.3 53.7 120 120 120
+    s120-53.7 120-120C448 208 320 112 256 96Z" fill="#f97316" opacity="0.9"/>
+  <!-- AI sparkle -->
+  <path d="M320 160 l8-24 8 24 24 8-24 8-8 24-8-24-24-8Z" fill="#91b7c7" opacity="0.8"/>
+  <path d="M176 240 l5-15 5 15 15 5-15 5-5 15-5-15-15-5Z" fill="#91b7c7" opacity="0.6"/>
+  <!-- Text: CalorIA -->
+  <text x="256" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" text-anchor="middle" fill="#91b7c7">CalorIA</text>
+</svg>

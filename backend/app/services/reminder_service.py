@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import builtins
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +15,7 @@ class ReminderService:
 
     async def list(self, user_id: int) -> list[Reminder]:
         result = await self.db.execute(
-            select(Reminder)
-            .where(Reminder.user_id == user_id)
-            .order_by(Reminder.time)
+            select(Reminder).where(Reminder.user_id == user_id).order_by(Reminder.time)
         )
         return list(result.scalars().all())
 
@@ -25,7 +25,6 @@ class ReminderService:
             type=data.type,
             time=data.time,
             days_of_week=data.days_of_week,
-            channel=data.channel,
             message=data.message,
         )
         self.db.add(reminder)
@@ -33,14 +32,15 @@ class ReminderService:
         await self.db.refresh(reminder)
         return reminder
 
-    async def create_many(self, user_id: int, items: list[ReminderCreate]) -> list[Reminder]:
+    async def create_many(
+        self, user_id: int, items: builtins.list[ReminderCreate]
+    ) -> builtins.list[Reminder]:
         reminders = [
             Reminder(
                 user_id=user_id,
                 type=item.type,
                 time=item.time,
                 days_of_week=item.days_of_week,
-                channel=item.channel,
                 message=item.message,
             )
             for item in items

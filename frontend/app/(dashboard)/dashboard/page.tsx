@@ -1,12 +1,15 @@
 "use client";
 
-import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Droplets, Smile, Scale, UtensilsCrossed, Zap, TrendingDown, TrendingUp, Minus, Flame, Camera, MessageSquare, Mic } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MacroCards } from "@/components/dashboard/MacroCards";
 import { MacroPieChart } from "@/components/dashboard/MacroPieChart";
 import { CaloriesBarChart } from "@/components/dashboard/CaloriesBarChart";
+import { QuickMealModal, QuickWaterModal, QuickWeightModal, QuickMoodModal } from "@/components/dashboard/QuickAddModals";
 import { useDashboardToday, useMacrosChart } from "@/lib/hooks/useDashboard";
 import { useMe } from "@/lib/hooks/useProfile";
 import type { MealType } from "@/types";
@@ -39,7 +42,6 @@ const MEAL_ACCENT: Record<MealType, { border: string; dot: string; cal: string }
   dessert:         { border: "border-l-pink-400",    dot: "bg-pink-400",    cal: "text-pink-400" },
 };
 
-const LEVEL_LABELS = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"];
 
 function LevelDots({ value, color }: { value: number; color: string }) {
   return (
@@ -54,10 +56,20 @@ function LevelDots({ value, color }: { value: number; color: string }) {
   );
 }
 
+type QuickModal = "meal" | "water" | "weight" | "mood" | null;
+
 export default function DashboardPage() {
   const { data: dashboard, isLoading, isError } = useDashboardToday();
   const { data: macros } = useMacrosChart(7);
   const { data: user } = useMe();
+  const [quickModal, setQuickModal] = useState<QuickModal>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user && !user.calorie_goal) {
+      router.replace("/onboarding");
+    }
+  }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
@@ -93,21 +105,67 @@ export default function DashboardPage() {
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
-        <UtensilsCrossed className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Nenhum dado para hoje</h2>
-        <p className="text-muted-foreground text-sm max-w-xs">
-          Registre sua primeira refeição pelo Telegram, WhatsApp ou pela página de Refeições.
-        </p>
-      </div>
+      <>
+        <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} />
+        <QuickWaterModal open={quickModal === "water"} onOpenChange={(v) => setQuickModal(v ? "water" : null)} />
+        <QuickWeightModal open={quickModal === "weight"} onOpenChange={(v) => setQuickModal(v ? "weight" : null)} />
+        <QuickMoodModal open={quickModal === "mood"} onOpenChange={(v) => setQuickModal(v ? "mood" : null)} />
+
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-4">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 opacity-40">
+            <UtensilsCrossed className="h-8 w-8 text-gray-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Nenhum dado para hoje</h2>
+            <p className="text-gray-400 text-sm max-w-xs mt-1">
+              Comece registrando uma refeição, sua hidratação, peso ou humor do dia.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
+            <button
+              onClick={() => setQuickModal("meal")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-orange-500/30 transition-all duration-200 cursor-pointer"
+            >
+              <UtensilsCrossed className="h-5 w-5 text-orange-500" />
+              <span className="text-xs font-medium text-gray-600">Refeição</span>
+            </button>
+            <button
+              onClick={() => setQuickModal("water")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-blue-500/30 transition-all duration-200 cursor-pointer"
+            >
+              <Droplets className="h-5 w-5 text-blue-500" />
+              <span className="text-xs font-medium text-gray-600">Água</span>
+            </button>
+            <button
+              onClick={() => setQuickModal("weight")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+            >
+              <Scale className="h-5 w-5 text-primary" />
+              <span className="text-xs font-medium text-gray-600">Peso</span>
+            </button>
+            <button
+              onClick={() => setQuickModal("mood")}
+              className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-card hover:-translate-y-0.5 hover:border-yellow-400/30 transition-all duration-200 cursor-pointer"
+            >
+              <Smile className="h-5 w-5 text-yellow-500" />
+              <span className="text-xs font-medium text-gray-600">Humor</span>
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 
-  const today = new Date().toLocaleDateString("pt-BR", {
+  const todayRaw = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
     month: "long",
   });
+  // pt-BR já retorna minúsculas; capitaliza apenas a primeira letra
+  const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
+
+  const calorieGoal = user?.calorie_goal ?? 2000;
+  const pctCalories = Math.min((dashboard.nutrition.total_calories / calorieGoal) * 100, 100);
 
   const goalMl = user?.water_goal_ml ?? 2000;
   const hydPct = Math.min((dashboard.hydration.total_ml / goalMl) * 100, 100);
@@ -119,19 +177,25 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold capitalize" suppressHydrationWarning>{today}</h1>
-        <p className="text-muted-foreground text-sm">Resumo do seu dia</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900" suppressHydrationWarning>{today}</h1>
+          <p className="text-sm text-gray-400">Resumo do seu dia</p>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">
+          <Flame className="h-3.5 w-3.5" />
+          {pctCalories.toFixed(0)}% da meta
+        </div>
       </div>
 
       {/* Macro cards */}
-      <MacroCards nutrition={dashboard.nutrition} user={user} />
+      <MacroCards nutrition={dashboard.nutrition} user={user} onCaloriesClick={() => setQuickModal("meal")} />
 
       {/* Linha secundária: Hidratação, Humor, Peso */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
 
-        {/* Hidratação */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
+        {/* Hidratação — full width no mobile */}
+        <Card onClick={() => setQuickModal("water")} className="col-span-2 md:col-span-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40 cursor-pointer">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/10">
@@ -154,10 +218,10 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Humor */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
+        {/* Humor — metade no mobile, lado a lado com Peso */}
+        <Card onClick={() => setQuickModal("mood")} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40 cursor-pointer">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
+            <CardTitle className="text-sm flex items-center justify-center sm:justify-start gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-400/10">
                 <Smile className="h-4 w-4 text-yellow-400" />
               </span>
@@ -166,8 +230,30 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {dashboard.mood ? (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                {/* Mobile: só números centralizados */}
+                <div className="flex justify-around sm:hidden">
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
+                      <Zap className="h-3 w-3 text-orange-400" /> Energia
+                    </p>
+                    <span className="text-2xl font-bold text-orange-400">
+                      {dashboard.mood.energy_level}
+                      <span className="text-xs font-normal text-muted-foreground">/5</span>
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mb-0.5">
+                      <Smile className="h-3 w-3 text-blue-400" /> Humor
+                    </p>
+                    <span className="text-2xl font-bold text-blue-400">
+                      {dashboard.mood.mood_level}
+                      <span className="text-xs font-normal text-muted-foreground">/5</span>
+                    </span>
+                  </div>
+                </div>
+                {/* Desktop: dots completos */}
+                <div className="hidden sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                       <Zap className="h-3 w-3 text-orange-400" /> Energia
@@ -188,24 +274,21 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 {dashboard.mood.notes && (
-                  <p className="text-xs text-muted-foreground italic truncate">
+                  <p className="text-[10px] text-muted-foreground italic truncate hidden sm:block">
                     &ldquo;{dashboard.mood.notes}&rdquo;
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {LEVEL_LABELS[(dashboard.mood.energy_level + dashboard.mood.mood_level) / 2 > 3 ? 3 : Math.round((dashboard.mood.energy_level + dashboard.mood.mood_level) / 2) - 1]}
-                </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Não registrado hoje</p>
+              <p className="text-sm text-muted-foreground">Não registrado</p>
             )}
           </CardContent>
         </Card>
 
         {/* Peso */}
-        <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40">
+        <Card onClick={() => setQuickModal("weight")} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/40 cursor-pointer">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
+            <CardTitle className="text-sm flex items-center justify-center sm:justify-start gap-1.5">
               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
                 <Scale className="h-4 w-4 text-primary" />
               </span>
@@ -214,34 +297,83 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {dashboard.latest_weight ? (
-              <>
+              <div className="text-center sm:text-left">
                 <p className="text-2xl font-bold">
                   {dashboard.latest_weight.weight_kg}
                   <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
                 </p>
                 {user?.weight_goal && weightDelta !== null && (
-                  <p className={`text-xs mt-1 flex items-center gap-1 ${weightDelta > 0 ? "text-orange-400" : weightDelta < 0 ? "text-green-500" : "text-muted-foreground"}`}>
-                    {weightDelta > 0
-                      ? <TrendingUp className="h-3 w-3" />
-                      : weightDelta < 0
-                      ? <TrendingDown className="h-3 w-3" />
-                      : <Minus className="h-3 w-3" />}
-                    Meta: {user.weight_goal} kg ({weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg)
-                  </p>
+                  <div className={`text-xs mt-1 ${weightDelta > 0 ? "text-orange-400" : weightDelta < 0 ? "text-green-500" : "text-muted-foreground"}`}>
+                    <p className="flex items-center justify-center sm:justify-start gap-1">
+                      {weightDelta > 0
+                        ? <TrendingUp className="h-3 w-3 shrink-0" />
+                        : weightDelta < 0
+                        ? <TrendingDown className="h-3 w-3 shrink-0" />
+                        : <Minus className="h-3 w-3 shrink-0" />}
+                      Meta: {user.weight_goal} kg
+                    </p>
+                    <p className="pl-0 sm:pl-4">{weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg</p>
+                  </div>
                 )}
-              </>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Sem registro de peso</p>
+              <p className="text-sm text-muted-foreground">Sem registro</p>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Ações Rápidas */}
+      <section>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          Registrar agora
+        </h2>
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => setQuickModal("meal")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Camera className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Foto</span>
+          </button>
+          <button
+            onClick={() => setQuickModal("meal")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <MessageSquare className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Texto</span>
+          </button>
+          <button
+            onClick={() => setQuickModal("meal")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Mic className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Áudio</span>
+          </button>
+        </div>
+      </section>
 
       {/* Gráficos */}
       <div className="grid gap-4 md:grid-cols-2">
         <MacroPieChart nutrition={dashboard.nutrition} />
         {macros && <CaloriesBarChart data={macros} calorieGoal={user?.calorie_goal ?? undefined} />}
       </div>
+
+      {/* Quick action modals */}
+      <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} />
+      <QuickWaterModal open={quickModal === "water"} onOpenChange={(v) => setQuickModal(v ? "water" : null)} />
+      <QuickWeightModal
+        open={quickModal === "weight"}
+        onOpenChange={(v) => setQuickModal(v ? "weight" : null)}
+        currentWeight={dashboard.latest_weight?.weight_kg}
+      />
+      <QuickMoodModal open={quickModal === "mood"} onOpenChange={(v) => setQuickModal(v ? "mood" : null)} />
 
       {/* Refeições do dia */}
       {dashboard.nutrition.meals.length > 0 && (

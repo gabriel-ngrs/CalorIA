@@ -14,20 +14,21 @@ class TestDashboardToday:
         resp = await client.get("/api/v1/dashboard/today")
         assert resp.status_code == 200
         data = resp.json()
-        assert "total_calories" in data
-        assert "total_protein" in data
-        assert "meals" in data
+        assert "nutrition" in data
+        assert "total_calories" in data["nutrition"]
+        assert "total_protein" in data["nutrition"]
+        assert "meals" in data["nutrition"]
 
-    async def test_sem_autenticacao_retorna_403(self, anon_client: AsyncClient) -> None:
+    async def test_sem_autenticacao_retorna_401(self, anon_client: AsyncClient) -> None:
         resp = await anon_client.get("/api/v1/dashboard/today")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     async def test_dia_sem_refeicoes_retorna_zeros(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/dashboard/today?today=2020-01-01")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["total_calories"] == 0
-        assert data["meals_count"] == 0
+        assert data["nutrition"]["total_calories"] == 0
+        assert data["nutrition"]["meals_count"] == 0
 
 
 class TestDashboardWeekly:
@@ -44,7 +45,7 @@ class TestDashboardWeekly:
         resp = await client.get("/api/v1/dashboard/weekly")
         assert resp.status_code == 200
         data = resp.json()
-        assert "total_calories" in data
+        assert "avg_calories" in data
 
 
 class TestWeightChart:

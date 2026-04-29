@@ -47,21 +47,3 @@ export function useUpdateMe() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
   });
 }
-
-export function useGenerateTelegramToken() {
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await api.post("/api/v1/telegram/link-token");
-      return data as { token: string; expires_in: number };
-    },
-  });
-}
-
-export function useGenerateWhatsAppToken() {
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await api.post("/api/v1/whatsapp/link-token");
-      return data as { token: string; expires_in: number };
-    },
-  });
-}

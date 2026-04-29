@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMe, useProfile, useUpdateProfile, useUpdateMe } from "@/lib/hooks/useProfile";
+import { toast } from "sonner";
 import type { ActivityLevel, GoalType, Sex } from "@/types";
 
 const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
@@ -104,6 +105,7 @@ export default function PerfilPage() {
     ]);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    toast.success("Perfil atualizado!");
   }
 
   const isPending = updateProfile.isPending || updateMe.isPending;
@@ -113,11 +115,11 @@ export default function PerfilPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <User className="h-6 w-6 text-primary" />
           Perfil
         </h1>
-        <p className="text-muted-foreground text-sm">Seus dados e metas</p>
+        <p className="text-gray-400 text-sm">Seus dados e metas</p>
       </div>
 
       {/* TDEE banner — destaque quando disponível */}

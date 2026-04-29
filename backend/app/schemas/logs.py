@@ -2,10 +2,10 @@ from datetime import date, datetime, time
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # WeightLog
 # ---------------------------------------------------------------------------
+
 
 class WeightLogCreate(BaseModel):
     weight_kg: float = Field(gt=0, le=700)
@@ -27,6 +27,7 @@ class WeightLogResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # HydrationLog
 # ---------------------------------------------------------------------------
+
 
 class HydrationLogCreate(BaseModel):
     amount_ml: int = Field(gt=0, le=5000)
@@ -54,6 +55,7 @@ class HydrationDaySummary(BaseModel):
 # ---------------------------------------------------------------------------
 # MoodLog
 # ---------------------------------------------------------------------------
+
 
 class MoodLogCreate(BaseModel):
     date: date

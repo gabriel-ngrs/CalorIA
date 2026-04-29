@@ -4,16 +4,15 @@ import { useState } from "react";
 import {
   Bell,
   BellOff,
-  MessageSquare,
   Pause,
   Play,
   Plus,
-  Send,
   Trash2,
   X,
   Clock,
   Repeat,
   CalendarDays,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +33,17 @@ import {
   useDeleteReminder,
   type ReminderPayload,
 } from "@/lib/hooks/useReminders";
-import type { ReminderChannel, ReminderType } from "@/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { ReminderType } from "@/types";
 
 const DAYS_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -52,11 +61,6 @@ const TYPE_COLORS: Record<ReminderType, { dot: string; badge: string }> = {
   weight:        { dot: "bg-green-500",   badge: "text-green-400 border-green-500/30 bg-green-500/10" },
   daily_summary: { dot: "bg-purple-500",  badge: "text-purple-400 border-purple-500/30 bg-purple-500/10" },
   custom:        { dot: "bg-yellow-500",  badge: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" },
-};
-
-const CHANNEL_LABELS: Record<ReminderChannel, string> = {
-  telegram: "Telegram",
-  whatsapp: "WhatsApp",
 };
 
 function generateIntervalTimes(start: string, end: string, intervalHours: number): string[] {
@@ -79,8 +83,8 @@ export default function LembretesPage() {
   const toggleReminder = useToggleReminder();
   const deleteReminder = useDeleteReminder();
 
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [type, setType] = useState<ReminderType>("meal");
-  const [channel, setChannel] = useState<ReminderChannel>("telegram");
   const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
   const [mode, setMode] = useState<"manual" | "interval">("manual");
@@ -119,7 +123,6 @@ export default function LembretesPage() {
 
     const payloads: ReminderPayload[] = previewTimes.map((t) => ({
       type,
-      channel,
       time: t,
       days_of_week: days,
       message: message || undefined,
@@ -138,11 +141,11 @@ export default function LembretesPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Bell className="h-6 w-6 text-primary" />
           Lembretes
         </h1>
-        <p className="text-muted-foreground text-sm">Configure notificações nos seus canais</p>
+        <p className="text-gray-400 text-sm">Configure notificações via web push</p>
       </div>
 
       {/* Stat chips */}
@@ -182,48 +185,24 @@ export default function LembretesPage() {
           <CardContent>
             <form onSubmit={handleCreate} className="space-y-5">
 
-              {/* Tipo e canal */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Tipo</Label>
-                  <Select value={type} onValueChange={(v) => setType(v as ReminderType)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TYPE_LABELS).map(([v, label]) => (
-                        <SelectItem key={v} value={v}>
-                          <span className="flex items-center gap-2">
-                            <span className={`inline-block w-2 h-2 rounded-full ${TYPE_COLORS[v as ReminderType].dot}`} />
-                            {label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Canal</Label>
-                  <Select value={channel} onValueChange={(v) => setChannel(v as ReminderChannel)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="telegram">
+              {/* Tipo */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Tipo</Label>
+                <Select value={type} onValueChange={(v) => setType(v as ReminderType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([v, label]) => (
+                      <SelectItem key={v} value={v}>
                         <span className="flex items-center gap-2">
-                          <Send className="h-3.5 w-3.5 text-blue-400" />
-                          Telegram
+                          <span className={`inline-block w-2 h-2 rounded-full ${TYPE_COLORS[v as ReminderType].dot}`} />
+                          {label}
                         </span>
                       </SelectItem>
-                      <SelectItem value="whatsapp">
-                        <span className="flex items-center gap-2">
-                          <MessageSquare className="h-3.5 w-3.5 text-green-400" />
-                          WhatsApp
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Dias da semana */}
@@ -442,13 +421,6 @@ export default function LembretesPage() {
                             <span>·</span>
                             <span className="truncate">{daysLabel}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                            {r.channel === "telegram"
-                              ? <Send className="h-3 w-3 text-blue-400 shrink-0" />
-                              : <MessageSquare className="h-3 w-3 text-green-400 shrink-0" />
-                            }
-                            <span>{CHANNEL_LABELS[r.channel]}</span>
-                          </div>
                           {r.message && (
                             <p className="text-xs text-muted-foreground italic mt-1 truncate">
                               &ldquo;{r.message}&rdquo;
@@ -467,7 +439,7 @@ export default function LembretesPage() {
                             }
                           </button>
                           <button
-                            onClick={() => deleteReminder.mutate(r.id)}
+                            onClick={() => setPendingDeleteId(r.id)}
                             className="cursor-pointer p-1.5 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
                             title="Excluir"
                           >
@@ -493,6 +465,20 @@ export default function LembretesPage() {
           )}
         </div>
       </div>
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open: boolean) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lembrete?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pendingDeleteId !== null) { deleteReminder.mutate(pendingDeleteId); setPendingDeleteId(null); } }}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

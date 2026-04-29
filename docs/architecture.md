@@ -8,32 +8,32 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Canais de entrada                                                   │
-│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────────────┐ │
-│  │  Telegram Bot│  │ WhatsApp Bot  │  │    Dashboard Web (Next)  │ │
-│  │  (polling/   │  │  (webhook via │  │    next-auth + TanStack  │ │
-│  │   webhook)   │  │ Evolution API)│  │    Query + shadcn/ui     │ │
-│  └──────┬───────┘  └──────┬────────┘  └─────────────┬────────────┘ │
-│         │                 │                          │              │
-└─────────┼─────────────────┼──────────────────────────┼─────────────┘
-          │                 │  HTTP REST               │
-          ▼                 ▼                          ▼
+│  Canal de entrada                                                    │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │    Dashboard Web (Next.js 14)                                │   │
+│  │    JWT próprio · TanStack Query · shadcn/ui · Web Push       │   │
+│  └──────────────────────────────┬───────────────────────────────┘   │
+└─────────────────────────────────┼───────────────────────────────────┘
+                                  │  HTTP REST
+                                  ▼
 ┌────────────────────────────────────────────────────────────────────┐
 │  Backend — FastAPI (Python 3.12)                                   │
 │                                                                    │
 │  api/v1/  auth · users · meals · weight · hydration · mood        │
-│           dashboard · ai · reminders · telegram · whatsapp        │
+│           dashboard · ai · reminders · push                       │
 │                                                                    │
 │  services/  UserService · MealService · LogService                │
 │             DashboardService · ProfileService                     │
-│             AuthService · ReminderService                         │
+│             AuthService · ReminderService · PushService           │
 │             ai/ GeminiClient · MealParser · VisionParser          │
 │                 InsightsGenerator · PatternAnalyzer               │
-│                 TacoLookup (fuzzy, ~600 alimentos TACO)           │
+│                 FoodLookup (pg_trgm, TACO+OFF ~19.800)           │
 │                 ContextBuilder (histórico + tipo de refeição)     │
 │             nutrition/ TDEE (Harris-Benedict)                     │
 │                                                                    │
 │  workers/  Celery Beat:                                            │
+│    - dispatch_due_reminders (a cada minuto)                       │
+│    - send_hydration_reminders (horários configurados)             │
 │    - send_daily_summaries (22h)                                   │
 │    - send_weekly_reports (domingo 20h)                            │
 │    - cleanup_old_conversations (domingo 3h, >90 dias)            │
@@ -64,35 +64,37 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ---
 
-## ADR-002 — Gemini Flash como modelo padrão
+## ADR-002 — Google Gemini 2.5 Flash como modelo de IA
 
-**Contexto:** O Google Gemini oferece tier gratuito generoso (15 RPM, 1M tokens/min).
+**Contexto:** O Google Gemini oferece tier gratuito com suporte a texto e visão num único modelo multimodal.
 
-**Decisão:** Usar `gemini-1.5-flash` para análise de texto e insights; `gemini-1.5-pro` para visão.
+**Decisão:** Usar `models/gemini-2.5-flash` via SDK `google-genai` para análise de texto, fotos e geração de insights. Um único modelo cobre todos os casos de uso.
 
 **Consequências:**
-- Cache Redis (7 dias, chave SHA-256) reduz chamadas redundantes
-- Retry exponencial (3 tentativas) protege contra rate limiting
-- Análise de fotos via base64 — imagens não são armazenadas permanentemente
+- Cache Redis (7 dias, chave SHA-256) reduz chamadas redundantes para insights
+- Retry com backoff exponencial em erros 429 — até 4 tentativas, espera inicial 15s dobrada a cada tentativa
+- Análise de fotos via bytes nativos — imagens não são armazenadas permanentemente
+- `GEMINI_API_KEY` nunca exposta ao frontend
 
 ---
 
-## ADR-003 — Evolution API para WhatsApp
+## ADR-003 — Web Push VAPID em vez de bots externos
 
-**Contexto:** A API oficial do WhatsApp Business tem custo e aprovação. Para uso pessoal, a Evolution API (self-hosted) é suficiente.
+**Contexto:** O projeto inicialmente usava Telegram e WhatsApp (Evolution API) como canais de notificação. Isso criava dependência de serviços externos, sessões persistentes e infraestrutura adicional.
 
-**Decisão:** Usar Evolution API via Docker com uma sessão persistente.
+**Decisão:** Notificações via Web Push nativo (VAPID, pywebpush). Registro de refeições é exclusivamente via dashboard web.
 
 **Consequências:**
-- Requer escanear QR code uma vez para conectar
-- Sessão persiste em volume Docker entre restarts
-- Não escalável para múltiplos usuários sem instâncias separadas
+- Sem Evolution API no Docker Compose
+- Notificações nativas no browser desktop e mobile (PWA)
+- Subscriptions armazenadas no banco (`push_subscriptions`); expiradas (HTTP 410) são removidas automaticamente
+- Lembretes não têm mais campo `channel` — são sempre Web Push
 
 ---
 
 ## ADR-004 — Celery com Redis como broker (sem RabbitMQ)
 
-**Contexto:** O projeto usa Redis para cache e blacklist de JWT. Adicionar RabbitMQ seria over-engineering.
+**Contexto:** O projeto já usa Redis para cache e blacklist de JWT. Adicionar RabbitMQ seria over-engineering.
 
 **Decisão:** Usar Redis como broker e backend do Celery.
 
@@ -116,54 +118,20 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ---
 
-## Fluxo de Registro de Refeição (Telegram/WhatsApp/API)
+## ADR-006 — Banco nutricional com pg_trgm + pipeline dois estágios + sanity check
 
-```
-Usuário envia mensagem (texto ou foto)
-        │
-        ▼
-  Bot / API recebe entrada
-        │
-        ├── texto → MealParser
-        │              │
-        └── foto  → VisionParser
-                       │
-                       ▼
-              ContextBuilder
-              ├── infere tipo de refeição (café/almoço/janta/lanche)
-              ├── busca últimas 3 refeições do mesmo tipo
-              └── injeta porções históricas e médias diárias
-                       │
-                       ▼
-              TacoLookup (fuzzy, rapidfuzz ≥ 75)
-              └── substitui macros estimados por valores reais TACO
-                       │
-                       ▼
-              Gemini Flash (prompt enriquecido com TACO + histórico)
-              └── JSON: [{food_name, calories, protein, carbs, fat, confidence}]
-                       │
-                       ▼
-              Exibe resumo + confirmação (bot) ou retorna JSON (API)
-                       │
-                  Usuário confirma
-                       │
-                       ▼
-              POST /api/v1/meals → salva no banco
-```
+**Contexto:** A IA estima macros com variância alta para alimentos brasileiros. Um pipeline de um único estágio misturava identificação e cálculo, dificultando validação e deixando registros incorretos do Open Food Facts contaminarem resultados.
 
----
+**Decisão:** Banco `foods` no PostgreSQL (TACO ~307 + Open Food Facts ~19.500) com índice GIN trigrama. Pipeline em dois estágios com sanity check calórico:
 
-## ADR-006 — Banco TACO com lookup fuzzy
-
-**Contexto:** O Gemini estima macros com variância alta para alimentos brasileiros típicos.
-
-**Decisão:** Embutir ~600 alimentos da Tabela Brasileira de Composição de Alimentos (TACO) no backend. Antes de cada chamada ao Gemini, buscar alimentos por similaridade de nome (rapidfuzz, threshold 75) e injetar os valores reais no prompt.
+1. **Estágio 1 — Identificação:** IA retorna alimentos com nome, quantidade, unidade e `kcal_estimate` (usado exclusivamente no sanity check, não substitui macros do banco).
+2. **Estágio 2 — Lookup + sanity check:** Busca com `similarity()` + `%>>` (threshold 0.65). Se match encontrado, compara calorias calculadas do banco com `kcal_estimate` — divergência > 35% descarta o match e usa estimativa da IA (`data_source="ai_estimated"`). Itens sem match vão para `_estimate_macros_batch` (uma única chamada IA agrupada).
 
 **Consequências:**
-- Macros mais precisos para alimentos comuns (arroz, feijão, frango, etc.)
-- Prompt maior — sem impacto significativo no free tier do Gemini Flash
-- Fallback: se não encontrar no TACO, Gemini estima normalmente
-- Bot Telegram e API REST compartilham o mesmo `MealParser` + `TacoLookup`
+- Dados TACO recebem boost 1.40× para prevalecerem sobre Open Food Facts em desempates
+- `MealItem` registra `food_id` (FK→foods) e `data_source` para rastreabilidade
+- Sanity check evita que valores incorretos do Open Food Facts (ex: feijão carioca 40 kcal vs TACO 76 kcal) contaminem resultados
+- Latência de lookup < 20ms com 19.800 registros
 
 ---
 
@@ -171,12 +139,66 @@ Usuário envia mensagem (texto ou foto)
 
 **Contexto:** shadcn/ui padrão tem visual genérico; o projeto precisava de identidade visual própria.
 
-**Decisão:** Criar sistema de design com glassmorphism (backdrop-blur + transparência) combinado com neumorphism (sombras suaves embutidas/elevadas). Implementado via CSS custom em `globals.css` (`@layer components`) e tokens no `tailwind.config.ts`.
+**Decisão:** Sistema de design com glassmorphism (backdrop-blur + transparência) combinado com neumorphism (sombras suaves). Implementado via CSS custom em `globals.css` (`@layer components`) e tokens no `tailwind.config.ts`.
 
 **Consequências:**
 - Classes utilitárias: `.glass`, `.glass-card`, `.glass-neu`, `.neu-raised`, `.neu-inset`, `.glow-primary`
-- Dark mode como padrão (`html.dark` fixo) — não suporta light mode por ora
+- Dark mode como padrão (`html.dark` fixo)
 - Todos os módulos do dashboard seguem o mesmo sistema visual
+
+---
+
+## ADR-008 — CI/CD com GitHub Actions
+
+**Contexto:** Deploy manual via SSH era propenso a erros e requeria acesso ao servidor a cada release.
+
+**Decisão:** `ci.yml` roda lint + testes + build em todo push na `dev` e em PRs para `main`. `cd.yml` faz SSH → git pull → docker compose up → alembic ao mergear na `main`.
+
+**Consequências:**
+- `main` é sempre estável e deployável
+- Deploy automático sem acesso manual ao servidor
+- Secrets de SSH armazenados no GitHub Environment `production`
+- Ver `docs/git-workflow.md` para o fluxo de branches
+
+---
+
+## Fluxo de Registro de Refeição (Web)
+
+```
+Usuário envia descrição ou foto no dashboard
+        │
+        ▼
+  POST /api/v1/ai/analyze-meal  (texto)
+  POST /api/v1/ai/analyze-photo (foto)
+        │
+        ▼
+  ContextBuilder
+  ├── infere tipo de refeição (café/almoço/janta/lanche)
+  ├── busca últimas 3 refeições do mesmo tipo
+  └── injeta porções históricas e médias diárias
+        │
+        ▼
+  [Estágio 1] Gemini 2.5 Flash identifica alimentos
+  └── retorna: food_name, quantity, unit, preparation, kcal_estimate
+        │
+        ▼
+  [Estágio 2] FoodLookup (pg_trgm, threshold 0.65) + sanity check
+  ├── match + divergência ≤ 35%  → macros do banco, data_source=food.source
+  ├── match + divergência > 35%  → fallback estimativa IA
+  └── sem match                  → _estimate_macros_batch (IA agrupada)
+                                   data_source="ai_estimated"
+        │
+        ▼
+  _correct_calories (Atwater: prot×4 + carb×4 + gord×9)
+        │
+        ▼
+  Retorna MealAnalysisResponse ao frontend
+        │
+   Usuário confirma
+        │
+        ▼
+  POST /api/v1/meals → salva no banco
+```
 
 ---
 
@@ -186,21 +208,26 @@ Usuário envia mensagem (texto ou foto)
 users (1)
   ├── user_profiles (1:1)
   ├── meals (1:N)
-  │     └── meal_items (1:N)
+  │     └── meal_items (1:N) — food_id FK→foods, data_source, micronutrientes
   ├── weight_logs (1:N)
   ├── hydration_logs (1:N)
   ├── mood_logs (1:N)
   ├── reminders (1:N)
+  ├── push_subscriptions (1:N)
+  ├── notifications (1:N)
   └── ai_conversations (1:N)
+
+foods — banco nutricional unificado (TACO + Open Food Facts)
+  └── search_text GIN index (pg_trgm)
 ```
 
-Todas as relações usam `CASCADE DELETE` — ao remover o usuário, todos os dados são removidos.
+Todas as relações usam `CASCADE DELETE`.
 
 ---
 
 ## Segurança
 
-- Senhas com bcrypt direto (sem passlib — incompatível com bcrypt 5.x)
+- Senhas com passlib[bcrypt]
 - JWT HS256 — access (30 min) + refresh (30 dias)
 - CORS configurável via `BACKEND_CORS_ORIGINS`
 - `GEMINI_API_KEY` nunca exposta ao frontend

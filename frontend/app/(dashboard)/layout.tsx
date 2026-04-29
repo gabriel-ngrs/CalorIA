@@ -1,6 +1,8 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { PullToRefreshWrapper } from "@/components/layout/PullToRefreshWrapper";
+import { PushSubscriber } from "@/components/layout/PushSubscriber";
 
 export default function DashboardLayout({
   children,
@@ -12,9 +14,12 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex flex-1 flex-col min-w-0">
         <Navbar />
-        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 animate-fade-in">{children}</main>
+        <PullToRefreshWrapper>
+          <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 animate-fade-in">{children}</main>
+        </PullToRefreshWrapper>
       </div>
       <BottomNav />
+      <PushSubscriber />
     </div>
   );
 }

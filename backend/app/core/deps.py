@@ -36,4 +36,4 @@ async def get_current_user_id(
             raise credentials_exception
         return int(user_id)
     except (JWTError, ValueError):
-        raise credentials_exception
+        raise credentials_exception from None

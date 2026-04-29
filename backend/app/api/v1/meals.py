@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user_id, get_db
 from app.models.meal import MealType
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
-from app.services.meal_service import MealService
+from app.services.meal_service import MealService, MealItemNotFound
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 
@@ -53,7 +53,9 @@ async def get_meal(
 ) -> MealResponse:
     meal = await MealService(db).get_meal(user_id, meal_id)
     if not meal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+        )
     return MealResponse.model_validate(meal)
 
 
@@ -66,7 +68,9 @@ async def update_meal(
 ) -> MealResponse:
     meal = await MealService(db).update_meal(user_id, meal_id, data)
     if not meal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+        )
     return MealResponse.model_validate(meal)
 
 
@@ -78,4 +82,22 @@ async def delete_meal(
 ) -> None:
     deleted = await MealService(db).delete_meal(user_id, meal_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+        )
+
+
+@router.delete("/{meal_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_meal_item(
+    meal_id: int,
+    item_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Remove um item individual de uma refeição."""
+    try:
+        await MealService(db).delete_meal_item(user_id, meal_id, item_id)
+    except MealItemNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado"
+        )

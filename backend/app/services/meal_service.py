@@ -12,6 +12,10 @@ from app.schemas.dashboard import WeeklyMacroPoint
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
 
 
+class MealItemNotFound(Exception):
+    pass
+
+
 class MealService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -83,6 +87,17 @@ class MealService:
         await self.db.commit()
         await self.db.refresh(meal)
         return meal
+
+    async def delete_meal_item(self, user_id: int, meal_id: int, item_id: int) -> None:
+        """Remove um MealItem verificando que pertence ao usuário."""
+        meal = await self.get_meal(user_id, meal_id)
+        if not meal:
+            raise MealItemNotFound
+        item = next((it for it in meal.items if it.id == item_id), None)
+        if not item:
+            raise MealItemNotFound
+        await self.db.delete(item)
+        await self.db.commit()
 
     async def delete_meal(self, user_id: int, meal_id: int) -> bool:
         meal = await self.get_meal(user_id, meal_id)

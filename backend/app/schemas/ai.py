@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class ParsedFoodItem(BaseModel):
-    """Item alimentar extraído pela IA com macronutrientes estimados."""
+    """Item alimentar extraído pela IA com macronutrientes estimados ou do banco."""
 
     food_name: str
     quantity: float
@@ -16,6 +16,12 @@ class ParsedFoodItem(BaseModel):
     fat: float = Field(ge=0)
     fiber: float = Field(default=0.0, ge=0)
     confidence: float = Field(ge=0.0, le=1.0)
+    # Rastreabilidade: preenchidos quando há match no banco nutricional
+    food_id: int | None = None
+    data_source: str | None = None  # "taco" | "openfoodfacts" | "usda" | "ai_estimated"
+    sodium: float | None = None
+    sugar: float | None = None
+    saturated_fat: float | None = None
 
 
 class MealAnalysisRequest(BaseModel):

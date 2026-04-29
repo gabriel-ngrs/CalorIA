@@ -2,14 +2,17 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { TooltipProps } from "recharts";
+import Link from "next/link";
+import { UtensilsCrossed } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import type { NutritionSummary } from "@/types";
 
 interface Props {
   nutrition: NutritionSummary;
 }
 
-const COLORS = ["#f97316", "#ef4444", "#eab308"];
+const COLORS = ["#22C55E", "#EAB308", "#EF4444"];
 
 function PieTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
@@ -21,13 +24,11 @@ function PieTooltip({ active, payload }: TooltipProps<number, string>) {
   return (
     <div
       style={{
-        background: "rgba(15, 28, 38, 0.88)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
-        border: "1px solid rgba(145, 183, 199, 0.16)",
+        background: "#FFFFFF",
+        border: "1px solid #E5E7EB",
         borderRadius: "10px",
         padding: "10px 14px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
         minWidth: "130px",
       }}
     >
@@ -42,14 +43,14 @@ function PieTooltip({ active, payload }: TooltipProps<number, string>) {
             flexShrink: 0,
           }}
         />
-        <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 500 }}>{item.name}</span>
+        <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>{item.name}</span>
       </div>
       <p style={{ margin: 0, fontSize: "20px", fontWeight: 700, color, lineHeight: 1.2 }}>
         {item.value}
-        <span style={{ fontSize: "12px", fontWeight: 400, color: "#64748b", marginLeft: "4px" }}>kcal</span>
+        <span style={{ fontSize: "12px", fontWeight: 400, color: "#9CA3AF", marginLeft: "4px" }}>kcal</span>
       </p>
       {pct && (
-        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#64748b" }}>{pct}% do total</p>
+        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#9CA3AF" }}>{pct}% do total</p>
       )}
     </div>
   );
@@ -71,8 +72,17 @@ export function MacroPieChart({ nutrition }: Props) {
         <CardHeader>
           <CardTitle className="text-sm">Distribuição de macros</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-          Sem dados hoje
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+          <span className="flex items-center justify-center w-12 h-12 rounded-full bg-muted/40">
+            <UtensilsCrossed className="h-6 w-6 text-muted-foreground/50" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-foreground/70">Nenhuma refeição registrada hoje</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Registre o que comeu para ver a distribuição</p>
+          </div>
+          <Button asChild size="sm" variant="outline" className="gap-1.5 mt-1">
+            <Link href="/refeicoes">Registrar refeição</Link>
+          </Button>
         </CardContent>
       </Card>
     );

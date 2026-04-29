@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-import enum
 from datetime import date, datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.meal_item import MealItem
+    from app.models.user import User
 
 
-class MealType(str, enum.Enum):
+class MealType(StrEnum):
     BREAKFAST = "breakfast"
     MORNING_SNACK = "morning_snack"
     LUNCH = "lunch"
@@ -28,7 +29,7 @@ class MealType(str, enum.Enum):
     DESSERT = "dessert"
 
 
-class MealSource(str, enum.Enum):
+class MealSource(StrEnum):
     MANUAL = "manual"
     TELEGRAM = "telegram"
     WHATSAPP = "whatsapp"

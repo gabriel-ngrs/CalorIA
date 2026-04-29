@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.hydration_log import HydrationLog
@@ -14,9 +14,7 @@ from app.schemas.logs import (
     HydrationLogCreate,
     HydrationLogResponse,
     MoodLogCreate,
-    MoodLogResponse,
     WeightLogCreate,
-    WeightLogResponse,
 )
 
 
@@ -24,7 +22,9 @@ class WeightService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def list(self, user_id: int, skip: int = 0, limit: int = 100) -> list[WeightLog]:
+    async def list(
+        self, user_id: int, skip: int = 0, limit: int = 100
+    ) -> list[WeightLog]:
         result = await self.db.execute(
             select(WeightLog)
             .where(WeightLog.user_id == user_id)
@@ -90,7 +90,9 @@ class HydrationService:
                 HydrationDaySummary(
                     date=current,
                     total_ml=sum(e.amount_ml for e in day_entries),
-                    entries=[HydrationLogResponse.model_validate(e) for e in day_entries],
+                    entries=[
+                        HydrationLogResponse.model_validate(e) for e in day_entries
+                    ],
                 )
             )
             current += timedelta(days=1)

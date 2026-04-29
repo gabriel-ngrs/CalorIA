@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useMoodLogs, useLogMood } from "@/lib/hooks/useLogs";
+import { toast } from "sonner";
 
 const LEVELS = [
   { value: 1, label: "Muito baixo" },
@@ -62,7 +63,7 @@ function LevelSelector({
             onClick={() => onChange(l.value)}
             title={l.label}
             className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all duration-150 cursor-pointer",
+              "flex-1 flex flex-col items-center gap-0.5 py-3 rounded-xl border transition-all duration-150 cursor-pointer",
               isSelected ? selectedMap[l.value] : colorMap[l.value]
             )}
           >
@@ -103,6 +104,7 @@ export default function HumorPage() {
       notes: notes || undefined,
     });
     setNotes("");
+    toast.success("Humor registrado!");
   }
 
   const allLogs = logs ?? [];
@@ -135,11 +137,11 @@ export default function HumorPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Smile className="h-6 w-6 text-yellow-400" />
           Humor & Energia
         </h1>
-        <p className="text-muted-foreground text-sm">Como você está hoje?</p>
+        <p className="text-gray-400 text-sm">Como você está hoje?</p>
       </div>
 
       {/* Layout 2 colunas */}
@@ -217,7 +219,7 @@ export default function HumorPage() {
           {/* Média energia */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
                   <Zap className="h-3 w-3 text-orange-500" />
                 </span>
@@ -238,7 +240,7 @@ export default function HumorPage() {
           {/* Média humor */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/40">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10">
                   <Smile className="h-3 w-3 text-blue-400" />
                 </span>
@@ -260,7 +262,7 @@ export default function HumorPage() {
           {bestDay && (
             <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/40">
               <CardHeader className="pb-1">
-                <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                   <span className="flex items-center justify-center w-5 h-5 rounded-md bg-yellow-400/10">
                     <Star className="h-3 w-3 text-yellow-400" />
                   </span>
@@ -289,7 +291,7 @@ export default function HumorPage() {
           {/* Dias registrados */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary/10">
                   <CalendarDays className="h-3 w-3 text-primary" />
                 </span>
@@ -317,7 +319,7 @@ export default function HumorPage() {
                   key={d}
                   size="sm"
                   variant={period === d ? "default" : "outline"}
-                  className="h-6 px-2 text-xs"
+                  className="h-9 px-3 text-xs"
                   onClick={() => setPeriod(d)}
                 >
                   {d}d

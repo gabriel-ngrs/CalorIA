@@ -1,23 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
   Bot,
   CalendarIcon,
+  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
   Dumbbell,
   Droplets,
   Flame,
+  Mic,
+  MicOff,
   Pencil,
   Plus,
   RefreshCw,
   Search,
   Trash2,
+  Type,
   UtensilsCrossed,
+  X,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,7 +56,17 @@ const Calendar = dynamic(
   () => import("@/components/ui/calendar").then((m) => m.Calendar),
   { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
 );
-import { useAnalyzeMeal, useCreateMeal, useDeleteMeal, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
+import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal, useDeleteMeal, useDeleteMealItem, useMeals, useUpdateMeal } from "@/lib/hooks/useMeals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -196,12 +211,12 @@ function DayStats({ meals }: { meals: Meal[] }) {
       </Card>
 
       {/* Gordura */}
-      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-sky-400/40">
+      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-red-500/40">
         <CardContent className="pt-4 pb-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1">
-            <Droplets className="h-3 w-3 text-sky-400" /> Gordura
+            <Droplets className="h-3 w-3 text-red-500" /> Gordura
           </p>
-          <p className="text-2xl font-bold text-sky-400">
+          <p className="text-2xl font-bold text-red-500">
             {totalFat.toFixed(0)}
             <span className="text-sm font-normal text-muted-foreground ml-1">g</span>
           </p>
@@ -300,7 +315,7 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
         <div className="flex gap-1.5 flex-wrap mb-3">
           <MacroPill icon={<Dumbbell className="h-3 w-3" />} value={totalProt} unit="g P" color="bg-green-500/10 text-green-400" />
           <MacroPill icon={<Zap className="h-3 w-3" />} value={totalCarb} unit="g C" color="bg-yellow-500/10 text-yellow-400" />
-          <MacroPill icon={<Droplets className="h-3 w-3" />} value={totalFat} unit="g G" color="bg-sky-400/10 text-sky-400" />
+          <MacroPill icon={<Droplets className="h-3 w-3" />} value={totalFat} unit="g G" color="bg-red-500/10 text-red-500" />
         </div>
 
         {/* Food items */}
@@ -331,25 +346,67 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+type InputMode = "text" | "photo" | "audio";
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function RefeicoesPage() {
   const today = getLocalToday();
   const [filterDate, setFilterDate] = useState(today);
+
+  // Corrige a data para o timezone do cliente após a hidratação.
+  // O servidor (UTC) pode calcular uma data diferente da local do usuário.
+  useEffect(() => {
+    setFilterDate(getLocalToday());
+  }, []);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const { data: meals, isLoading } = useMeals(filterDate);
   const deleteMeal = useDeleteMeal();
+  const deleteMealItem = useDeleteMealItem();
   const analyzeMeal = useAnalyzeMeal();
+  const analyzePhoto = useAnalyzePhoto();
   const createMeal = useCreateMeal();
   const updateMeal = useUpdateMeal();
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   // Nova refeição
   const [open, setOpen] = useState(false);
-  const [description, setDescription] = useState("");
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [parsedItems, setParsedItems] = useState<ParsedFoodItem[] | null>(null);
+
+  // Modo de entrada
+  const [inputMode, setInputMode] = useState<InputMode>("text");
+
+  // Texto
+  const [description, setDescription] = useState("");
+
+  // Foto
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Áudio
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const speechRef = useRef<any>(null);
 
   // Edição
   const [editOpen, setEditOpen] = useState(false);
@@ -374,12 +431,66 @@ export default function RefeicoesPage() {
     setEditMeal(null);
   }
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    // reset input so same file can be selected again
+    e.target.value = "";
+  }
+
+  function startRecording() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      setSpeechError("Reconhecimento de voz não suportado. Use Chrome ou Edge.");
+      return;
+    }
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let final = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) final += event.results[i][0].transcript;
+      }
+      if (final) setTranscript((prev) => (prev + " " + final).trim());
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
+      setIsRecording(false);
+      if (event.error !== "aborted") setSpeechError("Erro no microfone. Verifique as permissões do navegador.");
+    };
+    recognition.onend = () => setIsRecording(false);
+    speechRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    setSpeechError(null);
+  }
+
+  function stopRecording() {
+    speechRef.current?.stop();
+    setIsRecording(false);
+  }
+
   async function handleAnalyze() {
     try {
-      const res = await analyzeMeal.mutateAsync(description);
-      setParsedItems(res.items);
+      if (inputMode === "text") {
+        const res = await analyzeMeal.mutateAsync(description);
+        setParsedItems(res.items);
+      } else if (inputMode === "photo" && imageFile) {
+        const base64 = await fileToBase64(imageFile);
+        const res = await analyzePhoto.mutateAsync({ image_base64: base64, mime_type: imageFile.type || "image/jpeg" });
+        setParsedItems(res.items);
+      } else if (inputMode === "audio" && transcript.trim()) {
+        const res = await analyzeMeal.mutateAsync(transcript);
+        setParsedItems(res.items);
+      }
     } catch {
-      // error shown via analyzeMeal.isError
+      // error shown via mutation.isError
     }
   }
 
@@ -419,6 +530,13 @@ export default function RefeicoesPage() {
     setParsedItems(null);
     setDescription("");
     setMealType("lunch");
+    setInputMode("text");
+    setImageFile(null);
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(null);
+    setTranscript("");
+    setSpeechError(null);
+    speechRef.current?.stop();
   }
 
   const dateLabel = formatDateDisplay(filterDate);
@@ -430,11 +548,11 @@ export default function RefeicoesPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
             <UtensilsCrossed className="h-6 w-6 text-primary" />
             Refeições
           </h1>
-          <p className="text-muted-foreground text-sm">Registro e histórico alimentar</p>
+          <p className="text-gray-400 text-sm">Registro e histórico alimentar</p>
         </div>
 
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetDialog(); }}>
@@ -471,8 +589,34 @@ export default function RefeicoesPage() {
                 </Select>
               </div>
 
-              {/* Descrição — só exibe se ainda não analisou */}
+              {/* Seletor de modo — só exibe antes de analisar */}
               {!parsedItems && (
+                <div className="flex gap-2">
+                  {([
+                    { mode: "text",  Icon: Type,   label: "Texto"  },
+                    { mode: "photo", Icon: Camera, label: "Foto"   },
+                    { mode: "audio", Icon: Mic,    label: "Áudio"  },
+                  ] as const).map(({ mode, Icon, label }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setInputMode(mode); setParsedItems(null); }}
+                      className={cn(
+                        "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer",
+                        inputMode === mode
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-dashed border-gray-200 text-gray-400 hover:border-primary hover:bg-primary/5 hover:text-primary"
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-xs font-medium">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Modo Texto ── */}
+              {inputMode === "text" && !parsedItems && (
                 <div className="space-y-1.5">
                   <Label htmlFor="desc" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Descreva o que comeu
@@ -488,32 +632,134 @@ export default function RefeicoesPage() {
                 </div>
               )}
 
+              {/* ── Modo Foto ── */}
+              {inputMode === "photo" && !parsedItems && (
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                  {imagePreviewUrl ? (
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Preview da refeição"
+                        className="w-full rounded-lg object-cover max-h-48"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setImageFile(null); setImagePreviewUrl(null); }}
+                        className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1 hover:bg-background transition-colors cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors cursor-pointer"
+                    >
+                      <Camera className="h-8 w-8" />
+                      <span className="text-sm font-medium">Tirar foto ou escolher da galeria</span>
+                      <span className="text-xs">JPEG ou PNG</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ── Modo Áudio ── */}
+              {inputMode === "audio" && !parsedItems && (
+                <div className="space-y-3">
+                  <div className="flex flex-col items-center gap-3 py-3">
+                    <button
+                      type="button"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center transition-all cursor-pointer",
+                        isRecording
+                          ? "bg-red-500/20 border-2 border-red-500 text-red-400 animate-pulse"
+                          : "bg-primary/10 border-2 border-primary/30 text-primary hover:bg-primary/20"
+                      )}
+                    >
+                      {isRecording ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
+                    </button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      {isRecording ? "Gravando... clique para parar" : "Clique no microfone e fale o que comeu"}
+                    </p>
+                  </div>
+
+                  {transcript && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Transcrição
+                      </Label>
+                      <Textarea
+                        value={transcript}
+                        onChange={(e) => setTranscript(e.target.value)}
+                        className="resize-none"
+                        rows={3}
+                        placeholder="O que você falou aparecerá aqui..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTranscript("")}
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                      >
+                        Limpar transcrição
+                      </button>
+                    </div>
+                  )}
+
+                  {speechError && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      {speechError}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Erro IA */}
-              {analyzeMeal.isError && (
+              {(analyzeMeal.isError || analyzePhoto.isError) && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   Erro ao analisar. Verifique sua conexão e tente novamente.
                 </div>
               )}
 
-              {/* Analisar */}
+              {/* Botão Analisar */}
               {!parsedItems && (
                 <Button
                   onClick={handleAnalyze}
-                  disabled={!description.trim() || analyzeMeal.isPending}
+                  disabled={
+                    analyzeMeal.isPending || analyzePhoto.isPending ||
+                    (inputMode === "text" && description.trim().length < 3) ||
+                    (inputMode === "photo" && !imageFile) ||
+                    (inputMode === "audio" && transcript.trim().length < 3)
+                  }
                   className="w-full"
                 >
                   <Search className="h-4 w-4 mr-2" />
-                  {analyzeMeal.isPending ? "Analisando com IA..." : "Analisar com IA"}
+                  {(analyzeMeal.isPending || analyzePhoto.isPending) ? "Analisando com IA..." : "Analisar com IA"}
                 </Button>
               )}
 
               {/* Resultado da análise */}
               {parsedItems && (
                 <div className="space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Itens identificados
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Itens identificados
+                    </p>
+                    <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      ✨ Analisado por IA
+                    </span>
+                  </div>
 
                   <div className="rounded-lg border border-border overflow-hidden">
                     {parsedItems.map((item, i) => (
@@ -590,6 +836,35 @@ export default function RefeicoesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Alimentos da refeição */}
+            {editMeal && editMeal.items.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Alimentos
+                </Label>
+                <div className="rounded-lg border border-border divide-y divide-border/50 overflow-hidden">
+                  {editMeal.items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.food_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.quantity}{item.unit} · {item.calories.toFixed(0)} kcal</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 ml-2"
+                        disabled={deleteMealItem.isPending}
+                        onClick={() => deleteMealItem.mutate({ mealId: editMeal.id, itemId: item.id })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="edit-notes" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Notas (opcional)
@@ -621,7 +896,7 @@ export default function RefeicoesPage() {
       <div className="lg:col-span-2 space-y-4">
 
       {/* ── Date navigator ─────────────────────────────────────────────────── */}
-      <div className="glass-card rounded-xl px-3 py-2.5 flex items-center gap-2">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-card px-3 py-2.5 flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -701,12 +976,12 @@ export default function RefeicoesPage() {
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {meals?.length === 0 && !isLoading && (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-muted/50">
-            <UtensilsCrossed className="h-8 w-8 text-muted-foreground/40" />
+          <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gray-100 opacity-40">
+            <UtensilsCrossed className="h-8 w-8 text-gray-400" />
           </div>
           <div>
-            <p className="font-semibold text-foreground/80">Nenhuma refeição registrada</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="font-semibold text-gray-900">Nenhuma refeição registrada</p>
+            <p className="text-sm text-gray-400 mt-1">
               {isTodaySelected
                 ? "Adicione sua primeira refeição do dia"
                 : `Sem registros em ${new Date(filterDate + "T12:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}`}
@@ -732,11 +1007,27 @@ export default function RefeicoesPage() {
             key={meal.id}
             meal={meal}
             onEdit={() => openEdit(meal)}
-            onDelete={() => handleDelete(meal.id)}
+            onDelete={() => setPendingDeleteId(meal.id)}
             deleting={deletingId === meal.id}
           />
         ))}
       </div>
+
+      {/* ── Confirmação de exclusão ────────────────────────────────────────── */}
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open: boolean) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir refeição?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pendingDeleteId !== null) { handleDelete(pendingDeleteId); setPendingDeleteId(null); } }}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       </div>{/* fim col-span-2 */}
 

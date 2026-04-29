@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum as SAEnum, Float, ForeignKey, Integer
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -12,12 +13,12 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class Sex(str, enum.Enum):
+class Sex(StrEnum):
     MALE = "male"
     FEMALE = "female"
 
 
-class ActivityLevel(str, enum.Enum):
+class ActivityLevel(StrEnum):
     SEDENTARY = "sedentary"
     LIGHTLY_ACTIVE = "lightly_active"
     MODERATELY_ACTIVE = "moderately_active"

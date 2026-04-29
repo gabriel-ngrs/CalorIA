@@ -22,7 +22,13 @@ def guess_meal_type(hour: int | None = None) -> MealType:
 
 
 _MEAL_KEYWORDS: dict[MealType, list[str]] = {
-    MealType.BREAKFAST: ["café", "café da manhã", "manhã", "desjejum", "pequeno-almoço"],
+    MealType.BREAKFAST: [
+        "café",
+        "café da manhã",
+        "manhã",
+        "desjejum",
+        "pequeno-almoço",
+    ],
     MealType.LUNCH: ["almoço", "almoçando", "almoçei"],
     MealType.DINNER: ["janta", "jantar", "jantando", "jantei", "ceia"],
     MealType.SNACK: ["lanche", "lanchar", "merenda", "snack"],

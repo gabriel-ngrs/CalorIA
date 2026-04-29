@@ -1,36 +1,32 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import hashlib
 import logging
 
 import redis.asyncio as aioredis
-from groq import AsyncGroq
+from google import genai
+from google.genai import types
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL = 7 * 24 * 3600  # 7 dias
-_CACHE_PREFIX = "groq:"
-_MAX_RETRIES = 3
-_BASE_RETRY_DELAY = 2.0  # segundos
+_CACHE_PREFIX = "gemini:"
 
-_TEXT_MODEL = "llama-3.3-70b-versatile"
-_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+_MODEL = "models/gemini-2.5-flash"
 
 
 class GeminiClient:
-    """Cliente de IA (Groq/Llama) com cache Redis e retry.
+    """Cliente Google Gemini com cache Redis.
 
-    Mantém a mesma interface pública do cliente Gemini original para que
-    todos os services (meal_parser, vision_parser, insights_generator, etc.)
-    funcionem sem alterações.
+    Interface pública idêntica à versão anterior para que todos os services
+    (meal_parser, vision_parser, insights_generator, etc.) funcionem sem alterações.
     """
 
     def __init__(self) -> None:
-        self._client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+        self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     # ------------------------------------------------------------------
     # API pública
@@ -43,19 +39,15 @@ class GeminiClient:
         use_cache: bool = True,
         system: str | None = None,
     ) -> str:
-        """Gera texto com cache Redis opcional.
-
-        Se ``system`` for fornecido, usa formato system+user com temperatura
-        reduzida (0.1) para saídas estruturadas (JSON).
-        """
+        """Gera texto com cache Redis opcional."""
         cache_input = f"[SYS]{system}\n[USR]{prompt}" if system else prompt
         if use_cache:
             cache_key = self._cache_key(cache_input)
             if cached := await self._get_cached(cache_key):
-                logger.debug("Cache hit Groq")
+                logger.debug("Cache hit Gemini")
                 return cached
 
-        result = await self._text_with_retry(prompt, system=system)
+        result = await self._generate(prompt, system=system)
 
         if use_cache:
             await self._set_cached(self._cache_key(cache_input), result)
@@ -70,12 +62,60 @@ class GeminiClient:
         *,
         system: str | None = None,
     ) -> str:
-        """Gera texto a partir de imagem + prompt (sem cache, imagens são únicas)."""
-        b64 = base64.b64encode(image_bytes).decode()
-        return await self._vision_with_retry(prompt, b64, mime_type, system=system)
+        """Gera texto a partir de imagem + prompt (sem cache)."""
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=0.1,
+        )
+        contents: list[types.PartUnionDict] = [
+            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            prompt,
+        ]
+        response = await self._client.aio.models.generate_content(
+            model=_MODEL,
+            contents=contents,
+            config=config,
+        )
+        return response.text or ""
 
     # ------------------------------------------------------------------
     # Internos
+    # ------------------------------------------------------------------
+
+    async def _generate(self, prompt: str, *, system: str | None = None) -> str:
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=0.1 if system else 0.3,
+        )
+        for attempt in range(4):
+            try:
+                response = await self._client.aio.models.generate_content(
+                    model=_MODEL,
+                    contents=prompt,
+                    config=config,
+                )
+                if response.usage_metadata:
+                    logger.info(
+                        "Gemini tokens — entrada: %d, saída: %d",
+                        response.usage_metadata.prompt_token_count or 0,
+                        response.usage_metadata.candidates_token_count or 0,
+                    )
+                return response.text or ""
+            except Exception as exc:
+                if "429" in str(exc) and attempt < 3:
+                    wait = 15 * (2**attempt)
+                    logger.warning(
+                        "Rate limit Gemini — aguardando %ds (tentativa %d/4)",
+                        wait,
+                        attempt + 1,
+                    )
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+        raise RuntimeError("Gemini falhou após 4 tentativas")
+
+    # ------------------------------------------------------------------
+    # Cache Redis
     # ------------------------------------------------------------------
 
     def _cache_key(self, text: str) -> str:
@@ -84,104 +124,22 @@ class GeminiClient:
 
     async def _get_cached(self, key: str) -> str | None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
-                return await r.get(key)
+            async with aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            ) as r:  # type: ignore[no-untyped-call]
+                return await r.get(key)  # type: ignore[no-any-return]
         except Exception as exc:
             logger.warning("Falha ao ler cache (Redis): %s", exc)
             return None
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+            async with aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            ) as r:  # type: ignore[no-untyped-call]
                 await r.setex(key, _CACHE_TTL, value)
         except Exception as exc:
             logger.warning("Falha ao gravar cache (Redis): %s", exc)
-
-    async def _text_with_retry(self, prompt: str, *, system: str | None = None) -> str:
-        last_error: Exception | None = None
-        if system:
-            messages: list[dict[str, str]] = [
-                {"role": "system", "content": system},
-                {"role": "user", "content": prompt},
-            ]
-            temperature = 0.1  # Mais baixo para JSON consistente
-        else:
-            messages = [{"role": "user", "content": prompt}]
-            temperature = 0.3
-
-        for attempt in range(_MAX_RETRIES):
-            try:
-                resp = await self._client.chat.completions.create(
-                    model=_TEXT_MODEL,
-                    messages=messages,  # type: ignore[arg-type]
-                    temperature=temperature,
-                )
-                usage = resp.usage
-                if usage:
-                    logger.info(
-                        "Groq tokens — entrada: %d, saída: %d",
-                        usage.prompt_tokens,
-                        usage.completion_tokens,
-                    )
-                return resp.choices[0].message.content or ""
-            except Exception as exc:
-                last_error = exc
-                if self._is_rate_limit(exc):
-                    wait = _BASE_RETRY_DELAY * (2**attempt)
-                    logger.warning(
-                        "Rate limit Groq — aguardando %.1fs (tentativa %d/%d)",
-                        wait, attempt + 1, _MAX_RETRIES,
-                    )
-                    await asyncio.sleep(wait)
-                else:
-                    raise
-        raise RuntimeError(
-            f"Groq falhou após {_MAX_RETRIES} tentativas: {last_error}"
-        ) from last_error
-
-    async def _vision_with_retry(
-        self, prompt: str, b64: str, mime_type: str, *, system: str | None = None
-    ) -> str:
-        last_error: Exception | None = None
-        user_content: list[dict] = [
-            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
-            {"type": "text", "text": prompt},
-        ]
-        messages: list[dict] = []
-        if system:
-            messages.append({"role": "system", "content": system})
-            temperature = 0.1
-        else:
-            temperature = 0.3
-        messages.append({"role": "user", "content": user_content})
-
-        for attempt in range(_MAX_RETRIES):
-            try:
-                resp = await self._client.chat.completions.create(
-                    model=_VISION_MODEL,
-                    messages=messages,  # type: ignore[arg-type]
-                    temperature=temperature,
-                )
-                return resp.choices[0].message.content or ""
-            except Exception as exc:
-                last_error = exc
-                if self._is_rate_limit(exc):
-                    wait = _BASE_RETRY_DELAY * (2**attempt)
-                    logger.warning(
-                        "Rate limit Groq (visão) — aguardando %.1fs (tentativa %d/%d)",
-                        wait, attempt + 1, _MAX_RETRIES,
-                    )
-                    await asyncio.sleep(wait)
-                else:
-                    raise
-        raise RuntimeError(
-            f"Groq visão falhou após {_MAX_RETRIES} tentativas: {last_error}"
-        ) from last_error
-
-    @staticmethod
-    def _is_rate_limit(exc: Exception) -> bool:
-        s = str(exc)
-        return any(kw in s for kw in ("429", "rate_limit_exceeded", "rate limit"))
 
 
 # Singleton por processo

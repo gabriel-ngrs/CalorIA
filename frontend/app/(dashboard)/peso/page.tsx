@@ -62,17 +62,44 @@ export default function PesoPage() {
     return Math.min(Math.max(pct, 0), 100);
   })();
 
+  const hasNoLogs = !logs || logs.length === 0;
+
   return (
     <div className="space-y-5">
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Scale className="h-6 w-6 text-primary" />
           Peso
         </h1>
-        <p className="text-muted-foreground text-sm">Acompanhe sua evolução</p>
+        <p className="text-gray-400 text-sm">Acompanhe sua evolução</p>
       </div>
+
+      {/* Empty state — nenhum registro ainda */}
+      {hasNoLogs && (
+        <div className="rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 px-5 py-6 flex flex-col items-center gap-3 text-center">
+          <span className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-500/10">
+            <Scale className="h-5 w-5 text-orange-500" />
+          </span>
+          <div>
+            <p className="font-semibold text-sm">Nenhum peso registrado ainda</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Registre seu peso abaixo para começar a acompanhar sua evolução.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Teaser do gráfico quando só há 1 registro */}
+      {logs && logs.length === 1 && (
+        <div className="rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 px-4 py-3 flex items-center gap-3">
+          <TrendingUp className="h-4 w-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Registre <strong>mais um peso</strong> para ver seu gráfico de evolução.
+          </p>
+        </div>
+      )}
 
       {/* Stat cards */}
       {latest && (
@@ -80,7 +107,7 @@ export default function PesoPage() {
           {/* Peso atual */}
           <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/40">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10">
                   <Scale className="h-3 w-3 text-orange-500" />
                 </span>
@@ -105,7 +132,7 @@ export default function PesoPage() {
           {user?.weight_goal && (
             <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/40">
               <CardHeader className="pb-1">
-                <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                   <span className="flex items-center justify-center w-5 h-5 rounded-md bg-green-500/10">
                     <Target className="h-3 w-3 text-green-500" />
                   </span>
@@ -130,7 +157,7 @@ export default function PesoPage() {
           {user?.weight_goal && goalPct !== null && (
             <Card className="col-span-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-green-500/30">
               <CardHeader className="pb-1">
-                <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+                <CardTitle className="text-xs text-muted-foreground font-medium">
                   Progresso para a meta
                 </CardTitle>
               </CardHeader>
@@ -177,7 +204,11 @@ export default function PesoPage() {
                 <Label className="sr-only" htmlFor="weight">Peso (kg)</Label>
                 <Input
                   id="weight"
+                  type="number"
+                  inputMode="decimal"
                   placeholder="Ex: 80.5"
+                  step="0.1"
+                  min="1"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                 />
@@ -195,7 +226,7 @@ export default function PesoPage() {
                       key={v}
                       type="button"
                       onClick={() => setWeight(String(val))}
-                      className={`py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer
+                      className={`py-3 rounded-lg text-xs font-medium border transition-colors cursor-pointer
                         ${v < 0
                           ? "border-green-500/30 text-green-500 hover:bg-green-500/10"
                           : "border-orange-500/30 text-orange-400 hover:bg-orange-500/10"

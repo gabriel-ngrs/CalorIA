@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { Reminder, ReminderChannel, ReminderType } from "@/types";
+import type { Reminder, ReminderType } from "@/types";
 
 export type ReminderPayload = {
   type: ReminderType;
   time: string;
-  channel: ReminderChannel;
   days_of_week: number[];
   message?: string;
 };

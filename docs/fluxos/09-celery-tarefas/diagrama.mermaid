@@ -1,0 +1,10 @@
+flowchart LR
+    BEAT[Celery Beat] --> REDIS[(Redis fila)]
+    REDIS --> WORKER[Celery Worker]
+
+    WORKER --> T1[Lembretes - 60s]
+    WORKER --> T2[Resumo diario - 22h]
+    WORKER --> T3[Relatorio semanal - Dom 20h]
+    WORKER --> T4[Hidratacao - 8h a 20h]
+    WORKER --> T5[Limpeza conversas - 3h]
+    WORKER --> T6[Recalculo TDEE - 1o/mes]
