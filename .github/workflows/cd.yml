@@ -30,7 +30,7 @@ jobs:
             git pull origin main
 
             echo "==> Subindo containers..."
-            docker compose up -d --build
+            docker compose -f docker-compose.backend.yml up -d --build
 
             echo "==> Aguardando backend inicializar..."
             sleep 10
