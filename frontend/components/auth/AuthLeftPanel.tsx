@@ -11,35 +11,35 @@ const sg = Space_Grotesk({
 
 const FEATURES = [
   {
-    icon: "🤖",
+    num: "01",
     accent: "#34d399",
     headline: "IA que entende o que você come",
     body: "Foto ou texto: Gemini 2.5 Flash identifica calorias, proteínas e carbs em segundos.",
     badge: "Gemini 2.5 Flash",
   },
   {
-    icon: "🍽️",
+    num: "02",
     accent: "#6ee7b7",
     headline: "20 mil+ alimentos catalogados",
     body: "TACO + Open Food Facts. Arroz com feijão, frango grelhado, qualquer prato brasileiro.",
     badge: "Banco nacional",
   },
   {
-    icon: "📊",
+    num: "03",
     accent: "#60a5fa",
     headline: "Veja sua evolução completa",
     body: "Peso, hidratação e humor num só lugar. Entenda como sua dieta afeta como você se sente.",
     badge: "Insights diários",
   },
   {
-    icon: "🎯",
+    num: "04",
     accent: "#a78bfa",
     headline: "Metas calculadas para você",
     body: "TDEE personalizado com altura, peso, idade e objetivo. Calorias e macros no seu ritmo.",
     badge: "100% personalizado",
   },
   {
-    icon: "🔔",
+    num: "05",
     accent: "#fb923c",
     headline: "Lembretes sem abrir o app",
     body: "Notificações Web Push nativas no celular ou desktop. Você registra, a IA cuida do resto.",
@@ -135,18 +135,18 @@ export function AuthLeftPanel() {
         </div>
 
         {/* ── Feature cards ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", flex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", flex: 1 }}>
           {FEATURES.map((f) => (
             <div
               key={f.badge}
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: "0.875rem",
-                padding: "0.875rem 1rem",
-                borderRadius: "0.75rem",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                gap: "1rem",
+                padding: "1rem 1.125rem",
+                borderRadius: "0.875rem",
+                background: "rgba(255,255,255,0.055)",
+                border: "1px solid rgba(255,255,255,0.10)",
                 borderLeft: `3px solid ${f.accent}`,
                 position: "relative",
                 overflow: "hidden",
@@ -155,43 +155,53 @@ export function AuthLeftPanel() {
               {/* glow atrás */}
               <div style={{
                 position: "absolute", inset: 0, pointerEvents: "none",
-                background: `radial-gradient(ellipse 55% 100% at 0% 50%, ${f.accent}0a 0%, transparent 70%)`,
+                background: `radial-gradient(ellipse 60% 100% at 0% 50%, ${f.accent}12 0%, transparent 70%)`,
               }} />
 
-              {/* ícone */}
+              {/* número */}
               <div style={{
                 width: 36, height: 36, borderRadius: "0.5rem", flexShrink: 0,
-                background: `${f.accent}20`,
-                border: `1px solid ${f.accent}38`,
+                background: `${f.accent}22`,
+                border: `1px solid ${f.accent}45`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "1.1rem", position: "relative", zIndex: 1,
+                position: "relative", zIndex: 1,
               }}>
-                {f.icon}
+                <span style={{
+                  fontSize: "0.7rem", fontWeight: 700,
+                  color: f.accent, letterSpacing: "0.02em",
+                }}>
+                  {f.num}
+                </span>
               </div>
 
               {/* texto */}
               <div style={{ position: "relative", zIndex: 1, minWidth: 0 }}>
                 <p style={{
-                  margin: 0, fontSize: "0.75rem", fontWeight: 700,
-                  color: "rgba(255,255,255,0.88)", lineHeight: 1.3,
+                  margin: 0,
+                  fontSize: "0.875rem",
+                  fontWeight: 700,
+                  color: "#ffffff",
+                  lineHeight: 1.3,
                 }}>
                   {f.headline}
                 </p>
                 <p style={{
-                  margin: "0.2rem 0 0.35rem", fontSize: "0.67rem",
-                  color: "rgba(255,255,255,0.36)", lineHeight: 1.55,
+                  margin: "0.3rem 0 0.45rem",
+                  fontSize: "0.775rem",
+                  color: "rgba(255,255,255,0.62)",
+                  lineHeight: 1.6,
                 }}>
                   {f.body}
                 </p>
                 <span style={{
                   display: "inline-block",
-                  fontSize: "0.6rem", fontWeight: 600,
+                  fontSize: "0.65rem", fontWeight: 600,
                   color: f.accent,
-                  background: `${f.accent}15`,
-                  border: `1px solid ${f.accent}30`,
+                  background: `${f.accent}18`,
+                  border: `1px solid ${f.accent}38`,
                   borderRadius: "99px",
-                  padding: "0.1rem 0.5rem",
-                  letterSpacing: "0.02em",
+                  padding: "0.15rem 0.6rem",
+                  letterSpacing: "0.03em",
                 }}>
                   {f.badge}
                 </span>
