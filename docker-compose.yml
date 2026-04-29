@@ -15,6 +15,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-caloria}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-caloria}
       POSTGRES_DB: ${POSTGRES_DB:-caloria_db}
+    command: >
+      postgres
+        -c shared_buffers=256MB
+        -c work_mem=8MB
+        -c effective_cache_size=512MB
+        -c random_page_cost=1.1
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

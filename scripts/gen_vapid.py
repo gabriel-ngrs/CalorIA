@@ -11,5 +11,6 @@ pub_b64 = base64.urlsafe_b64encode(
         s.PublicFormat.UncompressedPoint
     )
 ).rstrip(b"=").decode()
-open("/opt/caloria/vapid_private.pem", "wb").write(priv_pem)
+open("/tmp/vapid_private.pem", "wb").write(priv_pem)
+print("Chave privada salva em /tmp/vapid_private.pem")
 print("VAPID_PUBLIC_KEY=" + pub_b64)
