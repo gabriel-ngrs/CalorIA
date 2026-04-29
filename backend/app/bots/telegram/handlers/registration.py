@@ -40,13 +40,15 @@ _KEY_MEAL_TYPE = "pending_meal_type"
 
 
 def _build_confirmation_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+    return InlineKeyboardMarkup(
         [
-            InlineKeyboardButton("✅ Confirmar", callback_data="confirm"),
-            InlineKeyboardButton("✏️ Corrigir", callback_data="edit"),
-            InlineKeyboardButton("❌ Cancelar", callback_data="cancel"),
+            [
+                InlineKeyboardButton("✅ Confirmar", callback_data="confirm"),
+                InlineKeyboardButton("✏️ Corrigir", callback_data="edit"),
+                InlineKeyboardButton("❌ Cancelar", callback_data="cancel"),
+            ]
         ]
-    ])
+    )
 
 
 async def _analyze_and_reply(
@@ -55,6 +57,12 @@ async def _analyze_and_reply(
     description: str,
     meal_type_hint: str | None,
 ) -> int:
+    if (
+        update.message is None
+        or update.effective_chat is None
+        or context.user_data is None
+    ):
+        return ConversationHandler.END
     chat_id = str(update.effective_chat.id)
 
     async with AsyncSessionLocal() as db:
@@ -81,13 +89,15 @@ async def _analyze_and_reply(
             )
     except Exception as exc:
         logger.error("Erro ao analisar refeição: %s", exc)
-        await update.message.reply_html("❌ Não consegui analisar. Tente descrever de forma diferente.")
+        await update.message.reply_html(
+            "❌ Não consegui analisar. Tente descrever de forma diferente."
+        )
         return ConversationHandler.END
 
     if not result.items:
         await update.message.reply_html(
             "🤔 Não identifiquei alimentos na mensagem.\n"
-            "Tente: <i>\"200g de arroz com frango\"</i>"
+            'Tente: <i>"200g de arroz com frango"</i>'
         )
         return ConversationHandler.END
 
@@ -101,7 +111,11 @@ async def _analyze_and_reply(
     context.user_data[_KEY_ITEMS] = result.items
     context.user_data[_KEY_MEAL_TYPE] = detected_type
 
-    low_conf_note = "\n⚠️ <i>Alguns itens têm baixa confiança — verifique.</i>" if result.low_confidence else ""
+    low_conf_note = (
+        "\n⚠️ <i>Alguns itens têm baixa confiança — verifique.</i>"
+        if result.low_confidence
+        else ""
+    )
 
     text = (
         f"🍽️ <b>Refeição identificada</b>\n\n"
@@ -116,11 +130,19 @@ async def _analyze_and_reply(
 
 
 async def text_meal_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
     text = update.message.text or ""
     return await _analyze_and_reply(update, context, text, None)
 
 
 async def photo_meal_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if (
+        update.message is None
+        or update.effective_chat is None
+        or context.user_data is None
+    ):
+        return ConversationHandler.END
     photo = update.message.photo[-1]  # maior resolução
     file = await photo.get_file()
     file_bytes = await file.download_as_bytearray()
@@ -139,13 +161,15 @@ async def photo_meal_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         user_context = await build_meal_context(user.id, db, date.today())
 
-    try:
-        client = get_gemini_client()
-        result = await VisionParser(client).parse_base64(b64, "image/jpeg", user_context)
-    except Exception as exc:
-        logger.error("Erro ao analisar foto: %s", exc)
-        await update.message.reply_html("❌ Não consegui analisar a foto.")
-        return ConversationHandler.END
+        try:
+            client = get_gemini_client()
+            result = await VisionParser(client).parse_base64(
+                b64, "image/jpeg", user_context, db=db
+            )
+        except Exception as exc:
+            logger.error("Erro ao analisar foto: %s", exc)
+            await update.message.reply_html("❌ Não consegui analisar a foto.")
+            return ConversationHandler.END
 
     if not result.items:
         await update.message.reply_html("🤔 Não identifiquei alimentos na foto.")
@@ -159,7 +183,9 @@ async def photo_meal_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     total_prot = sum(it.protein for it in result.items)
     total_carb = sum(it.carbs for it in result.items)
     total_fat = sum(it.fat for it in result.items)
-    low_conf_note = "\n⚠️ <i>Alguns itens têm baixa confiança.</i>" if result.low_confidence else ""
+    low_conf_note = (
+        "\n⚠️ <i>Alguns itens têm baixa confiança.</i>" if result.low_confidence else ""
+    )
 
     text = (
         f"📸 <b>Foto analisada</b>\n\n"
@@ -174,6 +200,12 @@ async def photo_meal_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def confirm_meal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if (
+        update.callback_query is None
+        or update.effective_chat is None
+        or context.user_data is None
+    ):
+        return ConversationHandler.END
     query = update.callback_query
     await query.answer()
 
@@ -224,6 +256,8 @@ async def confirm_meal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def edit_meal_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Usuário clicou em 'Corrigir' — pede o total de calorias correto."""
+    if update.callback_query is None or context.user_data is None:
+        return ConversationHandler.END
     query = update.callback_query
     await query.answer()
 
@@ -242,6 +276,8 @@ async def edit_meal_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def edit_meal_apply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Aplica a correção de calorias escalando todos os macros proporcionalmente."""
+    if update.message is None or context.user_data is None:
+        return ConversationHandler.END
     raw_text = (update.message.text or "").strip().replace(",", ".")
 
     try:

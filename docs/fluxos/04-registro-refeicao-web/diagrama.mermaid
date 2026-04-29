@@ -1,0 +1,13 @@
+flowchart TD
+    A[Usuario digita descricao ou envia foto] --> B[POST /ai/analyze-meal ou analyze-photo]
+    B --> C[MealParser ou VisionParser]
+    C --> D[Gemini identifica alimentos]
+    D --> E[Busca macros no banco de alimentos]
+    E --> F{Encontrou?}
+    F -->|Sim| G[Escala macros por quantidade]
+    F -->|Nao| H[Gemini estima macros]
+    G --> I[Exibe resultado no frontend]
+    H --> I
+    I --> J[Usuario confirma e salva]
+    J --> K[POST /meals]
+    K --> L[(PostgreSQL)]

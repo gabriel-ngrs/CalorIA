@@ -34,9 +34,9 @@ class TestCreateMeal:
         assert data["meal_type"] == "lunch"
         assert len(data["items"]) == 1
 
-    async def test_sem_autenticacao_retorna_403(self, anon_client: AsyncClient) -> None:
+    async def test_sem_autenticacao_retorna_401(self, anon_client: AsyncClient) -> None:
         resp = await anon_client.post("/api/v1/meals", json=_MEAL_PAYLOAD)
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     async def test_tipo_invalido_retorna_422(self, client: AsyncClient) -> None:
         bad = {**_MEAL_PAYLOAD, "meal_type": "ceia_da_madrugada"}

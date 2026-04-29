@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_id, get_db
-from app.schemas.logs import HydrationDaySummary, HydrationLogCreate, HydrationLogResponse
+from app.schemas.logs import (
+    HydrationDaySummary,
+    HydrationLogCreate,
+    HydrationLogResponse,
+)
 from app.services.log_service import HydrationService
-
-
 
 router = APIRouter(prefix="/hydration", tags=["hydration"])
 
@@ -32,7 +34,9 @@ async def get_history(
     return await HydrationService(db).get_history(user_id, days)
 
 
-@router.post("", response_model=HydrationLogResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=HydrationLogResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_hydration(
     data: HydrationLogCreate,
     user_id: int = Depends(get_current_user_id),

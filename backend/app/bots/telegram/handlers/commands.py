@@ -5,11 +5,11 @@ from datetime import date
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from app.core.database import AsyncSessionLocal
-from app.services.telegram_service import TelegramService
-from app.services.meal_service import MealService
-from app.services.log_service import HydrationService
 from app.bots.telegram.utils import format_macros_line, meal_type_emoji, meal_type_label
+from app.core.database import AsyncSessionLocal
+from app.services.log_service import HydrationService
+from app.services.meal_service import MealService
+from app.services.telegram_service import TelegramService
 
 _WELCOME = """👋 Olá! Sou o <b>CalorIA</b>, seu diário alimentar inteligente.
 
@@ -26,10 +26,14 @@ _WELCOME = """👋 Olá! Sou o <b>CalorIA</b>, seu diário alimentar inteligente
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None:
+        return
     await update.message.reply_html(_WELCOME)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None:
+        return
     text = """<b>📋 Comandos CalorIA</b>
 
 <b>Conta:</b>
@@ -59,6 +63,8 @@ Basta enviar texto ou foto! A IA identifica os alimentos automaticamente."""
 
 
 async def conectar_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     if not context.args:
         await update.message.reply_html(
             "ℹ️ Use: <code>/conectar TOKEN</code>\n\n"
@@ -85,6 +91,8 @@ async def conectar_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def perfil_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     chat_id = str(update.effective_chat.id)
     async with AsyncSessionLocal() as db:
         user = await TelegramService(db).get_user_by_chat_id(chat_id)
@@ -94,7 +102,11 @@ async def perfil_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     profile = user.profile
-    tdee_text = f"{profile.tdee_calculated:.0f} kcal/dia" if (profile and profile.tdee_calculated) else "não calculado"
+    tdee_text = (
+        f"{profile.tdee_calculated:.0f} kcal/dia"
+        if (profile and profile.tdee_calculated)
+        else "não calculado"
+    )
     calorie_goal = f"{user.calorie_goal} kcal" if user.calorie_goal else "não definida"
     weight_goal = f"{user.weight_goal} kg" if user.weight_goal else "não definida"
 
@@ -109,6 +121,8 @@ async def perfil_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def hoje_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None or update.effective_chat is None:
+        return
     chat_id = str(update.effective_chat.id)
     async with AsyncSessionLocal() as db:
         svc = TelegramService(db)
@@ -146,6 +160,8 @@ async def hoje_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def _send_not_linked(update: Update) -> None:
+    if update.message is None:
+        return
     await update.message.reply_html(
         "⚠️ Sua conta ainda não está vinculada.\n\n"
         "Acesse o dashboard web → <b>Conectar Bot</b> → gere um token.\n"

@@ -1,0 +1,6 @@
+flowchart LR
+    A[food_name] --> B[Normaliza e gera n-gramas]
+    B --> C[Busca fuzzy pg_trgm]
+    C --> D[(foods)]
+    D --> E[Aplica boost: TACO x1.4]
+    E --> F[Melhor match com macros/100g]

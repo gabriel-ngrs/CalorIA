@@ -29,12 +29,12 @@ from app.services.ai.vision_parser import VisionParser
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-def _require_gemini() -> None:
-    """Dependência FastAPI: garante que GROQ_API_KEY está configurada."""
-    if not settings.GROQ_API_KEY:
+def _require_ai() -> None:
+    """Dependência FastAPI: garante que GEMINI_API_KEY está configurada."""
+    if not settings.GEMINI_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serviço de IA não configurado. Defina GROQ_API_KEY.",
+            detail="Serviço de IA não configurado. Defina GEMINI_API_KEY.",
         )
 
 
@@ -43,7 +43,7 @@ async def analyze_meal(
     data: MealAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
     client = get_gemini_client()
@@ -57,24 +57,32 @@ async def analyze_meal(
             db=db,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
 
 @router.post("/analyze-photo", response_model=MealAnalysisResponse)
 async def analyze_photo(
     data: PhotoAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
-    _: None = Depends(_require_gemini),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa foto de refeição (base64) e retorna itens nutricionais."""
     client = get_gemini_client()
     try:
+        user_context = await build_meal_context(user_id, db, date.today())
         return await VisionParser(client).parse_base64(
             image_base64=data.image_base64,
             mime_type=data.mime_type,
+            user_context=user_context,
+            db=db,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
 
 @router.post("/insights", response_model=InsightResponse)
@@ -83,7 +91,7 @@ async def generate_insight(
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> InsightResponse:
     """Gera insight personalizado: diário, semanal ou resposta a uma pergunta."""
     if data.type == "question" and not data.question:
@@ -106,7 +114,7 @@ async def generate_insight(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao consultar a IA: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/suggest-meal", response_model=MealSuggestion)
@@ -114,7 +122,7 @@ async def suggest_meal(
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MealSuggestion:
     """Sugere uma refeição com base no histórico e calorias restantes do dia."""
     client = get_gemini_client()
@@ -124,7 +132,7 @@ async def suggest_meal(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar sugestão: {exc}",
-        )
+        ) from exc
 
 
 # ── Fase 7 — Insights Avançados ───────────────────────────────────────────────
@@ -135,7 +143,7 @@ async def eating_patterns(
     days: int = Query(default=30, ge=7, le=90),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> EatingPattern:
     """Analisa padrões alimentares dos últimos N dias (7-90)."""
     client = get_gemini_client()
@@ -145,7 +153,7 @@ async def eating_patterns(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao analisar padrões: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/nutritional-alerts", response_model=NutritionalAlertsResponse)
@@ -153,7 +161,7 @@ async def nutritional_alerts(
     days: int = Query(default=14, ge=7, le=30),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> NutritionalAlertsResponse:
     """Detecta deficiências nutricionais recorrentes nos últimos N dias."""
     client = get_gemini_client()
@@ -163,14 +171,14 @@ async def nutritional_alerts(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao verificar alertas nutricionais: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/goal-adjustment", response_model=GoalAdjustmentSuggestion)
 async def goal_adjustment(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> GoalAdjustmentSuggestion:
     """Sugere ajuste de metas com base na tendência real de peso dos últimos 30 dias."""
     client = get_gemini_client()
@@ -180,7 +188,7 @@ async def goal_adjustment(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar sugestão de ajuste: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/monthly-report", response_model=MonthlyReport)
@@ -189,7 +197,7 @@ async def monthly_report(
     year: int = Query(default=None, ge=2020),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(_require_gemini),
+    _: None = Depends(_require_ai),
 ) -> MonthlyReport:
     """Gera relatório mensal com score de aderência e análise semanal.
 
@@ -207,4 +215,4 @@ async def monthly_report(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao gerar relatório mensal: {exc}",
-        )
+        ) from exc

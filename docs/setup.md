@@ -16,7 +16,7 @@ Instruções para configurar o ambiente de desenvolvimento do zero.
 ## 1. Clonar o repositório
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/gabriel-ngrs/CalorIA.git
 cd CalorIA
 ```
 
@@ -35,10 +35,13 @@ Edite o `.env` com suas chaves:
 | `DATABASE_URL` | ✅ | `postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_db` |
 | `REDIS_URL` | ✅ | `redis://localhost:6379/0` |
 | `SECRET_KEY` | ✅ | Chave aleatória (mín. 32 chars). `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `GEMINI_API_KEY` | ✅ | Obter em [Google AI Studio](https://makersuite.google.com/app/apikey) |
-| `TELEGRAM_BOT_TOKEN` | ⚪ | Opcional. Obter via [@BotFather](https://t.me/BotFather) |
-| `EVOLUTION_API_URL` | ⚪ | Opcional. URL da instância Evolution API |
-| `EVOLUTION_API_KEY` | ⚪ | Opcional. Chave da Evolution API |
+| `GEMINI_API_KEY` | ✅ | Obter em [Google AI Studio](https://aistudio.google.com/app/apikey) (gratuito) |
+| `NEXTAUTH_SECRET` | ✅ | Chave aleatória para o frontend |
+| `NEXTAUTH_URL` | ✅ | `http://localhost:3000` em dev |
+| `NEXT_PUBLIC_API_URL` | ✅ | `http://localhost:8000` em dev |
+| `VAPID_PUBLIC_KEY` | ⚪ | Necessário para Web Push. Ver seção 10 |
+| `VAPID_KEY_PATH` | ⚪ | Caminho para o arquivo `vapid_private.pem` |
+| `VAPID_CLAIMS_EMAIL` | ⚪ | Email do responsável VAPID |
 
 ---
 
@@ -48,7 +51,7 @@ Edite o `.env` com suas chaves:
 # Desenvolvimento com hot reload
 docker compose -f docker-compose.dev.yml up
 
-# Apenas infraestrutura (postgres, redis, evolution_api)
+# Apenas infraestrutura (postgres, redis)
 docker compose -f docker-compose.dev.yml up postgres redis
 
 # Produção local
@@ -185,16 +188,37 @@ alembic history
 
 ---
 
-## 10. WhatsApp com Evolution API
+## 10. Web Push VAPID (notificações)
 
-1. Subir o serviço:
-   ```bash
-   docker compose up evolution_api
-   ```
-2. Acessar `http://localhost:8080` no painel da Evolution API
-3. Criar uma instância com o nome `caloria`
-4. Escanear o QR code com o WhatsApp
-5. A sessão persiste no volume Docker entre restarts
+Para habilitar notificações push, é necessário gerar um par de chaves VAPID:
+
+```bash
+cd backend
+pip install -e .
+
+python3 -c "
+from py_vapid import Vapid
+import base64
+v = Vapid()
+v.generate_keys()
+priv_pem = v.private_pem()
+pub_bytes = v._private_key.public_key().public_bytes(
+    __import__('cryptography.hazmat.primitives.serialization', fromlist=['Encoding','PublicFormat']).Encoding.X962,
+    __import__('cryptography.hazmat.primitives.serialization', fromlist=['Encoding','PublicFormat']).PublicFormat.UncompressedPoint
+)
+pub_b64 = base64.urlsafe_b64encode(pub_bytes).rstrip(b'=').decode()
+open('vapid_private.pem', 'wb').write(priv_pem)
+print('VAPID_PUBLIC_KEY=' + pub_b64)
+print('Chave privada salva em vapid_private.pem')
+"
+```
+
+Adicione ao `.env`:
+```env
+VAPID_PUBLIC_KEY=<saída do comando acima>
+VAPID_KEY_PATH=/caminho/absoluto/para/vapid_private.pem
+VAPID_CLAIMS_EMAIL=seu@email.com
+```
 
 ---
 

@@ -1,0 +1,12 @@
+flowchart LR
+    A[Usuario] -->|email + senha| B[NextAuth]
+    B -->|POST /auth/login| C[FastAPI]
+    C -->|valida bcrypt| D[(PostgreSQL)]
+    D --> C
+    C -->|access + refresh token| B
+    B -->|session JWT| A
+
+    E[Token expirando] -->|POST /auth/refresh| C
+    C -->|novo token| E
+
+    F[Logout] -->|blacklist token| G[(Redis)]

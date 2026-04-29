@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import enum
 from datetime import datetime, time
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, Integer, Text, Time, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, Time, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,17 +15,12 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class ReminderType(str, enum.Enum):
+class ReminderType(StrEnum):
     MEAL = "meal"
     WATER = "water"
     WEIGHT = "weight"
     DAILY_SUMMARY = "daily_summary"
     CUSTOM = "custom"
-
-
-class ReminderChannel(str, enum.Enum):
-    TELEGRAM = "telegram"
-    WHATSAPP = "whatsapp"
 
 
 class Reminder(Base):
@@ -41,9 +37,6 @@ class Reminder(Base):
         ARRAY(Integer), nullable=False, default=list
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    channel: Mapped[ReminderChannel] = mapped_column(
-        SAEnum(ReminderChannel), nullable=False
-    )
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

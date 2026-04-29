@@ -4,41 +4,37 @@ import logging
 
 from telegram.ext import Application, CommandHandler
 
-from app.core.config import settings
 from app.bots.telegram.handlers.commands import (
-    start_command,
-    help_command,
     conectar_command,
-    perfil_command,
+    help_command,
     hoje_command,
+    perfil_command,
+    start_command,
 )
 from app.bots.telegram.handlers.logs import (
-    peso_command,
     agua_command,
     humor_command,
+    peso_command,
 )
+from app.bots.telegram.handlers.registration import build_registration_handler
 from app.bots.telegram.handlers.reports import (
-    resumo_command,
-    semana_command,
-    relatorio_command,
     historico_command,
     lembrete_command,
     lembretes_command,
+    relatorio_command,
     remover_lembrete_command,
+    resumo_command,
+    semana_command,
 )
-from app.bots.telegram.handlers.registration import build_registration_handler
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_application: Application | None = None  # type: ignore[type-arg]
+_application: Application | None = None  # type: ignore[type-arg]  # noqa: PGH003
 
 
-def build_application() -> Application:  # type: ignore[type-arg]
-    app = (
-        Application.builder()
-        .token(settings.TELEGRAM_BOT_TOKEN)
-        .build()
-    )
+def build_application() -> Application:  # type: ignore[type-arg]  # noqa: PGH003
+    app = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
 
     # Comandos básicos
     app.add_handler(CommandHandler("start", start_command))
@@ -79,6 +75,7 @@ async def start_polling() -> None:
     _application = build_application()
     await _application.initialize()
     await _application.start()
+    assert _application.updater is not None
     await _application.updater.start_polling(drop_pending_updates=True)
     logger.info("Telegram bot iniciado em modo polling.")
 
@@ -87,6 +84,7 @@ async def stop_polling() -> None:
     global _application
     if _application is None:
         return
+    assert _application.updater is not None
     await _application.updater.stop()
     await _application.stop()
     await _application.shutdown()

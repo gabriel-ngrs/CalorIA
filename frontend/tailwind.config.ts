@@ -24,10 +24,13 @@ const config: Config = {
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
+          light: "hsl(var(--primary-light))",
+          dark: "hsl(var(--primary-dark))",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
+          soft: "hsl(var(--secondary-soft))",
           foreground: "hsl(var(--secondary-foreground))",
         },
         destructive: {
@@ -50,12 +53,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        /* Cores CalorIA — macronutrientes */
-        caloria: {
-          calorias: "#f97316",
-          proteina: "#22c55e",
-          carbs: "#eab308",
-          gordura: "#3b82f6",
+        /* Cores semânticas de macronutrientes */
+        macro: {
+          calories: "var(--calories)",
+          protein:  "var(--protein)",
+          carbs:    "var(--carbs)",
+          fat:      "var(--fat)",
+          water:    "var(--water)",
+          mood:     "var(--mood)",
         },
       },
       borderRadius: {
@@ -64,18 +69,11 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
         xl: "calc(var(--radius) + 4px)",
         "2xl": "calc(var(--radius) + 8px)",
+        "3xl": "calc(var(--radius) + 16px)",
       },
       boxShadow: {
-        "glass-sm": "0 2px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.06)",
-        "glass-md": "0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.07)",
-        "glass-lg": "0 8px 40px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)",
-        "neu-sm": "4px 4px 10px rgba(0,0,0,0.3), -3px -3px 8px rgba(145,183,199,0.04)",
-        "neu-md": "8px 8px 20px rgba(0,0,0,0.4), -6px -6px 16px rgba(145,183,199,0.04)",
-        "neu-inset": "inset 3px 3px 7px rgba(0,0,0,0.3), inset -2px -2px 6px rgba(145,183,199,0.03)",
-        /* #91B7C7 = hsl(198,33%,68%) */
-        "glow-primary": "0 0 18px hsl(198 33% 68% / 0.35), 0 0 36px hsl(198 33% 68% / 0.15)",
-        "glow-accent": "0 0 18px hsl(28 88% 58% / 0.35), 0 0 36px hsl(28 88% 58% / 0.15)",
-        "glow-sm": "0 0 10px hsl(198 33% 68% / 0.30)",
+        card: "0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)",
+        "card-hover": "0 4px 20px rgba(0,0,0,0.10)",
       },
       backdropBlur: {
         xs: "4px",

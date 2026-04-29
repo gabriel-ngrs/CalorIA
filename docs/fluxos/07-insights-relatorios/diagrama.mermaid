@@ -1,0 +1,14 @@
+flowchart TD
+    A{Tipo de insight} -->|Diario| B[Dados de hoje]
+    A -->|Semanal| C[Resumo da semana + peso]
+    A -->|Pergunta| D[Contexto + pergunta livre]
+    A -->|Alertas| E[Macros medios N dias]
+    A -->|Mensal| F[Todas refeicoes do mes]
+
+    B --> G[Gemini gera feedback]
+    C --> G
+    D --> G
+    E --> G
+    F --> G
+
+    G --> H[Exibe no frontend ou envia push]

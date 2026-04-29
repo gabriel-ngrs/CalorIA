@@ -88,26 +88,33 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
           Insights IA
         </h1>
-        <p className="text-muted-foreground text-sm">Análises personalizadas sobre sua alimentação</p>
+        <p className="text-gray-400 text-sm">Análises personalizadas sobre sua alimentação</p>
       </div>
 
-      {/* ── Linha superior: Insight diário + Sugestão de refeição ──────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Seção: Hoje ─────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Hoje</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
       {/* ── Insight diário ─────────────────────────────────────────────── */}
-      <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
+      <Card className="border-l-4 border-emerald-400 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl">
         <CardHeader>
-          <SectionHeader
-            icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
-            title="Insight do dia"
-            description="Análise rápida com base nos seus dados de hoje"
-          />
+          <div className="flex items-start justify-between">
+            <SectionHeader
+              icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
+              title="Insight do dia"
+              description="Análise rápida com base nos seus dados de hoje"
+            />
+            <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+              ✨ Gerado por IA
+            </span>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {dailyInsight.isPending && <LoadingLines />}
@@ -158,7 +165,12 @@ export default function InsightsPage() {
         </CardContent>
       </Card>
 
-      </div>{/* fim grid 2 colunas */}
+        </div>{/* fim grid 2 colunas */}
+      </div>{/* fim seção Hoje */}
+
+      {/* ── Seção: Análise de período ───────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Análise de período</p>
 
       {/* ── Alertas nutricionais ──────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-yellow-400/30">
@@ -176,7 +188,7 @@ export default function InsightsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {nutritionalAlerts.isPending && <LoadingLines lines={4} />}
-          {nutritionalAlerts.data && <NutritionalAlertsCard data={nutritionalAlerts.data} />}
+          {nutritionalAlerts.data && <NutritionalAlertsCard data={nutritionalAlerts.data} requestedDays={alertDays} />}
           {nutritionalAlerts.isError && (
             <p className="text-sm text-destructive">Erro ao verificar alertas. Tente novamente.</p>
           )}
@@ -227,6 +239,12 @@ export default function InsightsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      </div>{/* fim seção Análise de período */}
+
+      {/* ── Seção: Relatórios ──────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Relatórios</p>
 
       {/* ── Análise semanal ───────────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-400/30">
@@ -335,6 +353,12 @@ export default function InsightsPage() {
         </CardContent>
       </Card>
 
+      </div>{/* fim seção Relatórios */}
+
+      {/* ── Seção: Chat ────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Pergunte à IA</p>
+
       {/* ── Pergunte à IA ─────────────────────────────────────────────── */}
       <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/30">
         <CardHeader>
@@ -366,6 +390,11 @@ export default function InsightsPage() {
               <LoadingLines lines={2} />
             </div>
           )}
+          {askQuestion.isError && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+              <p className="text-sm text-destructive">Não foi possível obter resposta da IA. Tente novamente.</p>
+            </div>
+          )}
           <form onSubmit={handleAsk} className="flex gap-2">
             <Input
               placeholder="Ex: posso comer pizza hoje? quais alimentos tenho evitado?"
@@ -373,12 +402,13 @@ export default function InsightsPage() {
               onChange={(e) => setQuestion(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit" size="icon" disabled={!question.trim() || askQuestion.isPending}>
+            <Button type="submit" size="icon" disabled={!question.trim() || askQuestion.isPending} aria-label="Enviar pergunta">
               <Send className="h-4 w-4" />
             </Button>
           </form>
         </CardContent>
       </Card>
+      </div>{/* fim seção Chat */}
     </div>
   );
 }
@@ -449,11 +479,12 @@ function MealSuggestionCard({ data }: { data: MealSuggestion }) {
   );
 }
 
-function NutritionalAlertsCard({ data }: { data: NutritionalAlertsResponse }) {
+function NutritionalAlertsCard({ data, requestedDays }: { data: NutritionalAlertsResponse; requestedDays: number }) {
+  const daysLabel = data.days_analyzed > 0 ? data.days_analyzed : requestedDays;
   return (
     <div className="space-y-3">
       {data.alerts.length === 0 ? (
-        <p className="text-sm text-emerald-500 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Nenhuma deficiência significativa detectada nos últimos {data.days_analyzed} dias.</p>
+        <p className="text-sm text-emerald-500 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Nenhuma deficiência significativa detectada nos últimos {daysLabel} dias.</p>
       ) : (
         <div className="space-y-2">
           {data.alerts.map((alert, i) => {

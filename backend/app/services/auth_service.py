@@ -16,8 +16,8 @@ _BLACKLIST_PREFIX = "token_blacklist:"
 _REFRESH_TTL = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
 
 
-def _redis_client() -> aioredis.Redis:  # type: ignore[type-arg]
-    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+def _redis_client() -> aioredis.Redis:
+    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call, no-any-return]
 
 
 async def blacklist_token(token: str) -> None:

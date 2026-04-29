@@ -15,7 +15,9 @@ if TYPE_CHECKING:
 class MoodLog(Base):
     __tablename__ = "mood_logs"
     __table_args__ = (
-        CheckConstraint("energy_level BETWEEN 1 AND 5", name="ck_mood_logs_energy_level"),
+        CheckConstraint(
+            "energy_level BETWEEN 1 AND 5", name="ck_mood_logs_energy_level"
+        ),
         CheckConstraint("mood_level BETWEEN 1 AND 5", name="ck_mood_logs_mood_level"),
     )
 

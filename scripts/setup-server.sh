@@ -57,6 +57,22 @@ echo "[+] Firewall configurado."
 systemctl enable --now fail2ban
 echo "[+] fail2ban ativo."
 
+# --- Configurar swap (2GB — segurança para picos de memória) -------------------
+if [ ! -f /swapfile ]; then
+    echo "[+] Criando swapfile de 2GB..."
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    # Reduz agressividade de uso do swap (0=nunca, 100=sempre; 10 é conservador)
+    sysctl vm.swappiness=10
+    echo 'vm.swappiness=10' >> /etc/sysctl.conf
+    echo "[+] Swap configurado."
+else
+    echo "[=] Swapfile já existe."
+fi
+
 # --- Criar diretório do projeto -------------------------------------------------
 mkdir -p /opt/caloria
 
@@ -67,6 +83,6 @@ echo ""
 echo "  Próximos passos:"
 echo "  1. cd /opt/caloria"
 echo "  2. git clone <url-do-repo> ."
-echo "  3. cp .env.example .env && nano .env"
+echo "  3. cp .env.production.example .env && nano .env"
 echo "  4. bash scripts/deploy.sh"
 echo "========================================"

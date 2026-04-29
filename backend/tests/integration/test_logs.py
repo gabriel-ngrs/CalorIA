@@ -35,12 +35,12 @@ class TestWeightLog:
         )
         assert resp.status_code == 422
 
-    async def test_sem_autenticacao_retorna_403(self, anon_client: AsyncClient) -> None:
+    async def test_sem_autenticacao_retorna_401(self, anon_client: AsyncClient) -> None:
         resp = await anon_client.post(
             "/api/v1/weight",
             json={"weight_kg": 70, "date": str(date.today())},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestHydrationLog:
@@ -74,9 +74,7 @@ class TestHydrationLog:
 
 
 class TestMoodLog:
-    async def test_registra_humor(
-        self, client: AsyncClient, test_user: User
-    ) -> None:
+    async def test_registra_humor(self, client: AsyncClient, test_user: User) -> None:
         resp = await client.post(
             "/api/v1/mood",
             json={
@@ -106,7 +104,9 @@ class TestMoodLog:
         )
         assert resp.status_code == 422
 
-    async def test_nivel_abaixo_do_limite_retorna_422(self, client: AsyncClient) -> None:
+    async def test_nivel_abaixo_do_limite_retorna_422(
+        self, client: AsyncClient
+    ) -> None:
         resp = await client.post(
             "/api/v1/mood",
             json={
