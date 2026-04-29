@@ -126,10 +126,18 @@
     }
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+  }
+
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     background-image:
       radial-gradient(ellipse 60% 40% at 100% 0%, rgba(16,185,129,0.07) 0%, transparent 55%),
       radial-gradient(ellipse 40% 30% at 0% 100%, rgba(96,165,250,0.05) 0%, transparent 50%);
