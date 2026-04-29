@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // Habilita output standalone para Docker multi-stage (menor imagem)
   output: "standalone",
 
