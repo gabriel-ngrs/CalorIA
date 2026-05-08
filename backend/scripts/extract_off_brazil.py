@@ -6,8 +6,8 @@ enriquecer depois com IA.
 USO:
     cd backend
     python scripts/extract_off_brazil.py \\
-        --file ../data/openfoodfacts-products.jsonl.gz \\
-        --output ../data/off_brazil_raw.csv
+        --file ../data/raw/openfoodfacts-products.jsonl.gz \\
+        --output ../data/interim/off_brazil_raw.csv
 
     # Sem limite (extrai tudo)
     python scripts/extract_off_brazil.py --file ... --output ...
