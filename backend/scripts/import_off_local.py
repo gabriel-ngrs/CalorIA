@@ -55,18 +55,13 @@ import sys
 import unicodedata
 from pathlib import Path
 
-from sqlalchemy import delete, select
-from sqlalchemy import text as sa_text
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from app.core.database import AsyncSessionLocal  # noqa: E402
-from app.models.food import Food  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 DEFAULT_LIMIT = 20_000
+
 BATCH_SIZE = 500
 LOG_EVERY = 5_000
 
@@ -276,15 +271,120 @@ def _detect_format(path: Path) -> str:
     return "jsonl" if first == b"{" else "csv"
 
 
+_CSV_FIELDS = [
+    "name", "aliases", "category", "preparation", "notes", "source",
+    "external_id", "search_text", "calories_100g", "protein_100g",
+    "carbs_100g", "fat_100g", "fiber_100g", "sodium_100g",
+    "sugar_100g", "saturated_fat_100g",
+]
+
+
+def _collect_foods(
+    file_path: Path,
+    limit: int,
+    all_countries: bool,
+    existing_names: set[str],
+    existing_barcodes: set[str],
+) -> tuple[list[dict], dict]:
+    fmt = _detect_format(file_path)
+    logger.info("Formato detectado: %s", fmt)
+
+    inserted = 0
+    skipped_quality = 0
+    skipped_country = 0
+    skipped_duplicate = 0
+    scanned = 0
+    foods: list[dict] = []
+
+    iterator = _iter_jsonl(file_path) if fmt == "jsonl" else _iter_csv(file_path)
+
+    for product in iterator:
+        scanned += 1
+
+        if scanned % LOG_EVERY == 0:
+            logger.info(
+                "Lidos: %d | Válidos: %d/%d | Ignorados: qualidade=%d país=%d dup=%d",
+                scanned, inserted, limit,
+                skipped_quality, skipped_country, skipped_duplicate,
+            )
+
+        if not all_countries and not _is_brazil(product):
+            skipped_country += 1
+            continue
+
+        food = _parse_product(product)
+        if food is None:
+            skipped_quality += 1
+            continue
+
+        if food["external_id"] and food["external_id"] in existing_barcodes:
+            skipped_duplicate += 1
+            continue
+
+        if food["name"] in existing_names:
+            brands_raw = (product.get("brands") or "").strip()
+            if brands_raw:
+                food["name"] = f"{food['name']} ({brands_raw.split(',')[0].strip()})"[:200]
+            if food["name"] in existing_names:
+                skipped_duplicate += 1
+                continue
+
+        existing_names.add(food["name"])
+        if food["external_id"]:
+            existing_barcodes.add(food["external_id"])
+
+        foods.append(food)
+        inserted += 1
+
+        if inserted >= limit:
+            logger.info("Limite de %d atingido.", limit)
+            break
+
+    stats = {
+        "scanned": scanned, "inserted": inserted,
+        "skipped_country": skipped_country,
+        "skipped_quality": skipped_quality,
+        "skipped_duplicate": skipped_duplicate,
+    }
+    return foods, stats
+
+
+def _save_csv(foods: list[dict], output_path: Path) -> None:
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=_CSV_FIELDS)
+        writer.writeheader()
+        for food in foods:
+            row = dict(food)
+            # Serializa aliases como string JSON para o CSV
+            row["aliases"] = json.dumps(row.get("aliases") or [], ensure_ascii=False)
+            writer.writerow(row)
+    logger.info("CSV salvo em: %s (%d alimentos)", output_path, len(foods))
+
+
 async def import_local(
     file_path: Path,
     limit: int,
     dry_run: bool,
     force: bool,
     all_countries: bool,
+    output_path: Path | None = None,
 ) -> None:
-    fmt = _detect_format(file_path)
-    logger.info("Formato detectado: %s", fmt)
+    # Modo CSV: não precisa do banco para coletar
+    if output_path:
+        foods, stats = _collect_foods(
+            file_path, limit, all_countries,
+            existing_names=set(), existing_barcodes=set(),
+        )
+        _log_stats(stats, dry_run=False)
+        if not dry_run:
+            _save_csv(foods, output_path)
+        return
+
+    # Modo banco de dados
+    from sqlalchemy import delete, select
+    from sqlalchemy import text as sa_text
+    from app.core.database import AsyncSessionLocal
+    from app.models.food import Food
 
     async with AsyncSessionLocal() as db:
         if force:
@@ -306,75 +406,31 @@ async def import_local(
             ).all()
         )
 
-        inserted = 0
-        skipped_quality = 0
-        skipped_country = 0
-        skipped_duplicate = 0
-        scanned = 0
+        foods, stats = _collect_foods(
+            file_path, limit, all_countries, existing_names, existing_barcodes
+        )
+
         batch: list[dict] = []
-
-        iterator = _iter_jsonl(file_path) if fmt == "jsonl" else _iter_csv(file_path)
-
-        for product in iterator:
-            scanned += 1
-
-            if scanned % LOG_EVERY == 0:
-                logger.info(
-                    "Lidos: %d | Importados: %d/%d | Ignorados: qualidade=%d país=%d dup=%d",
-                    scanned, inserted, limit,
-                    skipped_quality, skipped_country, skipped_duplicate,
-                )
-
-            if not all_countries and not _is_brazil(product):
-                skipped_country += 1
-                continue
-
-            food = _parse_product(product)
-            if food is None:
-                skipped_quality += 1
-                continue
-
-            if food["external_id"] and food["external_id"] in existing_barcodes:
-                skipped_duplicate += 1
-                continue
-
-            if food["name"] in existing_names:
-                brands_raw = (product.get("brands") or "").strip()
-                if brands_raw:
-                    food["name"] = f"{food['name']} ({brands_raw.split(',')[0].strip()})"[:200]
-                if food["name"] in existing_names:
-                    skipped_duplicate += 1
-                    continue
-
-            existing_names.add(food["name"])
-            if food["external_id"]:
-                existing_barcodes.add(food["external_id"])
-
+        for food in foods:
             batch.append(food)
-
             if len(batch) >= BATCH_SIZE:
                 if not dry_run:
                     await _flush(db, batch)
-                inserted += len(batch)
                 batch = []
+        if batch and not dry_run:
+            await _flush(db, batch)
 
-                if inserted >= limit:
-                    logger.info("Limite de %d atingido.", limit)
-                    break
+    _log_stats(stats, dry_run)
 
-        # Flush do último batch
-        if batch:
-            if not dry_run:
-                await _flush(db, batch)
-            inserted += len(batch)
 
+def _log_stats(stats: dict, dry_run: bool) -> None:
     logger.info("─" * 50)
     logger.info("Importação concluída:")
-    logger.info("  Registros lidos:          %d", scanned)
-    logger.info("  Importados:               %d", inserted)
-    logger.info("  Ignorados (país):         %d", skipped_country)
-    logger.info("  Ignorados (qualidade):    %d", skipped_quality)
-    logger.info("  Ignorados (duplicata):    %d", skipped_duplicate)
+    logger.info("  Registros lidos:          %d", stats["scanned"])
+    logger.info("  Importados:               %d", stats["inserted"])
+    logger.info("  Ignorados (país):         %d", stats["skipped_country"])
+    logger.info("  Ignorados (qualidade):    %d", stats["skipped_quality"])
+    logger.info("  Ignorados (duplicata):    %d", stats["skipped_duplicate"])
     if dry_run:
         logger.info("  [dry-run] Nenhum dado foi salvo.")
 
@@ -438,13 +494,15 @@ def main() -> None:
     dry_run = _flag(args, "--dry-run")
     force = _flag(args, "--force")
     all_countries = _flag(args, "--all-countries")
+    output_str = _get_str_arg(args, "--output")
+    output_path = Path(output_str) if output_str else None
 
     logger.info("Importando Open Food Facts — arquivo local")
     logger.info(
-        "  Arquivo: %s | Limite: %d | País: %s | dry-run: %s | force: %s",
+        "  Arquivo: %s | Limite: %d | País: %s | saída: %s",
         file_path, limit,
         "todos" if all_countries else "brasil",
-        dry_run, force,
+        output_path or "banco de dados",
     )
 
     asyncio.run(
@@ -454,6 +512,7 @@ def main() -> None:
             dry_run=dry_run,
             force=force,
             all_countries=all_countries,
+            output_path=output_path,
         )
     )
 
