@@ -25,6 +25,9 @@ Uso:
 
     # Retoma da página 90 (após queda anterior)
     python scripts/import_off.py --start-page 90 --limit 200000
+
+    # Importa produtos com nome em português (mais brasileiros)
+    python scripts/import_off.py --lang-pt --limit 5000
 """
 
 from __future__ import annotations
@@ -268,16 +271,29 @@ def _parse_product(product: dict) -> Food | None:
     )
 
 
-async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
-    """Busca uma página de produtos brasileiros na API do OFF.
+async def fetch_page(
+    client: httpx.AsyncClient, page: int, mode: str = "country"
+) -> list[dict]:
+    """Busca uma página de produtos na API do OFF.
 
-    Tenta até 4 vezes com backoff exponencial (2s, 4s, 8s) antes de desistir.
+    mode="country": filtra por país Brasil (padrão).
+    mode="language": filtra por língua portuguesa — retorna mais produtos
+        com product_name_pt preenchido, útil para ampliar o catálogo.
+
+    Tenta até 4 vezes com backoff exponencial (3s, 6s, 12s) antes de desistir.
     """
+    if mode == "language":
+        tag_type = "languages"
+        tag_value = "pt"
+    else:
+        tag_type = "countries"
+        tag_value = "brazil"
+
     params = {
         "action": "process",
-        "tagtype_0": "countries",
+        "tagtype_0": tag_type,
         "tag_contains_0": "contains",
-        "tag_0": "brazil",
+        "tag_0": tag_value,
         "fields": (
             "code,product_name,product_name_pt,generic_name,generic_name_pt,"
             "brands,categories_tags,nutriments"
@@ -289,7 +305,7 @@ async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
     last_exc: Exception | None = None
     for attempt in range(4):
         if attempt > 0:
-            wait = 2**attempt  # 2s, 4s, 8s
+            wait = 3 * (2 ** (attempt - 1))  # 3s, 6s, 12s
             logger.warning(
                 "Tentativa %d/4 para página %d (aguardando %ds)...",
                 attempt + 1,
@@ -308,7 +324,7 @@ async def fetch_page(client: httpx.AsyncClient, page: int) -> list[dict]:
 
 
 async def import_off(
-    limit: int, dry_run: bool, force: bool, start_page: int = 1
+    limit: int, dry_run: bool, force: bool, start_page: int = 1, mode: str = "country"
 ) -> None:
     async with AsyncSessionLocal() as db:
         if force:
@@ -350,7 +366,7 @@ async def import_off(
                 )
 
                 try:
-                    products = await fetch_page(client, page)
+                    products = await fetch_page(client, page, mode=mode)
                 except httpx.HTTPError as exc:
                     logger.error("Erro na API OFF (página %d): %s", page, exc)
                     break
@@ -455,6 +471,8 @@ async def import_off(
                 if page > 1000:
                     break
 
+                await asyncio.sleep(3)
+
         logger.info("─" * 50)
         logger.info("Importação concluída:")
         logger.info("  Importados:          %d", inserted)
@@ -477,10 +495,12 @@ def main() -> None:
     args = sys.argv[1:]
     dry_run = "--dry-run" in args
     force = "--force" in args
+    lang_pt = "--lang-pt" in args
     limit = _get_arg(args, "--limit", DEFAULT_LIMIT)
     start_page = _get_arg(args, "--start-page", 1)
+    mode = "language" if lang_pt else "country"
 
-    logger.info("Iniciando importação Open Food Facts Brasil")
+    logger.info("Iniciando importação Open Food Facts (%s)", "língua=pt" if lang_pt else "país=Brasil")
     logger.info(
         "  Limite: %d | página inicial: %d | dry-run: %s | force: %s",
         limit,
@@ -489,7 +509,7 @@ def main() -> None:
         force,
     )
     asyncio.run(
-        import_off(limit=limit, dry_run=dry_run, force=force, start_page=start_page)
+        import_off(limit=limit, dry_run=dry_run, force=force, start_page=start_page, mode=mode)
     )
 
 
