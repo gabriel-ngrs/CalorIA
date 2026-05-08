@@ -113,3 +113,10 @@ logs/
 tmp/
 temp/
 vapid_private.pem
+
+# ---------------------------------------------------------------------------
+# Dados — arquivos grandes não versionados
+# ---------------------------------------------------------------------------
+data/raw/*.gz
+data/raw/*.zip
+data/raw/*.jsonl
