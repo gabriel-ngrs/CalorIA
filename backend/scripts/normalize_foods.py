@@ -1,8 +1,8 @@
-"""Fase 1 — Limpeza e normalização do foods_master.csv.
+"""Fase 1 — Limpeza e normalização do alimentos_master.csv.
 
-Lê data/processed/foods_master.csv e gera:
-  - data/processed/foods_clean.csv    → prontos para importar (têm nutrientes válidos)
-  - data/processed/foods_enrich.csv   → precisam de enriquecimento por IA (nutrientes ausentes)
+Lê data/processed/alimentos_master.csv e gera:
+  - data/processed/alimentos_limpos.csv          → prontos para importar (têm nutrientes válidos)
+  - data/processed/alimentos_para_enriquecer.csv → precisam de enriquecimento por IA (nutrientes ausentes)
 
 O que faz:
   - Deduplica por código de barras (mantém o registro com mais dados)
@@ -16,7 +16,7 @@ O que faz:
 USO:
     cd backend
     python scripts/normalize_foods.py
-    python scripts/normalize_foods.py --input ../data/processed/foods_master.csv
+    python scripts/normalize_foods.py --input ../data/processed/alimentos_master.csv
 """
 
 from __future__ import annotations
@@ -345,14 +345,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--input",
-        default="../data/processed/foods_master.csv",
-        help="CSV de entrada (padrão: data/processed/foods_master.csv)",
+        default="../data/processed/alimentos_master.csv",
+        help="CSV de entrada (padrão: data/processed/alimentos_master.csv)",
     )
     args = ap.parse_args()
 
     input_path = Path(args.input)
-    out_clean = input_path.parent / "foods_clean.csv"
-    out_enrich = input_path.parent / "foods_enrich.csv"
+    out_clean = input_path.parent / "alimentos_limpos.csv"
+    out_enrich = input_path.parent / "alimentos_para_enriquecer.csv"
 
     log.info("Normalizando: %s", input_path)
     normalize(input_path, out_clean, out_enrich)

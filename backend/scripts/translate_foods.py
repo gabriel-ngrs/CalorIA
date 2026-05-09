@@ -1,8 +1,8 @@
-"""Fase 2 — Tradução de nomes de alimentos para português via Gemini.
+"""Fase 2 — Tradução de nomes de alimentos para português via Groq.
 
-Lê data/processed/foods_clean.csv, traduz os nomes em inglês para português
-brasileiro em lotes de 200 via Gemini 2.5 Flash, e salva o resultado em
-data/processed/foods_clean_translated.csv.
+Lê data/processed/alimentos_limpos.csv, traduz os nomes em inglês para português
+brasileiro em lotes de 200 via Groq (Llama 3.3 70B), e salva o resultado em
+data/processed/alimentos_traduzidos.csv.
 
 Alimentos TACO (source=taco) e os que já têm nome em português são preservados.
 
@@ -19,7 +19,7 @@ USO:
     python scripts/translate_foods.py --resume
 
     # Arquivo customizado
-    python scripts/translate_foods.py --input ../data/processed/foods_clean.csv
+    python scripts/translate_foods.py --input ../data/processed/alimentos_limpos.csv
 """
 
 from __future__ import annotations
@@ -34,14 +34,13 @@ import re
 import time
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+from groq import Groq
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 BATCH_SIZE = 200
-MODEL = "models/gemini-2.5-flash"
+MODEL = "llama-3.3-70b-versatile"
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # segundos entre tentativas
 
@@ -74,10 +73,10 @@ def _needs_translation(row: dict) -> bool:
 
 
 async def _translate_batch(
-    client: genai.Client,
+    client: Groq,
     names: list[str],
 ) -> dict[str, str]:
-    """Envia um lote de nomes ao Gemini e retorna {original: traduzido}."""
+    """Envia um lote de nomes ao Groq e retorna {original: traduzido}."""
 
     prompt = f"""Você é um especialista em alimentos e nutrição.
 Traduza os nomes de alimentos abaixo para português brasileiro.
@@ -97,16 +96,13 @@ Nomes para traduzir:
     for attempt in range(MAX_RETRIES):
         try:
             response = await asyncio.to_thread(
-                client.models.generate_content,
+                client.chat.completions.create,
                 model=MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.1,
-                    response_mime_type="application/json",
-                ),
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                response_format={"type": "json_object"},
             )
-            text = response.text.strip()
-            # Remove blocos de markdown se presentes
+            text = response.choices[0].message.content.strip()
             text = re.sub(r"^```json\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
             data = json.loads(text)
             translations = data.get("traducoes") or data.get("translations") or []
@@ -132,21 +128,20 @@ async def translate(
     dry_run: bool,
     resume: bool,
 ) -> None:
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        # Tenta carregar do .env
         env_path = input_path.parent.parent.parent / ".env"
         if env_path.exists():
             for line in env_path.read_text().splitlines():
-                if line.startswith("GEMINI_API_KEY="):
+                if line.startswith("GROQ_API_KEY="):
                     api_key = line.split("=", 1)[1].strip()
                     break
 
     if not api_key:
-        log.error("GEMINI_API_KEY não encontrada no ambiente ou no .env")
+        log.error("GROQ_API_KEY não encontrada no ambiente ou no .env")
         return
 
-    client = genai.Client(api_key=api_key)
+    client = Groq(api_key=api_key)
 
     # Carrega traduções já feitas (modo resume)
     done: dict[str, str] = {}
@@ -232,13 +227,13 @@ def _write_output(
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--input", default="../data/processed/foods_clean.csv")
+    ap.add_argument("--input", default="../data/processed/alimentos_limpos.csv")
     ap.add_argument("--dry-run", action="store_true", help="Testa sem salvar")
     ap.add_argument("--resume", action="store_true", help="Retoma de onde parou")
     args = ap.parse_args()
 
     input_path = Path(args.input)
-    output_path = input_path.parent / "foods_clean_translated.csv"
+    output_path = input_path.parent / "alimentos_traduzidos.csv"
 
     # Carrega .env se necessário
     env_path = Path(__file__).parent.parent.parent / ".env"
