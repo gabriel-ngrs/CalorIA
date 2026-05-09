@@ -6,49 +6,74 @@ Dados do banco nutricional do CalorIA.
 
 ```
 data/
-├── raw/          Arquivos brutos, fonte original (arquivos grandes não versionados)
-├── interim/      Extrações e exportações antes da normalização
-├── processed/    Dados limpos e prontos para importar
+├── raw/          Fontes originais
+├── processed/    Dados prontos para uso
 └── db/           Dumps PostgreSQL para restaurar em produção
 ```
 
-## Arquivos principais
+## Arquivos
 
+### raw/
 | Arquivo | Descrição |
 |---|---|
-| `processed/foods_master.csv` | 48.544 alimentos unificados (OFF + TACO + USDA + FatSecret + brasileiros brutos) |
-| `db/foods_dump.dump` | pg_dump da tabela foods (20.641 alimentos com nutrientes completos) |
-| `interim/off_brazil_raw.csv` | 32.438 produtos brasileiros extraídos do OFF sem filtro de qualidade |
-| `interim/foods_unified.csv` | Export direto do banco antes da normalização |
-| `raw/openfoodfacts-products.jsonl.gz` | Dump completo do OFF (~12GB) — **não versionado** |
+| `Alimentos Brasileiros com Dados da TBCA.csv` | Base TACO/TBCA com alimentos brasileiros e nutrientes reais |
+
+### processed/
+| Arquivo | Descrição |
+|---|---|
+| `alimentos_final.csv` | **42.103 alimentos** — resultado final do pipeline, prontos para importar |
+| `alimentos_pendentes.csv` | 546 alimentos sem nutrientes — para enriquecer futuramente |
+
+### db/
+| Arquivo | Descrição |
+|---|---|
+| `dump_alimentos.dump` | pg_dump da tabela `foods` com 42.103 alimentos |
 
 ## Como restaurar o banco em produção
 
 ```bash
 # Copia o dump para o container
-docker cp data/db/foods_dump.dump caloria_postgres:/tmp/
+docker cp data/db/dump_alimentos.dump caloria_postgres:/tmp/
 
-# Restaura
+# Limpa a tabela e restaura
+docker exec caloria_postgres psql -U caloria -d caloria_db -c "TRUNCATE TABLE foods RESTART IDENTITY CASCADE;"
 docker exec caloria_postgres pg_restore -U caloria -d caloria_db \
-  --data-only --table=foods /tmp/foods_dump.dump
+  --data-only --table=foods /tmp/dump_alimentos.dump
 
 # Corrige a sequência de IDs
 docker exec caloria_postgres psql -U caloria -d caloria_db \
   -c "SELECT setval(pg_get_serial_sequence('foods', 'id'), MAX(id)) FROM foods;"
 ```
 
-## Como regenerar o foods_master.csv
+## Como regenerar o pipeline do zero
+
+Requer o dump OFF (~12GB) baixado em `raw/openfoodfacts-products.jsonl.gz`.
 
 ```bash
-# 1. Extrair brasileiros do dump OFF (precisa do arquivo raw de 12GB)
 cd backend
+
+# Fase 0 — extrair produtos brasileiros do OFF
 python scripts/extract_off_brazil.py \
   --file ../data/raw/openfoodfacts-products.jsonl.gz \
-  --output ../data/interim/off_brazil_raw.csv
+  --output ../data/interim/off_brasil_bruto.csv
 
-# 2. Exportar banco atual
-docker exec caloria_postgres psql -U caloria -d caloria_db \
-  -c "\COPY foods TO '/tmp/foods.csv' WITH CSV HEADER"
+# Fase 1 — normalizar e separar completos/incompletos
+python scripts/normalize_foods.py
 
-# 3. Mesclar (ver scripts/normalize_foods.py após Fase 1)
+# Fase 2 — traduzir nomes para português
+python scripts/translate_foods.py
+
+# Fase 3 — estimar nutrientes via IA (Groq)
+python scripts/enrich_foods.py
+python scripts/enrich_foods.py --resume  # retoma se interrompido
 ```
+
+## Origem dos dados
+
+| Fonte | Registros | Descrição |
+|---|---|---|
+| Open Food Facts | ~19k | Produtos com nutrientes reais (internacionais e brasileiros) |
+| AI estimado (Groq) | ~23k | Nutrientes estimados por Llama 3 para alimentos sem dados |
+| USDA FoodData | 247 | Base americana de alimentos básicos |
+| TACO | 228 | Tabela brasileira de composição de alimentos |
+| FatSecret | 35 | Complemento de produtos |
