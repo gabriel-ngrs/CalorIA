@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 0 · médios: 2 · baixos: 0 (atualizar a cada novo achado)
+**Status totais:** críticos: 0 · altos: 0 · médios: 3 · baixos: 0 (atualizar a cada novo achado)
 
 ---
 
@@ -27,3 +27,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Quebrar em 3 services menores agrupados por finalidade: (1) `PeriodicInsightsService` — `daily_insight`/`weekly_insight`/`monthly_report`; (2) `RecommendationsService` — `suggest_meal`/`nutritional_alerts`/`goal_adjustment_suggestion`; (3) `QuestionAnsweringService` — `answer_question`. Manter o arquivo atual como facade temporária para retrocompatibilidade se necessário.
 - **Esforço:** L (> 4h)
 - **Origem:** PASSO 2.4
+
+### AUD-003 — Endpoints `push.py` sem `response_model` retornam dict cru
+
+- **Severidade:** 🟡 média
+- **Frente:** B
+- **Arquivo:linha:** `backend/app/api/v1/push.py:73` (`POST /push/subscribe`) e `backend/app/api/v1/push.py:187` (`POST /notifications/read-all`)
+- **Descrição:** Os dois únicos endpoints do projeto sem `response_model` retornam `dict[str, str]`. Sem schema, o OpenAPI/Swagger fica menos preciso, há risco de mudança silenciosa do payload e a tipagem do cliente fica frouxa. Os outros 45 endpoints declaram schema ou usam `204 NO_CONTENT`.
+- **Evidência:** `artefatos/B1-routers-response.txt`. Cobertura de `response_model`: 96%.
+- **Recomendação:** Criar `SubscribePushResponse(BaseModel)` (ou usar status 204 NO_CONTENT, já que o payload `{"status": "subscribed"}` não acrescenta info útil) e `MarkAllReadResponse(BaseModel)` com campo `marked: int` (contagem). Aplicar `response_model=...`.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 3.1

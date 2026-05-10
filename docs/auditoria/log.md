@@ -183,3 +183,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum adicional (reforça AUD-002 mas não cria novo)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Grafo é **DAG** — sem ciclos. Diagrama Mermaid em `01-arquitetura.md § A.5`. Fan-out mais alto: `InsightsGenerator` (5 services) — reforça recomendação de quebra. Camada `ai/*` consome só `AIClient`+`food_lookup`+`utils`(+`UserService` em `context_builder`); boa separação.
+
+## PASSO 3.1 — Routers: response_model e status codes
+
+- **Início:** 2026-05-10 17:55
+- **Fim:** 2026-05-10 17:59
+- **Comando(s) executado(s):** script Python iterando todos os `@router.*` de `backend/app/api/v1/*.py`; `rg -oN status_code=...` para inventário
+- **Artefato(s):** `docs/auditoria/artefatos/B1-routers-response.txt`
+- **Achados gerados:** AUD-003
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 47 endpoints; **45 com `response_model` ou 204** (96% cobertura). 2 violadores em `push.py` (`POST /push/subscribe`, `POST /notifications/read-all`), ambos retornando `dict[str, str]`. Status codes em uso (404/201/502/204/422/401/503/409/200) coerentes com semântica HTTP.
