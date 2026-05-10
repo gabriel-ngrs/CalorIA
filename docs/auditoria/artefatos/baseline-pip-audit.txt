@@ -1,0 +1,6 @@
+Downloading pip (1.7MiB)
+Downloading pygments (1.2MiB)
+ Downloaded pygments
+ Downloaded pip
+Installed 29 packages in 35ms
+No known vulnerabilities found
