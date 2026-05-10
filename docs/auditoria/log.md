@@ -93,3 +93,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **0 errors** — saída vazia. Artefato anotado com `(no output — 0 errors)` para auto-documentar.
+
+## PASSO 1.9 — Baseline LOC e estrutura
+
+- **Início:** 2026-05-10 17:10
+- **Fim:** 2026-05-10 17:10
+- **Comando(s) executado(s):** bloco `find ... | wc -l` + contagem de routers/models/migrations conforme runbook
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-loc.txt`
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Backend 5.708 LOC · Frontend 10.573 LOC · Tests backend 1.845 · Tests frontend 1.553 · 47 endpoints REST · 12 modelos · 10 migrações. Seção "Métricas de baseline" também adicionada a `relatorio-preliminar.md`.
