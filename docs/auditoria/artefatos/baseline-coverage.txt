@@ -1,0 +1,360 @@
+..................................................F..................... [ 72%]
+............................                                             [100%]
+=================================== FAILURES ===================================
+________________________________ test_ai_client ________________________________
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+>           yield
+
+.venv/lib/python3.12/site-packages/httpx/_transports/default.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/httpx/_transports/default.py:394: in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py:256: in handle_async_request
+    raise exc from None
+.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py:236: in handle_async_request
+    response = await connection.handle_async_request(
+.venv/lib/python3.12/site-packages/httpcore/_async/connection.py:103: in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpcore/_async/http11.py:136: in handle_async_request
+    raise exc
+.venv/lib/python3.12/site-packages/httpcore/_async/http11.py:86: in handle_async_request
+    await self._send_request_headers(**kwargs)
+.venv/lib/python3.12/site-packages/httpcore/_async/http11.py:144: in _send_request_headers
+    with map_exceptions({h11.LocalProtocolError: LocalProtocolError}):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.12.11-linux-x86_64-gnu/lib/python3.12/contextlib.py:158: in __exit__
+    self.gen.throw(value)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+map = {<class 'h11._util.LocalProtocolError'>: <class 'httpcore.LocalProtocolError'>}
+
+    @contextlib.contextmanager
+    def map_exceptions(map: ExceptionMapping) -> typing.Iterator[None]:
+        try:
+            yield
+        except Exception as exc:  # noqa: PIE786
+            for from_exc, to_exc in map.items():
+                if isinstance(exc, from_exc):
+>                   raise to_exc(exc) from exc
+E                   httpcore.LocalProtocolError: Illegal header value b'Bearer '
+
+.venv/lib/python3.12/site-packages/httpcore/_exceptions.py:14: LocalProtocolError
+
+The above exception was the direct cause of the following exception:
+
+self = <groq.AsyncGroq object at 0x745c172d1880>
+cast_to = <class 'groq.types.chat.chat_completion.ChatCompletion'>
+options = FinalRequestOptions(method='post', url='/openai/v1/chat/completions', params={}, headers=NOT_GIVEN, max_retries=NOT_GI... 'user', 'content': 'Diga apenas: GROQ_OK'}], 'model': 'llama-3.3-70b-versatile', 'temperature': 0.3}, extra_json=None)
+
+    async def request(
+        self,
+        cast_to: Type[ResponseT],
+        options: FinalRequestOptions,
+        *,
+        stream: bool = False,
+        stream_cls: type[_AsyncStreamT] | None = None,
+    ) -> ResponseT | _AsyncStreamT:
+        if self._platform is None:
+            # `get_platform` can make blocking IO calls so we
+            # execute it earlier while we are in an async context
+            self._platform = await asyncify(get_platform)()
+    
+        cast_to = self._maybe_override_cast_to(cast_to, options)
+    
+        # create a copy of the options we were given so that if the
+        # options are mutated later & we then retry, the retries are
+        # given the original options
+        input_options = model_copy(options)
+        if input_options.idempotency_key is None and input_options.method.lower() != "get":
+            # ensure the idempotency key is reused between requests
+            input_options.idempotency_key = self._idempotency_key()
+    
+        response: httpx.Response | None = None
+        max_retries = input_options.get_max_retries(self.max_retries)
+    
+        retries_taken = 0
+        for retries_taken in range(max_retries + 1):
+            options = model_copy(input_options)
+            options = await self._prepare_options(options)
+    
+            remaining_retries = max_retries - retries_taken
+            request = self._build_request(options, retries_taken=retries_taken)
+            await self._prepare_request(request)
+    
+            kwargs: HttpxSendArgs = {}
+            if self.custom_auth is not None:
+                kwargs["auth"] = self.custom_auth
+    
+            if options.follow_redirects is not None:
+                kwargs["follow_redirects"] = options.follow_redirects
+    
+            log.debug("Sending HTTP Request: %s %s", request.method, request.url)
+    
+            response = None
+            try:
+>               response = await self._client.send(
+                    request,
+                    stream=stream or self._should_stream_response_body(request=request),
+                    **kwargs,
+                )
+
+.venv/lib/python3.12/site-packages/groq/_base_client.py:1591: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_transports/default.py:393: in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.12.11-linux-x86_64-gnu/lib/python3.12/contextlib.py:158: in __exit__
+    self.gen.throw(value)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+            yield
+        except Exception as exc:
+            mapped_exc = None
+    
+            for from_exc, to_exc in HTTPCORE_EXC_MAP.items():
+                if not isinstance(exc, from_exc):
+                    continue
+                # We want to map to the most specific exception we can find.
+                # Eg if `exc` is an `httpcore.ReadTimeout`, we want to map to
+                # `httpx.ReadTimeout`, not just `httpx.TimeoutException`.
+                if mapped_exc is None or issubclass(to_exc, mapped_exc):
+                    mapped_exc = to_exc
+    
+            if mapped_exc is None:  # pragma: no cover
+                raise
+    
+            message = str(exc)
+>           raise mapped_exc(message) from exc
+E           httpx.LocalProtocolError: Illegal header value b'Bearer '
+
+.venv/lib/python3.12/site-packages/httpx/_transports/default.py:118: LocalProtocolError
+
+The above exception was the direct cause of the following exception:
+
+    async def test_ai_client() -> None:
+        print("\n[4] AIClient (Groq)")
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+    
+        os.environ["GROQ_API_KEY"] = GROQ_KEY
+        os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+        os.environ["DATABASE_URL"] = "postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_db"
+    
+        from app.services.ai.ai_client import AIClient
+        client = AIClient()
+    
+        # generate_text sem cache
+>       result = await client.generate_text("Diga apenas: GROQ_OK", use_cache=False)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/smoke_test.py:183: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/services/ai/ai_client.py:47: in generate_text
+    result = await self._call(prompt, system=system, model=_TEXT_MODEL)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/services/ai/ai_client.py:104: in _call
+    response = await self._groq.chat.completions.create(
+.venv/lib/python3.12/site-packages/groq/resources/chat/completions.py:941: in create
+    return await self._post(
+.venv/lib/python3.12/site-packages/groq/_base_client.py:1856: in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <groq.AsyncGroq object at 0x745c172d1880>
+cast_to = <class 'groq.types.chat.chat_completion.ChatCompletion'>
+options = FinalRequestOptions(method='post', url='/openai/v1/chat/completions', params={}, headers=NOT_GIVEN, max_retries=NOT_GI... 'user', 'content': 'Diga apenas: GROQ_OK'}], 'model': 'llama-3.3-70b-versatile', 'temperature': 0.3}, extra_json=None)
+
+    async def request(
+        self,
+        cast_to: Type[ResponseT],
+        options: FinalRequestOptions,
+        *,
+        stream: bool = False,
+        stream_cls: type[_AsyncStreamT] | None = None,
+    ) -> ResponseT | _AsyncStreamT:
+        if self._platform is None:
+            # `get_platform` can make blocking IO calls so we
+            # execute it earlier while we are in an async context
+            self._platform = await asyncify(get_platform)()
+    
+        cast_to = self._maybe_override_cast_to(cast_to, options)
+    
+        # create a copy of the options we were given so that if the
+        # options are mutated later & we then retry, the retries are
+        # given the original options
+        input_options = model_copy(options)
+        if input_options.idempotency_key is None and input_options.method.lower() != "get":
+            # ensure the idempotency key is reused between requests
+            input_options.idempotency_key = self._idempotency_key()
+    
+        response: httpx.Response | None = None
+        max_retries = input_options.get_max_retries(self.max_retries)
+    
+        retries_taken = 0
+        for retries_taken in range(max_retries + 1):
+            options = model_copy(input_options)
+            options = await self._prepare_options(options)
+    
+            remaining_retries = max_retries - retries_taken
+            request = self._build_request(options, retries_taken=retries_taken)
+            await self._prepare_request(request)
+    
+            kwargs: HttpxSendArgs = {}
+            if self.custom_auth is not None:
+                kwargs["auth"] = self.custom_auth
+    
+            if options.follow_redirects is not None:
+                kwargs["follow_redirects"] = options.follow_redirects
+    
+            log.debug("Sending HTTP Request: %s %s", request.method, request.url)
+    
+            response = None
+            try:
+                response = await self._client.send(
+                    request,
+                    stream=stream or self._should_stream_response_body(request=request),
+                    **kwargs,
+                )
+            except httpx.TimeoutException as err:
+                log.debug("Encountered httpx.TimeoutException", exc_info=True)
+    
+                if remaining_retries > 0:
+                    await self._sleep_for_retry(
+                        retries_taken=retries_taken,
+                        max_retries=max_retries,
+                        options=input_options,
+                        response=None,
+                    )
+                    continue
+    
+                log.debug("Raising timeout error")
+                raise APITimeoutError(request=request) from err
+            except Exception as err:
+                log.debug("Encountered Exception", exc_info=True)
+    
+                if remaining_retries > 0:
+                    await self._sleep_for_retry(
+                        retries_taken=retries_taken,
+                        max_retries=max_retries,
+                        options=input_options,
+                        response=None,
+                    )
+                    continue
+    
+                log.debug("Raising connection error")
+>               raise APIConnectionError(request=request) from err
+E               groq.APIConnectionError: Connection error.
+
+.venv/lib/python3.12/site-packages/groq/_base_client.py:1623: APIConnectionError
+----------------------------- Captured stdout call -----------------------------
+
+[4] AIClient (Groq)
+----------------------------- Captured stderr call -----------------------------
+13:58:16 INFO groq._base_client | Retrying request to /openai/v1/chat/completions in 0.478605 seconds
+13:58:17 INFO groq._base_client | Retrying request to /openai/v1/chat/completions in 0.983875 seconds
+------------------------------ Captured log call -------------------------------
+INFO     groq._base_client:_base_client.py:1679 Retrying request to /openai/v1/chat/completions in 0.478605 seconds
+INFO     groq._base_client:_base_client.py:1679 Retrying request to /openai/v1/chat/completions in 0.983875 seconds
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.11-final-0 _______________
+
+Name                                    Stmts   Miss  Cover
+-----------------------------------------------------------
+app/__init__.py                             0      0   100%
+app/api/__init__.py                         0      0   100%
+app/api/v1/__init__.py                     22      0   100%
+app/api/v1/ai.py                           85     54    36%
+app/api/v1/auth.py                         51     25    51%
+app/api/v1/dashboard.py                    32     11    66%
+app/api/v1/hydration.py                    18      2    89%
+app/api/v1/meals.py                        43     13    70%
+app/api/v1/mood.py                         15      2    87%
+app/api/v1/push.py                         83     38    54%
+app/api/v1/reminders.py                    33     15    55%
+app/api/v1/users.py                        36     14    61%
+app/api/v1/weight.py                       15      2    87%
+app/core/__init__.py                        0      0   100%
+app/core/config.py                         26      2    92%
+app/core/database.py                       21      5    76%
+app/core/deps.py                           24      4    83%
+app/core/security.py                       20      0   100%
+app/main.py                                33      5    85%
+app/models/__init__.py                     13      0   100%
+app/models/ai_conversation.py              24      1    96%
+app/models/food.py                         26      2    92%
+app/models/hydration_log.py                17      1    94%
+app/models/meal.py                         38      1    97%
+app/models/meal_item.py                    26      1    96%
+app/models/mood_log.py                     19      1    95%
+app/models/notification.py                 26      1    96%
+app/models/profile.py                      29      1    97%
+app/models/push_subscription.py            18      1    94%
+app/models/reminder.py                     28      1    96%
+app/models/user.py                         37      1    97%
+app/models/weight_log.py                   17      1    94%
+app/schemas/__init__.py                     7      0   100%
+app/schemas/ai.py                          85      0   100%
+app/schemas/dashboard.py                   28      0   100%
+app/schemas/logs.py                        44      0   100%
+app/schemas/meal.py                        81      4    95%
+app/schemas/profile.py                     18      0   100%
+app/schemas/reminder.py                    52     20    62%
+app/schemas/user.py                        37      0   100%
+app/services/__init__.py                    0      0   100%
+app/services/ai/__init__.py                 0      0   100%
+app/services/ai/ai_client.py               83     47    43%
+app/services/ai/context_builder.py         75     60    20%
+app/services/ai/food_lookup.py             75     44    41%
+app/services/ai/insights_generator.py     184    158    14%
+app/services/ai/meal_parser.py             71     28    61%
+app/services/ai/pattern_analyzer.py        78     57    27%
+app/services/ai/utils.py                   19      2    89%
+app/services/ai/vision_parser.py           78     31    60%
+app/services/auth_service.py               24      5    79%
+app/services/dashboard_service.py          31     11    65%
+app/services/log_service.py                67     25    63%
+app/services/meal_service.py               73     32    56%
+app/services/nutrition/__init__.py          0      0   100%
+app/services/nutrition/tdee.py              8      0   100%
+app/services/profile_service.py            24     11    54%
+app/services/push_service.py               21     15    29%
+app/services/reminder_service.py           42     29    31%
+app/services/reminders/__init__.py          0      0   100%
+app/services/user_service.py               38     15    61%
+app/workers/__init__.py                     0      0   100%
+app/workers/celery_app.py                   7      7     0%
+app/workers/tasks/__init__.py               0      0   100%
+app/workers/tasks/maintenance.py           65     12    82%
+app/workers/tasks/reminders.py            108     47    56%
+app/workers/tasks/reports.py              114     77    32%
+-----------------------------------------------------------
+TOTAL                                    2512    942    62%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/smoke_test.py::test_ai_client - groq.APIConnectionError: Connect...
+1 failed, 99 passed in 58.41s
