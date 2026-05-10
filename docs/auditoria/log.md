@@ -363,3 +363,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-023
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** SW funcional para push (`push`, `notificationclick` corretos) mas sem `skipWaiting`/`clients.claim` — atualizações exigem fechar tabs. Manifest cobre o essencial; faltam tamanhos comuns de ícone (144, 384), `apple-touch-icon` (iOS) e `screenshots` (Lighthouse).
+
+## PASSO 5.7 — Bundle size analysis
+
+- **Início:** 2026-05-10 19:41
+- **Fim:** 2026-05-10 19:43
+- **Comando(s) executado(s):** `grep "@next/bundle-analyzer"` em `frontend/package.json` (não encontrado); leitura de `next.config.mjs` e dependências
+- **Artefato(s):** `docs/auditoria/artefatos/D7-bundle.txt`
+- **Achados gerados:** AUD-024
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Build com `ANALYZE=true` pulado (analyzer não instalado, conforme runbook orienta). Configuração atual já tem `output: standalone`, `transpilePackages: ["ogl"]` e `optimizePackageImports: ["lucide-react"]`. Suspeitos por tamanho conhecido: `recharts`, `ogl`, `@radix-ui` (8 pacotes). `date-fns@^2.30.0` poderia subir para v3 (locales tree-shake automático).
