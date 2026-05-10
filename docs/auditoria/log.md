@@ -33,3 +33,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **6 errors** em 1 arquivo (`app/services/ai/ai_client.py`), 67 source files checked. Cache root-owned em `.mypy_cache` exigiu `--cache-dir=/tmp/mypy-baseline` (mesmo motivo do `RUFF_CACHE_DIR`). Mypy não estava no `.venv`; usou `uv run --extra dev`. `pyproject.toml` já configura `strict = true` e plugin `pydantic.mypy`.
+
+## PASSO 1.3 — Baseline radon
+
+- **Início:** 2026-05-10 17:01
+- **Fim:** 2026-05-10 17:02
+- **Comando(s) executado(s):** `uvx radon cc app/ -s -nc -a` e `uvx radon mi app/ -s` em `backend/`
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-radon-cc.txt`, `docs/auditoria/artefatos/baseline-radon-mi.txt`
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 9 blocos com CC ≥ B; **average CC = 16.56 (C)**. Hotspots: `build_meal_context` (D, 25), `InsightsGenerator.goal_adjustment_suggestion` (C, 18), `MealParser._lookup_and_fill` (C, 16). MI: todos os módulos analisados em rank A (≥ 63.89).

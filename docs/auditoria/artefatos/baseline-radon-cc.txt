@@ -1,0 +1,19 @@
+Installed 4 packages in 5ms
+app/services/meal_service.py
+    M 147:4 MealService.get_daily_summary - C (12)
+app/services/ai/meal_parser.py
+    M 128:4 MealParser._lookup_and_fill - C (16)
+app/services/ai/vision_parser.py
+    M 122:4 VisionParser._lookup_and_fill - C (17)
+app/services/ai/pattern_analyzer.py
+    M 95:4 PatternAnalyzer._build_summary - D (23)
+app/services/ai/context_builder.py
+    F 195:0 build_meal_context - D (25)
+app/services/ai/insights_generator.py
+    M 275:4 InsightsGenerator.goal_adjustment_suggestion - C (18)
+    M 353:4 InsightsGenerator.monthly_report - C (14)
+    M 185:4 InsightsGenerator.nutritional_alerts - C (13)
+    M 128:4 InsightsGenerator.suggest_meal - C (11)
+
+9 blocks (classes, functions, methods) analyzed.
+Average complexity: C (16.555555555555557)
