@@ -203,3 +203,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-004
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 24 `raise HTTPException` totais; 9 dentro de `except`; **1 sem `from`** (`meals.py:101`, conforme já mapeado no plano Anexo A). Todos os 8 demais (em `ai.py`) já usam `from exc`. ✅
+
+## PASSO 3.3 — Routers: paginação consistente
+
+- **Início:** 2026-05-10 18:04
+- **Fim:** 2026-05-10 18:06
+- **Comando(s) executado(s):** `rg -n "skip|limit" backend/app/api/v1/ | grep "Query"`
+- **Artefato(s):** `docs/auditoria/artefatos/B3-paginacao.txt`
+- **Achados gerados:** AUD-005
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 5 endpoints expõem `limit`; 3 expõem `skip`. **Único violador real:** `weight.py:16` aceita `le=200` enquanto o resto usa `le=100`. Defaults variam de 20 a 50 (esperado por domínio); `dashboard/weight-chart` e `notifications` usam `limit-only` (filtro temporal/recente).

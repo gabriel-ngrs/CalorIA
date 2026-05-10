@@ -1,0 +1,8 @@
+backend/app/api/v1/push.py:129:    limit: int = Query(20, ge=1, le=100),
+backend/app/api/v1/weight.py:15:    skip: int = Query(default=0, ge=0),
+backend/app/api/v1/weight.py:16:    limit: int = Query(default=50, ge=1, le=200),
+backend/app/api/v1/mood.py:15:    skip: int = Query(default=0, ge=0),
+backend/app/api/v1/mood.py:16:    limit: int = Query(default=30, ge=1, le=100),
+backend/app/api/v1/dashboard.py:64:    limit: int = Query(default=30, ge=1, le=365),
+backend/app/api/v1/meals.py:29:    skip: int = Query(default=0, ge=0),
+backend/app/api/v1/meals.py:30:    limit: int = Query(default=20, ge=1, le=100),
