@@ -213,3 +213,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-005
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 5 endpoints expõem `limit`; 3 expõem `skip`. **Único violador real:** `weight.py:16` aceita `le=200` enquanto o resto usa `le=100`. Defaults variam de 20 a 50 (esperado por domínio); `dashboard/weight-chart` e `notifications` usam `limit-only` (filtro temporal/recente).
+
+## PASSO 3.4 — Services: detecção de N+1
+
+- **Início:** 2026-05-10 18:07
+- **Fim:** 2026-05-10 18:14
+- **Comando(s) executado(s):** `rg -n "for .* in .*:\s*$" backend/app/services/ backend/app/workers/ -A 5 | grep -B 1 "await.*execute|await.*get_|await.*list"` + leitura manual dos hits
+- **Artefato(s):** `docs/auditoria/artefatos/B4-n-mais-1.txt`
+- **Achados gerados:** AUD-006, AUD-007, AUD-008
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **5 N+1 reais** confirmados. Mais crítico: `food_lookup.py:89` (caminho síncrono do user, ~25 queries por refeição). `InsightsGenerator` repete o padrão em 2 métodos — solução já existe no projeto (`MealService.get_macros_by_date_range` foi introduzido em `DashboardService` para resolver caso análogo). Workers (reminders+maintenance) escalam linear com base de usuários.
