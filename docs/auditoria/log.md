@@ -63,3 +63,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **No known vulnerabilities found** (29 pacotes auditados a partir do `pyproject.toml` resolvido por `uv pip compile`).
+
+## PASSO 1.6 — Baseline npm audit
+
+- **Início:** 2026-05-10 17:06
+- **Fim:** 2026-05-10 17:06
+- **Comando(s) executado(s):** `npm audit --json` e `npm audit` em `frontend/`
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-npm-audit.json`, `docs/auditoria/artefatos/baseline-npm-audit.txt`
+- **Achados gerados:** nenhum (fase de baseline; análise virá na FASE 8 — Frente G)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **16 vulnerabilities** — 4 low, 3 moderate, **9 high**, 0 critical. Pacotes citados na cauda: `next/node_modules/postcss`, `postcss`.
