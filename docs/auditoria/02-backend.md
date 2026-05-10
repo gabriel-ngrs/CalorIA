@@ -7,6 +7,9 @@
 - AUD-003 (🟡 média) — 2 endpoints públicos em `push.py` sem `response_model` (retornam `dict[str, str]` cru)
 - AUD-004 (🟢 baixa) — `meals.py:101` re-eleva HTTPException dentro de `except` sem `from None`
 - AUD-005 (🟢 baixa) — `weight.py:16` aceita `limit ≤ 200` (divergente do padrão 100)
+- AUD-006 (🟠 alta) — `food_lookup.py:89` executa 1 query SQL por n-grama candidato (~25 round-trips por refeição)
+- AUD-007 (🟠 alta) — `InsightsGenerator` chama `get_daily_summary` em loop (`nutritional_alerts` e `monthly_report`)
+- AUD-008 (🟠 alta) — Workers Celery (reminders + maintenance) iteram usuários e fazem 1 query por usuário
 
 ## B.1 response_model e status codes
 
@@ -76,6 +79,24 @@ Comando: `rg -n "skip|limit" backend/app/api/v1/ | grep "Query"`. Artefato: `art
 - Defaults variam de 20 a 50 — diferença razoável por domínio.
 
 Achado registrado: AUD-005 (🟢) para o `le=200` divergente.
+
+## B.4 N+1 detectados
+
+Comando: `rg -n "for .* in .*:\s*$" backend/app/services/ backend/app/workers/ -A 5 | grep -B 1 "await.*execute|await.*get_|await.*list"`. Artefato: `artefatos/B4-n-mais-1.txt`.
+
+| # | Local | Padrão | Impacto | AUD |
+|---|---|---|---|---|
+| 1 | `services/ai/food_lookup.py:89` | Para cada n-grama candidato (`~25` para refeição de 10 palavras), 1 query `text("SELECT … FROM foods …")` no loop | **Caminho síncrono do usuário** — cada análise de refeição ≈ 25 round-trips DB | AUD-006 |
+| 2 | `services/ai/insights_generator.py:193` (`nutritional_alerts`) | `for i in range(days):` chama `MealService.get_daily_summary(user_id, d)` (que roda 1 query) → 14 queries seriais (default) | Endpoint `/ai/nutritional-alerts` | AUD-007 |
+| 3 | `services/ai/insights_generator.py:368` (`monthly_report`) | `for day_num in range(days_in_month):` mesmo padrão → até 31 queries | Endpoint `/ai/monthly-report` | AUD-007 |
+| 4 | `workers/tasks/reminders.py:172` (`_send_hydration_reminders_async`) | Para cada usuário ativo: `HydrationService.get_day_summary(user.id, today)` → N queries | Cron horário; cresce linear com usuários | AUD-008 |
+| 5 | `workers/tasks/maintenance.py:87` | Para cada usuário: query do último `WeightLog` → N queries | Cron diário | AUD-008 |
+
+Já existe `MealService.get_macros_by_date_range` (introduzido para resolver pattern análogo em `DashboardService.get_today` — comentário no código indica que substituiu loop equivalente). Pode ser estendido para resolver #2 e #3.
+
+Para #4 e #5, possível solução: 1 query agregada com `JOIN User → HydrationLog/WeightLog` agrupada por usuário.
+
+Para #1, possível solução: 1 query batch montando `WHERE search_text %>> ANY(ARRAY[…])` ou usar `tsvector` + `ts_rank`.
 
 ## Notas e contexto
 
