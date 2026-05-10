@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 4 · médios: 9 · baixos: 4 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 4 · médios: 9 · baixos: 5 (atualizar a cada novo achado)
 
 ---
 
@@ -211,3 +211,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Para `refeicoes/page.tsx`: extrair para `_components/{MealList,MealItemCard,AddMealTextDialog,AddMealPhotoDialog,EditMealItemDialog}.tsx` + `_hooks/useVoiceCapture.ts`. Para `QuickAddModals.tsx`: 1 arquivo por modal. Meta: ≤ 250 LOC por arquivo de página, ≤ 200 LOC por componente.
 - **Esforço:** L (> 4h) para `refeicoes`; M para os demais
 - **Origem:** PASSO 5.1
+
+### AUD-019 — Hooks de mutação não usam optimistic updates
+
+- **Severidade:** 🟢 baixa
+- **Frente:** D
+- **Arquivo:linha:** `frontend/lib/hooks/useReminders.ts`, `useNotifications.ts`, `useMeals.ts` (mutations).
+- **Descrição:** Todas as mutações usam `onSuccess` para `invalidateQueries`, mas nenhuma usa `onMutate` para optimistic update. Operações como `toggleReminder`, `markNotificationRead`, `markAllRead`, `deleteMealItem` são idempotentes/triviais de reverter — perfeitas para feedback imediato de UI sem esperar round-trip.
+- **Evidência:** inspeção dos hooks; ausência de `onMutate` em todos.
+- **Recomendação:** Implementar optimistic updates pelo menos para toggles e mark-read (operações com baixíssimo risco de rollback). Padrão: `onMutate: () => qc.setQueryData([key], (old) => updated); return { previous: old };` + `onError: (_e, _v, ctx) => qc.setQueryData([key], ctx.previous)`.
+- **Esforço:** M (1–4h)
+- **Origem:** PASSO 5.2
