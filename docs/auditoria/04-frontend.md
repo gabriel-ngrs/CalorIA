@@ -10,6 +10,7 @@
 - AUD-021 (🟠 alta) — Discrepância de contrato `/auth/login`: backend retorna `{access_token, refresh_token}` mas frontend lê `data.user.id`/`data.user.name` (silently degraded)
 - AUD-022 (🟢 baixa) — 6 `any` para Web Speech API (SpeechRecognition) duplicados entre 2 arquivos
 - AUD-023 (🟢 baixa) — Service Worker sem `skipWaiting`/`clients.claim`; manifest sem `apple-touch-icon` e ícones para todos os tamanhos requisitados pelo Lighthouse PWA
+- AUD-024 (🟢 baixa) — `@next/bundle-analyzer` ausente — sem visibilidade contínua de tamanho de bundle
 
 ## D.1 Páginas e componentes grandes
 
@@ -212,6 +213,42 @@ Arquivos: `frontend/public/sw.js` (18 LOC) e `frontend/app/manifest.ts` (44 LOC)
 | `screenshots` | ❌ | Lighthouse recomenda para melhor UI de instalação |
 
 **Achado:** AUD-023 (🟢) — gaps PWA em SW updates e cobertura de ícones.
+
+## D.7 Bundle size (planejamento)
+
+`@next/bundle-analyzer` **não está instalado** em `frontend/package.json`. Análise de bundle requer:
+
+```bash
+cd frontend
+npm install --save-dev @next/bundle-analyzer
+```
+
+E adaptar `next.config.mjs`:
+
+```javascript
+import bundleAnalyzer from "@next/bundle-analyzer";
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+export default withBundleAnalyzer(nextConfig);
+```
+
+Depois rodar `ANALYZE=true npm run build` e abrir os HTMLs gerados.
+
+**Configuração atual em `next.config.mjs` já tem:**
+- `output: "standalone"` ✅ (Docker imagem menor)
+- `transpilePackages: ["ogl"]` (necessário pra Plasma component ESM-only)
+- `experimental.optimizePackageImports: ["lucide-react"]` ✅ (tree-shake do barrel de 1000+ ícones)
+
+**Dependências candidatas a investigação** (sem analyzer, suspeitos por tamanho conhecido):
+
+| Pacote | Risco aparente |
+|---|---|
+| `recharts@^2` | Pesado (~100KB minified) — pode ser code-split por página |
+| `ogl@^1.0.11` | Para componente decorativo (Plasma) — verificar se está só na página onde é usado |
+| `react-hook-form@^7.72.1` + `zod@^4.3.6` + `@hookform/resolvers@^5` | Combo bom mas não-trivial (~50KB) |
+| `@radix-ui/react-*` (8 pacotes) | Tree-shake natural mas conferir se algum é importado globalmente |
+| `date-fns@^2.30.0` | v2 — `^3` removeu locales sem uso (recomenda upgrade) |
+
+Achado: AUD-024 (🟢) — instalar `@next/bundle-analyzer` para visibilidade contínua de bundle.
 
 ## Notas e contexto
 

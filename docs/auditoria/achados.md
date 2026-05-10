@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 8 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
 
 ---
 
@@ -266,3 +266,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** (1) Em `sw.js` adicionar `self.addEventListener("install", e => self.skipWaiting())` e `self.addEventListener("activate", e => clients.claim())`. (2) Gerar ícones 144 e 384 (já há `icon.svg` como source). (3) Adicionar `<link rel="apple-touch-icon">` em `app/layout.tsx`. (4) Capturar 1-2 screenshots e adicionar ao manifest.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 5.6
+
+### AUD-024 — Sem `@next/bundle-analyzer`: zero visibilidade de tamanho de bundle
+
+- **Severidade:** 🟢 baixa
+- **Frente:** D / I
+- **Arquivo:linha:** `frontend/package.json` (não declara `@next/bundle-analyzer`); `frontend/next.config.mjs` (sem `withBundleAnalyzer`)
+- **Descrição:** O projeto usa pacotes pesados conhecidos (`recharts`, `ogl`, vários `@radix-ui`) mas não tem ferramenta para inspecionar o que está sendo enviado ao cliente. Sem analyzer, problemas de bundle (componente client importando módulo server, barrel sem tree-shake, lib decorativa em rota crítica) só aparecem por degradação observada.
+- **Evidência:** `grep "@next/bundle-analyzer" frontend/package.json` retorna nada.
+- **Recomendação:** `npm install --save-dev @next/bundle-analyzer` + envolver `nextConfig` com `withBundleAnalyzer({ enabled: process.env.ANALYZE === "true" })`. Adicionar script `npm run build:analyze`. Rodar manualmente antes de releases ou em PRs grandes. Considerar verificar `recharts` (~100KB) e `ogl` (Plasma) em rotas onde não são usados.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 5.7
