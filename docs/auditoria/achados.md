@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 4 · médios: 4 · baixos: 2 (atualizar a cada novo achado)
+**Status totais:** críticos: 0 · altos: 4 · médios: 4 · baixos: 3 (atualizar a cada novo achado)
 
 ---
 
@@ -115,3 +115,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Adicionar `max_length` por campo (sugestão: `notes` 1000, `question` 500, `raw_input` 2000, `message` 200). Considerar helper `ShortText = Annotated[str, StringConstraints(max_length=200)]` para reaproveitar.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 3.6
+
+### AUD-011 — 15 `# type: ignore` elimináveis com tipagem adequada
+
+- **Severidade:** 🟢 baixa
+- **Frente:** B / I
+- **Arquivo:linha:** 12× `[arg-type]` em `backend/app/services/ai/meal_parser.py:236-241` e `backend/app/services/ai/vision_parser.py:235-240`; 1× `[return-value]` em `backend/app/services/meal_service.py:45`; 1× `[no-any-return]` em `backend/app/services/ai/utils.py:15`; 1× `[type-arg]` em `backend/app/services/ai/utils.py:18`.
+- **Descrição:** Dos 22 `# type: ignore` no backend, 7 são justificáveis (libs sem stubs: `@celery_app.task` decorator, `aioredis.from_url`). Os outros 15 podem ser eliminados com tipagem correta. Os 12 do parser vêm do padrão `float(d.get("calories", 0))` onde `d: dict[str, Any]` (resultado bruto de `json.loads` do output da IA). Solução estrutural: definir `TypedDict` para a forma esperada e validar com `isinstance` ou `cast`, ou reusar o próprio `ParsedFoodItem` Pydantic para parsing+coerção.
+- **Evidência:** `artefatos/B7-type-ignores.txt`.
+- **Recomendação:** (1) Criar `class _RawAIItem(TypedDict, total=False)` em `meal_parser.py`/`vision_parser.py`. (2) `utils.py:15` — usar `cast(JSON, json.loads(...))` ou `Any`. (3) `utils.py:18` — anotar `list[ParsedFoodItem]`. (4) `meal_service.py:45` — substituir por `return list(result.scalars().all())`. Reduz `mypy --strict` errors também (relacionado ao baseline de 6 erros já capturado).
+- **Esforço:** M (1–4h)
+- **Origem:** PASSO 3.7

@@ -12,6 +12,7 @@
 - AUD-008 (🟠 alta) — Workers Celery (reminders + maintenance) iteram usuários e fazem 1 query por usuário
 - AUD-009 (🟠 alta) — `PhotoAnalysisRequest.image_base64` sem `max_length` (vetor de DoS)
 - AUD-010 (🟡 média) — múltiplos campos texto livre sem `max_length` (notes/message/question/raw_input)
+- AUD-011 (🟢 baixa) — 15 `# type: ignore` elimináveis com tipagem correta (12 em parsers de IA, 3 utilitários)
 
 ## B.1 response_model e status codes
 
@@ -157,6 +158,20 @@ Comando: leitura de cada `*Create`/`*Update`/`*Request` em `backend/app/schemas/
 Achados:
 - AUD-009 🟠 — `image_base64` sem `max_length` (DoS).
 - AUD-010 🟡 — múltiplos campos texto livre sem `max_length`.
+
+## B.7 `# type: ignore` no backend
+
+Comando: `rg -n "# type: ignore" backend/app/`. Artefato: `artefatos/B7-type-ignores.txt`.
+
+| Categoria | Quantidade | Locais | Avaliação |
+|---|---|---|---|
+| **Justificável** (lib externa sem stubs) | 7 | 6× `[untyped-decorator]` para `@celery_app.task` em `workers/tasks/{reminders,maintenance,reports}.py`; 1× `[no-untyped-call, no-any-return]` para `aioredis.from_url(...)` em `auth_service.py:20` | Manter |
+| **Eliminável (categoria 2)** | 15 | 12× `[arg-type]` em `meal_parser.py:236-241` e `vision_parser.py:235-240` (`float(d.get("...", 0))` onde `d: dict[str, Any]`); 1× `[return-value]` em `meal_service.py:45`; 1× `[no-any-return]` em `utils.py:15` (`json.loads`); 1× `[type-arg]` em `utils.py:18` (uso de `list` sem parâmetro) | AUD-011 (🟢) |
+| **Total** | 22 | | |
+
+Para os 12 do parser: solução estrutural seria criar `TypedDict` para a forma esperada do JSON da IA (já tipado como `ParsedFoodItem` no Pydantic — basta validar antes ou usar `cast(float, ...)`).
+
+Achado: AUD-011 (🟢).
 
 ## Notas e contexto
 
