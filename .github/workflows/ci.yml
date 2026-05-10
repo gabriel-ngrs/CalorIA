@@ -64,11 +64,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-test-secret-key-com-minimo-32-caracteres
-          GEMINI_API_KEY: fake-key-for-tests
-          TELEGRAM_BOT_TOKEN: 0000000000:fake-token-for-ci
-          EVOLUTION_API_URL: http://localhost:8080
-          EVOLUTION_API_KEY: fake-key
-          EVOLUTION_INSTANCE_NAME: caloria-test
+          GROQ_API_KEY: fake-key-for-tests
         run: pytest --cov=app --cov-report=xml -q
 
       - name: Upload cobertura
