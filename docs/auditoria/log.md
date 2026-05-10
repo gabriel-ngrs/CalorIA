@@ -53,3 +53,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline; análise de cobertura virá na FASE 9)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **TOTAL = 62%** (2512 statements, 942 missing). 99 passed, **1 failed** (`tests/smoke_test.py::test_ai_client` — `groq.APIConnectionError`, falha externa de rede/API; não é bug funcional do código). Hotspots de baixa cobertura: `app/workers/celery_app.py` 0%, `app/services/ai/insights_generator.py` 14%, `app/services/ai/context_builder.py` 20%, `app/services/ai/pattern_analyzer.py` 27%, `app/services/push_service.py` 29%, `app/services/reminder_service.py` 31%, `app/workers/tasks/reports.py` 32%.
+
+## PASSO 1.5 — Baseline pip-audit
+
+- **Início:** 2026-05-10 17:05
+- **Fim:** 2026-05-10 17:05
+- **Comando(s) executado(s):** `uvx pip-audit -r <(uv pip compile pyproject.toml)` em `backend/`
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-pip-audit.txt`
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **No known vulnerabilities found** (29 pacotes auditados a partir do `pyproject.toml` resolvido por `uv pip compile`).
