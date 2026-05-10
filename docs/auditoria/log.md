@@ -193,3 +193,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-003
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 47 endpoints; **45 com `response_model` ou 204** (96% cobertura). 2 violadores em `push.py` (`POST /push/subscribe`, `POST /notifications/read-all`), ambos retornando `dict[str, str]`. Status codes em uso (404/201/502/204/422/401/503/409/200) coerentes com semântica HTTP.
+
+## PASSO 3.2 — Routers: HTTPException com `from`
+
+- **Início:** 2026-05-10 18:00
+- **Fim:** 2026-05-10 18:03
+- **Comando(s) executado(s):** `rg -n "raise HTTPException" backend/app/api/v1/ -A 3` + script Python de detecção de contexto `except`
+- **Artefato(s):** `docs/auditoria/artefatos/B2-httpexc.txt`
+- **Achados gerados:** AUD-004
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 24 `raise HTTPException` totais; 9 dentro de `except`; **1 sem `from`** (`meals.py:101`, conforme já mapeado no plano Anexo A). Todos os 8 demais (em `ai.py`) já usam `from exc`. ✅
