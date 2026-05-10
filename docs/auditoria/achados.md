@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 6 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 7 (atualizar a cada novo achado)
 
 ---
 
@@ -244,3 +244,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** **Opção 1 (preferida — fix no backend):** adicionar `user: UserPublicResponse | None = None` em `TokenResponse` e popular no endpoint `/auth/login` (e opcionalmente em `/auth/refresh`). Aproveita hidratação inicial sem round-trip extra. **Opção 2 (fix no frontend):** após `/auth/login` OK, `authorize` chama `/auth/me` com o token novo e popula `id`/`name`. Custa 1 round-trip extra no login.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 5.4
+
+### AUD-022 — 6 `any` para Web Speech API duplicados em 2 arquivos
+
+- **Severidade:** 🟢 baixa
+- **Frente:** D / I
+- **Arquivo:linha:** `frontend/components/dashboard/QuickAddModals.tsx:180,187,195` e `frontend/app/(dashboard)/refeicoes/page.tsx:445,455,463`
+- **Descrição:** 6 `any` no código de produção, todos relacionados à Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`). O TypeScript já tem tipos `SpeechRecognition`, `SpeechRecognitionEvent`, `SpeechRecognitionErrorEvent` em `lib.dom.d.ts`, mas as referências `window.SpeechRecognition`/`window.webkitSpeechRecognition` precisam de module augmentation para evitar `(window as any)`.
+- **Evidência:** `artefatos/D5-any-usage.txt`. Nenhum outro `any` no código de produção (excluindo testes/mocks/build).
+- **Recomendação:** (1) Criar `frontend/types/speech.d.ts` com `declare global { interface Window { SpeechRecognition?: ...; webkitSpeechRecognition?: ...; } }`. (2) Extrair `useVoiceCapture()` em `frontend/lib/hooks/` — elimina os 6 `any` E a duplicação entre os 2 arquivos. Combinar com refactor de `refeicoes/page.tsx` (AUD-018).
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 5.5
