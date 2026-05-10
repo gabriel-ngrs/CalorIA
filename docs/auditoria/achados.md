@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 4 · médios: 4 · baixos: 3 (atualizar a cada novo achado)
+**Status totais:** críticos: 0 · altos: 4 · médios: 6 · baixos: 4 (atualizar a cada novo achado)
 
 ---
 
@@ -126,3 +126,36 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** (1) Criar `class _RawAIItem(TypedDict, total=False)` em `meal_parser.py`/`vision_parser.py`. (2) `utils.py:15` — usar `cast(JSON, json.loads(...))` ou `Any`. (3) `utils.py:18` — anotar `list[ParsedFoodItem]`. (4) `meal_service.py:45` — substituir por `return list(result.scalars().all())`. Reduz `mypy --strict` errors também (relacionado ao baseline de 6 erros já capturado).
 - **Esforço:** M (1–4h)
 - **Origem:** PASSO 3.7
+
+### AUD-012 — `AIClient` retry frágil e potencialmente bloqueante demais
+
+- **Severidade:** 🟡 média
+- **Frente:** C
+- **Arquivo:linha:** `backend/app/services/ai/ai_client.py:84,117`
+- **Descrição:** A condição de retry é `if "429" in str(exc)`, dependente da formatação string do exception. Se a SDK Groq mudar a representação textual do erro, o retry para de funcionar silenciosamente. Além disso, o backoff é 15s → 30s → 60s → 120s, totalizando até **225s** numa única request síncrona. Sem timeout global no uvicorn (`Dockerfile` usa defaults) e Caddy com `reverse_proxy` pode cortar antes — o cliente vê erro intermediário, mas o backend continua bloqueando o worker.
+- **Evidência:** trecho fonte do arquivo. `Dockerfile` confirma `uvicorn ... --workers 2` sem flags de timeout.
+- **Recomendação:** Filtrar por classe específica: `except groq.RateLimitError as exc:` (ou `httpx.HTTPStatusError` com `.response.status_code == 429`). Reduzir tentativas para 3 e cap total ≤ 60s (15s/30s) — para 429 do Groq, é melhor falhar rápido e o cliente reagir do que segurar worker. Quando precisar de retry mais longo, mover para tarefa Celery.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 4.1
+
+### AUD-013 — Logs de tokens da IA sem dimensão para agregação
+
+- **Severidade:** 🟡 média
+- **Frente:** C / J
+- **Arquivo:linha:** `backend/app/services/ai/ai_client.py:110-114`
+- **Descrição:** `logger.info("Groq tokens — entrada: %d, saída: %d", ...)` registra contagem mas não tem campos para correlacionar com usuário, request, modelo ou endpoint. Impossível responder "qual usuário consumiu mais tokens em maio?" ou "endpoint mais caro" sem reprocessar logs com regex. Custo Groq é zero hoje (free tier), mas com escala e migração para tier pago a cegueira aumenta.
+- **Evidência:** trecho fonte.
+- **Recomendação:** Receber `request_id`/`user_id` por contextvar (ou parâmetro opcional) e logar como structured log: `logger.info("ai.call", extra={"model": model, "prompt_tokens": ..., "completion_tokens": ..., "user_id": ..., "endpoint": ...})`. Considerar persistir em tabela `ai_calls` (já existe `AIConversation` parecida) para queries.
+- **Esforço:** M (1–4h)
+- **Origem:** PASSO 4.1
+
+### AUD-014 — `aioredis.from_url` por chamada (sem pool persistente)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** C
+- **Arquivo:linha:** `backend/app/services/ai/ai_client.py:135,143` (`_get_cached`, `_set_cached`)
+- **Descrição:** Cada operação de cache abre uma conexão Redis nova com `async with aioredis.from_url(...)` e fecha ao sair do bloco. Tem custo de handshake TCP adicional por chamada e pode esgotar sockets sob carga.
+- **Evidência:** trecho fonte.
+- **Recomendação:** Manter um `redis.asyncio.Redis` singleton (ou `ConnectionPool`) inicializado no startup e injetado nos métodos. Para tarefas Celery, usar pool por processo. Reuso reduz latência típica em 2-5ms por operação.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 4.1
