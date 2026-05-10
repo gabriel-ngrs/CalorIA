@@ -10,6 +10,8 @@
 - AUD-006 (🟠 alta) — `food_lookup.py:89` executa 1 query SQL por n-grama candidato (~25 round-trips por refeição)
 - AUD-007 (🟠 alta) — `InsightsGenerator` chama `get_daily_summary` em loop (`nutritional_alerts` e `monthly_report`)
 - AUD-008 (🟠 alta) — Workers Celery (reminders + maintenance) iteram usuários e fazem 1 query por usuário
+- AUD-009 (🟠 alta) — `PhotoAnalysisRequest.image_base64` sem `max_length` (vetor de DoS)
+- AUD-010 (🟡 média) — múltiplos campos texto livre sem `max_length` (notes/message/question/raw_input)
 
 ## B.1 response_model e status codes
 
@@ -117,6 +119,44 @@ Comando: `rg -n "from_attributes" backend/app/schemas/` + script Python para che
 Os 4 sem `from_attributes` **não são serializados de ORM** (construídos via kwargs em services/handlers). Configuração correta — sem achado.
 
 Observação: schemas `*Create`/`*Update`/`Request`/`*Summary` corretamente sem `from_attributes` (são inputs ou DTOs puros).
+
+## B.6 Validação de inputs sensíveis
+
+Comando: leitura de cada `*Create`/`*Update`/`*Request` em `backend/app/schemas/*.py` + `grep -nE "Field\(" backend/app/schemas/`.
+
+**Campos numéricos** — bem cobertos:
+
+| Campo | Constraint | OK |
+|---|---|---|
+| `weight_kg` | `gt=0, le=700` | ✅ |
+| `amount_ml` | `gt=0, le=5000` | ✅ |
+| `mood_level`/`energy_level` | `ge=1, le=5` | ✅ |
+| `height_cm` | `gt=0, le=300` | ✅ |
+| `current_weight` | `gt=0, le=700` | ✅ |
+| `age` | `gt=0, le=150` | ✅ |
+| `password` | `min_length=8, max_length=128` | ✅ |
+| `MealItemCreate.quantity` | `gt=0` (sem upper) | ⚠️ menor |
+| `MealItemCreate.calories/protein/...` | `ge=0` (sem upper) | ⚠️ menor |
+
+**Campos textuais sem `max_length`** (vetor de abuso de storage / inflar prompts da IA):
+
+| Schema | Campo | Risco |
+|---|---|---|
+| `PhotoAnalysisRequest` | `image_base64` | 🟠 **DoS** — base64 de imagem > 50MB ≈ 67MB request body |
+| `InsightRequest` | `question` | 🟡 mistura no prompt da IA |
+| `MealCreate`/`MealUpdate` | `notes` | 🟡 storage abuse |
+| `MealItemCreate` | `raw_input` | 🟡 storage abuse |
+| `WeightLogCreate` | `notes` | 🟡 storage abuse |
+| `MoodLogCreate` | `notes` | 🟡 storage abuse |
+| `ReminderCreate`/`ReminderUpdate` | `message` | 🟡 (também injetado em notificações Web Push) |
+
+**Campos com enum implícito sem validação**
+
+- `MealItemCreate.unit` (`max_length=50` mas aceita qualquer string): poderia ser `Literal["g", "ml", "unidade", "fatia", "colher"]` ou enum.
+
+Achados:
+- AUD-009 🟠 — `image_base64` sem `max_length` (DoS).
+- AUD-010 🟡 — múltiplos campos texto livre sem `max_length`.
 
 ## Notas e contexto
 
