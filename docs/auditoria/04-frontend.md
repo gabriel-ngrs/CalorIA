@@ -7,6 +7,7 @@
 - AUD-018 (🟡 média) — Páginas e componentes inflados: `refeicoes/page.tsx` 1055 LOC, `QuickAddModals.tsx` 657, `insights/page.tsx` 611, `relatorios/page.tsx` 548
 - AUD-019 (🟢 baixa) — Hooks de mutação não usam optimistic updates onde caberia (toggle reminder, mark notification read, etc.)
 - AUD-020 (🟢 baixa) — 7 sites `console.log/error` em `api.ts`+`providers.tsx` rodam em produção (sem gate `NODE_ENV`)
+- AUD-021 (🟠 alta) — Discrepância de contrato `/auth/login`: backend retorna `{access_token, refresh_token}` mas frontend lê `data.user.id`/`data.user.name` (silently degraded)
 
 ## D.1 Páginas e componentes grandes
 
@@ -113,6 +114,43 @@ Apenas o `ReactQueryDevtools` está protegido por `process.env.NODE_ENV === "dev
 Volume estimado em sessão típica de usuário ativo: ~50-100 logs/min no console. Polui DevTools dos usuários técnicos, custa CPU mínima e expõe queryKeys e rotas internas (info-disclosure menor).
 
 Achado: AUD-020 (🟢) — gatear todos com `NODE_ENV === "development"` ou substituir por logger condicional.
+
+## D.4 Discrepância de contrato no login
+
+**Backend retorna** (`backend/app/api/v1/auth.py:47-50`):
+```python
+return TokenResponse(
+    access_token=create_access_token(user.id),
+    refresh_token=create_refresh_token(user.id),
+)
+```
+
+`TokenResponse` (definido em `backend/app/schemas/user.py:46-50`) tem **apenas** `access_token`, `refresh_token`, `token_type`. **Sem `user`**.
+
+**Frontend espera** (`frontend/app/api/auth/[...nextauth]/route.ts:64-70`):
+```typescript
+const data = await res.json();
+return {
+    id: String(data.user?.id ?? ""),                       // ← data.user é undefined → ""
+    name: data.user?.name ?? credentials.email,            // ← cai no fallback
+    email: credentials.email,
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+};
+```
+
+**Efeitos** (silenciosos, login funciona):
+- `id` da sessão NextAuth fica como string vazia (`""`).
+- `name` exibido na UI cai no fallback `credentials.email` — usuário vê o e-mail no lugar do nome até buscar `/auth/me` via `useUser()`.
+- `accessToken`/`refreshToken` funcionam normalmente — autenticação não quebra.
+
+**Por que não quebra:** o frontend não usa `session.user.id` em nenhuma lógica funcional (verificado com `grep -rn` em `app|components|lib` exceto build artefatos). Bug é puramente de qualidade de dado/UX (nome incorreto até refetch).
+
+Achado: AUD-021 (🟠 alta).
+
+**Correções possíveis** (escolher uma):
+1. **Backend muda contrato** — adicionar campo `user` opcional em `TokenResponse`. Mais útil pro consumidor; aproveita a hidratação inicial.
+2. **Frontend faz follow-up** — após `/auth/login` OK, o `authorize` busca `/auth/me` com o token recém-criado e popula `id`/`name` corretamente. 1 round-trip extra no login.
 
 ## Notas e contexto
 
