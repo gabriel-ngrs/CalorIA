@@ -243,3 +243,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-009, AUD-010
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Numéricos bem cobertos (`weight_kg`, `amount_ml`, `mood_level`, etc., todos com `gt`/`le`). **Pior achado: `image_base64` sem `max_length`** (vetor de DoS — payload pode ter qualquer tamanho). 8 campos texto livre (`notes`, `message`, `question`, `raw_input`) sem `max_length` — abuso de storage e inflar prompts IA.
+
+## PASSO 3.7 — Type ignores
+
+- **Início:** 2026-05-10 18:26
+- **Fim:** 2026-05-10 18:30
+- **Comando(s) executado(s):** `rg -n "# type: ignore" backend/app/`
+- **Artefato(s):** `docs/auditoria/artefatos/B7-type-ignores.txt`
+- **Achados gerados:** AUD-011
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **22 `# type: ignore`** totais. **7 justificáveis** (`@celery_app.task` decorator não tipado × 6 + `aioredis.from_url` × 1). **15 elimináveis** — os 12 do `[arg-type]` em parsers IA derivam do padrão `float(d.get(...))` em `dict[str, Any]` da IA; solução: TypedDict ou cast. Os 3 restantes em `meal_service.py:45`, `utils.py:15`, `utils.py:18` são correção pontual de tipos.
