@@ -25,7 +25,7 @@ Decisões técnicas e ADRs do projeto CalorIA.
 │  services/  UserService · MealService · LogService                │
 │             DashboardService · ProfileService                     │
 │             AuthService · ReminderService · PushService           │
-│             ai/ GeminiClient · MealParser · VisionParser          │
+│             ai/ AIClient (Groq) · MealParser · VisionParser       │
 │                 InsightsGenerator · PatternAnalyzer               │
 │                 FoodLookup (pg_trgm, TACO+OFF ~19.800)           │
 │                 ContextBuilder (histórico + tipo de refeição)     │
@@ -64,17 +64,21 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ---
 
-## ADR-002 — Google Gemini 2.5 Flash como modelo de IA
+## ADR-002 — Groq (Llama) como provedor de IA
 
-**Contexto:** O Google Gemini oferece tier gratuito com suporte a texto e visão num único modelo multimodal.
+**Contexto:** Inicialmente o projeto usava Google Gemini 2.5 Flash. Após a migração de v0.7, optamos pela Groq por oferecer um free tier mais generoso, latência menor e modelos Llama de ponta tanto para texto quanto para visão.
 
-**Decisão:** Usar `models/gemini-2.5-flash` via SDK `google-genai` para análise de texto, fotos e geração de insights. Um único modelo cobre todos os casos de uso.
+**Decisão:** Usar Groq como provedor único:
+- Texto: `llama-3.3-70b-versatile`
+- Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+
+Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.py`).
 
 **Consequências:**
 - Cache Redis (7 dias, chave SHA-256) reduz chamadas redundantes para insights
 - Retry com backoff exponencial em erros 429 — até 4 tentativas, espera inicial 15s dobrada a cada tentativa
 - Análise de fotos via bytes nativos — imagens não são armazenadas permanentemente
-- `GEMINI_API_KEY` nunca exposta ao frontend
+- `GROQ_API_KEY` nunca exposta ao frontend
 
 ---
 
@@ -178,7 +182,7 @@ Usuário envia descrição ou foto no dashboard
   └── injeta porções históricas e médias diárias
         │
         ▼
-  [Estágio 1] Gemini 2.5 Flash identifica alimentos
+  [Estágio 1] Groq Llama identifica alimentos
   └── retorna: food_name, quantity, unit, preparation, kcal_estimate
         │
         ▼
@@ -230,5 +234,5 @@ Todas as relações usam `CASCADE DELETE`.
 - Senhas com passlib[bcrypt]
 - JWT HS256 — access (30 min) + refresh (30 dias)
 - CORS configurável via `BACKEND_CORS_ORIGINS`
-- `GEMINI_API_KEY` nunca exposta ao frontend
+- `GROQ_API_KEY` nunca exposta ao frontend
 - Variáveis sensíveis em `.env` (nunca commitado)

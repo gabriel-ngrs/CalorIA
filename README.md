@@ -25,7 +25,7 @@ Diário alimentar inteligente com IA. Registre refeições pelo dashboard web, a
 | Banco de dados | PostgreSQL 16 |
 | Cache / Filas | Redis 7 |
 | Workers | Celery + Celery Beat |
-| IA | Google Gemini 2.5 Flash (`google-genai`) |
+| IA | Groq — Llama 3.3 70B (texto) + Llama 4 Scout (visão) |
 | Notificações | Web Push VAPID (pywebpush) |
 | Frontend | Next.js 14 + TypeScript + shadcn/ui (Glassmorphism) |
 | ORM | SQLAlchemy 2 (async) + Alembic |
@@ -39,7 +39,7 @@ Diário alimentar inteligente com IA. Registre refeições pelo dashboard web, a
 - Docker e Docker Compose
 - Python 3.12+ (para desenvolvimento local sem Docker)
 - Node.js 20+ (para desenvolvimento do frontend sem Docker)
-- Google Gemini API Key — gratuito em [aistudio.google.com](https://aistudio.google.com/app/apikey)
+- Groq API Key — gratuito em [console.groq.com/keys](https://console.groq.com/keys)
 
 ---
 
@@ -64,14 +64,14 @@ Edite o `.env` com suas credenciais:
 DATABASE_URL=postgresql+asyncpg://caloria:caloria@postgres:5432/caloria_db
 REDIS_URL=redis://redis:6379/0
 SECRET_KEY=sua-chave-secreta-aqui-min-32-chars
-GEMINI_API_KEY=sua-chave-gemini-aqui
+GROQ_API_KEY=sua-chave-groq-aqui
 NEXTAUTH_SECRET=sua-chave-nextauth
 NEXTAUTH_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
 
 # Web Push VAPID (necessário para notificações)
 VAPID_PUBLIC_KEY=sua-chave-publica-vapid
-VAPID_KEY_PATH=/caminho/para/vapid_private.pem
+VAPID_PRIVATE_KEY=sua-chave-privada-vapid
 VAPID_CLAIMS_EMAIL=seu@email.com
 ```
 
@@ -115,7 +115,7 @@ CalorIA/
 │   │   ├── core/           # Config, DB, segurança
 │   │   ├── models/         # Modelos SQLAlchemy
 │   │   ├── schemas/        # Schemas Pydantic
-│   │   ├── services/       # Lógica de negócio + IA (Gemini)
+│   │   ├── services/       # Lógica de negócio + IA (Groq)
 │   │   └── workers/        # Tasks Celery
 │   ├── alembic/            # Migrações de banco
 │   ├── scripts/            # Seed e utilitários
@@ -186,13 +186,12 @@ chore(deps): atualiza dependências do backend
 
 ---
 
-## Limites do Free Tier (Gemini 2.5 Flash)
+## Limites do Free Tier (Groq)
 
-| Recurso | Limite |
-|---|---|
-| Requisições por minuto | 10 RPM |
-| Tokens por minuto | 250.000 |
-| Requisições por dia | 500 |
+| Modelo | Uso | Limite |
+|---|---|---|
+| `llama-3.3-70b-versatile` | Texto | 30 RPM, 7.000 tokens/min |
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Visão | 30 RPM, 7.000 tokens/min |
 
 O projeto implementa cache Redis (7 dias, SHA-256) para reduzir chamadas redundantes, e o banco nutricional local (~19.800 alimentos) evita chamadas à IA para cálculo de macros de alimentos comuns.
 

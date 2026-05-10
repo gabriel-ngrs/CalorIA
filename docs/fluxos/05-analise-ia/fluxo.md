@@ -18,22 +18,22 @@ Tanto o `MealParser` (texto) quanto o `VisionParser` (foto) usam o mesmo pipelin
    - Porcoes historicas (top 15 alimentos dos ultimos 30 dias)
    - Refeicoes recentes do mesmo tipo (ultimas 3)
    - Media por tipo de refeicao (30 dias)
-3. Envia para Gemini com `IDENTIFY_SYSTEM_PROMPT`:
+3. Envia para IA com `IDENTIFY_SYSTEM_PROMPT`:
    - Instrucoes para identificar cada alimento separadamente
    - Tabela de porcoes de referencia
    - Formato JSON esperado
-4. Gemini retorna: `[{food_name, quantity, unit, preparation, confidence}]`
+4. IA retorna: `[{food_name, quantity, unit, preparation, confidence}]`
 
 ---
 
 ## 2. Estagio 1 — Identificacao (Foto)
 
 1. `VisionParser.parse_base64()` recebe imagem em base64 + contexto + db
-2. Envia para Gemini Vision com prompt de calibracao visual:
+2. Envia para IA com visão com prompt de calibracao visual:
    - Prato raso brasileiro (26-28cm)
    - Espessura de proteinas (fino ~1cm → 80-100g)
    - Recipientes comuns (tigela 300ml, copo 200ml)
-3. Gemini Vision identifica alimentos e estima porcoes em gramas
+3. IA com visão identifica alimentos e estima porcoes em gramas
 4. Retorna mesmo formato JSON
 
 ---
@@ -51,7 +51,7 @@ Para cada `IdentifiedFood` retornado pelo estagio 1:
 4. Se nao encontrou:
    - Agrupa na lista de itens sem correspondencia
 5. Para itens sem correspondencia:
-   - Faz chamada unica ao Gemini com `FALLBACK_SYSTEM_PROMPT`
+   - Faz chamada unica ao IA com `FALLBACK_SYSTEM_PROMPT`
    - IA estima macros baseando-se em nome + preparo + quantidade
    - Cria `ParsedFoodItem` com macros estimados
 
@@ -81,7 +81,7 @@ Para cada `IdentifiedFood` retornado pelo estagio 1:
 
 ---
 
-## 6. GeminiClient — Cache e Retry
+## 6. AIClient (Groq) — Cache e Retry
 
 - **Cache:** SHA256 do prompt → Redis com TTL de 7 dias
 - **Analise de refeicao:** sempre `use_cache=False` (cada refeicao e unica)
@@ -98,5 +98,5 @@ Para cada `IdentifiedFood` retornado pelo estagio 1:
 | `services/ai/vision_parser.py` | Parser de foto — pipeline 2 estagios |
 | `services/ai/food_lookup.py` | Busca no banco de alimentos |
 | `services/ai/context_builder.py` | Monta contexto personalizado |
-| `services/ai/gemini_client.py` | Cliente Gemini com cache e retry |
+| `services/ai/ai_client.py` | Cliente Groq (Llama) com cache e retry |
 | `services/ai/utils.py` | `correct_calories()` e utilitarios |

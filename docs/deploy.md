@@ -20,7 +20,7 @@ Guia completo para hospedar o CalorIA em produção usando Hetzner Cloud + Docke
 ## Pré-requisitos
 
 - [ ] Conta no [Hetzner Cloud](https://console.hetzner.cloud) (requer cartão de crédito)
-- [ ] Gemini API Key — [aistudio.google.com](https://aistudio.google.com/app/apikey) (gratuito)
+- [ ] Groq API Key — [console.groq.com/keys](https://console.groq.com/keys) (gratuito)
 - [ ] Domínio (opcional, mas necessário para HTTPS) — pode ser subdomínio gratuito via DuckDNS
 - [ ] Chave SSH no seu computador
 
@@ -192,12 +192,12 @@ NEXTAUTH_URL=https://caloria-gabriel.duckdns.org
 NEXTAUTH_SECRET=xyz789...outro_resultado_do_openssl
 NEXT_PUBLIC_API_URL=https://caloria-gabriel.duckdns.org
 
-# Gemini
-GEMINI_API_KEY=AIza...sua_chave_aqui
+# Groq
+GROQ_API_KEY=gsk_...sua_chave_aqui
 
 # Web Push VAPID
 VAPID_PUBLIC_KEY=BDCh...copiado_do_passo_7
-VAPID_KEY_PATH=/opt/caloria/vapid_private.pem
+VAPID_PRIVATE_KEY=...copiado_do_passo_7
 VAPID_CLAIMS_EMAIL=seu@email.com
 ```
 

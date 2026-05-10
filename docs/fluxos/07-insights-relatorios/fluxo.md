@@ -26,7 +26,7 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 1. Busca dados do dia via `DashboardService.get_dashboard_today()`
    - Refeicoes, macros, hidratacao, humor
 2. Monta prompt com meta vs consumido, macros detalhados, refeicoes
-3. Gemini gera feedback de 2-4 paragrafos
+3. IA gera feedback de 2-4 paragrafos
 4. Retorna `InsightResponse`
 
 ---
@@ -36,7 +36,7 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 1. Busca resumo semanal via `DashboardService.get_weekly_summary()`
 2. Busca tendencia de peso (ultimos 10 registros)
 3. Monta prompt com medias, consistencia, tendencia
-4. Gemini analisa e sugere melhorias
+4. IA analisa e sugere melhorias
 5. Retorna `InsightResponse`
 
 ---
@@ -45,7 +45,7 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 
 1. Calcula calorias restantes: `meta - consumido_hoje`
 2. Busca alimentos favoritos do historico (30 dias)
-3. Gemini sugere refeicao que caiba nas calorias restantes
+3. IA sugere refeicao que caiba nas calorias restantes
 4. Retorna `MealSuggestion` com nome, macros, justificativa
 
 ---
@@ -54,7 +54,7 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 
 1. Busca todas as refeicoes dos ultimos N dias
 2. Agrega macros medios diarios
-3. Gemini analisa deficiencias (fibra, proteina, gordura saturada, etc.)
+3. IA analisa deficiencias (fibra, proteina, gordura saturada, etc.)
 4. Retorna `NutritionalAlertsResponse` com lista de alertas
 
 ---
@@ -63,7 +63,7 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 
 1. Busca registros de peso (30 dias)
 2. Calcula tendencia: ganhando, perdendo ou estavel
-3. Gemini sugere ajuste de meta calorica com justificativa
+3. IA sugere ajuste de meta calorica com justificativa
 4. Retorna `GoalAdjustmentSuggestion`
 
 ---
@@ -73,7 +73,7 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 1. Busca todas as refeicoes do mes
 2. Calcula por semana: dias logados, media de calorias, aderencia (%)
 3. Calcula geral: aderencia total, consistencia, macros medios
-4. Gemini gera analise detalhada
+4. IA gera analise detalhada
 5. Retorna `MonthlyReport` com `adherence_score`, `weeks[]`, analise
 
 ---
