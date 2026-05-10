@@ -253,3 +253,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-011
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **22 `# type: ignore`** totais. **7 justificáveis** (`@celery_app.task` decorator não tipado × 6 + `aioredis.from_url` × 1). **15 elimináveis** — os 12 do `[arg-type]` em parsers IA derivam do padrão `float(d.get(...))` em `dict[str, Any]` da IA; solução: TypedDict ou cast. Os 3 restantes em `meal_service.py:45`, `utils.py:15`, `utils.py:18` são correção pontual de tipos.
+
+## PASSO 4.1 — AIClient: cache, retry, observabilidade
+
+- **Início:** 2026-05-10 18:35
+- **Fim:** 2026-05-10 18:42
+- **Comando(s) executado(s):** leitura de `backend/app/services/ai/ai_client.py` + verificação de timeout uvicorn em `Dockerfile`/compose
+- **Artefato(s):** nenhum dedicado (matriz embutida em `03-ia.md § C.1`)
+- **Achados gerados:** AUD-012, AUD-013, AUD-014
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Cache (sha256 24-hex, TTL 7d) está bom. Pontos sensíveis: (1) retry baseado em `"429" in str(exc)` é frágil + 4 tentativas chegam a 225s acumulados (pode estourar timeout do reverse proxy); (2) log de tokens sem `user_id`/`request_id`/modelo/custo — sem dimensão para agregar; (3) `aioredis.from_url(...)` aberto/fechado por chamada (sem pool persistente). Vision usa mesmo padrão de retry — afetado pelos mesmos itens.
