@@ -1,0 +1,11 @@
+# Frente A — Arquitetura
+
+**Plano:** ver `plano.md` § Frente A.
+
+## Achados desta frente
+
+(preenchido conforme passos vão sendo executados — referenciar IDs em achados.md)
+
+## Notas e contexto
+
+(texto livre conforme aprendizagens surgem)
