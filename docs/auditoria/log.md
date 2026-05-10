@@ -73,3 +73,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline; análise virá na FASE 8 — Frente G)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **16 vulnerabilities** — 4 low, 3 moderate, **9 high**, 0 critical. Pacotes citados na cauda: `next/node_modules/postcss`, `postcss`.
+
+## PASSO 1.7 — Baseline ESLint frontend
+
+- **Início:** 2026-05-10 17:07
+- **Fim:** 2026-05-10 17:08
+- **Comando(s) executado(s):** `npx next lint --no-cache` em `frontend/` (substituiu `npm run lint` por causa de permissão root em `.next/cache`)
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-eslint.txt`
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **1 warning, 0 errors** — `components/auth/Plasma.tsx:155` (`react-hooks/exhaustive-deps`, ref cleanup). `npm run lint` falhou com `EACCES: permission denied, mkdir '/home/gabriel/projetos/CalorIA/frontend/.next/cache/eslint'`; mesmo problema legado do `.ruff_cache` / `.mypy_cache`. `--no-cache` contornou.
