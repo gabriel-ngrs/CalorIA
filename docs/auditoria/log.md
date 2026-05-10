@@ -273,3 +273,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-015
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **`_estimate_macros_batch` 100% idêntico** (exceto 1 palavra na docstring). **`_lookup_and_fill` funcionalmente equivalente** (~85 LOC). Divergência legítima fica em `_identify_foods` (texto vs imagem) e entry points. ~120 LOC extraíveis para classe base `BaseAIFoodParser(ABC)`.
+
+## PASSO 4.3 — FoodLookup: performance
+
+- **Início:** 2026-05-10 18:50
+- **Fim:** 2026-05-10 19:00
+- **Comando(s) executado(s):** leitura de `food_lookup.py` + script Python para estimar n-gramas + 3× `EXPLAIN ANALYZE` no Postgres real (variantes da query)
+- **Artefato(s):** `docs/auditoria/artefatos/C3-food-lookup-explain.txt`
+- **Achados gerados:** **AUD-016 (🔴 crítica)** — primeiro achado crítico da auditoria
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Achado muito mais grave do que o esperado pelo runbook (que previa 🟠 batch). Medido em ambiente real: **query atual leva 585ms** (Seq Scan) vs **8ms** sem o OR `similarity()`. Combinado com N+1 do AUD-006 (~25 n-gramas), uma refeição leva **~14.6s** bloqueando worker uvicorn. Com 2 workers default, 2 usuários simultâneos = backend indisponível. Fix simples (`SET pg_trgm.similarity_threshold + remover OR`) reduz 70×.

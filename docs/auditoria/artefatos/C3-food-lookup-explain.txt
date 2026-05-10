@@ -1,0 +1,66 @@
+=== EXPLAIN ANALYZE — query atual (% OR similarity >=) ===
+                                                                         QUERY PLAN                                                                          
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2253.41..2253.46 rows=20 width=43) (actual time=584.882..584.886 rows=20 loops=1)
+   ->  Sort  (cost=2253.41..2288.51 rows=14037 width=43) (actual time=584.879..584.882 rows=20 loops=1)
+         Sort Key: (similarity(search_text, 'arroz branco cozido'::text)) DESC
+         Sort Method: top-N heapsort  Memory: 27kB
+         ->  Seq Scan on foods  (cost=0.00..1879.90 rows=14037 width=43) (actual time=0.034..584.254 rows=624 loops=1)
+               Filter: ((search_text %>> 'arroz branco cozido'::text) OR (similarity(search_text, 'arroz branco cozido'::text) >= '0.18'::double precision))
+               Rows Removed by Filter: 41479
+ Planning Time: 4.048 ms
+ Execution Time: 584.982 ms
+(9 rows)
+
+
+=== EXPLAIN ANALYZE — só %>> (usa índice GIN) ===
+                                                                 QUERY PLAN                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=193.48..193.49 rows=4 width=43) (actual time=7.669..7.673 rows=20 loops=1)
+   ->  Sort  (cost=193.48..193.49 rows=4 width=43) (actual time=7.668..7.669 rows=20 loops=1)
+         Sort Key: (similarity(search_text, 'arroz branco cozido'::text)) DESC
+         Sort Method: top-N heapsort  Memory: 27kB
+         ->  Bitmap Heap Scan on foods  (cost=178.10..193.44 rows=4 width=43) (actual time=3.211..7.577 rows=91 loops=1)
+               Recheck Cond: (search_text %>> 'arroz branco cozido'::text)
+               Rows Removed by Index Recheck: 200
+               Heap Blocks: exact=191
+               ->  Bitmap Index Scan on ix_foods_search_trgm  (cost=0.00..178.10 rows=4 width=0) (actual time=3.154..3.154 rows=291 loops=1)
+                     Index Cond: (search_text %>> 'arroz branco cozido'::text)
+ Planning Time: 3.653 ms
+ Execution Time: 8.280 ms
+(12 rows)
+
+
+=== EXPLAIN ANALYZE — só similarity() >= (Seq Scan) ===
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2148.07..2148.12 rows=20 width=43) (actual time=248.654..248.657 rows=20 loops=1)
+   ->  Sort  (cost=2148.07..2183.15 rows=14034 width=43) (actual time=248.651..248.653 rows=20 loops=1)
+         Sort Key: (similarity(search_text, 'arroz branco cozido'::text)) DESC
+         Sort Method: top-N heapsort  Memory: 27kB
+         ->  Seq Scan on foods  (cost=0.00..1774.63 rows=14034 width=43) (actual time=0.038..248.179 rows=623 loops=1)
+               Filter: (similarity(search_text, 'arroz branco cozido'::text) >= '0.18'::double precision)
+               Rows Removed by Filter: 41480
+ Planning Time: 2.170 ms
+ Execution Time: 249.606 ms
+(9 rows)
+
+
+=== Índices existentes em foods ===
+      indexname       |                                        indexdef                                        
+----------------------+----------------------------------------------------------------------------------------
+ taco_foods_pkey      | CREATE UNIQUE INDEX taco_foods_pkey ON public.foods USING btree (id)
+ taco_foods_name_key  | CREATE UNIQUE INDEX taco_foods_name_key ON public.foods USING btree (name)
+ ix_foods_name        | CREATE INDEX ix_foods_name ON public.foods USING btree (name)
+ ix_foods_category    | CREATE INDEX ix_foods_category ON public.foods USING btree (category)
+ ix_foods_search_trgm | CREATE INDEX ix_foods_search_trgm ON public.foods USING gin (search_text gin_trgm_ops)
+ ix_foods_external_id | CREATE INDEX ix_foods_external_id ON public.foods USING btree (external_id)
+(6 rows)
+
+
+=== Total de registros ===
+ count 
+-------
+ 42103
+(1 row)
+
