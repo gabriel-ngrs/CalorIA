@@ -173,3 +173,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-002
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 17 services analisados; LOC varia de 28 (`tdee.py`) a **512** (`insights_generator.py`). Único violador do critério `>300 LOC + >4 responsabilidades` é `InsightsGenerator` (7 métodos públicos heterogêneos). `context_builder.py` tem 313 LOC mas só 1 método público + helpers — coeso, sem achado.
+
+## PASSO 2.5 — Mapeamento de dependências entre services
+
+- **Início:** 2026-05-10 17:43
+- **Fim:** 2026-05-10 17:48
+- **Comando(s) executado(s):** `rg -n "from app\.services" backend/app/services/`
+- **Artefato(s):** `docs/auditoria/artefatos/A5-dep-services.txt`
+- **Achados gerados:** nenhum adicional (reforça AUD-002 mas não cria novo)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Grafo é **DAG** — sem ciclos. Diagrama Mermaid em `01-arquitetura.md § A.5`. Fan-out mais alto: `InsightsGenerator` (5 services) — reforça recomendação de quebra. Camada `ai/*` consome só `AIClient`+`food_lookup`+`utils`(+`UserService` em `context_builder`); boa separação.

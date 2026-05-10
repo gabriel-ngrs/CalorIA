@@ -1,0 +1,16 @@
+backend/app/services/dashboard_service.py:9:from app.services.log_service import HydrationService, MoodService, WeightService
+backend/app/services/dashboard_service.py:10:from app.services.meal_service import MealService
+backend/app/services/profile_service.py:8:from app.services.nutrition.tdee import calculate_tdee
+backend/app/services/ai/insights_generator.py:21:from app.services.ai.ai_client import AIClient
+backend/app/services/ai/insights_generator.py:22:from app.services.dashboard_service import DashboardService
+backend/app/services/ai/insights_generator.py:23:from app.services.log_service import WeightService
+backend/app/services/ai/insights_generator.py:24:from app.services.meal_service import MealService
+backend/app/services/ai/insights_generator.py:25:from app.services.user_service import UserService
+backend/app/services/ai/context_builder.py:12:from app.services.user_service import UserService
+backend/app/services/ai/pattern_analyzer.py:14:from app.services.ai.ai_client import AIClient
+backend/app/services/ai/vision_parser.py:9:from app.services.ai.ai_client import AIClient
+backend/app/services/ai/vision_parser.py:10:from app.services.ai.food_lookup import IdentifiedFood, lookup_food
+backend/app/services/ai/vision_parser.py:11:from app.services.ai.utils import correct_calories, extract_json_from_ai_response
+backend/app/services/ai/meal_parser.py:8:from app.services.ai.ai_client import AIClient
+backend/app/services/ai/meal_parser.py:9:from app.services.ai.food_lookup import IdentifiedFood, lookup_food
+backend/app/services/ai/meal_parser.py:10:from app.services.ai.utils import correct_calories, extract_json_from_ai_response
