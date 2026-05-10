@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     EVOLUTION_INSTANCE_NAME: str = "caloria"
 
     # --------------------------------------------------------------------------
-    # IA — Groq (texto) + Gemini (imagem)
+    # IA — Groq (texto e visão, 100% gratuito)
     # --------------------------------------------------------------------------
-    GROQ_API_KEY: str = ""       # texto: Llama 3.3 70B — gratuito
-    GEMINI_API_KEY: str = ""     # imagem: Gemini 2.5 Flash — free tier, uso raro
+    GROQ_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""  # legado — não utilizado
 
     # --------------------------------------------------------------------------
     # Web Push (VAPID)
