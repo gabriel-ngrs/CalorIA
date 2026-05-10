@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 4 · médios: 7 · baixos: 4 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 4 · médios: 8 · baixos: 4 (atualizar a cada novo achado)
 
 ---
 
@@ -186,3 +186,17 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação (rápida)**: Substituir o OR por `SET LOCAL pg_trgm.similarity_threshold = 0.18` na sessão (ou via `ALTER USER caloria SET pg_trgm.similarity_threshold = 0.18`) e usar apenas `WHERE search_text %>> :q`. O `%>>` respeita o threshold dinâmico e mantém o índice — performance 70× melhor sem perder recall. **Recomendação estrutural**: combinar com AUD-006 (batch query única para todos os candidatos) para chegar a ~10ms total. Considerar migrar para `tsvector` + `ts_rank_cd` numa fase posterior.
 - **Esforço:** S (< 1h) para o fix imediato; M para batch + threshold; L para migração FTS.
 - **Origem:** PASSO 4.3
+
+### AUD-017 — `extract_json_from_ai_response` frágil em casos comuns
+
+- **Severidade:** 🟡 média
+- **Frente:** C
+- **Arquivo:linha:** `backend/app/services/ai/utils.py:10-15`
+- **Descrição:** A função apenas remove fences ` ``` ` e chama `json.loads`. Falha em três cenários comuns de saída de LLM:
+  1. **Texto antes/depois do JSON** ("Aqui está: [...]" ou "[...] espero que ajude") → `JSONDecodeError`. LLMs com `temperature > 0.1` ou modelos menores tendem a ser conversacionais.
+  2. **Dict wrapper** (`{"items": [...]}`) é parseado mas retornado como `dict` enquanto o type hint promete `list[dict]` — o caller que itera com `for x in result:` percorre as chaves do dict silenciosamente, gerando bugs sem traceback.
+  3. **Trailing commas** (`[{"a":1,}]`) — JSON estrito não aceita, mas modelos muitas vezes geram.
+- **Evidência:** script Python sintético (executar `python3 -c "from app.services.ai.utils import extract_json_from_ai_response; print(extract_json_from_ai_response('Aqui: [{\"a\":1}]'))"` falha).
+- **Recomendação:** Reescrever com 3 etapas: (a) extrair conteúdo do `json` fence se presente; (b) regex isolar primeiro `[…]` ou `{…}`; (c) se for dict, procurar chave `items|foods|data|results` e retornar a list interna, ou raise `ValueError`. Considerar lib `json5` ou `dirty_json` para tolerar trailing comma se a robustez justificar a dependência.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 4.5
