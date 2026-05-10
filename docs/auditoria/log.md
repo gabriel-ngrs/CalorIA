@@ -263,3 +263,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-012, AUD-013, AUD-014
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Cache (sha256 24-hex, TTL 7d) está bom. Pontos sensíveis: (1) retry baseado em `"429" in str(exc)` é frágil + 4 tentativas chegam a 225s acumulados (pode estourar timeout do reverse proxy); (2) log de tokens sem `user_id`/`request_id`/modelo/custo — sem dimensão para agregar; (3) `aioredis.from_url(...)` aberto/fechado por chamada (sem pool persistente). Vision usa mesmo padrão de retry — afetado pelos mesmos itens.
+
+## PASSO 4.2 — Duplicação MealParser ↔ VisionParser
+
+- **Início:** 2026-05-10 18:43
+- **Fim:** 2026-05-10 18:48
+- **Comando(s) executado(s):** `diff -u meal_parser.py vision_parser.py` + script Python que separa por método e calcula igualdade linha-a-linha
+- **Artefato(s):** `docs/auditoria/artefatos/C2-parsers-diff.txt`
+- **Achados gerados:** AUD-015
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **`_estimate_macros_batch` 100% idêntico** (exceto 1 palavra na docstring). **`_lookup_and_fill` funcionalmente equivalente** (~85 LOC). Divergência legítima fica em `_identify_foods` (texto vs imagem) e entry points. ~120 LOC extraíveis para classe base `BaseAIFoodParser(ABC)`.

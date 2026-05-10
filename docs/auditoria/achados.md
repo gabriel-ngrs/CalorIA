@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 4 · médios: 6 · baixos: 4 (atualizar a cada novo achado)
+**Status totais:** críticos: 0 · altos: 4 · médios: 7 · baixos: 4 (atualizar a cada novo achado)
 
 ---
 
@@ -159,3 +159,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Manter um `redis.asyncio.Redis` singleton (ou `ConnectionPool`) inicializado no startup e injetado nos métodos. Para tarefas Celery, usar pool por processo. Reuso reduz latência típica em 2-5ms por operação.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 4.1
+
+### AUD-015 — `MealParser` e `VisionParser` duplicam `_lookup_and_fill` + `_estimate_macros_batch`
+
+- **Severidade:** 🟡 média
+- **Frente:** C
+- **Arquivo:linha:** `backend/app/services/ai/meal_parser.py` e `backend/app/services/ai/vision_parser.py` (≈120 LOC duplicadas)
+- **Descrição:** Os dois parsers têm `_lookup_and_fill` (~85 linhas, funcionalmente equivalente) e `_estimate_macros_batch` (37 linhas, 100% idêntico exceto uma palavra na docstring). A divergência legítima está só em `_identify_foods` (texto vs imagem) e nos entry points (`parse` vs `parse_base64`). Duplicação aumenta custo de manutenção (toda mudança em sanity check, threshold ou parsing precisa replicar) e risco de divergência silenciosa entre os fluxos.
+- **Evidência:** `artefatos/C2-parsers-diff.txt` + análise método-a-método; 147 linhas diferem entre 553 totais (~27%, mas quase tudo concentrado nos métodos legitimamente diferentes).
+- **Recomendação:** Extrair `BaseAIFoodParser(ABC)` em `services/ai/base_parser.py` com `_lookup_and_fill` e `_estimate_macros_batch` concretos + `_identify_foods` abstrato. `MealParser`/`VisionParser` herdam e implementam apenas `_identify_foods` e o entry point.
+- **Esforço:** M (1–4h)
+- **Origem:** PASSO 4.2
