@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 4 · médios: 9 · baixos: 5 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 4 · médios: 9 · baixos: 6 (atualizar a cada novo achado)
 
 ---
 
@@ -222,3 +222,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Implementar optimistic updates pelo menos para toggles e mark-read (operações com baixíssimo risco de rollback). Padrão: `onMutate: () => qc.setQueryData([key], (old) => updated); return { previous: old };` + `onError: (_e, _v, ctx) => qc.setQueryData([key], ctx.previous)`.
 - **Esforço:** M (1–4h)
 - **Origem:** PASSO 5.2
+
+### AUD-020 — Logs verbosos rodam em produção (frontend)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** D / J
+- **Arquivo:linha:** `frontend/lib/api.ts:63,88,97,113` (4 sites: API→/API←/API✗/API↺); `frontend/app/providers.tsx:31` (NavTimer), `:47,51` (QueryCache success/error)
+- **Descrição:** 7 `console.log`/`console.error` rodam sem gate de ambiente. Volume típico estimado: 50-100 logs/min em sessão ativa. Polui DevTools, custa CPU mínima, e expõe queryKeys e rotas internas (info-disclosure menor). Único item gateado é `ReactQueryDevtools` (`providers.tsx:77`).
+- **Evidência:** `grep -nE "console\." frontend/lib/api.ts frontend/app/providers.tsx` → 7 hits sem proteção.
+- **Recomendação:** Criar `frontend/lib/log.ts` exportando `debug()`/`info()`/`error()` que checa `process.env.NODE_ENV !== "production"`. Substituir todos os `console.*` por esse logger. Manter `console.error` apenas para erros que precisam aparecer em produção (ex.: `signOut` falhando), e expor via Sentry/equivalente se houver no futuro.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 5.3

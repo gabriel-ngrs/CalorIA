@@ -6,6 +6,7 @@
 
 - AUD-018 (🟡 média) — Páginas e componentes inflados: `refeicoes/page.tsx` 1055 LOC, `QuickAddModals.tsx` 657, `insights/page.tsx` 611, `relatorios/page.tsx` 548
 - AUD-019 (🟢 baixa) — Hooks de mutação não usam optimistic updates onde caberia (toggle reminder, mark notification read, etc.)
+- AUD-020 (🟢 baixa) — 7 sites `console.log/error` em `api.ts`+`providers.tsx` rodam em produção (sem gate `NODE_ENV`)
 
 ## D.1 Páginas e componentes grandes
 
@@ -78,6 +79,40 @@ Inspeção: `frontend/lib/hooks/*.ts` (8 arquivos, 622 LOC) + `frontend/app/prov
 - `QueryCache` configura `onSuccess` e `onError` com `console.log` — **roda em produção**. Será cobrado em D.3 (PASSO 5.3).
 
 Achado registrado: AUD-019 (🟢) — oportunidade de optimistic updates.
+
+## D.3 Camada API (`frontend/lib/api.ts`)
+
+Arquivo: `frontend/lib/api.ts` (122 linhas).
+
+**Fluxo de token** ✅ bem desenhado:
+
+| Mecanismo | Detalhe |
+|---|---|
+| Cache em memória | 90s (`PROACTIVE_REFRESH_BUFFER_MS = 2 * 60_000`) |
+| Promise dedupe | `_pendingSession` evita N×`getSession()` simultâneos |
+| Refresh proativo | Se token expira em < 2 min, ignora cache |
+| 401 retry transparente | Flag `_retry` evita loop; invalida cache + busca fresco + reenvia |
+| Falha de refresh | `RefreshAccessTokenError` → `signOut({ redirect: true })` |
+| Timeout request | 45s (alto, mas justifica análises de IA longas) |
+| Sync com sessão | `setApiToken(...)` chamado pelo `SessionSync` em `providers.tsx` quando sessão muda — **sem HTTP extra** |
+
+**Logs em produção** ⚠️
+
+Apenas o `ReactQueryDevtools` está protegido por `process.env.NODE_ENV === "development"` (`providers.tsx:77`). Tudo abaixo roda em produção:
+
+| Local | Linha | Volume típico | Sensibilidade |
+|---|---|---|---|
+| `api.ts:63` | `[API→] GET /...  (auth: Xms via cache)` | 1 por request | URL só |
+| `api.ts:88` | `[API←] GET /...  200  Xms` | 1 por response OK | URL + status |
+| `api.ts:97` | `[API✗] GET /...  ERR  Xms — message` | 1 por erro | URL + msg de erro |
+| `api.ts:113` | `[API↺] 401 → retry com token fresco: ...` | só em 401 | URL |
+| `providers.tsx:31` | `[NAV] /old → /new  Xms ⚠️ LENTO` | 1 por navegação | rotas |
+| `providers.tsx:47` | `[QUERY✓] ["meals", ...]` | **1 por query bem-sucedida** | queryKey |
+| `providers.tsx:51` | `[QUERY✗] ["..."]` | 1 por erro | queryKey + message |
+
+Volume estimado em sessão típica de usuário ativo: ~50-100 logs/min no console. Polui DevTools dos usuários técnicos, custa CPU mínima e expõe queryKeys e rotas internas (info-disclosure menor).
+
+Achado: AUD-020 (🟢) — gatear todos com `NODE_ENV === "development"` ou substituir por logger condicional.
 
 ## Notas e contexto
 
