@@ -153,3 +153,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Apenas 4/47 endpoints não usam `Depends(get_current_user_id)` — todos legitimamente públicos (`POST /auth/register|login|refresh`, `GET /push/vapid-public-key`). Em services e workers, todas as queries que retornam dados de usuário filtram por `user_id` (direto ou indireto via FK). Única exceção real: `meal_service.py:67` faz refresh por `meal.id` sem `user_id`, mas o registro foi criado na linha anterior pelo próprio usuário — sem risco. Nenhum achado criado.
+
+## PASSO 2.3 — Auditar relacionamentos cascade
+
+- **Início:** 2026-05-10 17:31
+- **Fim:** 2026-05-10 17:34
+- **Comando(s) executado(s):** `rg -n "relationship\(|ForeignKey\(" backend/app/models/`
+- **Artefato(s):** `docs/auditoria/artefatos/A3-relacionamentos.txt`
+- **Achados gerados:** nenhum
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Padrão **consistente** em todos os 11 relacionamentos: ORM `cascade="all, delete-orphan"` + FK `ondelete="CASCADE"` para relações de posse; `MealItem → Food` usa `SET NULL` por ser referencial (snapshot nutricional preservado). `MealItem` não declara `relationship("Food")` — intencional para evitar acoplamento com banco nutricional. Nenhuma divergência ORM/DB.
