@@ -53,6 +53,31 @@ Os outros 43 endpoints injetam `user_id` e o aplicam em queries/services. Nenhum
 
 Todas as queries de `log_service.py`, `meal_service.py` (exceto refresh acima), `reminder_service.py`, `pattern_analyzer.py` e `context_builder.py` filtram explicitamente por `user_id`. Nenhuma violação encontrada.
 
+## A.3 Cascades e ForeignKeys
+
+Comando: `rg -n "relationship\(|ForeignKey\(" backend/app/models/`. Artefato: `artefatos/A3-relacionamentos.txt`.
+
+| Pai → Filho | FK `ondelete=` | ORM `cascade=` | Coerência |
+|---|---|---|---|
+| User → UserProfile | `CASCADE` | `all, delete-orphan` (uselist=False) | ✅ posse |
+| User → Meal | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → WeightLog | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → HydrationLog | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → MoodLog | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → Reminder | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → AIConversation | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → PushSubscription | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| User → Notification | `CASCADE` | `all, delete-orphan` | ✅ posse |
+| Meal → MealItem | `CASCADE` | `all, delete-orphan` | ✅ posse (item é parte da refeição) |
+| MealItem → Food | `SET NULL` (`nullable=True`) | (sem ORM relationship) | ✅ referencial — apaga `Food` mantém histórico do `MealItem` como snapshot |
+
+Observações:
+- Padrão consistente em **todos** os relacionamentos: ORM `cascade` + DB `ondelete` espelhados, evitando órfãos no DB caso alguém apague via SQL puro.
+- `MealItem.food_id` referencia `foods.id` mas **não** define `relationship("Food", ...)` — intencional (o `MealItem` carrega snapshot denormalizado de `food_name`/`calories`/`protein`/etc., para preservar o registro mesmo se o `Food` for removido).
+- `UserProfile.user_id` tem `unique=True` (1:1).
+
+Nenhum achado.
+
 ## Notas e contexto
 
 (texto livre conforme aprendizagens surgem)

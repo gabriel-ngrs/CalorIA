@@ -1,0 +1,31 @@
+backend/app/models/ai_conversation.py:28:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/ai_conversation.py:52:    user: Mapped[User] = relationship("User", back_populates="ai_conversations")
+backend/app/models/meal_item.py:19:        Integer, ForeignKey("meals.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/meal_item.py:34:        Integer, ForeignKey("foods.id", ondelete="SET NULL"), nullable=True, index=True
+backend/app/models/meal_item.py:45:    meal: Mapped[Meal] = relationship("Meal", back_populates="items")
+backend/app/models/reminder.py:31:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/reminder.py:46:    user: Mapped[User] = relationship("User", back_populates="reminders")
+backend/app/models/meal.py:43:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/meal.py:57:    user: Mapped[User] = relationship("User", back_populates="meals")
+backend/app/models/meal.py:58:    items: Mapped[list[MealItem]] = relationship(
+backend/app/models/push_subscription.py:20:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/push_subscription.py:31:    user: Mapped[User] = relationship("User", back_populates="push_subscriptions")
+backend/app/models/notification.py:30:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/notification.py:43:    user: Mapped[User] = relationship("User", back_populates="notifications")
+backend/app/models/profile.py:34:        Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
+backend/app/models/profile.py:46:    user: Mapped[User] = relationship("User", back_populates="profile")
+backend/app/models/weight_log.py:20:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/weight_log.py:30:    user: Mapped[User] = relationship("User", back_populates="weight_logs")
+backend/app/models/user.py:58:    profile: Mapped[UserProfile] = relationship(
+backend/app/models/user.py:64:    meals: Mapped[list[Meal]] = relationship(
+backend/app/models/user.py:67:    weight_logs: Mapped[list[WeightLog]] = relationship(
+backend/app/models/user.py:70:    hydration_logs: Mapped[list[HydrationLog]] = relationship(
+backend/app/models/user.py:73:    mood_logs: Mapped[list[MoodLog]] = relationship(
+backend/app/models/user.py:76:    reminders: Mapped[list[Reminder]] = relationship(
+backend/app/models/user.py:79:    ai_conversations: Mapped[list[AIConversation]] = relationship(
+backend/app/models/user.py:82:    push_subscriptions: Mapped[list[PushSubscription]] = relationship(
+backend/app/models/user.py:85:    notifications: Mapped[list[Notification]] = relationship(
+backend/app/models/mood_log.py:26:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/mood_log.py:37:    user: Mapped[User] = relationship("User", back_populates="mood_logs")
+backend/app/models/hydration_log.py:20:        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+backend/app/models/hydration_log.py:30:    user: Mapped[User] = relationship("User", back_populates="hydration_logs")
