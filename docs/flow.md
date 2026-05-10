@@ -67,7 +67,7 @@ O tipo de refeição é inferido a partir da descrição (ex: "café com pão" �
 
 **`services/ai/meal_parser.py`** (texto) / **`services/ai/vision_parser.py`** (foto)
 
-A IA (Gemini 2.5 Flash) recebe a descrição/foto + contexto e retorna apenas a **identificação** dos alimentos, sem calcular macros:
+A IA (Groq — Llama 3.3 70B para texto, Llama 4 Scout para visão) recebe a descrição/foto + contexto e retorna apenas a **identificação** dos alimentos, sem calcular macros:
 
 ```json
 [
@@ -241,14 +241,14 @@ A tabela `foods` alimenta o lookup em [4]:
 
 ---
 
-## Cliente de IA — `GeminiClient`
+## Cliente de IA — `AIClient`
 
-**`services/ai/gemini_client.py`**
+**`services/ai/ai_client.py`**
 
 | Tipo | Modelo | Cache |
 |---|---|---|
-| Texto | `models/gemini-2.5-flash` | Redis 7 dias (SHA-256) para insights; sem cache para análise de refeição |
-| Visão | `models/gemini-2.5-flash` | Sem cache |
+| Texto | `llama-3.3-70b-versatile` (Groq) | Redis 7 dias (SHA-256) para insights; sem cache para análise de refeição |
+| Visão | `meta-llama/llama-4-scout-17b-16e-instruct` (Groq) | Sem cache |
 
 Retry em 429: espera 15s → 30s → 60s → 120s (4 tentativas total).
 
@@ -262,7 +262,7 @@ Retry em 429: espera 15s → 30s → 60s → 120s (4 tentativas total).
 | `services/ai/food_lookup.py` | Busca fuzzy via pg_trgm + sanity check |
 | `services/ai/meal_parser.py` | Pipeline dois estágios para texto |
 | `services/ai/vision_parser.py` | Pipeline dois estágios para fotos |
-| `services/ai/gemini_client.py` | Cliente Gemini 2.5 Flash com cache Redis e retry |
+| `services/ai/ai_client.py` | Cliente Groq (Llama 3.3 + Llama 4 Scout) com cache Redis e retry |
 | `services/ai/utils.py` | `correct_calories`, `extract_json_from_ai_response` |
 | `services/meal_service.py` | CRUD de refeições e resumo diário |
 | `services/push_service.py` | Envio de notificações Web Push VAPID |

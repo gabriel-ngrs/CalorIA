@@ -24,5 +24,5 @@ Você receberá uma resposta em até 72 horas.
 - Secrets e credenciais nunca são commitados (`.env` no `.gitignore`)
 - Autenticação via JWT com blacklist de refresh tokens no Redis
 - Senhas com hash usando bcrypt (passlib)
-- Chamadas à API do Gemini passam exclusivamente pelo backend
+- Chamadas à API do Groq passam exclusivamente pelo backend
 - Fotos de refeições não são armazenadas permanentemente

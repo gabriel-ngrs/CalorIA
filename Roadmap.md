@@ -109,13 +109,14 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ---
 
-## Fase 2 — Integração com IA (Gemini)
+## Fase 2 — Integração com IA (Groq)
 
 > Objetivo: IA analisando refeições via texto e foto.
 
-### 2.1 Configuração Gemini
-- [x] `services/ai/gemini_client.py` — cliente Gemini com retry e rate limit handling
-- [x] Migrado para `gemini-2.5-flash` (modelo único via SDK `google-genai`, cobre texto e visão)
+### 2.1 Configuração Groq
+- [x] `services/ai/ai_client.py` — cliente Groq com retry e rate limit handling
+- [x] Texto: `llama-3.3-70b-versatile`; Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+- [x] Migrado de Google Gemini para Groq em v0.7 (free tier mais generoso, latência menor)
 - [x] Cache Redis para respostas de alimentos frequentes (TTL 7 dias)
 - [x] Logging de tokens utilizados para monitorar free tier
 
@@ -367,7 +368,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ### 8.1 Testes Backend
 - [x] Testes unitários para todos os services
-- [x] Testes unitários para meal_parser e vision_parser (mock Gemini)
+- [x] Testes unitários para meal_parser e vision_parser (mock AIClient)
 - [x] Testes de integração para todos os endpoints da API
 - [x] Fixtures compartilhadas (usuário de teste, refeições de teste)
 - [x] Testes de integração para Celery tasks (mock de envio de mensagem)
@@ -433,7 +434,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 |---|---|---|
 | 0 | Setup e Fundação | `[x]` |
 | 1 | Modelos e API Base | `[x]` |
-| 2 | Integração com IA (Gemini) | `[x]` |
+| 2 | Integração com IA (Groq) | `[x]` |
 | 3 | ~~Bot Telegram~~ *(removido em v0.4.1)* | `[x]` |
 | 4 | ~~Bot WhatsApp~~ *(removido em v0.4.1)* | `[x]` |
 | 5 | Frontend Dashboard | `[x]` |

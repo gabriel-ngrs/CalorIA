@@ -6,7 +6,7 @@ Instruções para o agente Claude Code trabalhar neste projeto.
 
 ## Visão Geral do Projeto
 
-**CalorIA** é um diário alimentar inteligente pessoal. O usuário registra refeições pelo dashboard web (texto ou foto), e a IA (Google Gemini 2.5 Flash) analisa os macronutrientes, aprende os hábitos alimentares e gera insights personalizados. Um dashboard web permite visualizar histórico, evolução de peso, hidratação, humor/energia e relatórios.
+**CalorIA** é um diário alimentar inteligente pessoal. O usuário registra refeições pelo dashboard web (texto ou foto), e a IA (Groq — Llama 3.3 70B para texto e Llama 4 Scout para visão) analisa os macronutrientes, aprende os hábitos alimentares e gera insights personalizados. Um dashboard web permite visualizar histórico, evolução de peso, hidratação, humor/energia e relatórios.
 
 **Uso atual:** projeto pessoal de estudo. Arquitetura pensada para escalar para múltiplos usuários no futuro.
 
@@ -27,7 +27,7 @@ CalorIA/
 │   │   ├── models/       # Modelos SQLAlchemy
 │   │   ├── schemas/      # Schemas Pydantic
 │   │   ├── services/
-│   │   │   ├── ai/       # GeminiClient, MealParser, VisionParser, FoodLookup, ContextBuilder
+│   │   │   ├── ai/       # AIClient, MealParser, VisionParser, FoodLookup, ContextBuilder, InsightsGenerator, PatternAnalyzer
 │   │   │   ├── nutrition/# Lógica de cálculo nutricional (TDEE)
 │   │   │   └── reminders/# Lógica de lembretes
 │   │   └── workers/      # Tasks Celery
@@ -87,8 +87,10 @@ CalorIA/
 - **pywebpush** — Envio de notificações Web Push VAPID
 
 ### IA
-- **Google Gemini 2.5 Flash** — `google-genai>=1.0.0`, modelo `models/gemini-2.5-flash`
-- Chave: `GEMINI_API_KEY`
+- **Groq** — `groq>=0.13.0`
+  - Texto: `llama-3.3-70b-versatile`
+  - Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+- Chave: `GROQ_API_KEY` (free tier em [console.groq.com/keys](https://console.groq.com/keys))
 - Pipeline dois estágios: IA identifica alimentos → lookup pg_trgm no banco com sanity check → fallback estimativa IA agrupada
 
 ### Banco Nutricional
@@ -200,7 +202,7 @@ Variáveis obrigatórias:
 ```
 DATABASE_URL
 REDIS_URL
-GEMINI_API_KEY
+GROQ_API_KEY
 SECRET_KEY
 NEXTAUTH_SECRET
 NEXTAUTH_URL
@@ -210,7 +212,7 @@ NEXT_PUBLIC_API_URL
 Variáveis para Web Push (necessárias para notificações):
 ```
 VAPID_PUBLIC_KEY
-VAPID_KEY_PATH
+VAPID_PRIVATE_KEY
 VAPID_CLAIMS_EMAIL
 ```
 
@@ -265,8 +267,8 @@ Usar **Conventional Commits em português**. Não mencionar autor (Claude Code, 
 feat(frontend): adiciona análise de foto na página de refeições
 fix(ai): corrige sanity check para alimentos com gordura alta
 refactor(ai): extrai food_lookup como serviço independente
-docs(architecture): atualiza ADRs para Gemini 2.5 Flash
-chore(deps): atualiza google-genai para 1.x
+docs(architecture): atualiza ADRs para Groq
+chore(deps): atualiza groq para 0.13
 ci(github): adiciona workflow de deploy automático
 ```
 
@@ -294,7 +296,7 @@ ci(github): adiciona workflow de deploy automático
 
 ## Notas Importantes
 
-- **Segurança:** Nunca expor `GEMINI_API_KEY` no frontend. Todas as chamadas de IA passam pelo backend.
+- **Segurança:** Nunca expor `GROQ_API_KEY` no frontend. Todas as chamadas de IA passam pelo backend.
 - **Privacidade:** Fotos de comida não são armazenadas permanentemente — apenas os dados nutricionais extraídos.
 - **Web Push:** Chaves VAPID geradas uma vez e armazenadas no servidor. Subscriptions expiradas (HTTP 410) são removidas automaticamente pelo PushService.
 - **Banco nutricional:** Tabela `foods` (não `taco_foods`). Sanity check calórico protege contra registros incorretos do Open Food Facts.

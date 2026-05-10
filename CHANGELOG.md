@@ -11,6 +11,29 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [0.7.0] - 2026-05-10
+
+### Alterado
+
+- **Migração de Google Gemini para Groq (Llama)** — todas as chamadas de IA agora usam Groq via SDK oficial `groq>=0.13.0`. Texto: `llama-3.3-70b-versatile`; visão: `meta-llama/llama-4-scout-17b-16e-instruct`. Free tier mais generoso, latência menor e SDK mais simples.
+- **`GeminiClient` renomeado para `AIClient`** — `services/ai/gemini_client.py` movido para `services/ai/ai_client.py`. Função `get_gemini_client()` → `get_ai_client()`. Interface pública preservada.
+- **Variável de ambiente** — `GEMINI_API_KEY` substituída por `GROQ_API_KEY`. `.env.example` e `.env.production.example` atualizados.
+
+### Removido
+
+- **Dead code dos bots Telegram/WhatsApp** — `backend/app/bots/`, `services/telegram_service.py`, `services/whatsapp_service.py`, stubs em `api/v1/telegram.py` e `api/v1/whatsapp.py` deletados. Configurações `TELEGRAM_BOT_TOKEN`, `EVOLUTION_API_*` removidas de `core/config.py`. Os bots haviam sido removidos funcionalmente em v0.4.1, mas o código residual permanecia.
+- **`google-genai` removido das dependências** — substituído por `groq`.
+- **`analise.md` movido para `docs/legacy/`** — documento histórico fora do root.
+
+### Documentação
+
+- README, CLAUDE.md, `docs/architecture.md` (ADR-002 reescrito), `docs/setup.md`, `docs/deploy.md`, `docs/deploy-checklist.md`, `docs/flow.md` e `docs/fluxos/*` atualizados para refletir Groq.
+- `Roadmap.md` Fase 2 renomeada para "Integração com IA (Groq)".
+- `Makefile` removido referências a `evolution_api` no comando `make infra`.
+- `.gitignore` agora cobre `.vercel/`, `test-results/` e `playwright-report/`.
+
+---
+
 ## [0.6.0] - 2026-03-24
 
 ### Adicionado

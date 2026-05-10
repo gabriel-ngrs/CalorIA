@@ -110,10 +110,10 @@ NEXTAUTH_URL=https://caloria-gabriel.duckdns.org
 NEXTAUTH_SECRET=<resultado do openssl>
 NEXT_PUBLIC_API_URL=https://caloria-gabriel.duckdns.org
 
-GEMINI_API_KEY=<chave de aistudio.google.com>
+GROQ_API_KEY=<chave de console.groq.com/keys>
 
 VAPID_PUBLIC_KEY=<copiado do passo 5>
-VAPID_KEY_PATH=/opt/caloria/vapid_private.pem
+VAPID_PRIVATE_KEY=<copiado do passo 5>
 VAPID_CLAIMS_EMAIL=<seu email>
 ```
 

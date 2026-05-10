@@ -35,12 +35,12 @@ Edite o `.env` com suas chaves:
 | `DATABASE_URL` | ✅ | `postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_db` |
 | `REDIS_URL` | ✅ | `redis://localhost:6379/0` |
 | `SECRET_KEY` | ✅ | Chave aleatória (mín. 32 chars). `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `GEMINI_API_KEY` | ✅ | Obter em [Google AI Studio](https://aistudio.google.com/app/apikey) (gratuito) |
+| `GROQ_API_KEY` | ✅ | Obter em [console.groq.com/keys](https://console.groq.com/keys) (gratuito) |
 | `NEXTAUTH_SECRET` | ✅ | Chave aleatória para o frontend |
 | `NEXTAUTH_URL` | ✅ | `http://localhost:3000` em dev |
 | `NEXT_PUBLIC_API_URL` | ✅ | `http://localhost:8000` em dev |
 | `VAPID_PUBLIC_KEY` | ⚪ | Necessário para Web Push. Ver seção 10 |
-| `VAPID_KEY_PATH` | ⚪ | Caminho para o arquivo `vapid_private.pem` |
+| `VAPID_PRIVATE_KEY` | ⚪ | Chave privada VAPID (gerada por `scripts/gen_vapid.py`) |
 | `VAPID_CLAIMS_EMAIL` | ⚪ | Email do responsável VAPID |
 
 ---
