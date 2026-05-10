@@ -303,3 +303,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-017
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 4/9 padrões testados falham: texto antes do JSON, texto depois, ambos, e trailing comma. Pior: `{"items": [...]}` é aceito mas retorna dict; type hint promete list — caller silenciosamente percorre as keys do dict.
+
+## PASSO 5.1 — Páginas frontend grandes
+
+- **Início:** 2026-05-10 19:15
+- **Fim:** 2026-05-10 19:18
+- **Comando(s) executado(s):** `wc -l frontend/app/(dashboard)/*/page.tsx frontend/components/dashboard/*.tsx | sort -rn`
+- **Artefato(s):** `docs/auditoria/artefatos/D1-paginas-loc.txt`
+- **Achados gerados:** AUD-018
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 4 arquivos > 500 LOC. **Pior: `refeicoes/page.tsx` 1055 LOC** (god component — listagem + criação texto + foto + voz + edição inline; 25 ícones importados). 8 arquivos > 300 LOC.
