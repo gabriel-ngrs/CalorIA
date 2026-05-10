@@ -293,3 +293,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum novo (reforça AUD-002 com dados)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 7 métodos públicos: `daily_insight` (33), `weekly_insight` (28), `monthly_report` (**158**), `answer_question` (28), `suggest_meal` (57), `nutritional_alerts` (90), `goal_adjustment_suggestion` (78). `monthly_report` sozinho ocupa 1/3 do arquivo e contém N+1 do AUD-007. Plano de decomposição: 3 services (PeriodicInsights, Recommendations, QA) ≤ 250 LOC cada.
+
+## PASSO 4.5 — extract_json_from_ai_response: robustez
+
+- **Início:** 2026-05-10 19:06
+- **Fim:** 2026-05-10 19:10
+- **Comando(s) executado(s):** leitura de `utils.py` + script Python sintético com 9 padrões de saída de LLM
+- **Artefato(s):** nenhum dedicado (matriz embutida em `03-ia.md § C.5`)
+- **Achados gerados:** AUD-017
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 4/9 padrões testados falham: texto antes do JSON, texto depois, ambos, e trailing comma. Pior: `{"items": [...]}` é aceito mas retorna dict; type hint promete list — caller silenciosamente percorre as keys do dict.
