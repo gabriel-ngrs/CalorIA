@@ -1,0 +1,15 @@
+  5379 total
+  1055 frontend/app/(dashboard)/refeicoes/page.tsx
+   657 frontend/components/dashboard/QuickAddModals.tsx
+   611 frontend/app/(dashboard)/insights/page.tsx
+   548 frontend/app/(dashboard)/relatorios/page.tsx
+   484 frontend/app/(dashboard)/lembretes/page.tsx
+   413 frontend/app/(dashboard)/dashboard/page.tsx
+   366 frontend/app/(dashboard)/perfil/page.tsx
+   337 frontend/app/(dashboard)/humor/page.tsx
+   282 frontend/app/(dashboard)/hidratacao/page.tsx
+   278 frontend/app/(dashboard)/peso/page.tsx
+   132 frontend/components/dashboard/MacroPieChart.tsx
+   131 frontend/components/dashboard/MacroCards.tsx
+    79 frontend/components/dashboard/CaloriesBarChart.tsx
+     6 frontend/app/(dashboard)/conectar/page.tsx

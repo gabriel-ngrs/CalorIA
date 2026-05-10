@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 4 · médios: 8 · baixos: 4 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 4 · médios: 9 · baixos: 4 (atualizar a cada novo achado)
 
 ---
 
@@ -200,3 +200,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Reescrever com 3 etapas: (a) extrair conteúdo do `json` fence se presente; (b) regex isolar primeiro `[…]` ou `{…}`; (c) se for dict, procurar chave `items|foods|data|results` e retornar a list interna, ou raise `ValueError`. Considerar lib `json5` ou `dirty_json` para tolerar trailing comma se a robustez justificar a dependência.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 4.5
+
+### AUD-018 — Páginas e componentes do frontend ultrapassam 500 LOC
+
+- **Severidade:** 🟡 média
+- **Frente:** D
+- **Arquivo:linha:** `frontend/app/(dashboard)/refeicoes/page.tsx` (1055), `frontend/components/dashboard/QuickAddModals.tsx` (657), `frontend/app/(dashboard)/insights/page.tsx` (611), `frontend/app/(dashboard)/relatorios/page.tsx` (548)
+- **Descrição:** 4 arquivos passam de 500 LOC; o pior, `refeicoes/page.tsx`, tem **1055 LOC**, importa 25 ícones e mistura listagem, criação por texto, captura de voz (mic), upload de foto e edição inline. God components dificultam revisão, testes (cobertura por unidade impraticável), code-splitting e onboarding de outras pessoas.
+- **Evidência:** `artefatos/D1-paginas-loc.txt`.
+- **Recomendação:** Para `refeicoes/page.tsx`: extrair para `_components/{MealList,MealItemCard,AddMealTextDialog,AddMealPhotoDialog,EditMealItemDialog}.tsx` + `_hooks/useVoiceCapture.ts`. Para `QuickAddModals.tsx`: 1 arquivo por modal. Meta: ≤ 250 LOC por arquivo de página, ≤ 200 LOC por componente.
+- **Esforço:** L (> 4h) para `refeicoes`; M para os demais
+- **Origem:** PASSO 5.1
