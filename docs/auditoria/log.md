@@ -233,3 +233,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 12 `*Response`; **8 com `from_attributes`** (todas serializam ORM). 4 sem `from_attributes` — `TokenResponse`, `MealAnalysisResponse`, `InsightResponse`, `NutritionalAlertsResponse` — todas construídas via kwargs em services. Configuração correta para os 4 (não são ORM). Schemas `*Create/*Update/Request` também corretos (inputs puros).
+
+## PASSO 3.6 — Validação de inputs sensíveis
+
+- **Início:** 2026-05-10 18:19
+- **Fim:** 2026-05-10 18:25
+- **Comando(s) executado(s):** leitura de `backend/app/schemas/*.py` + `grep -nE "Field\(" backend/app/schemas/`
+- **Artefato(s):** nenhum dedicado (matriz embutida em `02-backend.md § B.6`)
+- **Achados gerados:** AUD-009, AUD-010
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Numéricos bem cobertos (`weight_kg`, `amount_ml`, `mood_level`, etc., todos com `gt`/`le`). **Pior achado: `image_base64` sem `max_length`** (vetor de DoS — payload pode ter qualquer tamanho). 8 campos texto livre (`notes`, `message`, `question`, `raw_input`) sem `max_length` — abuso de storage e inflar prompts IA.
