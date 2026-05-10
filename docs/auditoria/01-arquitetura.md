@@ -5,6 +5,7 @@
 ## Achados desta frente
 
 - AUD-001 (🟡 média) — `backend/app/api/v1/push.py` faz queries SQL diretamente no router (sem camada de service)
+- AUD-002 (🟡 média) — `services/ai/insights_generator.py` 512 LOC com 7 responsabilidades distintas — candidato a quebra
 
 ## A.1 Separação de camadas
 
@@ -77,6 +78,32 @@ Observações:
 - `UserProfile.user_id` tem `unique=True` (1:1).
 
 Nenhum achado.
+
+## A.4 Responsabilidades dos services
+
+Extração via AST (`ast.parse` + caminhada na árvore para coletar classes e métodos públicos).
+
+| Service | LOC | Classe(s) principal(is) | Métodos públicos | Risco |
+|---|---|---|---|---|
+| `auth_service.py` | 40 | (módulo) | `blacklist_token`, `is_token_blacklisted` | OK |
+| `dashboard_service.py` | 68 | `DashboardService` | `get_today`, `get_weekly` | OK |
+| `log_service.py` | 144 | `WeightService`, `HydrationService`, `MoodService` | 3 + 3 + 3 = 9 métodos divididos por classe | OK (3 responsabilidades em 3 classes coesas) |
+| `meal_service.py` | 166 | `MealService` (+ exc `MealItemNotFound`) | `list_meals`, `create_meal`, `get_meal`, `update_meal`, `delete_meal_item`, `delete_meal`, `get_macros_by_date_range`, `get_daily_summary` | OK (CRUD + 2 agregações; coesivo) |
+| `profile_service.py` | 48 | `ProfileService` | `get_profile`, `update_profile` | OK |
+| `push_service.py` | 51 | (módulo) | `send_push_notification_sync` | OK |
+| `reminder_service.py` | 82 | `ReminderService` | `list`, `create`, `create_many`, `delete`, `toggle` | OK |
+| `user_service.py` | 61 | `UserService` | `get_by_id`, `get_by_email`, `create`, `authenticate`, `email_exists` | OK |
+| `ai/ai_client.py` | 158 | `AIClient` | `generate_text`, `generate_with_image` | OK |
+| `ai/context_builder.py` | 313 | (módulo) | `build_meal_context` | OK (313 LOC vêm de helpers privados; só 1 entrada pública) |
+| `ai/food_lookup.py` | 173 | `IdentifiedFood` (+ funcs) | (apenas helpers) | OK |
+| `ai/insights_generator.py` | **512** | `InsightsGenerator` | `daily_insight`, `weekly_insight`, `answer_question`, `suggest_meal`, `nutritional_alerts`, `goal_adjustment_suggestion`, `monthly_report` | ⚠️ **>300 LOC + 7 responsabilidades** → AUD-002 |
+| `ai/meal_parser.py` | 274 | `MealParser` | `parse` | OK |
+| `ai/pattern_analyzer.py` | 180 | `PatternAnalyzer` | `analyze_eating_patterns` | OK |
+| `ai/utils.py` | 39 | (módulo) | `extract_json_from_ai_response`, `correct_calories` | OK |
+| `ai/vision_parser.py` | 281 | `VisionParser` | `parse_base64` | OK |
+| `nutrition/tdee.py` | 28 | (módulo) | `calculate_tdee` | OK |
+
+Adicionado: AUD-002 (🟡 média) — `InsightsGenerator` com 7 responsabilidades distintas em 512 LOC.
 
 ## Notas e contexto
 

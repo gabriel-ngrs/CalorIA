@@ -163,3 +163,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Padrão **consistente** em todos os 11 relacionamentos: ORM `cascade="all, delete-orphan"` + FK `ondelete="CASCADE"` para relações de posse; `MealItem → Food` usa `SET NULL` por ser referencial (snapshot nutricional preservado). `MealItem` não declara `relationship("Food")` — intencional para evitar acoplamento com banco nutricional. Nenhuma divergência ORM/DB.
+
+## PASSO 2.4 — Documentar responsabilidades dos services
+
+- **Início:** 2026-05-10 17:35
+- **Fim:** 2026-05-10 17:42
+- **Comando(s) executado(s):** `wc -l` em todos os services + script Python AST para extrair classes e métodos públicos
+- **Artefato(s):** nenhum dedicado (tabela embutida em `01-arquitetura.md § A.4`)
+- **Achados gerados:** AUD-002
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 17 services analisados; LOC varia de 28 (`tdee.py`) a **512** (`insights_generator.py`). Único violador do critério `>300 LOC + >4 responsabilidades` é `InsightsGenerator` (7 métodos públicos heterogêneos). `context_builder.py` tem 313 LOC mas só 1 método público + helpers — coeso, sem achado.
