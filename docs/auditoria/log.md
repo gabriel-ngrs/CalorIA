@@ -223,3 +223,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-006, AUD-007, AUD-008
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **5 N+1 reais** confirmados. Mais crítico: `food_lookup.py:89` (caminho síncrono do user, ~25 queries por refeição). `InsightsGenerator` repete o padrão em 2 métodos — solução já existe no projeto (`MealService.get_macros_by_date_range` foi introduzido em `DashboardService` para resolver caso análogo). Workers (reminders+maintenance) escalam linear com base de usuários.
+
+## PASSO 3.5 — Schemas Pydantic: from_attributes
+
+- **Início:** 2026-05-10 18:15
+- **Fim:** 2026-05-10 18:18
+- **Comando(s) executado(s):** `rg -n "from_attributes" backend/app/schemas/` + script Python para listar Responses + `rg` para descobrir como cada Response é construída
+- **Artefato(s):** `docs/auditoria/artefatos/B5-pydantic-config.txt`
+- **Achados gerados:** nenhum
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 12 `*Response`; **8 com `from_attributes`** (todas serializam ORM). 4 sem `from_attributes` — `TokenResponse`, `MealAnalysisResponse`, `InsightResponse`, `NutritionalAlertsResponse` — todas construídas via kwargs em services. Configuração correta para os 4 (não são ORM). Schemas `*Create/*Update/Request` também corretos (inputs puros).

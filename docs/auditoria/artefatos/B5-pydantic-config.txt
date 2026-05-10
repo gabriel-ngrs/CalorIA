@@ -1,0 +1,23 @@
+=== Response schemas com from_attributes ===
+backend/app/schemas/reminder.py:89:    model_config = {"from_attributes": True}
+backend/app/schemas/meal.py:27:    model_config = {"from_attributes": True}
+backend/app/schemas/meal.py:64:    model_config = {"from_attributes": True}
+backend/app/schemas/profile.py:15:    model_config = {"from_attributes": True}
+backend/app/schemas/user.py:33:    model_config = {"from_attributes": True}
+backend/app/schemas/logs.py:17:    model_config = {"from_attributes": True}
+backend/app/schemas/logs.py:39:    model_config = {"from_attributes": True}
+backend/app/schemas/logs.py:68:    model_config = {"from_attributes": True}
+
+=== Schemas Response sem from_attributes (heurística: classes com Response no nome) ===
+backend/app/schemas/reminder.py:88:class ReminderResponse(BaseModel):
+backend/app/schemas/profile.py:14:class ProfileResponse(BaseModel):
+backend/app/schemas/logs.py:16:class WeightLogResponse(BaseModel):
+backend/app/schemas/logs.py:38:class HydrationLogResponse(BaseModel):
+backend/app/schemas/logs.py:67:class MoodLogResponse(BaseModel):
+backend/app/schemas/meal.py:26:class MealItemResponse(BaseModel):
+backend/app/schemas/meal.py:63:class MealResponse(BaseModel):
+backend/app/schemas/ai.py:32:class MealAnalysisResponse(BaseModel):
+backend/app/schemas/ai.py:50:class InsightResponse(BaseModel):
+backend/app/schemas/ai.py:91:class NutritionalAlertsResponse(BaseModel):
+backend/app/schemas/user.py:32:class UserResponse(BaseModel):
+backend/app/schemas/user.py:46:class TokenResponse(BaseModel):

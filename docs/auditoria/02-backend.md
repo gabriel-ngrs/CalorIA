@@ -98,6 +98,26 @@ Para #4 e #5, possível solução: 1 query agregada com `JOIN User → Hydration
 
 Para #1, possível solução: 1 query batch montando `WHERE search_text %>> ANY(ARRAY[…])` ou usar `tsvector` + `ts_rank`.
 
+## B.5 Pydantic — `from_attributes`
+
+Comando: `rg -n "from_attributes" backend/app/schemas/` + script Python para checar cada classe `*Response(BaseModel)`. Artefato: `artefatos/B5-pydantic-config.txt`.
+
+**12 classes `*Response`** detectadas:
+
+| Classe | from_attributes | Construído de |
+|---|---|---|
+| `WeightLogResponse`, `HydrationLogResponse`, `MoodLogResponse` | ✅ | ORM (`WeightLog`, etc.) |
+| `UserResponse`, `ProfileResponse` | ✅ | ORM |
+| `MealItemResponse`, `MealResponse`, `ReminderResponse` | ✅ | ORM |
+| `TokenResponse` | ❌ | kwargs (`access_token`, `refresh_token`) — `auth.py:47,79` |
+| `MealAnalysisResponse` | ❌ | kwargs (`items=…, low_confidence=…`) — `meal_parser.py:273`, `vision_parser.py:280` |
+| `InsightResponse` | ❌ | kwargs (`type=…, content=…`) — `insights_generator.py:70,98,126` |
+| `NutritionalAlertsResponse` | ❌ | kwargs — `insights_generator.py:243,269` |
+
+Os 4 sem `from_attributes` **não são serializados de ORM** (construídos via kwargs em services/handlers). Configuração correta — sem achado.
+
+Observação: schemas `*Create`/`*Update`/`Request`/`*Summary` corretamente sem `from_attributes` (são inputs ou DTOs puros).
+
 ## Notas e contexto
 
 (texto livre conforme aprendizagens surgem)
