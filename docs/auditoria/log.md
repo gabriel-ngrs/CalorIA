@@ -313,3 +313,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-018
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 4 arquivos > 500 LOC. **Pior: `refeicoes/page.tsx` 1055 LOC** (god component — listagem + criação texto + foto + voz + edição inline; 25 ícones importados). 8 arquivos > 300 LOC.
+
+## PASSO 5.2 — Hooks customizados
+
+- **Início:** 2026-05-10 19:19
+- **Fim:** 2026-05-10 19:23
+- **Comando(s) executado(s):** `wc -l frontend/lib/hooks/*.ts` + leitura de cada hook + `frontend/app/providers.tsx`
+- **Artefato(s):** nenhum dedicado (matriz embutida em `04-frontend.md § D.2`)
+- **Achados gerados:** AUD-019
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Estrutura sólida — defaults globais bem ajustados (staleTime 3min, retry skip 401), `invalidateQueries` em todos os `onSuccess`, `staleTime` override quando faz sentido. **Optimistic updates ausentes em 100% dos hooks** — oportunidade UX para toggles/mark-read. `QueryCache.onSuccess`/`onError` com `console.log` e `NavTimer` rodam em produção (será detalhado em PASSO 5.3).
