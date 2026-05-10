@@ -83,3 +83,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **1 warning, 0 errors** — `components/auth/Plasma.tsx:155` (`react-hooks/exhaustive-deps`, ref cleanup). `npm run lint` falhou com `EACCES: permission denied, mkdir '/home/gabriel/projetos/CalorIA/frontend/.next/cache/eslint'`; mesmo problema legado do `.ruff_cache` / `.mypy_cache`. `--no-cache` contornou.
+
+## PASSO 1.8 — Baseline tsc --noEmit
+
+- **Início:** 2026-05-10 17:09
+- **Fim:** 2026-05-10 17:09
+- **Comando(s) executado(s):** `npx tsc --noEmit` em `frontend/`
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-tsc.txt`
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **0 errors** — saída vazia. Artefato anotado com `(no output — 0 errors)` para auto-documentar.
