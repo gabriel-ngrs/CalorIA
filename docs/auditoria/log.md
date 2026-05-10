@@ -143,3 +143,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-001
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** 11 matches brutos; 5 são falsos positivos (`@router.delete(...)` decorator HTTP, ou método `.delete()` em service). Restam **6 queries SQL inline reais, todas em `push.py`** (subscriptions + notificações). Todos os outros routers delegam para services.
+
+## PASSO 2.2 — Mapear filtragem por user_id
+
+- **Início:** 2026-05-10 17:22
+- **Fim:** 2026-05-10 17:30
+- **Comando(s) executado(s):** bloco `rg @router + rg select( em services/` para gerar `A2-user-id-coverage.txt`; depois script Python `re.finditer` para checar bloco-por-bloco se cada endpoint chama `get_current_user_id` e usa `user_id` no corpo
+- **Artefato(s):** `docs/auditoria/artefatos/A2-user-id-coverage.txt`
+- **Achados gerados:** nenhum
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Apenas 4/47 endpoints não usam `Depends(get_current_user_id)` — todos legitimamente públicos (`POST /auth/register|login|refresh`, `GET /push/vapid-public-key`). Em services e workers, todas as queries que retornam dados de usuário filtram por `user_id` (direto ou indireto via FK). Única exceção real: `meal_service.py:67` faz refresh por `meal.id` sem `user_id`, mas o registro foi criado na linha anterior pelo próprio usuário — sem risco. Nenhum achado criado.
