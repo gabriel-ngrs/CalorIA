@@ -333,3 +333,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-020
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Fluxo de token bem desenhado (cache 90s, dedupe Promise, refresh proativo 2min antes, retry transparente em 401). **7 console.log/error rodam em produção** — único item gateado é `ReactQueryDevtools`. Volume típico 50-100 logs/min em sessão ativa.
+
+## PASSO 5.4 — Bug do contrato login (verificação)
+
+- **Início:** 2026-05-10 19:29
+- **Fim:** 2026-05-10 19:33
+- **Comando(s) executado(s):** leitura de `backend/app/api/v1/auth.py:37-50` + `frontend/app/api/auth/[...nextauth]/route.ts` + `grep -rn "session.user.id"` em `app|components|lib`
+- **Artefato(s):** nenhum dedicado (matriz embutida em `04-frontend.md § D.4`)
+- **Achados gerados:** AUD-021
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Bug **confirmado**. Backend `TokenResponse` tem só `access_token`, `refresh_token`, `token_type` — sem `user`. Frontend `authorize` lê `data.user?.id ?? ""` e `data.user?.name ?? credentials.email`. Resultado: `id="" `, `name=email`. Como `id` não é usado em lógica funcional (verificado), bug é silencioso — degrada apenas UX (nome). Login funciona end-to-end.

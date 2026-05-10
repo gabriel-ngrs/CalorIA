@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 4 · médios: 9 · baixos: 6 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 6 (atualizar a cada novo achado)
 
 ---
 
@@ -233,3 +233,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Criar `frontend/lib/log.ts` exportando `debug()`/`info()`/`error()` que checa `process.env.NODE_ENV !== "production"`. Substituir todos os `console.*` por esse logger. Manter `console.error` apenas para erros que precisam aparecer em produção (ex.: `signOut` falhando), e expor via Sentry/equivalente se houver no futuro.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 5.3
+
+### AUD-021 — Discrepância de contrato `/auth/login`: frontend lê `data.user.*` que o backend não envia
+
+- **Severidade:** 🟠 alta
+- **Frente:** D
+- **Arquivo:linha:** `backend/app/api/v1/auth.py:47-50` (retorno) vs. `frontend/app/api/auth/[...nextauth]/route.ts:64-70` (leitura)
+- **Descrição:** O backend retorna `TokenResponse(access_token, refresh_token)` — sem campo `user`. O `authorize` do NextAuth lê `data.user?.id ?? ""` e `data.user?.name ?? credentials.email`, portanto: `id` da sessão é string vazia, `name` cai no fallback (e-mail). Login funciona porque tokens são lidos corretamente; bug é silencioso e degrada UX (usuário vê o e-mail no lugar do nome até `useUser()` buscar `/auth/me`).
+- **Evidência:** ler ambos arquivos; `grep -rn "session.user.id" frontend/app|components|lib` mostra que `id` não é usado em lógica funcional, só armazenado.
+- **Recomendação:** **Opção 1 (preferida — fix no backend):** adicionar `user: UserPublicResponse | None = None` em `TokenResponse` e popular no endpoint `/auth/login` (e opcionalmente em `/auth/refresh`). Aproveita hidratação inicial sem round-trip extra. **Opção 2 (fix no frontend):** após `/auth/login` OK, `authorize` chama `/auth/me` com o token novo e popula `id`/`name`. Custa 1 round-trip extra no login.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 5.4
