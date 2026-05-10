@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import logging
 
 import redis.asyncio as aioredis
-from google import genai
-from google.genai import types
 from groq import AsyncGroq
 
 from app.core.config import settings
@@ -16,21 +15,18 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL = 7 * 24 * 3600  # 7 dias
 _CACHE_PREFIX = "ai:"
 
-_GROQ_MODEL = "llama-3.3-70b-versatile"
-_GEMINI_MODEL = "models/gemini-2.5-flash"
+_TEXT_MODEL = "llama-3.3-70b-versatile"
+_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
 class GeminiClient:
-    """Cliente de IA com roteamento por tipo de tarefa.
+    """Cliente Groq — texto e visão 100% gratuito.
 
-    - Texto  → Groq (Llama 3.3 70B) — gratuito, alta capacidade
-    - Imagem → Gemini 2.5 Flash     — free tier, uso raro
     Interface pública inalterada para que todos os services funcionem sem modificação.
     """
 
     def __init__(self) -> None:
         self._groq = AsyncGroq(api_key=settings.GROQ_API_KEY)
-        self._gemini = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     # ------------------------------------------------------------------
     # API pública
@@ -51,7 +47,7 @@ class GeminiClient:
                 logger.debug("Cache hit AI")
                 return cached
 
-        result = await self._generate_groq(prompt, system=system)
+        result = await self._call(prompt, system=system, model=_TEXT_MODEL)
 
         if use_cache:
             await self._set_cached(self._cache_key(cache_input), result)
@@ -66,27 +62,41 @@ class GeminiClient:
         *,
         system: str | None = None,
     ) -> str:
-        """Gera texto a partir de imagem via Gemini (sem cache)."""
-        config = types.GenerateContentConfig(
-            system_instruction=system,
-            temperature=0.1,
-        )
-        contents: list[types.PartUnionDict] = [
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-            prompt,
-        ]
-        response = await self._gemini.aio.models.generate_content(
-            model=_GEMINI_MODEL,
-            contents=contents,
-            config=config,
-        )
-        return response.text or ""
+        """Gera texto a partir de imagem via Groq Vision (sem cache)."""
+        b64 = base64.b64encode(image_bytes).decode()
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
+                {"type": "text", "text": prompt},
+            ],
+        })
+
+        for attempt in range(4):
+            try:
+                response = await self._groq.chat.completions.create(
+                    model=_VISION_MODEL,
+                    messages=messages,
+                    temperature=0.1,
+                )
+                return response.choices[0].message.content or ""
+            except Exception as exc:
+                if "429" in str(exc) and attempt < 3:
+                    wait = 15 * (2**attempt)
+                    logger.warning("Rate limit Groq Vision — aguardando %ds", wait)
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+        raise RuntimeError("Groq Vision falhou após 4 tentativas")
 
     # ------------------------------------------------------------------
-    # Internos
+    # Interno
     # ------------------------------------------------------------------
 
-    async def _generate_groq(self, prompt: str, *, system: str | None = None) -> str:
+    async def _call(self, prompt: str, *, system: str | None, model: str) -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -95,7 +105,7 @@ class GeminiClient:
         for attempt in range(4):
             try:
                 response = await self._groq.chat.completions.create(
-                    model=_GROQ_MODEL,
+                    model=model,
                     messages=messages,
                     temperature=0.1 if system else 0.3,
                 )
@@ -109,11 +119,7 @@ class GeminiClient:
             except Exception as exc:
                 if "429" in str(exc) and attempt < 3:
                     wait = 15 * (2**attempt)
-                    logger.warning(
-                        "Rate limit Groq — aguardando %ds (tentativa %d/4)",
-                        wait,
-                        attempt + 1,
-                    )
+                    logger.warning("Rate limit Groq — aguardando %ds (tentativa %d/4)", wait, attempt + 1)
                     await asyncio.sleep(wait)
                 else:
                     raise
@@ -129,9 +135,7 @@ class GeminiClient:
 
     async def _get_cached(self, key: str) -> str | None:
         try:
-            async with aioredis.from_url(
-                settings.REDIS_URL, decode_responses=True
-            ) as r:
+            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
                 return await r.get(key)
         except Exception as exc:
             logger.warning("Falha ao ler cache (Redis): %s", exc)
@@ -139,9 +143,7 @@ class GeminiClient:
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
-            async with aioredis.from_url(
-                settings.REDIS_URL, decode_responses=True
-            ) as r:
+            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
                 await r.setex(key, _CACHE_TTL, value)
         except Exception as exc:
             logger.warning("Falha ao gravar cache (Redis): %s", exc)
