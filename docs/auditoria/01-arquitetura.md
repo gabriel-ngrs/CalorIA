@@ -23,6 +23,36 @@ Após filtrar falsos positivos (`@router.delete(...)` é decorator HTTP, não SQ
 
 Demais routers (`meals.py`, `reminders.py`, etc.) delegam para services — `push.py` é o único outlier.
 
+## A.2 Filtragem por user_id
+
+Comando: ver `artefatos/A2-user-id-coverage.txt` (508 linhas brutas) + análise endpoint-a-endpoint via script Python (`re.finditer` para extrair blocos de cada `@router.*`).
+
+**Endpoints (47 totais)**
+
+Apenas 4 não usam `Depends(get_current_user_id)` — todos públicos por design:
+
+| Endpoint | Justificativa |
+|---|---|
+| `POST /auth/register` | Cria usuário; ainda não existe sessão |
+| `POST /auth/login` | Autentica por email/senha |
+| `POST /auth/refresh` | Usa refresh token, não JWT |
+| `GET /push/vapid-public-key` | Chave pública para clientes; sem dado pessoal |
+
+Os outros 43 endpoints injetam `user_id` e o aplicam em queries/services. Nenhum suspeito.
+
+**Queries em services / workers (sem `user_id` direto)**
+
+| Query | Local | Filtra por user_id? | Justificativa |
+|---|---|---|---|
+| `select(Meal).where(Meal.id == meal.id)` | `meal_service.py:67` | ❌ direto, ✅ indireto | Refresh após `create_meal()`; `meal` recém-criado é do usuário; só re-hidrata com `selectinload(items)` |
+| `select(User)` (lookup) | `user_service.py:19/26/58` | N/A | Próprio `User`; lookup de auth (id/email) |
+| `select(UserProfile).where(...)` | `profile_service.py:17` | ✅ | filtra `user_id` |
+| `select(User).where(User.is_active.is_(True))` | `workers/.../*.py` | N/A | Tarefa batch/scheduler, itera todos os usuários ativos por design; queries-filhas usam `user.id` da iteração |
+| `select(PushSubscription).where(user_id==user.id)` | `workers/tasks/reminders.py`, `reports.py` | ✅ | escopo por usuário iterado |
+| `select(WeightLog).where(user_id==user.id)` | `workers/tasks/maintenance.py:88` | ✅ | escopo por usuário iterado |
+
+Todas as queries de `log_service.py`, `meal_service.py` (exceto refresh acima), `reminder_service.py`, `pattern_analyzer.py` e `context_builder.py` filtram explicitamente por `user_id`. Nenhuma violação encontrada.
+
 ## Notas e contexto
 
 (texto livre conforme aprendizagens surgem)

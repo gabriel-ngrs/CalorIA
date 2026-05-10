@@ -1,0 +1,508 @@
+=== Endpoints (suspeitos sem user_id) ===
+backend/app/api/v1/reminders.py:15:@router.get("", response_model=list[ReminderResponse])
+backend/app/api/v1/reminders.py-16-async def list_reminders(
+backend/app/api/v1/reminders.py-18-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-19-) -> list[ReminderResponse]:
+backend/app/api/v1/reminders.py-21-    return [ReminderResponse.model_validate(r) for r in reminders]
+backend/app/api/v1/reminders.py-22-
+backend/app/api/v1/reminders.py-23-
+backend/app/api/v1/reminders.py:24:@router.post("", response_model=ReminderResponse, status_code=status.HTTP_201_CREATED)
+backend/app/api/v1/reminders.py-25-async def create_reminder(
+backend/app/api/v1/reminders.py-26-    data: ReminderCreate,
+backend/app/api/v1/reminders.py-28-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-29-) -> ReminderResponse:
+backend/app/api/v1/reminders.py-31-    return ReminderResponse.model_validate(reminder)
+backend/app/api/v1/reminders.py-32-
+--
+backend/app/api/v1/reminders.py:34:@router.post(
+backend/app/api/v1/reminders.py-35-    "/batch", response_model=list[ReminderResponse], status_code=status.HTTP_201_CREATED
+backend/app/api/v1/reminders.py-36-)
+backend/app/api/v1/reminders.py-37-async def create_reminders_batch(
+backend/app/api/v1/reminders.py-38-    items: Annotated[list[ReminderCreate], Body()],
+backend/app/api/v1/reminders.py-40-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-41-) -> list[ReminderResponse]:
+backend/app/api/v1/reminders.py-42-    """Cria múltiplos lembretes de uma vez (ex: lembretes em vários horários do dia)."""
+--
+backend/app/api/v1/reminders.py:51:@router.patch("/{reminder_id}/toggle", response_model=ReminderResponse)
+backend/app/api/v1/reminders.py-52-async def toggle_reminder(
+backend/app/api/v1/reminders.py-53-    reminder_id: int,
+backend/app/api/v1/reminders.py-55-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-56-) -> ReminderResponse:
+backend/app/api/v1/reminders.py-58-    if not reminder:
+backend/app/api/v1/reminders.py-59-        raise HTTPException(
+--
+backend/app/api/v1/reminders.py:65:@router.delete("/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/reminders.py-66-async def delete_reminder(
+backend/app/api/v1/reminders.py-67-    reminder_id: int,
+backend/app/api/v1/reminders.py-69-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-70-) -> None:
+backend/app/api/v1/reminders.py-72-    if not deleted:
+backend/app/api/v1/reminders.py-73-        raise HTTPException(
+--
+backend/app/api/v1/mood.py:13:@router.get("", response_model=list[MoodLogResponse])
+backend/app/api/v1/mood.py-14-async def list_mood(
+backend/app/api/v1/mood.py-15-    skip: int = Query(default=0, ge=0),
+backend/app/api/v1/mood.py-16-    limit: int = Query(default=30, ge=1, le=100),
+backend/app/api/v1/mood.py-18-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/mood.py-19-) -> list[MoodLogResponse]:
+backend/app/api/v1/mood.py-21-    return [MoodLogResponse.model_validate(lg) for lg in logs]
+--
+backend/app/api/v1/mood.py:24:@router.post("", response_model=MoodLogResponse, status_code=status.HTTP_201_CREATED)
+backend/app/api/v1/mood.py-25-async def create_mood(
+backend/app/api/v1/mood.py-26-    data: MoodLogCreate,
+backend/app/api/v1/mood.py-28-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/mood.py-29-) -> MoodLogResponse:
+backend/app/api/v1/mood.py-31-    return MoodLogResponse.model_validate(log)
+--
+backend/app/api/v1/auth.py:21:@router.post(
+backend/app/api/v1/auth.py-22-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+backend/app/api/v1/auth.py-23-)
+backend/app/api/v1/auth.py-24-async def register(
+backend/app/api/v1/auth.py-25-    data: UserCreate, db: AsyncSession = Depends(get_db)
+backend/app/api/v1/auth.py-26-) -> UserResponse:
+backend/app/api/v1/auth.py-27-    svc = UserService(db)
+backend/app/api/v1/auth.py-28-    if await svc.email_exists(data.email):
+backend/app/api/v1/auth.py-29-        raise HTTPException(
+--
+backend/app/api/v1/auth.py:37:@router.post("/login", response_model=TokenResponse)
+backend/app/api/v1/auth.py-38-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+backend/app/api/v1/auth.py-39-    svc = UserService(db)
+backend/app/api/v1/auth.py-40-    user = await svc.authenticate(data.email, data.password)
+backend/app/api/v1/auth.py-41-    if not user:
+backend/app/api/v1/auth.py-42-        raise HTTPException(
+backend/app/api/v1/auth.py-43-            status_code=status.HTTP_401_UNAUTHORIZED,
+backend/app/api/v1/auth.py-44-            detail="E-mail ou senha inválidos",
+backend/app/api/v1/auth.py-45-            headers={"WWW-Authenticate": "Bearer"},
+--
+backend/app/api/v1/auth.py:53:@router.post("/refresh", response_model=TokenResponse)
+backend/app/api/v1/auth.py-54-async def refresh(
+backend/app/api/v1/auth.py-55-    data: RefreshRequest, db: AsyncSession = Depends(get_db)
+backend/app/api/v1/auth.py-56-) -> TokenResponse:
+backend/app/api/v1/auth.py-57-    credentials_exception = HTTPException(
+backend/app/api/v1/auth.py-58-        status_code=status.HTTP_401_UNAUTHORIZED,
+backend/app/api/v1/auth.py-59-        detail="Refresh token inválido ou expirado",
+backend/app/api/v1/auth.py-60-    )
+backend/app/api/v1/auth.py-61-    if await is_token_blacklisted(data.refresh_token):
+--
+backend/app/api/v1/auth.py:85:@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/auth.py-86-async def logout(
+backend/app/api/v1/auth.py-87-    data: RefreshRequest,
+backend/app/api/v1/auth.py-89-) -> None:
+backend/app/api/v1/auth.py-90-    await blacklist_token(data.refresh_token)
+backend/app/api/v1/auth.py-91-
+backend/app/api/v1/auth.py-92-
+backend/app/api/v1/auth.py:93:@router.get("/me", response_model=UserResponse)
+backend/app/api/v1/auth.py-94-async def me(
+backend/app/api/v1/auth.py-96-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/auth.py-97-) -> UserResponse:
+backend/app/api/v1/auth.py-98-    svc = UserService(db)
+backend/app/api/v1/auth.py-100-    if not user:
+backend/app/api/v1/auth.py-101-        raise HTTPException(
+--
+backend/app/api/v1/ai.py:41:@router.post("/analyze-meal", response_model=MealAnalysisResponse)
+backend/app/api/v1/ai.py-42-async def analyze_meal(
+backend/app/api/v1/ai.py-43-    data: MealAnalysisRequest,
+backend/app/api/v1/ai.py-45-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-46-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-47-) -> MealAnalysisResponse:
+backend/app/api/v1/ai.py-48-    """Analisa descrição de texto e retorna itens nutricionais estruturados."""
+backend/app/api/v1/ai.py-49-    client = get_ai_client()
+--
+backend/app/api/v1/ai.py:65:@router.post("/analyze-photo", response_model=MealAnalysisResponse)
+backend/app/api/v1/ai.py-66-async def analyze_photo(
+backend/app/api/v1/ai.py-67-    data: PhotoAnalysisRequest,
+backend/app/api/v1/ai.py-69-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-70-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-71-) -> MealAnalysisResponse:
+backend/app/api/v1/ai.py-72-    """Analisa foto de refeição (base64) e retorna itens nutricionais."""
+backend/app/api/v1/ai.py-73-    client = get_ai_client()
+--
+backend/app/api/v1/ai.py:88:@router.post("/insights", response_model=InsightResponse)
+backend/app/api/v1/ai.py-89-async def generate_insight(
+backend/app/api/v1/ai.py-90-    data: InsightRequest,
+backend/app/api/v1/ai.py-91-    today: date = Query(default_factory=date.today),
+backend/app/api/v1/ai.py-93-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-94-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-95-) -> InsightResponse:
+backend/app/api/v1/ai.py-96-    """Gera insight personalizado: diário, semanal ou resposta a uma pergunta."""
+--
+backend/app/api/v1/ai.py:120:@router.get("/suggest-meal", response_model=MealSuggestion)
+backend/app/api/v1/ai.py-121-async def suggest_meal(
+backend/app/api/v1/ai.py-122-    today: date = Query(default_factory=date.today),
+backend/app/api/v1/ai.py-124-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-125-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-126-) -> MealSuggestion:
+backend/app/api/v1/ai.py-127-    """Sugere uma refeição com base no histórico e calorias restantes do dia."""
+backend/app/api/v1/ai.py-128-    client = get_ai_client()
+--
+backend/app/api/v1/ai.py:141:@router.get("/patterns", response_model=EatingPattern)
+backend/app/api/v1/ai.py-142-async def eating_patterns(
+backend/app/api/v1/ai.py-143-    days: int = Query(default=30, ge=7, le=90),
+backend/app/api/v1/ai.py-145-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-146-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-147-) -> EatingPattern:
+backend/app/api/v1/ai.py-148-    """Analisa padrões alimentares dos últimos N dias (7-90)."""
+backend/app/api/v1/ai.py-149-    client = get_ai_client()
+--
+backend/app/api/v1/ai.py:159:@router.get("/nutritional-alerts", response_model=NutritionalAlertsResponse)
+backend/app/api/v1/ai.py-160-async def nutritional_alerts(
+backend/app/api/v1/ai.py-161-    days: int = Query(default=14, ge=7, le=30),
+backend/app/api/v1/ai.py-163-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-164-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-165-) -> NutritionalAlertsResponse:
+backend/app/api/v1/ai.py-166-    """Detecta deficiências nutricionais recorrentes nos últimos N dias."""
+backend/app/api/v1/ai.py-167-    client = get_ai_client()
+--
+backend/app/api/v1/ai.py:177:@router.get("/goal-adjustment", response_model=GoalAdjustmentSuggestion)
+backend/app/api/v1/ai.py-178-async def goal_adjustment(
+backend/app/api/v1/ai.py-180-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-181-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-182-) -> GoalAdjustmentSuggestion:
+backend/app/api/v1/ai.py-183-    """Sugere ajuste de metas com base na tendência real de peso dos últimos 30 dias."""
+backend/app/api/v1/ai.py-184-    client = get_ai_client()
+backend/app/api/v1/ai.py-185-    try:
+--
+backend/app/api/v1/ai.py:194:@router.get("/monthly-report", response_model=MonthlyReport)
+backend/app/api/v1/ai.py-195-async def monthly_report(
+backend/app/api/v1/ai.py-196-    month: int = Query(default=None, ge=1, le=12),
+backend/app/api/v1/ai.py-197-    year: int = Query(default=None, ge=2020),
+backend/app/api/v1/ai.py-199-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/ai.py-200-    _: None = Depends(_require_ai),
+backend/app/api/v1/ai.py-201-) -> MonthlyReport:
+backend/app/api/v1/ai.py-202-    """Gera relatório mensal com score de aderência e análise semanal.
+--
+backend/app/api/v1/hydration.py:19:@router.get("/today", response_model=HydrationDaySummary)
+backend/app/api/v1/hydration.py-20-async def get_today(
+backend/app/api/v1/hydration.py-21-    day: date = Query(default_factory=date.today),
+backend/app/api/v1/hydration.py-23-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/hydration.py-24-) -> HydrationDaySummary:
+backend/app/api/v1/hydration.py-26-
+backend/app/api/v1/hydration.py-27-
+backend/app/api/v1/hydration.py:28:@router.get("/history", response_model=list[HydrationDaySummary])
+backend/app/api/v1/hydration.py-29-async def get_history(
+backend/app/api/v1/hydration.py-30-    days: int = Query(default=7, ge=1, le=90),
+backend/app/api/v1/hydration.py-32-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/hydration.py-33-) -> list[HydrationDaySummary]:
+backend/app/api/v1/hydration.py-35-
+backend/app/api/v1/hydration.py-36-
+backend/app/api/v1/hydration.py:37:@router.post(
+backend/app/api/v1/hydration.py-38-    "", response_model=HydrationLogResponse, status_code=status.HTTP_201_CREATED
+backend/app/api/v1/hydration.py-39-)
+backend/app/api/v1/hydration.py-40-async def create_hydration(
+backend/app/api/v1/hydration.py-41-    data: HydrationLogCreate,
+backend/app/api/v1/hydration.py-43-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/hydration.py-44-) -> HydrationLogResponse:
+--
+backend/app/api/v1/push.py:67:@router.get("/push/vapid-public-key", response_model=VapidPublicKeyResponse)
+backend/app/api/v1/push.py-68-async def get_vapid_public_key() -> VapidPublicKeyResponse:
+backend/app/api/v1/push.py-69-    """Returns the VAPID public key for the frontend to use when subscribing."""
+backend/app/api/v1/push.py-70-    return VapidPublicKeyResponse(public_key=settings.VAPID_PUBLIC_KEY)
+backend/app/api/v1/push.py-71-
+backend/app/api/v1/push.py-72-
+backend/app/api/v1/push.py:73:@router.post("/push/subscribe", status_code=status.HTTP_201_CREATED)
+backend/app/api/v1/push.py-74-async def subscribe_push(
+backend/app/api/v1/push.py-75-    payload: SubscribePayload,
+backend/app/api/v1/push.py-77-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-78-) -> dict[str, str]:
+backend/app/api/v1/push.py-79-    """Upsert a push subscription for the authenticated user."""
+backend/app/api/v1/push.py-80-    result = await db.execute(
+backend/app/api/v1/push.py-81-        select(PushSubscription).where(PushSubscription.endpoint == payload.endpoint)
+--
+backend/app/api/v1/push.py:105:@router.delete("/push/unsubscribe", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/push.py-106-async def unsubscribe_push(
+backend/app/api/v1/push.py-107-    payload: UnsubscribePayload,
+backend/app/api/v1/push.py-109-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-110-) -> None:
+backend/app/api/v1/push.py-111-    """Remove a push subscription by endpoint."""
+backend/app/api/v1/push.py-112-    await db.execute(
+backend/app/api/v1/push.py-113-        delete(PushSubscription).where(
+--
+backend/app/api/v1/push.py:126:@router.get("/notifications", response_model=list[NotificationResponse])
+backend/app/api/v1/push.py-127-async def list_notifications(
+backend/app/api/v1/push.py-128-    unread_only: bool = Query(False),
+backend/app/api/v1/push.py-129-    limit: int = Query(20, ge=1, le=100),
+backend/app/api/v1/push.py-131-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-132-) -> list[NotificationResponse]:
+backend/app/api/v1/push.py-133-    """List notifications for the authenticated user."""
+--
+backend/app/api/v1/push.py:143:@router.get("/notifications/unread-count", response_model=UnreadCountResponse)
+backend/app/api/v1/push.py-144-async def unread_count(
+backend/app/api/v1/push.py-146-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-147-) -> UnreadCountResponse:
+backend/app/api/v1/push.py-148-    """Return count of unread notifications."""
+backend/app/api/v1/push.py-149-    from sqlalchemy import func as sa_func
+backend/app/api/v1/push.py-150-
+backend/app/api/v1/push.py-151-    result = await db.execute(
+--
+backend/app/api/v1/push.py:161:@router.patch(
+backend/app/api/v1/push.py-162-    "/notifications/{notification_id}/read", response_model=NotificationResponse
+backend/app/api/v1/push.py-163-)
+backend/app/api/v1/push.py-164-async def mark_notification_read(
+backend/app/api/v1/push.py-165-    notification_id: int,
+backend/app/api/v1/push.py-167-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-168-) -> NotificationResponse:
+backend/app/api/v1/push.py-169-    """Mark a single notification as read."""
+--
+backend/app/api/v1/push.py:187:@router.post("/notifications/read-all", status_code=status.HTTP_200_OK)
+backend/app/api/v1/push.py-188-async def mark_all_read(
+backend/app/api/v1/push.py-190-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-191-) -> dict[str, str]:
+backend/app/api/v1/push.py-192-    """Mark all notifications as read for the authenticated user."""
+backend/app/api/v1/push.py-193-    from sqlalchemy import update
+backend/app/api/v1/push.py-194-
+backend/app/api/v1/push.py-195-    await db.execute(
+--
+backend/app/api/v1/weight.py:13:@router.get("", response_model=list[WeightLogResponse])
+backend/app/api/v1/weight.py-14-async def list_weight(
+backend/app/api/v1/weight.py-15-    skip: int = Query(default=0, ge=0),
+backend/app/api/v1/weight.py-16-    limit: int = Query(default=50, ge=1, le=200),
+backend/app/api/v1/weight.py-18-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/weight.py-19-) -> list[WeightLogResponse]:
+backend/app/api/v1/weight.py-21-    return [WeightLogResponse.model_validate(lg) for lg in logs]
+--
+backend/app/api/v1/weight.py:24:@router.post("", response_model=WeightLogResponse, status_code=status.HTTP_201_CREATED)
+backend/app/api/v1/weight.py-25-async def create_weight(
+backend/app/api/v1/weight.py-26-    data: WeightLogCreate,
+backend/app/api/v1/weight.py-28-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/weight.py-29-) -> WeightLogResponse:
+backend/app/api/v1/weight.py-31-    return WeightLogResponse.model_validate(log)
+--
+backend/app/api/v1/meals.py:16:@router.get("/daily-summary", response_model=DailySummary)
+backend/app/api/v1/meals.py-17-async def daily_summary(
+backend/app/api/v1/meals.py-18-    summary_date: date = Query(default_factory=date.today, alias="date"),
+backend/app/api/v1/meals.py-20-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-21-) -> DailySummary:
+backend/app/api/v1/meals.py-23-
+backend/app/api/v1/meals.py-24-
+backend/app/api/v1/meals.py:25:@router.get("", response_model=list[MealResponse])
+backend/app/api/v1/meals.py-26-async def list_meals(
+backend/app/api/v1/meals.py-27-    meal_date: date | None = Query(default=None, alias="date"),
+backend/app/api/v1/meals.py-28-    meal_type: MealType | None = Query(default=None),
+backend/app/api/v1/meals.py-29-    skip: int = Query(default=0, ge=0),
+backend/app/api/v1/meals.py-30-    limit: int = Query(default=20, ge=1, le=100),
+backend/app/api/v1/meals.py-32-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-33-) -> list[MealResponse]:
+--
+backend/app/api/v1/meals.py:38:@router.post("", response_model=MealResponse, status_code=status.HTTP_201_CREATED)
+backend/app/api/v1/meals.py-39-async def create_meal(
+backend/app/api/v1/meals.py-40-    data: MealCreate,
+backend/app/api/v1/meals.py-42-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-43-) -> MealResponse:
+backend/app/api/v1/meals.py-45-    return MealResponse.model_validate(meal)
+backend/app/api/v1/meals.py-46-
+--
+backend/app/api/v1/meals.py:48:@router.get("/{meal_id}", response_model=MealResponse)
+backend/app/api/v1/meals.py-49-async def get_meal(
+backend/app/api/v1/meals.py-50-    meal_id: int,
+backend/app/api/v1/meals.py-52-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-53-) -> MealResponse:
+backend/app/api/v1/meals.py-55-    if not meal:
+backend/app/api/v1/meals.py-56-        raise HTTPException(
+--
+backend/app/api/v1/meals.py:62:@router.patch("/{meal_id}", response_model=MealResponse)
+backend/app/api/v1/meals.py-63-async def update_meal(
+backend/app/api/v1/meals.py-64-    meal_id: int,
+backend/app/api/v1/meals.py-65-    data: MealUpdate,
+backend/app/api/v1/meals.py-67-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-68-) -> MealResponse:
+backend/app/api/v1/meals.py-70-    if not meal:
+--
+backend/app/api/v1/meals.py:77:@router.delete("/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/meals.py-78-async def delete_meal(
+backend/app/api/v1/meals.py-79-    meal_id: int,
+backend/app/api/v1/meals.py-81-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-82-) -> None:
+backend/app/api/v1/meals.py-84-    if not deleted:
+backend/app/api/v1/meals.py-85-        raise HTTPException(
+--
+backend/app/api/v1/meals.py:90:@router.delete("/{meal_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/meals.py-91-async def delete_meal_item(
+backend/app/api/v1/meals.py-92-    meal_id: int,
+backend/app/api/v1/meals.py-93-    item_id: int,
+backend/app/api/v1/meals.py-95-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-96-) -> None:
+backend/app/api/v1/meals.py-97-    """Remove um item individual de uma refeição."""
+backend/app/api/v1/meals.py-98-    try:
+--
+backend/app/api/v1/users.py:15:@router.get("/me", response_model=UserResponse)
+backend/app/api/v1/users.py-16-async def get_me(
+backend/app/api/v1/users.py-18-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/users.py-19-) -> UserResponse:
+backend/app/api/v1/users.py-21-    if not user:
+backend/app/api/v1/users.py-22-        raise HTTPException(
+backend/app/api/v1/users.py-23-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+--
+backend/app/api/v1/users.py:28:@router.patch("/me", response_model=UserResponse)
+backend/app/api/v1/users.py-29-async def update_me(
+backend/app/api/v1/users.py-30-    data: UserUpdate,
+backend/app/api/v1/users.py-32-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/users.py-33-) -> UserResponse:
+backend/app/api/v1/users.py-34-    svc = UserService(db)
+backend/app/api/v1/users.py-36-    if not user:
+--
+backend/app/api/v1/users.py:47:@router.get("/me/profile", response_model=ProfileResponse)
+backend/app/api/v1/users.py-48-async def get_profile(
+backend/app/api/v1/users.py-50-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/users.py-51-) -> ProfileResponse:
+backend/app/api/v1/users.py-53-    if not profile:
+backend/app/api/v1/users.py-54-        raise HTTPException(
+backend/app/api/v1/users.py-55-            status_code=status.HTTP_404_NOT_FOUND, detail="Perfil não encontrado"
+--
+backend/app/api/v1/users.py:60:@router.put("/me/profile", response_model=ProfileResponse)
+backend/app/api/v1/users.py-61-async def update_profile(
+backend/app/api/v1/users.py-62-    data: ProfileUpdate,
+backend/app/api/v1/users.py-64-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/users.py-65-) -> ProfileResponse:
+backend/app/api/v1/users.py-67-    return ProfileResponse.model_validate(profile)
+--
+backend/app/api/v1/dashboard.py:17:@router.get("/today", response_model=DashboardToday)
+backend/app/api/v1/dashboard.py-18-async def get_today(
+backend/app/api/v1/dashboard.py-19-    today: date = Query(default_factory=date.today),
+backend/app/api/v1/dashboard.py-21-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/dashboard.py-22-) -> DashboardToday:
+backend/app/api/v1/dashboard.py-24-
+backend/app/api/v1/dashboard.py-25-
+backend/app/api/v1/dashboard.py:26:@router.get("/weekly", response_model=WeeklySummary)
+backend/app/api/v1/dashboard.py-27-async def get_weekly(
+backend/app/api/v1/dashboard.py-28-    end_date: date = Query(default_factory=date.today),
+backend/app/api/v1/dashboard.py-30-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/dashboard.py-31-) -> WeeklySummary:
+backend/app/api/v1/dashboard.py-33-
+backend/app/api/v1/dashboard.py-34-
+backend/app/api/v1/dashboard.py:35:@router.get("/macros-chart", response_model=list[WeeklyMacroPoint])
+backend/app/api/v1/dashboard.py-36-async def macros_chart(
+backend/app/api/v1/dashboard.py-37-    days: int = Query(default=7, ge=1, le=90),
+backend/app/api/v1/dashboard.py-38-    end_date: date = Query(default_factory=date.today),
+backend/app/api/v1/dashboard.py-40-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/dashboard.py-41-) -> list[WeeklyMacroPoint]:
+backend/app/api/v1/dashboard.py-42-    from datetime import timedelta
+backend/app/api/v1/dashboard.py-43-
+--
+backend/app/api/v1/dashboard.py:62:@router.get("/weight-chart", response_model=list[WeightLogResponse])
+backend/app/api/v1/dashboard.py-63-async def weight_chart(
+backend/app/api/v1/dashboard.py-64-    limit: int = Query(default=30, ge=1, le=365),
+backend/app/api/v1/dashboard.py-66-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/dashboard.py-67-) -> list[WeightLogResponse]:
+backend/app/api/v1/dashboard.py-69-    return [WeightLogResponse.model_validate(lg) for lg in logs]
+
+=== Queries em services sem filtro user_id ===
+backend/app/services/ai/context_builder.py:128:        select(Meal)
+backend/app/services/ai/context_builder.py-129-        .options(selectinload(Meal.items))
+backend/app/services/ai/context_builder.py-130-        .where(
+backend/app/services/ai/context_builder.py-132-            Meal.meal_type == meal_type,
+--
+backend/app/services/ai/context_builder.py:166:        select(
+backend/app/services/ai/context_builder.py-167-            Meal.meal_type,
+backend/app/services/ai/context_builder.py-168-            func.sum(MealItem.calories).label("total_cal"),
+backend/app/services/ai/context_builder.py-169-            func.count(Meal.id.distinct()).label("count"),
+backend/app/services/ai/context_builder.py-170-        )
+--
+backend/app/services/ai/context_builder.py:235:            select(func.sum(MealItem.calories))
+backend/app/services/ai/context_builder.py-236-            .join(Meal, Meal.id == MealItem.meal_id)
+backend/app/services/ai/context_builder.py-238-        )
+backend/app/services/ai/context_builder.py-239-        or 0.0
+--
+backend/app/services/ai/context_builder.py:244:            select(func.sum(MealItem.protein))
+backend/app/services/ai/context_builder.py-245-            .join(Meal, Meal.id == MealItem.meal_id)
+backend/app/services/ai/context_builder.py-247-        )
+backend/app/services/ai/context_builder.py-248-        or 0.0
+--
+backend/app/services/ai/context_builder.py:258:        select(
+backend/app/services/ai/context_builder.py-259-            MealItem.food_name,
+backend/app/services/ai/context_builder.py-260-            func.count(MealItem.id).label("freq"),
+backend/app/services/ai/context_builder.py-261-            func.avg(MealItem.quantity).label("avg_qty"),
+backend/app/services/ai/context_builder.py-262-            func.max(MealItem.unit).label("unit"),
+--
+backend/app/services/ai/pattern_analyzer.py:69:            select(Meal)
+backend/app/services/ai/pattern_analyzer.py-71-            .options(selectinload(Meal.items))
+backend/app/services/ai/pattern_analyzer.py-72-            .order_by(Meal.date, Meal.created_at)
+backend/app/services/ai/pattern_analyzer.py-73-        )
+--
+backend/app/services/ai/pattern_analyzer.py:78:            select(MoodLog)
+backend/app/services/ai/pattern_analyzer.py-80-            .order_by(MoodLog.date)
+backend/app/services/ai/pattern_analyzer.py-81-        )
+backend/app/services/ai/pattern_analyzer.py-82-        return list(result.scalars().all())
+--
+backend/app/services/reminder_service.py-19-        )
+backend/app/services/reminder_service.py-20-        return list(result.scalars().all())
+backend/app/services/reminder_service.py-21-
+--
+backend/app/services/reminder_service.py:56:            select(Reminder).where(
+backend/app/services/reminder_service.py-57-                Reminder.id == reminder_id,
+backend/app/services/reminder_service.py-59-            )
+backend/app/services/reminder_service.py-60-        )
+--
+backend/app/services/reminder_service.py:70:            select(Reminder).where(
+backend/app/services/reminder_service.py-71-                Reminder.id == reminder_id,
+backend/app/services/reminder_service.py-73-            )
+backend/app/services/reminder_service.py-74-        )
+--
+backend/app/services/log_service.py:29:            select(WeightLog)
+backend/app/services/log_service.py-31-            .order_by(WeightLog.date.desc())
+backend/app/services/log_service.py-32-            .offset(skip)
+backend/app/services/log_service.py-33-            .limit(limit)
+--
+backend/app/services/log_service.py:46:            select(WeightLog)
+backend/app/services/log_service.py-48-            .order_by(WeightLog.date.desc(), WeightLog.created_at.desc())
+backend/app/services/log_service.py-49-            .limit(1)
+backend/app/services/log_service.py-50-        )
+--
+backend/app/services/log_service.py:71:            select(HydrationLog)
+backend/app/services/log_service.py-72-            .where(
+backend/app/services/log_service.py-74-                HydrationLog.date >= start,
+backend/app/services/log_service.py-75-                HydrationLog.date <= today,
+--
+backend/app/services/log_service.py:103:            select(HydrationLog)
+backend/app/services/log_service.py-105-            .order_by(HydrationLog.time)
+backend/app/services/log_service.py-106-        )
+backend/app/services/log_service.py-107-        entries = list(result.scalars().all())
+--
+backend/app/services/log_service.py:121:            select(MoodLog)
+backend/app/services/log_service.py-123-            .order_by(MoodLog.date.desc())
+backend/app/services/log_service.py-124-            .offset(skip)
+backend/app/services/log_service.py-125-            .limit(limit)
+--
+backend/app/services/log_service.py:138:            select(MoodLog)
+backend/app/services/log_service.py-140-            .order_by(MoodLog.created_at.desc())
+backend/app/services/log_service.py-141-            .limit(1)
+backend/app/services/log_service.py-142-        )
+--
+backend/app/services/user_service.py:19:            select(User)
+backend/app/services/user_service.py-21-            .options(selectinload(User.profile))
+backend/app/services/user_service.py-22-        )
+backend/app/services/user_service.py-23-        return result.scalar_one_or_none()
+--
+backend/app/services/user_service.py:26:        result = await self.db.execute(select(User).where(User.email == email.lower()))
+backend/app/services/user_service.py-27-        return result.scalar_one_or_none()
+backend/app/services/user_service.py-28-
+backend/app/services/user_service.py-29-    async def create(self, data: UserCreate) -> User:
+backend/app/services/user_service.py-30-        user = User(
+--
+backend/app/services/user_service.py:58:            select(User.id).where(User.email == email.lower())
+backend/app/services/user_service.py-59-        )
+backend/app/services/user_service.py-60-        return result.scalar_one_or_none() is not None
+--
+backend/app/services/profile_service.py-18-        )
+backend/app/services/profile_service.py-19-        return result.scalar_one_or_none()
+backend/app/services/profile_service.py-20-
+--
+backend/app/services/meal_service.py:32:            select(Meal)
+backend/app/services/meal_service.py-34-            .options(selectinload(Meal.items))
+backend/app/services/meal_service.py-35-            .order_by(Meal.date.desc(), Meal.created_at.desc())
+backend/app/services/meal_service.py-36-            .offset(skip)
+--
+backend/app/services/meal_service.py:67:            select(Meal).where(Meal.id == meal.id).options(selectinload(Meal.items))
+backend/app/services/meal_service.py-68-        )
+backend/app/services/meal_service.py-69-        return result.scalar_one()
+backend/app/services/meal_service.py-70-
+--
+backend/app/services/meal_service.py:73:            select(Meal)
+backend/app/services/meal_service.py-75-            .options(selectinload(Meal.items))
+backend/app/services/meal_service.py-76-        )
+backend/app/services/meal_service.py-77-        return result.scalar_one_or_none()
+--
+backend/app/services/meal_service.py:119:            select(
+backend/app/services/meal_service.py-120-                Meal.date,
+backend/app/services/meal_service.py-121-                func.coalesce(func.sum(MealItem.calories), 0).label("calories"),
+backend/app/services/meal_service.py-122-                func.coalesce(func.sum(MealItem.protein), 0).label("protein"),
+backend/app/services/meal_service.py-123-                func.coalesce(func.sum(MealItem.carbs), 0).label("carbs"),
