@@ -1,0 +1,182 @@
+I001 [*] Import block is un-sorted or un-formatted
+  --> app/api/v1/meals.py:1:1
+   |
+ 1 | / from __future__ import annotations
+ 2 | |
+ 3 | | from datetime import date
+ 4 | |
+ 5 | | from fastapi import APIRouter, Depends, HTTPException, Query, status
+ 6 | | from sqlalchemy.ext.asyncio import AsyncSession
+ 7 | |
+ 8 | | from app.core.deps import get_current_user_id, get_db
+ 9 | | from app.models.meal import MealType
+10 | | from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
+11 | | from app.services.meal_service import MealService, MealItemNotFound
+   | |___________________________________________________________________^
+12 |
+13 |   router = APIRouter(prefix="/meals", tags=["meals"])
+   |
+help: Organize imports
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> app/api/v1/meals.py:101:9
+    |
+ 99 |           await MealService(db).delete_meal_item(user_id, meal_id, item_id)
+100 |       except MealItemNotFound:
+101 | /         raise HTTPException(
+102 | |             status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado"
+103 | |         )
+    | |_________^
+    |
+
+N818 Exception name `MealItemNotFound` should be named with an Error suffix
+  --> app/services/meal_service.py:15:7
+   |
+15 | class MealItemNotFound(Exception):
+   |       ^^^^^^^^^^^^^^^^
+16 |     pass
+   |
+
+F401 [*] `unicodedata` imported but unused
+  --> scripts/extract_off_brazil.py:27:8
+   |
+25 | import logging
+26 | import sys
+27 | import unicodedata
+   |        ^^^^^^^^^^^
+28 | from pathlib import Path
+   |
+help: Remove unused import: `unicodedata`
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> scripts/import_fatsecret.py:38:1
+   |
+36 |   """
+37 |
+38 | / from __future__ import annotations
+39 | |
+40 | | import argparse
+41 | | import asyncio
+42 | | import base64
+43 | | import hashlib
+44 | | import hmac
+45 | | import logging
+46 | | import os
+47 | | import random
+48 | | import string
+49 | | import time
+50 | | import urllib.parse
+51 | | from pathlib import Path
+52 | |
+53 | | import sys
+   | |__________^
+54 |
+55 |   sys.path.insert(0, str(Path(__file__).parent.parent))
+   |
+help: Organize imports
+
+F401 [*] `sqlalchemy.select` imported but unused
+  --> scripts/import_fatsecret.py:58:32
+   |
+57 | import httpx
+58 | from sqlalchemy import delete, select
+   |                                ^^^^^^
+59 | from sqlalchemy import text as sa_text
+60 | from sqlalchemy.dialects.postgresql import insert as pg_insert
+   |
+help: Remove unused import: `sqlalchemy.select`
+
+N806 Variable `AsyncSessionLocal` in function should be lowercase
+   --> scripts/import_fatsecret.py:305:5
+    |
+304 |     engine = create_async_engine(db_url, echo=False)
+305 |     AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    |     ^^^^^^^^^^^^^^^^^
+306 |
+307 |     async with AsyncSessionLocal() as session:
+    |
+
+F401 [*] `io` imported but unused
+  --> scripts/import_off_local.py:51:8
+   |
+49 | import csv
+50 | import gzip
+51 | import io
+   |        ^^
+52 | import json
+53 | import logging
+   |
+help: Remove unused import: `io`
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> scripts/import_off_local.py:384:5
+    |
+383 |       # Modo banco de dados
+384 | /     from sqlalchemy import delete, select
+385 | |     from sqlalchemy import text as sa_text
+386 | |     from app.core.database import AsyncSessionLocal
+387 | |     from app.models.food import Food
+    | |____________________________________^
+388 |
+389 |       async with AsyncSessionLocal() as db:
+    |
+help: Organize imports
+
+F401 [*] `sqlalchemy.text` imported but unused
+   --> scripts/import_off_local.py:385:36
+    |
+383 |     # Modo banco de dados
+384 |     from sqlalchemy import delete, select
+385 |     from sqlalchemy import text as sa_text
+    |                                    ^^^^^^^
+386 |     from app.core.database import AsyncSessionLocal
+387 |     from app.models.food import Food
+    |
+help: Remove unused import: `sqlalchemy.text`
+
+F821 Undefined name `sa_text`
+   --> scripts/import_off_local.py:440:9
+    |
+438 | async def _flush(db, batch: list[dict]) -> None:
+439 |     await db.execute(
+440 |         sa_text("""
+    |         ^^^^^^^
+441 |             INSERT INTO foods
+442 |                 (name, aliases, category, preparation, notes, source,
+    |
+
+F401 [*] `unicodedata` imported but unused
+  --> scripts/normalize_foods.py:28:8
+   |
+26 | import logging
+27 | import re
+28 | import unicodedata
+   |        ^^^^^^^^^^^
+29 | from pathlib import Path
+   |
+help: Remove unused import: `unicodedata`
+
+B007 Loop control variable `barcode` not used within loop body
+   --> scripts/normalize_foods.py:235:9
+    |
+234 |     # Primeiro processa os que têm barcode (já deduplicados)
+235 |     for barcode, row in seen_barcodes.items():
+    |         ^^^^^^^
+236 |         _process_row(row, seen_names, clean, enrich,
+237 |                      discarded_ref=[discarded_sanity])
+    |
+help: Rename unused `barcode` to `_barcode`
+
+F401 [*] `time` imported but unused
+  --> scripts/translate_foods.py:34:8
+   |
+32 | import os
+33 | import re
+34 | import time
+   |        ^^^^
+35 | from pathlib import Path
+   |
+help: Remove unused import: `time`
+
+Found 14 errors.
+[*] 9 fixable with the `--fix` option.
