@@ -133,3 +133,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** snapshot acrescido como tabela única no topo de `log.md`. Encerra a FASE 1; análise/achados começam na FASE 2 (Frente A).
+
+## PASSO 2.1 — Verificar separação API → service
+
+- **Início:** 2026-05-10 17:15
+- **Fim:** 2026-05-10 17:20
+- **Comando(s) executado(s):** `rg -n "(select|insert|update|delete)\(" backend/app/api/v1/`
+- **Artefato(s):** `docs/auditoria/artefatos/A1-queries-em-routers.txt`
+- **Achados gerados:** AUD-001
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 11 matches brutos; 5 são falsos positivos (`@router.delete(...)` decorator HTTP, ou método `.delete()` em service). Restam **6 queries SQL inline reais, todas em `push.py`** (subscriptions + notificações). Todos os outros routers delegam para services.
