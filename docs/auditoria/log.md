@@ -23,3 +23,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **14 errors**, 9 corrigíveis com `--fix`.
+
+## PASSO 1.2 — Baseline mypy strict
+
+- **Início:** 2026-05-10 16:58
+- **Fim:** 2026-05-10 17:00
+- **Comando(s) executado(s):** `uv run --extra dev --with types-passlib mypy --strict --cache-dir=/tmp/mypy-baseline app/` em `backend/`
+- **Artefato(s):** `docs/auditoria/artefatos/baseline-mypy.txt`
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **6 errors** em 1 arquivo (`app/services/ai/ai_client.py`), 67 source files checked. Cache root-owned em `.mypy_cache` exigiu `--cache-dir=/tmp/mypy-baseline` (mesmo motivo do `RUFF_CACHE_DIR`). Mypy não estava no `.venv`; usou `uv run --extra dev`. `pyproject.toml` já configura `strict = true` e plugin `pydantic.mypy`.
