@@ -5,8 +5,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
+from app.services.ai.ai_client import AIClient
 from app.services.ai.food_lookup import IdentifiedFood, lookup_food
-from app.services.ai.gemini_client import GeminiClient
 from app.services.ai.utils import correct_calories, extract_json_from_ai_response
 
 if TYPE_CHECKING:
@@ -104,7 +104,7 @@ _CONFIDENCE_THRESHOLD = 0.6
 
 
 class MealParser:
-    def __init__(self, client: GeminiClient) -> None:
+    def __init__(self, client: AIClient) -> None:
         self._client = client
 
     async def _identify_foods(

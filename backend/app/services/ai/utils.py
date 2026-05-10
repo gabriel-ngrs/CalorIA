@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def extract_json_from_ai_response(text: str) -> list[dict[str, object]]:
-    """Extrai lista JSON da resposta do Gemini, tolerante a blocos de markdown."""
+    """Extrai lista JSON da resposta da IA, tolerante a blocos de markdown."""
     text = text.strip()
     text = re.sub(r"```(?:json)?\s*", "", text)
     text = re.sub(r"```\s*", "", text)

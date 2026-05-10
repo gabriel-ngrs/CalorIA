@@ -165,20 +165,19 @@ async def test_banco_foods() -> None:
 
 
 # --------------------------------------------------------------------------
-# Testes GeminiClient (wrapper Groq)
+# Testes AIClient (wrapper Groq)
 # --------------------------------------------------------------------------
 async def test_ai_client() -> None:
-    print("\n[4] AIClient (GeminiClient → Groq)")
+    print("\n[4] AIClient (Groq)")
     import sys
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
     os.environ["GROQ_API_KEY"] = GROQ_KEY
-    os.environ["GEMINI_API_KEY"] = ""
     os.environ["REDIS_URL"] = "redis://localhost:6379/0"
     os.environ["DATABASE_URL"] = "postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_db"
 
-    from app.services.ai.gemini_client import GeminiClient
-    client = GeminiClient()
+    from app.services.ai.ai_client import AIClient
+    client = AIClient()
 
     # generate_text sem cache
     result = await client.generate_text("Diga apenas: GROQ_OK", use_cache=False)

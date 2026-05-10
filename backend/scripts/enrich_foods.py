@@ -56,7 +56,7 @@ async def _estimate_batch(
 ) -> list[dict]:
     """Envia um lote ao Groq e retorna os itens com nutrientes estimados."""
 
-    # Inclui categoria por item para evitar que Gemini assuma categoria errada
+    # Inclui categoria por item para evitar que a IA assuma categoria errada
     indexed = [
         {"i": i, "n": item["name"], "cat": item.get("category") or category}
         for i, item in enumerate(items)

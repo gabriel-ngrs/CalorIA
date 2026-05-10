@@ -55,12 +55,12 @@ async def _send_daily_summary_to_user(user: User, today: date) -> None:
     from app.core.database import AsyncSessionLocal
     from app.models.notification import Notification, NotificationType
     from app.models.push_subscription import PushSubscription
-    from app.services.ai.gemini_client import GeminiClient
+    from app.services.ai.ai_client import AIClient
     from app.services.ai.insights_generator import InsightsGenerator
     from app.services.push_service import send_push_notification_sync
 
     async with AsyncSessionLocal() as db:
-        client = GeminiClient()
+        client = AIClient()
         generator = InsightsGenerator(client=client, db=db)
         insight = await generator.daily_insight(user.id, today)
 
@@ -154,12 +154,12 @@ async def _send_weekly_report_to_user(user: User, today: date) -> None:
     from app.core.database import AsyncSessionLocal
     from app.models.notification import Notification, NotificationType
     from app.models.push_subscription import PushSubscription
-    from app.services.ai.gemini_client import GeminiClient
+    from app.services.ai.ai_client import AIClient
     from app.services.ai.insights_generator import InsightsGenerator
     from app.services.push_service import send_push_notification_sync
 
     async with AsyncSessionLocal() as db:
-        client = GeminiClient()
+        client = AIClient()
         generator = InsightsGenerator(client=client, db=db)
         insight = await generator.weekly_insight(user.id, today)
 
