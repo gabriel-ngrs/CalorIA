@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 4 · médios: 7 · baixos: 4 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 4 · médios: 7 · baixos: 4 (atualizar a cada novo achado)
 
 ---
 
@@ -170,3 +170,19 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Extrair `BaseAIFoodParser(ABC)` em `services/ai/base_parser.py` com `_lookup_and_fill` e `_estimate_macros_batch` concretos + `_identify_foods` abstrato. `MealParser`/`VisionParser` herdam e implementam apenas `_identify_foods` e o entry point.
 - **Esforço:** M (1–4h)
 - **Origem:** PASSO 4.2
+
+### AUD-016 — `food_lookup` faz Seq Scan no caminho síncrono do usuário (índice GIN ignorado)
+
+- **Severidade:** 🔴 crítica
+- **Frente:** C / F
+- **Arquivo:linha:** `backend/app/services/ai/food_lookup.py:90-104` (query SQL com `WHERE search_text %>> :q OR similarity(search_text, :q) >= :min_score`)
+- **Descrição:** O `OR similarity() >= 0.18` adicionado como fallback de baixa-confiança torna a cláusula `WHERE` não-indexável. O planner do Postgres descarta o índice GIN `ix_foods_search_trgm` em **toda** a query (não consegue particionar o OR) e cai em Seq Scan da tabela inteira (~42.000 registros). Medido com `EXPLAIN ANALYZE` em ambiente real (caloria_db, 42103 alimentos):
+    - Query atual (com OR): **585 ms**
+    - Só `%>> :q`: **8 ms** (Bitmap Index Scan)
+    - Só `similarity() >= X`: 249 ms (Seq Scan)
+
+  Combinado com AUD-006 (~25 n-gramas por refeição em loop sequencial), uma análise de refeição típica gasta **~14.6 segundos** apenas em food lookup, bloqueando o worker uvicorn. Com 2 workers (configuração default) e 2 usuários simultâneos analisando refeições, o backend fica indisponível por ~15s.
+- **Evidência:** `artefatos/C3-food-lookup-explain.txt` (3 EXPLAIN ANALYZE comparativos + lista de índices). Reproduzível em qualquer ambiente com `caloria_db` populado.
+- **Recomendação (rápida)**: Substituir o OR por `SET LOCAL pg_trgm.similarity_threshold = 0.18` na sessão (ou via `ALTER USER caloria SET pg_trgm.similarity_threshold = 0.18`) e usar apenas `WHERE search_text %>> :q`. O `%>>` respeita o threshold dinâmico e mantém o índice — performance 70× melhor sem perder recall. **Recomendação estrutural**: combinar com AUD-006 (batch query única para todos os candidatos) para chegar a ~10ms total. Considerar migrar para `tsvector` + `ts_rank_cd` numa fase posterior.
+- **Esforço:** S (< 1h) para o fix imediato; M para batch + threshold; L para migração FTS.
+- **Origem:** PASSO 4.3
