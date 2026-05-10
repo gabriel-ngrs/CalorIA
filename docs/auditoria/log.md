@@ -343,3 +343,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-021
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Bug **confirmado**. Backend `TokenResponse` tem só `access_token`, `refresh_token`, `token_type` — sem `user`. Frontend `authorize` lê `data.user?.id ?? ""` e `data.user?.name ?? credentials.email`. Resultado: `id="" `, `name=email`. Como `id` não é usado em lógica funcional (verificado), bug é silencioso — degrada apenas UX (nome). Login funciona end-to-end.
+
+## PASSO 5.5 — TypeScript: usos de any
+
+- **Início:** 2026-05-10 19:34
+- **Fim:** 2026-05-10 19:36
+- **Comando(s) executado(s):** `rg -n ": any\b|as any\b" frontend/app frontend/components frontend/lib | grep -v test/mock/build`
+- **Artefato(s):** `docs/auditoria/artefatos/D5-any-usage.txt`
+- **Achados gerados:** AUD-022
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **6 `any` totais**, todos relacionados à Web Speech API (SpeechRecognition), duplicados entre `QuickAddModals.tsx` e `refeicoes/page.tsx`. Nenhum outro `any` no código de produção. Solução: module augmentation em `types/speech.d.ts` + extração de `useVoiceCapture()` (também resolve duplicação relacionada a AUD-018).

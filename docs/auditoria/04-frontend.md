@@ -8,6 +8,7 @@
 - AUD-019 (🟢 baixa) — Hooks de mutação não usam optimistic updates onde caberia (toggle reminder, mark notification read, etc.)
 - AUD-020 (🟢 baixa) — 7 sites `console.log/error` em `api.ts`+`providers.tsx` rodam em produção (sem gate `NODE_ENV`)
 - AUD-021 (🟠 alta) — Discrepância de contrato `/auth/login`: backend retorna `{access_token, refresh_token}` mas frontend lê `data.user.id`/`data.user.name` (silently degraded)
+- AUD-022 (🟢 baixa) — 6 `any` para Web Speech API (SpeechRecognition) duplicados entre 2 arquivos
 
 ## D.1 Páginas e componentes grandes
 
@@ -151,6 +152,36 @@ Achado: AUD-021 (🟠 alta).
 **Correções possíveis** (escolher uma):
 1. **Backend muda contrato** — adicionar campo `user` opcional em `TokenResponse`. Mais útil pro consumidor; aproveita a hidratação inicial.
 2. **Frontend faz follow-up** — após `/auth/login` OK, o `authorize` busca `/auth/me` com o token recém-criado e popula `id`/`name` corretamente. 1 round-trip extra no login.
+
+## D.5 TypeScript — usos de `any`
+
+Comando: `rg -n ": any\b|as any\b" frontend/app frontend/components frontend/lib | grep -v test/mock/build`. Artefato: `artefatos/D5-any-usage.txt`.
+
+| Arquivo:linha | Padrão | Origem |
+|---|---|---|
+| `components/dashboard/QuickAddModals.tsx:180` | `(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition` | Web Speech API |
+| `components/dashboard/QuickAddModals.tsx:187` | `rec.onresult = (e: any) => …` | Web Speech API |
+| `components/dashboard/QuickAddModals.tsx:195` | `rec.onerror = (e: any) => …` | Web Speech API |
+| `app/(dashboard)/refeicoes/page.tsx:445-463` | mesmos 3 padrões | Web Speech API (duplicado) |
+
+**Total: 6 `any`, todos relacionados a `SpeechRecognition`** — todos duplicados entre `QuickAddModals.tsx` e `refeicoes/page.tsx`. Sem outros `any` no código de produção.
+
+**Solução**: tipos `SpeechRecognition`, `SpeechRecognitionEvent`, `SpeechRecognitionErrorEvent` existem na DOM API (lib.dom.d.ts) mas `window.SpeechRecognition`/`window.webkitSpeechRecognition` precisam de module augmentation:
+
+```ts
+// types/speech.d.ts
+declare global {
+  interface Window {
+    SpeechRecognition?: typeof SpeechRecognition;
+    webkitSpeechRecognition?: typeof SpeechRecognition;
+  }
+}
+export {};
+```
+
+Combinado com extração de `useVoiceCapture()` (já recomendado em AUD-018), elimina os 6 `any` e a duplicação simultaneamente.
+
+Achado: AUD-022 (🟢) — cobertura de typing da Web Speech API.
 
 ## Notas e contexto
 
