@@ -46,22 +46,9 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
 
     # --------------------------------------------------------------------------
-    # Telegram Bot
-    # --------------------------------------------------------------------------
-    TELEGRAM_BOT_TOKEN: str = ""
-
-    # --------------------------------------------------------------------------
-    # WhatsApp — Evolution API
-    # --------------------------------------------------------------------------
-    EVOLUTION_API_URL: str = "http://evolution_api:8080"
-    EVOLUTION_API_KEY: str = ""
-    EVOLUTION_INSTANCE_NAME: str = "caloria"
-
-    # --------------------------------------------------------------------------
     # IA — Groq (texto e visão, 100% gratuito)
     # --------------------------------------------------------------------------
     GROQ_API_KEY: str = ""
-    GEMINI_API_KEY: str = ""  # legado — não utilizado
 
     # --------------------------------------------------------------------------
     # Web Push (VAPID)

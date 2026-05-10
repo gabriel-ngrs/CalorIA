@@ -45,7 +45,7 @@ help:
 	@echo "$(BOLD)Dia-a-dia:$(NC)"
 	@echo "  $(CYAN)make dev$(NC)               Subir serviços em modo dev (hot reload)"
 	@echo "  $(CYAN)make dev-d$(NC)             Subir em background"
-	@echo "  $(CYAN)make infra$(NC)             Subir só infra (postgres, redis, evolution_api)"
+	@echo "  $(CYAN)make infra$(NC)             Subir só infra (postgres, redis)"
 	@echo "  $(CYAN)make down$(NC)              Parar todos os serviços"
 	@echo "  $(CYAN)make reset$(NC)             Parar e apagar volumes (reseta banco)"
 	@echo "  $(CYAN)make status$(NC)            Status dos serviços + health check"
@@ -150,8 +150,8 @@ dev-d:
 	@echo "$(GREEN)Serviços rodando!$(NC)  Backend: http://localhost:8000 | Frontend: http://localhost:3000"
 
 infra:
-	@echo "$(BLUE)Subindo infra (postgres, redis, evolution_api)...$(NC)"
-	@$(COMPOSE_DEV) up postgres redis evolution_api
+	@echo "$(BLUE)Subindo infra (postgres, redis)...$(NC)"
+	@$(COMPOSE_DEV) up postgres redis
 
 down:
 	@echo "$(BLUE)Parando serviços...$(NC)"
