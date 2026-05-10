@@ -19,11 +19,8 @@ _TEXT_MODEL = "llama-3.3-70b-versatile"
 _VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
-class GeminiClient:
-    """Cliente Groq — texto e visão 100% gratuito.
-
-    Interface pública inalterada para que todos os services funcionem sem modificação.
-    """
+class AIClient:
+    """Cliente Groq — texto e visão 100% gratuito."""
 
     def __init__(self) -> None:
         self._groq = AsyncGroq(api_key=settings.GROQ_API_KEY)
@@ -150,11 +147,11 @@ class GeminiClient:
 
 
 # Singleton por processo
-_client: GeminiClient | None = None
+_client: AIClient | None = None
 
 
-def get_gemini_client() -> GeminiClient:
+def get_ai_client() -> AIClient:
     global _client
     if _client is None:
-        _client = GeminiClient()
+        _client = AIClient()
     return _client

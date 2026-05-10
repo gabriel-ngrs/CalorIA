@@ -18,7 +18,7 @@ from app.schemas.ai import (
     SuggestedMealItem,
     WeekSummary,
 )
-from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.ai_client import AIClient
 from app.services.dashboard_service import DashboardService
 from app.services.log_service import WeightService
 from app.services.meal_service import MealService
@@ -32,7 +32,7 @@ def _format_nutrition(calories: float, protein: float, carbs: float, fat: float)
 
 
 class InsightsGenerator:
-    def __init__(self, client: GeminiClient, db: AsyncSession) -> None:
+    def __init__(self, client: AIClient, db: AsyncSession) -> None:
         self._client = client
         self._db = db
 
@@ -168,7 +168,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
             logger.error(
-                "Gemini retornou JSON inválido para sugestão de refeição: %s", raw[:200]
+                "IA retornou JSON inválido para sugestão de refeição: %s", raw[:200]
             )
             raise ValueError("A IA não conseguiu gerar uma sugestão válida.") from exc
 

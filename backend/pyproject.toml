@@ -27,8 +27,8 @@ dependencies = [
     "redis>=5.2.0",
     # HTTP client
     "httpx>=0.27.0",
-    # IA — Google Gemini
-    "google-genai>=1.0.0",
+    # IA — Groq (texto e visão)
+    "groq>=0.13.0",
     # Web Push
     "pywebpush>=2.0.0",
     # Imagens
@@ -80,12 +80,6 @@ python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
-
-[[tool.mypy.overrides]]
-# Bots usam libs externas com tipagem incompleta (python-telegram-bot, httpx)
-module = ["app.bots.*"]
-disallow_untyped_defs = false
-disable_error_code = ["no-any-return", "attr-defined", "arg-type", "unused-ignore"]
 
 [[tool.mypy.overrides]]
 # Scripts utilitários não fazem parte do código de produção

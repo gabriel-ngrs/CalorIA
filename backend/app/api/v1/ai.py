@@ -19,8 +19,8 @@ from app.schemas.ai import (
     NutritionalAlertsResponse,
     PhotoAnalysisRequest,
 )
+from app.services.ai.ai_client import get_ai_client
 from app.services.ai.context_builder import build_meal_context
-from app.services.ai.gemini_client import get_gemini_client
 from app.services.ai.insights_generator import InsightsGenerator
 from app.services.ai.meal_parser import MealParser
 from app.services.ai.pattern_analyzer import PatternAnalyzer
@@ -46,7 +46,7 @@ async def analyze_meal(
     _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         user_context = await build_meal_context(
             user_id, db, date.today(), description=data.description
@@ -70,7 +70,7 @@ async def analyze_photo(
     _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa foto de refeição (base64) e retorna itens nutricionais."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         user_context = await build_meal_context(user_id, db, date.today())
         return await VisionParser(client).parse_base64(
@@ -100,7 +100,7 @@ async def generate_insight(
             detail="'question' é obrigatório quando type=question",
         )
 
-    client = get_gemini_client()
+    client = get_ai_client()
     gen = InsightsGenerator(client, db)
 
     try:
@@ -125,7 +125,7 @@ async def suggest_meal(
     _: None = Depends(_require_ai),
 ) -> MealSuggestion:
     """Sugere uma refeição com base no histórico e calorias restantes do dia."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).suggest_meal(user_id, today)
     except Exception as exc:
@@ -146,7 +146,7 @@ async def eating_patterns(
     _: None = Depends(_require_ai),
 ) -> EatingPattern:
     """Analisa padrões alimentares dos últimos N dias (7-90)."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await PatternAnalyzer(client, db).analyze_eating_patterns(user_id, days)
     except Exception as exc:
@@ -164,7 +164,7 @@ async def nutritional_alerts(
     _: None = Depends(_require_ai),
 ) -> NutritionalAlertsResponse:
     """Detecta deficiências nutricionais recorrentes nos últimos N dias."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).nutritional_alerts(user_id, days)
     except Exception as exc:
@@ -181,7 +181,7 @@ async def goal_adjustment(
     _: None = Depends(_require_ai),
 ) -> GoalAdjustmentSuggestion:
     """Sugere ajuste de metas com base na tendência real de peso dos últimos 30 dias."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).goal_adjustment_suggestion(user_id)
     except Exception as exc:
@@ -206,7 +206,7 @@ async def monthly_report(
     today = date.today()
     report_month = month or today.month
     report_year = year or today.year
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).monthly_report(
             user_id, report_month, report_year
