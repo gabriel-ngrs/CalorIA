@@ -353,3 +353,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-022
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **6 `any` totais**, todos relacionados à Web Speech API (SpeechRecognition), duplicados entre `QuickAddModals.tsx` e `refeicoes/page.tsx`. Nenhum outro `any` no código de produção. Solução: module augmentation em `types/speech.d.ts` + extração de `useVoiceCapture()` (também resolve duplicação relacionada a AUD-018).
+
+## PASSO 5.6 — PWA / Service Worker
+
+- **Início:** 2026-05-10 19:37
+- **Fim:** 2026-05-10 19:40
+- **Comando(s) executado(s):** leitura de `frontend/public/sw.js` + `frontend/app/manifest.ts` + `ls frontend/public/icons/`
+- **Artefato(s):** nenhum dedicado (matriz embutida em `04-frontend.md § D.6`)
+- **Achados gerados:** AUD-023
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** SW funcional para push (`push`, `notificationclick` corretos) mas sem `skipWaiting`/`clients.claim` — atualizações exigem fechar tabs. Manifest cobre o essencial; faltam tamanhos comuns de ícone (144, 384), `apple-touch-icon` (iOS) e `screenshots` (Lighthouse).

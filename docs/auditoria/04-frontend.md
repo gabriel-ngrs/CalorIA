@@ -9,6 +9,7 @@
 - AUD-020 (🟢 baixa) — 7 sites `console.log/error` em `api.ts`+`providers.tsx` rodam em produção (sem gate `NODE_ENV`)
 - AUD-021 (🟠 alta) — Discrepância de contrato `/auth/login`: backend retorna `{access_token, refresh_token}` mas frontend lê `data.user.id`/`data.user.name` (silently degraded)
 - AUD-022 (🟢 baixa) — 6 `any` para Web Speech API (SpeechRecognition) duplicados entre 2 arquivos
+- AUD-023 (🟢 baixa) — Service Worker sem `skipWaiting`/`clients.claim`; manifest sem `apple-touch-icon` e ícones para todos os tamanhos requisitados pelo Lighthouse PWA
 
 ## D.1 Páginas e componentes grandes
 
@@ -182,6 +183,35 @@ export {};
 Combinado com extração de `useVoiceCapture()` (já recomendado em AUD-018), elimina os 6 `any` e a duplicação simultaneamente.
 
 Achado: AUD-022 (🟢) — cobertura de typing da Web Speech API.
+
+## D.6 PWA / Service Worker
+
+Arquivos: `frontend/public/sw.js` (18 LOC) e `frontend/app/manifest.ts` (44 LOC).
+
+**`sw.js` — eventos**
+
+| Evento | Estado | Comentário |
+|---|---|---|
+| `push` | ✅ | `title`, `body`, `icon` (192), `badge`, `vibrate`, `data.url` corretos |
+| `notificationclick` | ✅ | `event.notification.close()` + `clients.openWindow(url)` |
+| `install` (com `skipWaiting`) | ❌ | sem handler — atualizações de SW só ativam após **todas as tabs** serem fechadas |
+| `activate` (com `clients.claim`) | ❌ | sem handler — primeiro carregamento exige reload manual para ganhar controle |
+| `fetch` | — | inexistente — nenhuma estratégia offline (aceitável: app é online-first) |
+
+**Manifest**
+
+| Campo | Estado | Comentário |
+|---|---|---|
+| `name`, `short_name`, `description` | ✅ | |
+| `start_url`, `display: standalone` | ✅ | |
+| `background_color`, `theme_color` | ✅ | |
+| `orientation: portrait-primary` | ✅ | |
+| `shortcuts` (2) | ✅ | "Adicionar refeição", "Registrar água" — ótimo |
+| Ícones | ⚠️ | Apenas 192 (`any`) e 512 (`maskable`). Faltam: 144, 384, e idealmente 512 com `any` separado |
+| `apple-touch-icon` | ❌ | Não declarado (manifest icons não são lidos pelo iOS Safari) |
+| `screenshots` | ❌ | Lighthouse recomenda para melhor UI de instalação |
+
+**Achado:** AUD-023 (🟢) — gaps PWA em SW updates e cobertura de ícones.
 
 ## Notas e contexto
 

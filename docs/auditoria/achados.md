@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 7 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 8 (atualizar a cada novo achado)
 
 ---
 
@@ -255,3 +255,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** (1) Criar `frontend/types/speech.d.ts` com `declare global { interface Window { SpeechRecognition?: ...; webkitSpeechRecognition?: ...; } }`. (2) Extrair `useVoiceCapture()` em `frontend/lib/hooks/` — elimina os 6 `any` E a duplicação entre os 2 arquivos. Combinar com refactor de `refeicoes/page.tsx` (AUD-018).
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 5.5
+
+### AUD-023 — PWA: SW sem skipWaiting/clients.claim e manifest com gaps
+
+- **Severidade:** 🟢 baixa
+- **Frente:** D
+- **Arquivo:linha:** `frontend/public/sw.js` (todo o arquivo); `frontend/app/manifest.ts:13-26`
+- **Descrição:** **Service Worker:** só registra `push` e `notificationclick`. Sem `install` com `skipWaiting()` e sem `activate` com `clients.claim()` — atualizações de SW só ativam após o usuário **fechar todas as tabs do site**, e o primeiro carregamento exige reload manual para o SW ganhar controle. **Manifest:** apenas 2 ícones (192 `any`, 512 `maskable`); faltam tamanhos comuns (144, 384) e `apple-touch-icon` (iOS Safari não lê manifest icons). Sem `screenshots` (Lighthouse recomenda).
+- **Evidência:** leitura completa de `sw.js` (18 LOC) e `manifest.ts` (44 LOC); `ls frontend/public/icons/` mostra apenas `icon-192.png` e `icon-512.png`.
+- **Recomendação:** (1) Em `sw.js` adicionar `self.addEventListener("install", e => self.skipWaiting())` e `self.addEventListener("activate", e => clients.claim())`. (2) Gerar ícones 144 e 384 (já há `icon.svg` como source). (3) Adicionar `<link rel="apple-touch-icon">` em `app/layout.tsx`. (4) Capturar 1-2 screenshots e adicionar ao manifest.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 5.6
