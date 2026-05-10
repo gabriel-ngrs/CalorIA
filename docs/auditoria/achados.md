@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 0 · médios: 3 · baixos: 0 (atualizar a cada novo achado)
+**Status totais:** críticos: 0 · altos: 0 · médios: 3 · baixos: 1 (atualizar a cada novo achado)
 
 ---
 
@@ -38,3 +38,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Criar `SubscribePushResponse(BaseModel)` (ou usar status 204 NO_CONTENT, já que o payload `{"status": "subscribed"}` não acrescenta info útil) e `MarkAllReadResponse(BaseModel)` com campo `marked: int` (contagem). Aplicar `response_model=...`.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 3.1
+
+### AUD-004 — `meals.py:101` re-eleva HTTPException sem `from None`
+
+- **Severidade:** 🟢 baixa
+- **Frente:** B
+- **Arquivo:linha:** `backend/app/api/v1/meals.py:101`
+- **Descrição:** Dentro de `except MealItemNotFound:`, faz `raise HTTPException(404, ...)` sem `from None`/`from exc`. Resultado: a chain do Python (`__context__`) anexa o trace interno; se o handler genérico de erro estiver verboso, expõe rastreamento. Os outros 8 casos análogos em `ai.py` já usam `from exc`.
+- **Evidência:** `artefatos/B2-httpexc.txt`. 1/9 violadores no projeto.
+- **Recomendação:** Trocar para `raise HTTPException(...) from None` (preferir `from None` para 404 estável; usar `from exc` quando o original ajuda diagnóstico, ex.: 502 upstream).
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 3.2

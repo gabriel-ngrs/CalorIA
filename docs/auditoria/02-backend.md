@@ -5,6 +5,7 @@
 ## Achados desta frente
 
 - AUD-003 (🟡 média) — 2 endpoints públicos em `push.py` sem `response_model` (retornam `dict[str, str]` cru)
+- AUD-004 (🟢 baixa) — `meals.py:101` re-eleva HTTPException dentro de `except` sem `from None`
 
 ## B.1 response_model e status codes
 
@@ -34,6 +35,26 @@ Demais 45 endpoints declaram `response_model=...` ou usam `status.HTTP_204_NO_CO
 | 200 OK | 1 | (`mark_all_read` — explícito embora seja default) |
 
 Status codes coerentes com semântica HTTP padrão.
+
+## B.2 `raise HTTPException` com cláusula `from`
+
+Comando: `rg -n "raise HTTPException" backend/app/api/v1/ -A 3` + script Python para detectar contexto `except`.
+
+| Métrica | Valor |
+|---|---|
+| Total `raise HTTPException` | 24 |
+| Dentro de `except` | 9 |
+| Dentro de `except` **sem `from exc`/`from None`** | 1 |
+
+Único violador (já citado no plano, Anexo A):
+
+| Arquivo:linha | Bloco |
+|---|---|
+| `backend/app/api/v1/meals.py:101` | `except MealItemNotFound:` → `raise HTTPException(404, "Item não encontrado")` sem `from None` |
+
+Implicação: o traceback HTTP exposto pelo FastAPI inclui a cadeia "During handling of the above exception, another exception occurred", vazando trace interno se o handler de erro genérico estiver verboso. Achado 🟢 (AUD-004).
+
+Os 8 casos restantes em `ai.py` já usam `raise HTTPException(...) from exc`. ✅
 
 ## Notas e contexto
 

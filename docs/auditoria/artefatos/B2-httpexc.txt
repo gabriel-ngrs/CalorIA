@@ -1,0 +1,126 @@
+backend/app/api/v1/reminders.py:44:        raise HTTPException(
+backend/app/api/v1/reminders.py-45-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lista vazia"
+backend/app/api/v1/reminders.py-46-        )
+backend/app/api/v1/reminders.py-47-    reminders = await ReminderService(db).create_many(user_id, items)
+--
+backend/app/api/v1/reminders.py:59:        raise HTTPException(
+backend/app/api/v1/reminders.py-60-            status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado"
+backend/app/api/v1/reminders.py-61-        )
+backend/app/api/v1/reminders.py-62-    return ReminderResponse.model_validate(reminder)
+--
+backend/app/api/v1/reminders.py:73:        raise HTTPException(
+backend/app/api/v1/reminders.py-74-            status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado"
+backend/app/api/v1/reminders.py-75-        )
+--
+backend/app/api/v1/auth.py:29:        raise HTTPException(
+backend/app/api/v1/auth.py-30-            status_code=status.HTTP_409_CONFLICT,
+backend/app/api/v1/auth.py-31-            detail="E-mail já cadastrado",
+backend/app/api/v1/auth.py-32-        )
+--
+backend/app/api/v1/auth.py:42:        raise HTTPException(
+backend/app/api/v1/auth.py-43-            status_code=status.HTTP_401_UNAUTHORIZED,
+backend/app/api/v1/auth.py-44-            detail="E-mail ou senha inválidos",
+backend/app/api/v1/auth.py-45-            headers={"WWW-Authenticate": "Bearer"},
+--
+backend/app/api/v1/auth.py:101:        raise HTTPException(
+backend/app/api/v1/auth.py-102-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+backend/app/api/v1/auth.py-103-        )
+backend/app/api/v1/auth.py-104-    return UserResponse.model_validate(user)
+--
+backend/app/api/v1/push.py:178:        raise HTTPException(
+backend/app/api/v1/push.py-179-            status_code=status.HTTP_404_NOT_FOUND, detail="Notificação não encontrada"
+backend/app/api/v1/push.py-180-        )
+backend/app/api/v1/push.py-181-    notif.read = True
+--
+backend/app/api/v1/ai.py:35:        raise HTTPException(
+backend/app/api/v1/ai.py-36-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+backend/app/api/v1/ai.py-37-            detail="Serviço de IA não configurado. Defina GROQ_API_KEY.",
+backend/app/api/v1/ai.py-38-        )
+--
+backend/app/api/v1/ai.py:60:        raise HTTPException(
+backend/app/api/v1/ai.py-61-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+backend/app/api/v1/ai.py-62-        ) from exc
+backend/app/api/v1/ai.py-63-
+--
+backend/app/api/v1/ai.py:83:        raise HTTPException(
+backend/app/api/v1/ai.py-84-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+backend/app/api/v1/ai.py-85-        ) from exc
+backend/app/api/v1/ai.py-86-
+--
+backend/app/api/v1/ai.py:98:        raise HTTPException(
+backend/app/api/v1/ai.py-99-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+backend/app/api/v1/ai.py-100-            detail="'question' é obrigatório quando type=question",
+backend/app/api/v1/ai.py-101-        )
+--
+backend/app/api/v1/ai.py:114:        raise HTTPException(
+backend/app/api/v1/ai.py-115-            status_code=status.HTTP_502_BAD_GATEWAY,
+backend/app/api/v1/ai.py-116-            detail=f"Erro ao consultar a IA: {exc}",
+backend/app/api/v1/ai.py-117-        ) from exc
+--
+backend/app/api/v1/ai.py:132:        raise HTTPException(
+backend/app/api/v1/ai.py-133-            status_code=status.HTTP_502_BAD_GATEWAY,
+backend/app/api/v1/ai.py-134-            detail=f"Erro ao gerar sugestão: {exc}",
+backend/app/api/v1/ai.py-135-        ) from exc
+--
+backend/app/api/v1/ai.py:153:        raise HTTPException(
+backend/app/api/v1/ai.py-154-            status_code=status.HTTP_502_BAD_GATEWAY,
+backend/app/api/v1/ai.py-155-            detail=f"Erro ao analisar padrões: {exc}",
+backend/app/api/v1/ai.py-156-        ) from exc
+--
+backend/app/api/v1/ai.py:171:        raise HTTPException(
+backend/app/api/v1/ai.py-172-            status_code=status.HTTP_502_BAD_GATEWAY,
+backend/app/api/v1/ai.py-173-            detail=f"Erro ao verificar alertas nutricionais: {exc}",
+backend/app/api/v1/ai.py-174-        ) from exc
+--
+backend/app/api/v1/ai.py:188:        raise HTTPException(
+backend/app/api/v1/ai.py-189-            status_code=status.HTTP_502_BAD_GATEWAY,
+backend/app/api/v1/ai.py-190-            detail=f"Erro ao gerar sugestão de ajuste: {exc}",
+backend/app/api/v1/ai.py-191-        ) from exc
+--
+backend/app/api/v1/ai.py:215:        raise HTTPException(
+backend/app/api/v1/ai.py-216-            status_code=status.HTTP_502_BAD_GATEWAY,
+backend/app/api/v1/ai.py-217-            detail=f"Erro ao gerar relatório mensal: {exc}",
+backend/app/api/v1/ai.py-218-        ) from exc
+--
+backend/app/api/v1/meals.py:56:        raise HTTPException(
+backend/app/api/v1/meals.py-57-            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+backend/app/api/v1/meals.py-58-        )
+backend/app/api/v1/meals.py-59-    return MealResponse.model_validate(meal)
+--
+backend/app/api/v1/meals.py:71:        raise HTTPException(
+backend/app/api/v1/meals.py-72-            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+backend/app/api/v1/meals.py-73-        )
+backend/app/api/v1/meals.py-74-    return MealResponse.model_validate(meal)
+--
+backend/app/api/v1/meals.py:85:        raise HTTPException(
+backend/app/api/v1/meals.py-86-            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+backend/app/api/v1/meals.py-87-        )
+backend/app/api/v1/meals.py-88-
+--
+backend/app/api/v1/meals.py:101:        raise HTTPException(
+backend/app/api/v1/meals.py-102-            status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado"
+backend/app/api/v1/meals.py-103-        )
+--
+backend/app/api/v1/users.py:22:        raise HTTPException(
+backend/app/api/v1/users.py-23-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+backend/app/api/v1/users.py-24-        )
+backend/app/api/v1/users.py-25-    return UserResponse.model_validate(user)
+--
+backend/app/api/v1/users.py:37:        raise HTTPException(
+backend/app/api/v1/users.py-38-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado"
+backend/app/api/v1/users.py-39-        )
+backend/app/api/v1/users.py-40-    for key, value in data.model_dump(exclude_unset=True).items():
+--
+backend/app/api/v1/users.py:54:        raise HTTPException(
+backend/app/api/v1/users.py-55-            status_code=status.HTTP_404_NOT_FOUND, detail="Perfil não encontrado"
+backend/app/api/v1/users.py-56-        )
+backend/app/api/v1/users.py-57-    return ProfileResponse.model_validate(profile)
+
+=== Análise: raise HTTPException em except sem 'from' ===
+Total de raise HTTPException: 24
+Dentro de except: 9
+Dentro de except SEM 'from': 1
+
+Único violador:
+  backend/app/api/v1/meals.py:101 — except MealItemNotFound: raise HTTPException(404)
+  → falta 'from exc' ou 'from None'; chain do Python expõe trace original.
