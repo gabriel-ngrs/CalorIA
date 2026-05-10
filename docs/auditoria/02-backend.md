@@ -6,6 +6,7 @@
 
 - AUD-003 (🟡 média) — 2 endpoints públicos em `push.py` sem `response_model` (retornam `dict[str, str]` cru)
 - AUD-004 (🟢 baixa) — `meals.py:101` re-eleva HTTPException dentro de `except` sem `from None`
+- AUD-005 (🟢 baixa) — `weight.py:16` aceita `limit ≤ 200` (divergente do padrão 100)
 
 ## B.1 response_model e status codes
 
@@ -55,6 +56,26 @@ Comando: `rg -n "raise HTTPException" backend/app/api/v1/ -A 3` + script Python 
 Implicação: o traceback HTTP exposto pelo FastAPI inclui a cadeia "During handling of the above exception, another exception occurred", vazando trace interno se o handler de erro genérico estiver verboso. Achado 🟢 (AUD-004).
 
 Os 8 casos restantes em `ai.py` já usam `raise HTTPException(...) from exc`. ✅
+
+## B.3 Padrão de paginação
+
+Comando: `rg -n "skip|limit" backend/app/api/v1/ | grep "Query"`. Artefato: `artefatos/B3-paginacao.txt`.
+
+| Endpoint | skip | limit (default) | limit (max) |
+|---|---|---|---|
+| `GET /meals` | `ge=0` ✅ | 20 | 100 ✅ |
+| `GET /weight` | `ge=0` ✅ | 50 | **200** ⚠️ |
+| `GET /mood` | `ge=0` ✅ | 30 | 100 ✅ |
+| `GET /dashboard/weight-chart` | — | 30 | 365 (chart range) |
+| `GET /notifications` | — | 20 | 100 ✅ |
+
+**Divergências**
+
+- `weight.py:16` permite `le=200`, único divergente do limite padrão `100`. Não há justificativa aparente no comentário/docstring.
+- `dashboard/weight-chart` e `notifications` não expõem `skip`. Justificável: ambos usam filtros temporais e ordenação descendente — mas faltaria documentar/uniformizar a estratégia ("limit-only" ou "cursor-based").
+- Defaults variam de 20 a 50 — diferença razoável por domínio.
+
+Achado registrado: AUD-005 (🟢) para o `le=200` divergente.
 
 ## Notas e contexto
 

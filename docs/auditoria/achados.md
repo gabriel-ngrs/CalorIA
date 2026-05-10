@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 0 · altos: 0 · médios: 3 · baixos: 1 (atualizar a cada novo achado)
+**Status totais:** críticos: 0 · altos: 0 · médios: 3 · baixos: 2 (atualizar a cada novo achado)
 
 ---
 
@@ -49,3 +49,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Trocar para `raise HTTPException(...) from None` (preferir `from None` para 404 estável; usar `from exc` quando o original ajuda diagnóstico, ex.: 502 upstream).
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 3.2
+
+### AUD-005 — Paginação `weight.py` permite `limit` até 200, divergente do padrão 100
+
+- **Severidade:** 🟢 baixa
+- **Frente:** B
+- **Arquivo:linha:** `backend/app/api/v1/weight.py:16`
+- **Descrição:** O endpoint `GET /weight` aceita `limit: int = Query(default=50, ge=1, le=200)`, único endpoint com `le=200`. Os outros listings paginados (`/meals`, `/mood`, `/notifications`) usam `le=100`. Sem justificativa documentada, fica difícil revisar/manter coerência futura e abre precedente para limites arbitrários.
+- **Evidência:** `artefatos/B3-paginacao.txt`.
+- **Recomendação:** Padronizar em `le=100` (suficiente para grafiar histórico de peso anual com paginação) ou centralizar o limite numa constante (`MAX_PAGE_SIZE = 100`). Documentar exceção se `le=200` for intencional.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 3.3
