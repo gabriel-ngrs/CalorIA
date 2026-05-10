@@ -323,3 +323,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-019
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Estrutura sólida — defaults globais bem ajustados (staleTime 3min, retry skip 401), `invalidateQueries` em todos os `onSuccess`, `staleTime` override quando faz sentido. **Optimistic updates ausentes em 100% dos hooks** — oportunidade UX para toggles/mark-read. `QueryCache.onSuccess`/`onError` com `console.log` e `NavTimer` rodam em produção (será detalhado em PASSO 5.3).
+
+## PASSO 5.3 — Camada API e cache de token
+
+- **Início:** 2026-05-10 19:24
+- **Fim:** 2026-05-10 19:28
+- **Comando(s) executado(s):** leitura de `frontend/lib/api.ts` + `grep -nE "console\." frontend/lib/api.ts frontend/app/providers.tsx` + `grep "process.env.NODE_ENV"`
+- **Artefato(s):** nenhum dedicado (matriz embutida em `04-frontend.md § D.3`)
+- **Achados gerados:** AUD-020
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Fluxo de token bem desenhado (cache 90s, dedupe Promise, refresh proativo 2min antes, retry transparente em 401). **7 console.log/error rodam em produção** — único item gateado é `ReactQueryDevtools`. Volume típico 50-100 logs/min em sessão ativa.
