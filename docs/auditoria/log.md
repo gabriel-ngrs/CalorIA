@@ -283,3 +283,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** **AUD-016 (🔴 crítica)** — primeiro achado crítico da auditoria
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Achado muito mais grave do que o esperado pelo runbook (que previa 🟠 batch). Medido em ambiente real: **query atual leva 585ms** (Seq Scan) vs **8ms** sem o OR `similarity()`. Combinado com N+1 do AUD-006 (~25 n-gramas), uma refeição leva **~14.6s** bloqueando worker uvicorn. Com 2 workers default, 2 usuários simultâneos = backend indisponível. Fix simples (`SET pg_trgm.similarity_threshold + remover OR`) reduz 70×.
+
+## PASSO 4.4 — InsightsGenerator: decomposição
+
+- **Início:** 2026-05-10 19:01
+- **Fim:** 2026-05-10 19:05
+- **Comando(s) executado(s):** `rg "    async def [a-z]" insights_generator.py` + awk para LOC por método + leitura de imports
+- **Artefato(s):** `docs/auditoria/artefatos/C4-insights-metodos.txt`
+- **Achados gerados:** nenhum novo (reforça AUD-002 com dados)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** 7 métodos públicos: `daily_insight` (33), `weekly_insight` (28), `monthly_report` (**158**), `answer_question` (28), `suggest_meal` (57), `nutritional_alerts` (90), `goal_adjustment_suggestion` (78). `monthly_report` sozinho ocupa 1/3 do arquivo e contém N+1 do AUD-007. Plano de decomposição: 3 services (PeriodicInsights, Recommendations, QA) ≤ 250 LOC cada.
