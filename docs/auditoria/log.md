@@ -2,6 +2,26 @@
 
 Cronologia detalhada de cada passo executado.
 
+## § Snapshot inicial (2026-05-10)
+
+| Ferramenta | Resultado |
+|---|---|
+| ruff | 14 errors (9 fixable) |
+| mypy strict | 6 errors em 1 arquivo (`app/services/ai/ai_client.py`) |
+| radon avg CC | 16.56 (C) — 9 blocos ≥ B; pior: `build_meal_context` D(25) |
+| pytest cov | 62% (99 passed, 1 failed em smoke `test_ai_client` por API externa) |
+| pip-audit | 0 vulns |
+| npm audit | 16 vulns (4 low, 3 moderate, 9 high, 0 critical) |
+| eslint | 1 warning, 0 errors |
+| tsc | 0 errors |
+| LOC backend | 5.708 |
+| LOC frontend | 10.573 |
+| Tests backend LOC | 1.845 |
+| Tests frontend LOC | 1.553 |
+| Endpoints REST | 47 |
+| Modelos SQLAlchemy | 12 |
+| Migrações Alembic | 10 |
+
 ---
 
 ## PASSO 0.1 — Criar estrutura inicial
@@ -103,3 +123,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (fase de baseline)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Backend 5.708 LOC · Frontend 10.573 LOC · Tests backend 1.845 · Tests frontend 1.553 · 47 endpoints REST · 12 modelos · 10 migrações. Seção "Métricas de baseline" também adicionada a `relatorio-preliminar.md`.
+
+## PASSO 1.10 — Consolidar baselines em log.md
+
+- **Início:** 2026-05-10 17:11
+- **Fim:** 2026-05-10 17:11
+- **Comando(s) executado(s):** consolidação manual lendo `artefatos/baseline-*.{txt,xml,json}` e populando seção `§ Snapshot inicial` no topo deste log
+- **Artefato(s):** nenhum novo — consolida os anteriores
+- **Achados gerados:** nenhum (fase de baseline)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** snapshot acrescido como tabela única no topo de `log.md`. Encerra a FASE 1; análise/achados começam na FASE 2 (Frente A).
