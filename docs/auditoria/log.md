@@ -451,5 +451,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** loop em `backend/alembic/versions/*.py` com Python regex extraindo corpo de `def downgrade()`; `grep -rn "pg_trgm\|CREATE EXTENSION" backend/alembic/versions/`; `grep -n "MealSource\|TELEGRAM" backend/app/models/meal.py`; `psql -c "SELECT enumlabel FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='mealsource')"`; `SELECT source, COUNT(*) FROM meals GROUP BY source`
 - **Artefato(s):** `docs/auditoria/artefatos/F3-downgrade.txt`
 - **Achados gerados:** AUD-033, AUD-034
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** f83f01f
 - **Notas:** **10 migrações totais**, todas com `def downgrade()` declarado. **9 reversíveis** (3-25 LOC efetivas), **1 com apenas `pass`**: `20260306_adiciona_dessert_mealtype.py` (AUD-033). Comentário no arquivo justifica como limitação do Postgres, mas recriar o tipo é viável e padrão; `pass` é escolha consciente, não impossibilidade. `pg_trgm` extension confirmada em `20260309_taco_pgtrgm_source.py:20`. **Surpresa do plano § F.2**: `MealSource` enum (`MANUAL/TELEGRAM/WHATSAPP`) ainda tem `TELEGRAM` e `WHATSAPP` no model **E** no DB (verificado via `pg_enum`); 0 hits em `grep -rn "MealSource\.TELEGRAM\|MealSource\.WHATSAPP"` no backend; tabela `meals` vazia (não há dados legados). Dead schema da era de integrações Telegram/WhatsApp — AUD-034 (🟢 baixa). Bônus: `20260320_fix_search_text_taco.py` é migração de dados com partial revert documentado ("não reintroduzimos linhas Open Food Facts removidas") — defensável, sem achado.
+
+## PASSO 7.4 — Pool sizing e conexões
+
+- **Início:** 2026-05-10 21:18
+- **Fim:** 2026-05-10 21:25
+- **Comando(s) executado(s):** `cat backend/app/core/database.py` (verifica `pool_size=10, max_overflow=20, pool_pre_ping=True`); `grep -nE "uvicorn|--workers" backend/Dockerfile docker-compose*.yml`; `psql -c "SHOW max_connections; SHOW shared_buffers"`
+- **Artefato(s):** nenhum (matriz embutida em `06-banco.md § F.3`)
+- **Achados gerados:** AUD-035, AUD-036
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Pool atual: 30 conn por processo (10 size + 20 overflow). Prod: 2 uvicorn workers + 1 celery worker (concurrency default cpu_count) + 1 beat → pode chegar a 120-210 conn em pico vs Postgres `max_connections=100`. Hoje não acontece (1 usuário, baixíssima carga), mas é arquitetural — qualquer escala estoura. Fix curto: reduzir pool por processo OU introduzir PgBouncer (escolha padrão da indústria). Bônus identificado: event listener `db_logger.info` em `after_cursor_execute` registra TODA query em INFO, sem gate de env (AUD-036) — em escala 5-10k linhas/min só de log. Quick fix: trocar `info` por `debug`. Plano § F.4 (auditar `await db.refresh()` em services) **não foi coberto** — sem evidência de bug, sem achado criado por ora. Sem achados em `expire_on_commit=False` e `pool_pre_ping=True` (corretos).

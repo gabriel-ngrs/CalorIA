@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 8 · médios: 13 · baixos: 12 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 8 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -444,3 +444,38 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Migration que (a) faz `UPDATE meals SET source='manual' WHERE source IN ('telegram','whatsapp')` (defensivo, não deve ter linhas com volume atual zero); (b) recria o enum sem os 2 valores legados (mesma técnica do AUD-033). Atualizar `MealSource` no model. Combinar com AUD-033 num único PR de "limpeza de enums". Esta migração serve como exemplo do padrão correto que falta em AUD-033.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 7.3
+
+### AUD-035 — Pool sizing por processo × processos × Postgres `max_connections=100` pode saturar
+
+- **Severidade:** 🟡 média
+- **Frente:** F
+- **Arquivo:linha:** `backend/app/core/database.py:17-23` (`pool_size=10`, `max_overflow=20`); `backend/Dockerfile:55` (`uvicorn ... --workers 2`); `docker-compose.yml` (1 celery_worker + 1 celery_beat)
+- **Descrição:** O engine SQLAlchemy é configurado com `pool_size=10` + `max_overflow=20` = até **30 conexões por processo** em pico. A produção tem:
+    - 2 uvicorn workers × 30 = **60 conn**
+    - 1 celery worker (prefork; cada child importa o mesmo módulo `database.py` e cria seu próprio engine quando criar a primeira session — por default `concurrency=os.cpu_count()` ≈ 2-4 no servidor) × 30 = **60-120 conn**
+    - 1 celery beat × 30 = **30 conn** (beat só lê de schedule, mas o engine é carregado por importação)
+
+    Total **150-210 conexões** contra `max_connections=100` do Postgres (default, confirmado via `SHOW max_connections`). Pior cenário (carga + tasks pesadas concorrentes) pode lançar `OperationalError: too many connections for role` e derrubar uvicorn workers. Mesmo o cenário "razoável" de 90 conexões (1 cpu × celery + 2 uvicorn) já está perto do limite.
+
+    Estimativas atuais (1 usuário, projeto pessoal) não chegam perto disso — risco é **latente**, materializa quando o tráfego subir ou o celery worker tiver `concurrency` aumentado.
+- **Evidência:** leitura de `database.py:17-23`, `Dockerfile:55`, `docker-compose.yml`; `psql -c "SHOW max_connections"` = 100.
+- **Recomendação:** Decisão estrutural conforme cenário:
+    - **Cenário escala baixa (atual)**: reduzir `pool_size=5, max_overflow=10` (15 conn por processo) → ~75 conn total no pior caso; usar PgBouncer entre app e Postgres (modo `transaction` ou `statement`) que multiplexa milhares de connections em poucas reais. PgBouncer é o caminho padrão da indústria; permite manter pool generoso no app sem estourar o DB.
+    - **Cenário escala alta** (quando chegar): aumentar `max_connections` no Postgres (custa RAM — cada conexão ≈ 10 MB) **ou** colocar PgBouncer. Ajustar `shared_buffers` (hoje 128 MB) também.
+    - **Independente do cenário**: garantir que o celery worker tenha pool dedicado (não compartilhar engine com uvicorn) e dimensionar pelo `concurrency` configurado.
+- **Esforço:** S (mudar pool config), M (introduzir PgBouncer)
+- **Origem:** PASSO 7.4
+
+### AUD-036 — Event listener loga TODA query como `INFO` em produção (`db_logger.info` em `after_cursor_execute`)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** F / J
+- **Arquivo:linha:** `backend/app/core/database.py:39-52` (`@event.listens_for(engine.sync_engine, "after_cursor_execute")`)
+- **Descrição:** Event listener registra timing + 1ª linha do SQL **em cada query** via `db_logger.info(...)`. Sem gate de ambiente (`NODE_ENV != production` ou `settings.environment != "dev"`). Em produção com 1 usuário rodando o dashboard, fácil chegar a 50-100 queries/min só do polling do header. Em escala (100 usuários) seriam 5-10k queries/min — log do backend inundado, custo IO + CPU + storage. O flag de "⚠️ LENTO" para queries > 100ms é útil, mas poderia ser o único evento logado.
+- **Evidência:** trecho `database.py:48-52`; `caloria.db` logger não tem filtro no `app/main.py` (verificado).
+- **Recomendação:** 3 opções, do menor para maior esforço:
+    - **Quick fix**: trocar `db_logger.info(...)` por `db_logger.debug(...)` (default Python logging level WARNING — debug fica silencioso em prod). Manter `db_logger.warning(...)` ou similar quando `ms > 100` para o "⚠️ LENTO" continuar visível.
+    - **Médio**: gatear o listener com `if settings.environment == "dev"` — em prod o listener nem registra. Performance ganho marginal (1 string format por query a menos).
+    - **Estrutural**: integrar com observabilidade real (OTEL/Sentry traces) e remover o listener custom.
+- **Esforço:** S (< 1h) para o quick fix
+- **Origem:** PASSO 7.4
