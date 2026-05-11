@@ -603,3 +603,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-046 (🟢 baixa, mas com sinergia forte com AUD-011 e AUD-014)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **6 erros, todos em 1 arquivo** (`ai_client.py`), 67 source files checked. Duas classes: (1) tipos do `messages` da Groq SDK (linhas 69, 79, 106) — `dict` literal não encaixa nos `TypedDict`s `ChatCompletion*MessageParam`; particularmente vision (linha 67) usa `content: list[dict]` que só `ChatCompletionUserMessageParam` aceita; (2) `aioredis.from_url` não-tipada (linhas 135, 143) + `no-any-return` derivado (136). Sinergia importante: **fix do AUD-014 (pool persistente Redis) elimina automaticamente 3 dos 6 erros** (135/136/143) — vale bundlear. Para tipos Groq, importar `TypedDict`s do SDK e anotar `messages: list[ChatCompletionMessageParam]` cobre os outros 3. Sem refator, alternativa é `# type: ignore` em 5 sites (anestesia o sintoma, alimenta AUD-011). Recomendação: bundlar no PR maior de refator de IA (AUD-002/AUD-015/AUD-016) — overhead zero.
+
+## PASSO 10.3 — ESLint frontend
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** leitura de `artefatos/baseline-eslint.txt` (capturado em PASSO 1.7) + `frontend/components/auth/Plasma.tsx:140-161` para confirmar contexto do warning.
+- **Artefato(s):** nenhum novo (usa `baseline-eslint.txt`; análise em `09-qualidade.md § I.3`)
+- **Achados gerados:** nenhum (1 warning de cosmética, sem entrada dedicada em `achados.md`; anotado para PR de cleanup frontend junto com AUD-022)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **1 warning, 0 errors.** `components/auth/Plasma.tsx:155` — regra `react-hooks/exhaustive-deps`: uso de `containerRef.current` dentro da cleanup do `useEffect` (linhas 151-157). O ref pode ter sido reassinado entre o setup e a cleanup; o código tenta `containerRef.current?.removeChild(canvas)` mas está envolto em `try { } catch {}` que mascara possível erro. Fix idiomático: snapshot `const container = containerRef.current` no início do effect e usar `container.removeChild(canvas)` na cleanup. Impacto real pequeno (componente só monta na rota `/login`, sem re-renders frequentes), mas como single warning do projeto vale corrigir para baseline 0 e habilitar `eslint --max-warnings=0` em CI. Sem achado dedicado — combina em PR genérico de "frontend cleanup" com AUD-022 (extração `useVoiceCapture`).

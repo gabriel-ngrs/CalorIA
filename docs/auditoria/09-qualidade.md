@@ -65,3 +65,30 @@
 - Combina com AUD-002/AUD-016 do plano de refatoração de IA — a tipagem do payload Groq cabe no mesmo PR que extrai `BaseAIFoodParser` (AUD-015).
 
 **Recomendação compacta**: adicionar `TypedDict`s da Groq e tipar `messages` cobre 3 erros (69/79/106); migrar `aioredis.from_url` para pool persistente (compartilhado com AUD-014) elimina os outros 3. Esforço **S** isolado, mas faz mais sentido bundlear no PR de refatoração de IA.
+
+### § I.3 ESLint frontend (de `artefatos/baseline-eslint.txt`)
+
+**1 warning, 0 errors.**
+
+| Severidade | Arquivo:linha | Regra | Mensagem |
+|---|---|---|---|
+| Warning | `components/auth/Plasma.tsx:155` | `react-hooks/exhaustive-deps` | `containerRef.current` provavelmente mudou no momento em que a cleanup do effect roda — copiar para variável local dentro do effect |
+
+**Contexto**: `Plasma.tsx` é o componente decorativo de fundo da tela de auth (background animado WebGL via biblioteca `ogl`). Linhas 134-160 são um `useEffect` que: (1) cria renderer/scene/mesh; (2) attach canvas no `containerRef.current`; (3) inicia loop `requestAnimationFrame`; (4) cleanup remove o canvas via `containerRef.current?.removeChild(canvas)`. A regra `exhaustive-deps` flagga o uso de `containerRef.current` na cleanup porque o ref **pode ter sido reassinado** (re-render ou navegação) antes da cleanup rodar — em vez de remover o canvas que **este** effect criou, o código poderia tentar remover de um container errado, gerando exceção (já está envolto em `try { } catch {}` defensivo, o que mascara o problema).
+
+**Fix idiomático React** (5 min):
+
+```tsx
+useEffect(() => {
+  const container = containerRef.current;   // snapshot
+  if (!container) return;
+  // ... usar `container.appendChild(canvas)`
+  return () => {
+    // ... usar `container.removeChild(canvas)` (não `containerRef.current`)
+  };
+}, [speed, scale, opacity]);
+```
+
+**Impacto real**: pequeno. O componente só renderiza na rota `/login` (estática, sem re-renders frequentes). O `try/catch` esconde qualquer erro. Mas como single warning do projeto inteiro, vale o cleanup — deixa baseline em **0 warnings** e libera CI estrito (`eslint --max-warnings=0`).
+
+**Sem achado dedicado** — 1 warning de cosmética não justifica entrada em `achados.md`. Anotado aqui para inclusão em PR genérico de "frontend cleanup" (combina bem com AUD-022 — extração de `useVoiceCapture` para resolver duplicação SpeechRecognition).
