@@ -7,6 +7,7 @@
 - AUD-054 — Versões dessincronizadas: `pyproject.toml`, `app/main.py` e `package.json` em `0.1.0` vs CHANGELOG em `[0.7.0]` (🟢 baixa).
 - AUD-055 — ADR-002 (Groq) registra a decisão atual mas não documenta alternativas avaliadas; decisões recentes (Vercel + backend Hetzner, workflow de release) sem ADR (🟢 baixa).
 - AUD-056 — `docs/deploy.md § Troubleshooting` cobre 4 cenários básicos mas faltam runbooks operacionais para incidentes específicos: Groq free-tier estourado, push HTTP 410 em massa, Celery worker travado, restore de backup Postgres (🟡 média).
+- AUD-057 — `CONTRIBUTING.md:42` afirma que pre-commit roda "ruff, mypy, eslint" mas só `ruff` está configurado — documentação engana o contribuidor (🟢 baixa; combina com AUD-047).
 
 ## Notas e contexto
 
@@ -159,3 +160,40 @@ Médio prazo, o runbook se acopla naturalmente com:
 - AUD-049 — logs estruturados, `request_id` no log facilita "encontrar todas linhas do incidente".
 - AUD-050 — `/health/ready` permite que monitoring detecte degradação antes do incidente virar pageable.
 - AUD-051 — Sentry corta o "como descubro o problema" — o runbook responde "o que faço agora".
+
+### § K.3 CONTRIBUTING e templates (de `artefatos/K4-contrib.txt`)
+
+**Inventário do que existe:**
+
+| Arquivo | LOC | Estado |
+|---|---|---|
+| `CONTRIBUTING.md` | 103 | ✅ presente — Setup, fluxo (refer a `git-workflow.md`), testes, convenções de commit, estrutura, dúvidas |
+| `.github/PULL_REQUEST_TEMPLATE.md` | 24 | ✅ presente — descrição, tipo (4 opções), checklist (5 itens), como testar, screenshots |
+| `.github/ISSUE_TEMPLATE/bug_report.md` | 34 | ✅ presente |
+| `.github/ISSUE_TEMPLATE/feature_request.md` | 23 | ✅ presente |
+| `.github/dependabot.yml` | (não inspecionado em LOC) | ✅ presente |
+| `.github/workflows/ci.yml` | (já analisado em outras frentes) | ✅ |
+| `.github/workflows/cd.yml` | (já analisado) | ✅ |
+
+**Cobertura geral muito boa** — onboarding de contribuidor está coberto. Pontos a considerar:
+
+1. ✅ Setup do dev environment é claro e ordenado (4 passos com docker compose, alembic, pre-commit).
+2. ✅ Convenções de commit têm exemplos em PT-BR alinhados com CLAUDE.md.
+3. ✅ PR template inclui checklist de "sem `.env` ou secrets no código" — bom proxy mental para o problema do AUD-038, **mas não é enforcement** (e o checklist não é validado por CI).
+4. ⚠️ **Documentação divergente do realidade**: `CONTRIBUTING.md:42` afirma:
+    > "Os hooks rodam automaticamente antes de cada commit: `ruff`, `mypy`, `eslint`."
+    Falso. PASSO 10.4 (AUD-047) confirmou que **só `ruff` e `ruff-format`** estão no `.pre-commit-config.yaml`. Mypy e ESLint **não** são pre-commit. Contribuidor novo lê, confia, comita um diff que regride mypy ou eslint, e CI quebra. Documentação está **adiantada** ao código — provavelmente reflete a intenção original do projeto, que ficou pendente.
+
+**Outros pequenos pontos** (sem achado dedicado):
+- `CONTRIBUTING.md` não menciona o workflow de release (cross-ref AUD-054) — quando atacar AUD-054, atualizar CONTRIBUTING também.
+- PR template não tem item sobre "checar se o achado tem AUD correspondente" — específico do contexto atual da auditoria; pode acrescentar checkbox "se está corrigindo um achado de auditoria, citar o ID" quando os AUDs começarem a virar PRs.
+
+**Recomendação (AUD-057)** — Esforço S (< 10 min, trivial mas evita confusão):
+
+Opção A (mais rápida): trocar a linha 42 de `CONTRIBUTING.md` para refletir o estado atual:
+```diff
+- Os hooks rodam automaticamente antes de cada commit: `ruff`, `mypy`, `eslint`.
++ Os hooks rodam automaticamente antes de cada commit: `ruff` (lint + format), `pre-commit-hooks` (trailing whitespace, large files, branch protection).
+```
+
+Opção B (preferível, com mais valor): combinar com fix de AUD-047 — adicionar mypy/eslint/gitleaks ao `.pre-commit-config.yaml` e **manter** a documentação como está (o texto vira verdadeiro). Resolve dois achados de uma vez.
