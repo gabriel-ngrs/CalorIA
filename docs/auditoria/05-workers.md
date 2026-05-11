@@ -6,6 +6,7 @@
 
 - AUD-025 (🟠 alta) — `_run` em `reminders.py`, `reports.py`, `maintenance.py` chama `asyncio.get_event_loop()` deprecated desde Python 3.10; risco de `RuntimeError: Event loop is closed` em workers Celery
 - AUD-026 (🟠 alta) — `dispatch_due_reminders` usa `datetime.now()` naive: hoje funciona porque todos os containers são `TZ=America/Sao_Paulo`, mas qualquer migração para UTC ou usuário fora de São Paulo quebra silenciosamente
+- AUD-027 (🟠 alta) — `_send_hydration_reminders_async` compara contra `2000` ml fixo e ignora `User.water_goal_ml` (que existe no modelo) — meta personalizada do usuário é silenciosamente descartada
 
 ## E.2 Padrão `_run` em tasks
 
@@ -133,6 +134,54 @@ Cobertura de teste com `freezegun`/`time-machine` em ≥ 3 fusos (`America/Sao_P
 
 Adicionar `Reminder.next_fire_at: DateTime(timezone=True)`. A query da task vira `WHERE active AND next_fire_at <= now()`. Após disparar, recalcula `next_fire_at` baseado em `time` + `days_of_week` + `user.timezone`. Escala melhor (índice em `next_fire_at` substitui o full scan minuto-a-minuto) e elimina ambiguidade de DST porque o cálculo do próximo disparo é feito uma vez.
 
+## E.5 Hardcode de meta de hidratação
+
+Comando: `rg -n "2000" backend/app/workers/tasks/reminders.py`. Artefato: `artefatos/E3-hydration-hardcode.txt`.
+
+### Estado atual
+
+| Linha | Trecho |
+|---|---|
+| `reminders.py:174` | `if summary.total_ml >= 2000:` |
+| `reminders.py:179` | `f"Hidratação: {summary.total_ml} ml / 2000 ml hoje. "` |
+
+`User.water_goal_ml: Mapped[int | None]` está declarado em `models/user.py:44` e é populado pelo perfil/onboarding (frontend lê e edita). Nenhum acesso em `backend/app/workers/`.
+
+### Impacto
+
+| Cenário | Comportamento atual | Comportamento esperado |
+|---|---|---|
+| Usuário com meta 1500 ml | Recebe push depois de atingir 1500 (porque `1500 < 2000`) | Não recebe push após 1500 |
+| Usuário com meta 3500 ml | Não recebe push após 2000 ml (silenciosamente, porque `≥ 2000`) | Continua recebendo até 3500 |
+| Usuário sem meta configurada (`null`) | Funciona "por sorte" com 2000 | Mesmo: usar fallback 2000 |
+| Mensagem do push | "X / 2000 ml" para todo mundo | "X / `water_goal_ml` ml" |
+
+Pior caso: o usuário **não vê o problema** — o push simplesmente não chega na hora certa. Difícil de detectar em produção sem logs estruturados (ver AUD-013).
+
+### Correção (S, < 1h)
+
+```python
+async def _send_hydration_reminders_async() -> None:
+    ...
+    for user in users:
+        summary = await HydrationService(db).get_day_summary(user.id, today)
+        goal_ml = user.water_goal_ml or 2000
+        if summary.total_ml >= goal_ml:
+            continue
+        title = "Beba água!"
+        body = (
+            f"Hidratação: {summary.total_ml} ml / {goal_ml} ml hoje. "
+            "Lembre-se de se hidratar!"
+        )
+        ...
+```
+
+Considerar extrair `2000` para `app/core/config.py` (`DEFAULT_WATER_GOAL_ML: int = 2000`) e usar `settings.default_water_goal_ml` — evita o número aparecer espalhado.
+
+### Bônus
+
+A task itera `for user in users:` chamando `HydrationService(db).get_day_summary(user.id, today)` por usuário (linha 172) — mesmo padrão N+1 já mapeado no **AUD-008** (workers iteram usuários ativos com 1 query DB por usuário). O fix do AUD-027 (linhas 174/179) e o do AUD-008 (substituir o loop por query agregada) cabem no mesmo PR.
+
 ## Notas e contexto
 
-(seções E.1, E.4-E.7 serão preenchidas nos PASSOS 6.3-6.5)
+(seções E.1, E.4, E.6, E.7 serão preenchidas nos PASSOS 6.4-6.5)
