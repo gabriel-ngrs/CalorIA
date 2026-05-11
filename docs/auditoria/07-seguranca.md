@@ -6,6 +6,7 @@
 
 - AUD-038 (🔴 crítica) — credenciais reais (`gabrielnegreirossaraiva38@gmail.com` / `***REMOVED***`) hardcoded em `frontend/e2e/auth.spec.ts` e no histórico git público
 - AUD-039 (🟠 alta) — `SECRET_KEY` tem default `"insecure-default-key-change-in-production"` sem fail-fast; deploy esquecendo a env var dá origem a forge de JWTs trivial
+- AUD-040 (🟠 alta) — ausência total de rate limit no backend (sem `slowapi`, sem diretiva no Caddy); `/auth/*` exposto a credential stuffing, `/ai/*` exposto a abuso de tokens Groq
 
 ## G.6 Credenciais expostas no código
 
@@ -103,6 +104,40 @@ Este passo (8.3) revisita os schemas com lente de segurança. **Confirmado** que
 
 Sem achado novo neste passo — encaminha-se para o release combinado dos AUD-009 + AUD-010 + observações acima.
 
+## G.5 Rate limit assessment
+
+Comando: `rg -n "rate_limit|slowapi|RateLimit|Limiter" backend/`; `grep -n "rate" Caddyfile`; `grep -n "middleware" backend/app/main.py`. Artefato: `artefatos/G4-rate-limit.txt`.
+
+### Estado atual
+
+| Camada | Rate limit | Evidência |
+|---|---|---|
+| FastAPI middleware | ❌ ausente | 0 hits para `slowapi`/`Limiter` no `backend/` |
+| Caddy | ❌ ausente | 0 hits para `rate` no `Caddyfile` |
+| Reverse proxy externo | n/a | sem CDN/WAF na frente; só Caddy |
+| Captcha em `/register` | ❌ ausente | sem hCaptcha/Turnstile |
+
+`backend/app/main.py` registra apenas `CORSMiddleware` (linha 42) e um `timing_middleware` (linha 52). Sem nenhuma defesa contra throughput abusivo.
+
+### Endpoints expostos por categoria de risco
+
+| Endpoint | Risco | Limite sugerido |
+|---|---|---|
+| `POST /auth/login` | credential stuffing (combina com AUD-038) | 5/min/IP |
+| `POST /auth/register` | bot signup, inflar `users` | 3/hora/IP |
+| `POST /auth/refresh` | abuse de blacklist Redis | 30/min/IP |
+| `POST /ai/analyze-meal` | tokens Groq (free tier limit, $ em pago) | 30/min/user |
+| `POST /ai/analyze-photo` | idem + payload base64 grande (combina AUD-009) | 20/min/user |
+| `GET /ai/insights/*` | tokens Groq | 60/min/user |
+| `GET /notifications/unread-count` | DoS por polling (combina AUD-031) | 120/min/user |
+| Demais endpoints autenticados | DoS genérico | 120/min/user (default) |
+
+Detalhes em **AUD-040**.
+
+### Gravidade contextual
+
+CLAUDE.md afirma "Arquitetura pensada para escalar para múltiplos usuários no futuro". Hoje com 1 usuário não há exploração ativa, mas o sistema está pronto pra deploy (Roadmap § 9 com CI/CD verde). **Rate limit é fundação** — sem ele, qualquer abertura ao público vira presa fácil. Severidade 🟠 hoje, escalonando se ficar pendente além do primeiro deploy.
+
 ## Notas e contexto
 
-(seções G.4-G.5, G.7-G.8 serão preenchidas nos PASSOS 8.4-8.7)
+(seções G.7-G.8 serão preenchidas nos PASSOS 8.5-8.7)

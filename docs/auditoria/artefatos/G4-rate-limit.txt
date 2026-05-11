@@ -1,0 +1,5 @@
+Verificação de imports/middlewares em main.py:
+8:from fastapi.middleware.cors import CORSMiddleware
+42:app.add_middleware(
+52:@app.middleware("http")
+53:async def timing_middleware(request: Request, call_next: Any) -> Any:
