@@ -5,6 +5,7 @@
 ## Achados desta frente
 
 - AUD-049 — Logging do backend é texto humano (não estruturado) e `logging.basicConfig` global em `main.py` ignora `LOG_LEVEL` — sem agregação possível por `user_id`/`request_id`/módulo (🟡 média).
+- AUD-050 — `/health` retorna `{"status":"ok","version":"0.1.0"}` hardcoded — sem readiness check de Postgres/Redis e versão dessincronizada do CHANGELOG (0.7.0) (🟡 média).
 
 ## Notas e contexto
 
@@ -61,3 +62,66 @@ logging.basicConfig(
 5. **Padronizar todos os `logger.info(f"...")` para placeholders `%s`** (lint rule no ruff: `G004`).
 
 Fix completo desbloqueia 4 outros achados (AUD-013, AUD-027, AUD-028, AUD-040 ficam mais fáceis de debugar/medir).
+
+### § J.3 Health check completeness
+
+**Endpoint atual** (`backend/app/main.py:72-74`):
+
+```python
+@app.get("/health", tags=["health"])
+async def health_check() -> dict[str, str]:
+    return {"status": "ok", "version": "0.1.0"}
+```
+
+**3 gaps mapeados:**
+
+| Gap | Estado | Impacto |
+|---|---|---|
+| Versão hardcoded `"0.1.0"` | ❌ desalinhada com CHANGELOG (`[0.7.0] - 2026-05-10`) e com `backend/pyproject.toml:7` (`version = "0.1.0"`) | Ferramenta de monitoring que polla `/health` reporta versão errada; bisseção de incidente fica difícil — qual deploy está rodando? |
+| Verificação de **Postgres** | ❌ ausente | Container fica `healthy` no Docker Swarm/K8s mesmo se Postgres caiu — load balancer continua mandando tráfego para um backend que vai 500ar em toda request. Inconsistente com o `lifespan` (linhas 23-30) que **já** executa `SELECT 1` no startup — o conhecimento de "DB está vivo" existe, só não é exposto. |
+| Verificação de **Redis** | ❌ ausente | Cache de IA (AIClient), blacklist de refresh tokens (auth_service) e filas Celery dependem de Redis. Falha de Redis hoje é silenciosa: `aioredis.from_url` em `try/except` (cf. AUD-014), funcionalidade degrada sem alerta. |
+
+**Liveness vs Readiness — convenção de orquestradores:**
+
+- **Liveness** (processo está vivo?): o `/health` atual cobre. K8s usa para decidir se mata e recria o container.
+- **Readiness** (pode receber tráfego?): hoje **não existe endpoint**. K8s/Caddy precisaria de algo como `/ready` que checa dependências externas.
+
+Compose dev (`docker-compose.dev.yml:43`) faz `healthcheck` no serviço backend (verificado em PASSO 10.6) — provavelmente curl em `/health`. Esse healthcheck só ratifica o cenário acima: container fica `healthy` mesmo com banco caído.
+
+**`pyproject.toml:7` versão `0.1.0`** — não é só o `/health`. `app.main:33-40` instancia `FastAPI(title="CalorIA", version="0.1.0", ...)`, então o **OpenAPI/Swagger** também reporta versão errada. Cross-ref para PASSO 12.1 (FASE 12, coerência de versões).
+
+**Recomendação (AUD-050)** — Esforço S (<1h):
+
+1. **Trocar versão hardcoded por leitura dinâmica**:
+    ```python
+    from importlib.metadata import version as pkg_version
+    APP_VERSION = pkg_version("caloria-backend")
+    ```
+    Lê do `pyproject.toml` no install. Atualizar `app.version` na criação do FastAPI também resolve OpenAPI.
+2. **Separar liveness e readiness**:
+    ```python
+    @app.get("/health/live", tags=["health"])
+    async def live() -> dict[str, str]:
+        return {"status": "ok", "version": APP_VERSION}
+
+    @app.get("/health/ready", tags=["health"])
+    async def ready(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+        checks = {}
+        try:
+            await db.execute(text("SELECT 1"))
+            checks["postgres"] = "ok"
+        except Exception as exc:
+            checks["postgres"] = f"fail: {exc.__class__.__name__}"
+        try:
+            async with aioredis.from_url(settings.REDIS_URL) as r:
+                await r.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            checks["redis"] = f"fail: {exc.__class__.__name__}"
+        ok = all(v == "ok" for v in checks.values())
+        return JSONResponse({"status": "ok" if ok else "degraded", "checks": checks}, status_code=200 if ok else 503)
+    ```
+3. **Manter `/health` como alias de `/health/live`** para retrocompat com o healthcheck do compose atual.
+4. **Apontar o healthcheck do compose** para `/health/ready` no serviço backend — load balancer só roteia para containers prontos.
+
+Combina com AUD-014 (pool Redis persistente facilita o ping); combina com AUD-039 (validator de SECRET_KEY pode usar o mesmo `lifespan` que já roda `SELECT 1`).
