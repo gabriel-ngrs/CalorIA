@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 8 · médios: 10 · baixos: 9 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 8 · médios: 10 · baixos: 10 (atualizar a cada novo achado)
 
 ---
 
@@ -288,6 +288,17 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Substituir por `asyncio.run(coro)`, que cria e fecha um event loop dedicado por chamada (semântica correta para tasks Celery síncronas que só precisam executar uma coroutine raiz). Alternativa equivalente: `loop = asyncio.new_event_loop(); try: return loop.run_until_complete(coro); finally: loop.close()`. Como as 3 cópias são idênticas, vale extrair para `app/workers/utils.py` (1 helper compartilhada) — ataca também a duplicação. Acrescentar nota no `Dockerfile` do worker que `PYTHONWARNINGS=error::DeprecationWarning` em CI ajudaria a pegar regressões.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 6.1
+
+### AUD-029 — `cleanup_old_conversations` faz Seq Scan em `ai_conversations` (sem índice em `updated_at`)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** E / F
+- **Arquivo:linha:** `backend/app/workers/tasks/maintenance.py:42-46` (`DELETE FROM ai_conversations WHERE updated_at < cutoff RETURNING id`); migrações Alembic não declaram índice em `ai_conversations.updated_at`
+- **Descrição:** A task diária de limpeza filtra por `updated_at < (now - 90 days)` mas a tabela `ai_conversations` só tem índices em `(id)`, `(external_chat_id)` e `(user_id)`. `EXPLAIN` no banco real confirma `Seq Scan on ai_conversations Filter: (updated_at < ...)`. Hoje a tabela tem ~43 linhas (custo 12.28) — irrelevante. Em 6 meses de uso ativo (5 conversas/dia × 1 user × 180 dias = 900 linhas) ainda passa sem dor; em 5 anos com 100 usuários ativos (~90k linhas) o `DELETE` faz scan completo da tabela inteira a cada execução, e como roda à 3h da manhã com pouca contenção, o impacto é baixo, mas o crescimento é linear.
+- **Evidência:** `artefatos/E5-ai-conv-indexes.txt` — `\d ai_conversations` lista 3 índices, nenhum em `updated_at`. `EXPLAIN DELETE ... WHERE updated_at < NOW() - INTERVAL '90 days'` retorna `Seq Scan`.
+- **Recomendação:** Migration adicionando `Index("ix_ai_conversations_updated_at", "updated_at")`. Custo: poucos KB de espaço, escrita marginalmente mais cara em INSERT/UPDATE, leitura/DELETE da cleanup vira `Bitmap Heap Scan` (logarítmico). Alternativa estrutural se a tabela ficar muito grande no futuro: particionamento por mês/trimestre, fazendo o cleanup ser `DROP PARTITION` (O(1)) — fora de escopo agora. Aproveitar o mesmo PR para revisar se outras colunas usadas em filtros de tasks (ex.: `WeightLog.date` já tem índice; `MealItem.created_at` precisa checar) também precisam de índice.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 6.5
 
 ### AUD-028 — Tratamento de Web Push 410 (subscription expirada) duplicado em 4 sites de workers
 

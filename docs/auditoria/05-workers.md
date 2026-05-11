@@ -8,6 +8,7 @@
 - AUD-026 (🟠 alta) — `dispatch_due_reminders` usa `datetime.now()` naive: hoje funciona porque todos os containers são `TZ=America/Sao_Paulo`, mas qualquer migração para UTC ou usuário fora de São Paulo quebra silenciosamente
 - AUD-027 (🟠 alta) — `_send_hydration_reminders_async` compara contra `2000` ml fixo e ignora `User.water_goal_ml` (que existe no modelo) — meta personalizada do usuário é silenciosamente descartada
 - AUD-028 (🟡 média) — tratamento de Web Push 410 (subscription expirada) duplicado em 4 sites de workers (`reminders.py` ×2 + `reports.py` ×2): mesmo bloco de ~30 LOC, ~120 LOC totais; pede `PushService.send_with_cleanup()`
+- AUD-029 (🟢 baixa) — `cleanup_old_conversations` faz Seq Scan em `ai_conversations` (sem índice em `updated_at`); irrelevante hoje (~43 linhas), latente quando a tabela crescer
 
 ## E.2 Padrão `_run` em tasks
 
@@ -285,6 +286,74 @@ sent = await PushService(db).send_with_cleanup(user.id, title, body, "/relatorio
 
 Ganhos: (a) ~120 LOC viram 1 import + 1 chamada; (b) política de cleanup centralizada (mudança futura — soft delete, dead-letter, métricas — atinge todos automaticamente); (c) ponto único para AUD-013 (logs estruturados de envio); (d) `WebPushException` importado no topo do módulo, não dentro do `except ImportError`.
 
+## E.6 `cleanup_old_conversations` e `recalculate_tdee`
+
+Comandos: `docker exec caloria_postgres psql -c "\d ai_conversations"` + `\d weight_logs` + `EXPLAIN DELETE ...`. Artefato: `artefatos/E5-ai-conv-indexes.txt`.
+
+### `cleanup_old_conversations` (`maintenance.py:38-54`)
+
+```python
+cutoff = datetime.now(tz=UTC) - timedelta(days=90)
+async with AsyncSessionLocal() as db:
+    result = await db.execute(
+        delete(AIConversation)
+        .where(AIConversation.updated_at < cutoff)
+        .returning(AIConversation.id)
+    )
+    deleted_ids = result.scalars().all()
+    await db.commit()
+```
+
+**Acertos:**
+- Usa `updated_at` (mais robusto que `created_at` se houver re-engajamento numa conversa antiga).
+- TZ-aware (`datetime.now(tz=UTC)`) — evita o problema do AUD-026.
+- `RETURNING` + `len(deleted_ids)` para logar contagem (alternativa: `result.rowcount`).
+- Retry Celery com `countdown=300` (5min).
+
+**Achado:** índice ausente em `updated_at`. `EXPLAIN` no DB real:
+
+```
+Delete on ai_conversations  (cost=0.00..12.28 rows=43 width=6)
+  ->  Seq Scan on ai_conversations  (cost=0.00..12.28 rows=43 width=6)
+        Filter: (updated_at < (now() - '90 days'::interval))
+```
+
+Tabela atual tem ~43 linhas — Seq Scan é mais barato que index lookup nesse tamanho (Postgres escolhe Seq Scan corretamente). Vira problema quando a tabela cresce (estimativa: ~90k linhas em 5 anos com 100 usuários ativos × 5 conversas/dia). Ver AUD-029.
+
+### `recalculate_tdee` (`maintenance.py:69-128`)
+
+```python
+for user in users:
+    if not user.profile:
+        continue
+    wl_result = await db.execute(
+        select(WeightLog).where(WeightLog.user_id == user.id)
+        .order_by(WeightLog.date.desc(), WeightLog.created_at.desc())
+        .limit(1)
+    )
+    latest_wl = wl_result.scalar_one_or_none()
+    ...
+    diff = abs(latest_wl.weight_kg - profile_weight)
+    if diff < 2.0:
+        continue
+    profile.current_weight = latest_wl.weight_kg
+    if profile.height_cm and profile.age and profile.sex:
+        profile.tdee_calculated = calculate_tdee(...)
+    updated += 1
+```
+
+**Acertos:**
+- `selectinload(User.profile)` (linha 76) evita N+1 no profile.
+- Threshold de **2 kg** é coerente: flutuação diária típica é ~1 kg (água, conteúdo gástrico); 2 kg representa mudança real. Não há literatura clínica para um número exato, mas 2 kg é defensável (≈ 2.5% de um adulto de 80 kg).
+- Update parcial: só atualiza `tdee_calculated` se tem todos os campos antropométricos. Defensivo correto.
+- 1 commit no fim — agrupa todas as atualizações.
+
+**Limitação não-bug:** atualiza `current_weight` e `tdee_calculated`, mas não derivados ulteriores (ex.: `daily_protein_goal_g`, se for derivado de TDEE em outro lugar). Hoje o projeto deriva metas direto na UI a partir de `tdee_calculated`, então não há risco. Ficaria coberto numa revisão futura se as metas se tornarem persistidas.
+
+**N+1 conhecido:** `for user in users` + 1 query `WeightLog` por usuário = **AUD-008** (já registrado). A query `DISTINCT ON (user_id) ... ORDER BY user_id, date DESC, created_at DESC` (sugerida no AUD-008) resolve aqui também.
+
+**Índices `weight_logs`:** já tem `ix_weight_logs_user_id` e `ix_weight_logs_date`. Para a query `DISTINCT ON` agregada sugerida no AUD-008, um índice composto `(user_id, date DESC, created_at DESC)` seria ideal — fora de escopo deste passo, pode ser registrado no inventário de índices da Frente F (PASSO 7.1).
+
 ## Notas e contexto
 
-(seções E.1, E.6, E.7 serão preenchidas no PASSO 6.5)
+(seção E.1 e E.7 são cobertas pelo plano `plano.md` § E.1 e § E.7 — sem achados novos nesta auditoria; encerra a Frente E.)
