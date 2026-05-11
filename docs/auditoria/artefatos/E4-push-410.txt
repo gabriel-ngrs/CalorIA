@@ -1,0 +1,33 @@
+backend/app/services/push_service.py:21:    Raises WebPushException with status_code 410 when the subscription has expired
+backend/app/services/push_service.py:28:        from pywebpush import WebPushException, webpush
+backend/app/services/push_service.py:41:        from pywebpush import WebPushException
+backend/app/services/push_service.py:43:        if isinstance(ex, WebPushException):
+backend/app/services/push_service.py:46:            if ex.response and ex.response.status_code == 410:
+backend/app/workers/tasks/reminders.py:105:        expired_ids: list[int] = []
+backend/app/workers/tasks/reminders.py:120:                        WebPushException,
+backend/app/workers/tasks/reminders.py:124:                        isinstance(ex, WebPushException)
+backend/app/workers/tasks/reminders.py:126:                        and ex.response.status_code == 410
+backend/app/workers/tasks/reminders.py:128:                        expired_ids.append(sub.id)
+backend/app/workers/tasks/reminders.py:132:        if expired_ids:
+backend/app/workers/tasks/reminders.py:134:                delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+backend/app/workers/tasks/reminders.py:198:            expired_ids: list[int] = []
+backend/app/workers/tasks/reminders.py:213:                            WebPushException,
+backend/app/workers/tasks/reminders.py:217:                            isinstance(ex, WebPushException)
+backend/app/workers/tasks/reminders.py:219:                            and ex.response.status_code == 410
+backend/app/workers/tasks/reminders.py:221:                            expired_ids.append(sub.id)
+backend/app/workers/tasks/reminders.py:225:            if expired_ids:
+backend/app/workers/tasks/reminders.py:227:                    delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+backend/app/workers/tasks/reports.py:85:        expired_ids: list[int] = []
+backend/app/workers/tasks/reports.py:101:                        WebPushException,
+backend/app/workers/tasks/reports.py:105:                        isinstance(ex, WebPushException)
+backend/app/workers/tasks/reports.py:107:                        and ex.response.status_code == 410
+backend/app/workers/tasks/reports.py:109:                        expired_ids.append(sub.id)
+backend/app/workers/tasks/reports.py:113:        if expired_ids:
+backend/app/workers/tasks/reports.py:115:                delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+backend/app/workers/tasks/reports.py:184:        expired_ids: list[int] = []
+backend/app/workers/tasks/reports.py:200:                        WebPushException,
+backend/app/workers/tasks/reports.py:204:                        isinstance(ex, WebPushException)
+backend/app/workers/tasks/reports.py:206:                        and ex.response.status_code == 410
+backend/app/workers/tasks/reports.py:208:                        expired_ids.append(sub.id)
+backend/app/workers/tasks/reports.py:212:        if expired_ids:
+backend/app/workers/tasks/reports.py:214:                delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
