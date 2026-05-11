@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 8 · médios: 12 · baixos: 11 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 8 · médios: 13 · baixos: 12 (atualizar a cada novo achado)
 
 ---
 
@@ -408,3 +408,39 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     Antes de aplicar: revisar se `food_lookup.py` ou seed dependem da unicidade (não devem; o lookup usa `pg_trgm`). Documentar que a unicidade era um artefato da era TACO-only.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 7.1
+
+### AUD-033 — Migração `adiciona_dessert_mealtype` tem `downgrade()` vazio (irreversível)
+
+- **Severidade:** 🟡 média
+- **Frente:** F
+- **Arquivo:linha:** `backend/alembic/versions/20260306_e5f6a1b2c3d4_adiciona_dessert_mealtype.py:downgrade` (corpo é apenas `pass` com comentário "PostgreSQL não permite remover valores de enum sem recriar o tipo")
+- **Descrição:** Das 10 migrações Alembic do projeto, **9 têm downgrade efetivo** (de 1 a 25 LOC). A migração que adicionou o valor `dessert` ao enum `mealtype` declara `downgrade()` mas o corpo é apenas `pass` — o autor explicitamente assumiu a limitação do Postgres. Isto significa que **`alembic downgrade -1` a partir desta migração não retorna ao estado anterior**: o valor `dessert` permanece no enum mesmo após "rollback". Em ambientes de teste/staging onde se faz upgrade/downgrade para validar migrações, esse drift acumula silenciosamente. Em prod o risco é menor (não se faz downgrade), mas a expectativa de reversibilidade é quebrada — quem ler `alembic history` espera "10 passos pra frente, 10 pra trás".
+
+  Nota: o Postgres **permite** remover valores de enum, mas requer recriar o tipo (`CREATE TYPE mealtype_new AS ENUM(...); ALTER TABLE meals ALTER COLUMN meal_type TYPE mealtype_new USING ...; DROP TYPE mealtype; ALTER TYPE mealtype_new RENAME TO mealtype`). É verboso mas factível. O `pass` é uma escolha consciente, não impossibilidade técnica.
+
+  Bônus relacionado: a migração `20260320_e6f7a8b9c0d1_fix_search_text_taco.py` é uma migração de **dados** que documenta partial revert ("A deleção do registro OpenFoodFacts não é revertida"). Isso é defensável (evita reintroduzir bug), mas vale registrar a expectativa explicitamente.
+- **Evidência:** `artefatos/F3-downgrade.txt` — extração do corpo de cada `downgrade()`. `adiciona_dessert_mealtype.py` é o único com corpo apenas `pass` + comentário. Os outros 9 têm conteúdo real (mín. 3 LOC, máx. 25).
+- **Recomendação:** Substituir o `pass` por um downgrade real:
+    ```python
+    def downgrade() -> None:
+        # Recria o enum sem 'dessert'
+        op.execute("ALTER TYPE mealtype RENAME TO mealtype_old")
+        op.execute("CREATE TYPE mealtype AS ENUM ('breakfast', 'lunch', 'dinner', 'snack', 'supplement')")
+        op.execute("UPDATE meals SET meal_type='snack' WHERE meal_type::text='dessert'")  # ou raise se preferir falhar explicito
+        op.execute("ALTER TABLE meals ALTER COLUMN meal_type TYPE mealtype USING meal_type::text::mealtype")
+        op.execute("DROP TYPE mealtype_old")
+    ```
+    Acrescentar política em `docs/architecture.md` ou `CONTRIBUTING`: "Toda migração deve ter downgrade efetivo; se houver dado a perder, fazer escolha explícita (ex.: mapear para outro valor) e documentar."
+- **Esforço:** S (< 1h) para o fix; M para revisar política e cobrir as 9 demais com asserts em CI.
+- **Origem:** PASSO 7.3
+
+### AUD-034 — Enum `MealSource` mantém valores `TELEGRAM`/`WHATSAPP` mortos no schema
+
+- **Severidade:** 🟢 baixa
+- **Frente:** F
+- **Arquivo:linha:** `backend/app/models/meal.py:32-35` (enum `MealSource` com `MANUAL`/`TELEGRAM`/`WHATSAPP`); enum `mealsource` no DB com mesmas 3 entradas
+- **Descrição:** `MealSource` herda da era em que existiam integrações Telegram/WhatsApp para registro de refeições. Hoje o projeto é apenas web (CLAUDE.md confirma "O usuário registra refeições pelo dashboard web"); o único valor usado em código é `MealSource.MANUAL` (`backend/app/models/meal.py:49` como default; `backend/app/schemas/meal.py:51` como default; nenhum `.TELEGRAM`/`.WHATSAPP`). O enum no banco também mantém os 3 valores. Como `meals.source` tem default `MANUAL` e nenhum endpoint expõe os outros valores, é inalcançável — mas dead schema. Risco real é baixo (futura migração de dados pode trazer linhas legadas; a migração `20260315_a1b2c3d4e5f6_web_push_notifications.py` já removeu campos Telegram/WhatsApp das outras tabelas, mas não cuidou desse enum).
+- **Evidência:** `grep -rn "MealSource\.TELEGRAM\|MealSource\.WHATSAPP"` no `backend/` retorna 0 hits; `psql -c "SELECT enumlabel FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='mealsource')"` retorna `MANUAL/TELEGRAM/WHATSAPP`. Já flagged no `plano.md § F.2` como item a auditar.
+- **Recomendação:** Migration que (a) faz `UPDATE meals SET source='manual' WHERE source IN ('telegram','whatsapp')` (defensivo, não deve ter linhas com volume atual zero); (b) recria o enum sem os 2 valores legados (mesma técnica do AUD-033). Atualizar `MealSource` no model. Combinar com AUD-033 num único PR de "limpeza de enums". Esta migração serve como exemplo do padrão correto que falta em AUD-033.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 7.3

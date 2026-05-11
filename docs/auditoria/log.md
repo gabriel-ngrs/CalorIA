@@ -441,5 +441,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `EXPLAIN ANALYZE` em 6 queries representativas via `docker exec caloria_postgres psql` (Q1 daily summary, Q2 dashboard semanal, Q3 unread count, Q4 reminders ativos, Q5 food lookup, Q6 weight history); duas tentativas porque `meal_items.protein_g` não existe (coluna real é `protein`), e `foods.calories_kcal` virou `calories_100g`.
 - **Artefato(s):** `docs/auditoria/artefatos/F2-explain.txt`
 - **Achados gerados:** nenhum novo (as 6 queries validam AUD-016, AUD-030, AUD-031 e o latente de § F.1 sobre `reminders`)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** 4e098d1
 - **Notas:** **Caveat:** apenas `foods` (42.103 rows) tem dados; outras tabelas vazias. `actual time` é trivial mas o **plano** é representativo (planner usa estatísticas, não volume real). **Insights**: (1) Q2 — planner escolheu `ix_meals_date` em vez de `ix_meals_user_id` para `BETWEEN 7 days` — composto `(user_id, date)` resolve ambos caminhos; (2) Q5 confirma AUD-016 — sem o OR `similarity() >= 0.18`, query leva **19ms** (Bitmap Index Scan + 1166 candidatos + sort top-5); com o OR, vai para 585ms; (3) Q4 — Seq Scan está correto para tabela vazia mas planner estima 335 rows pela selectivity default; risco latente = quando reminders crescer, query continuará puxando todos os ativos para filtrar `time` em Python. Anotado: otimização Q5 adicional possível com KNN `<->` operator (~5ms), fora de escopo. **Sem achados novos** porque os 6 planos já estão cobertos por AUD-016/030/031 e § F.1 latente de `reminders`.
+
+## PASSO 7.3 — Migrações Alembic: reversibilidade
+
+- **Início:** 2026-05-10 21:05
+- **Fim:** 2026-05-10 21:14
+- **Comando(s) executado(s):** loop em `backend/alembic/versions/*.py` com Python regex extraindo corpo de `def downgrade()`; `grep -rn "pg_trgm\|CREATE EXTENSION" backend/alembic/versions/`; `grep -n "MealSource\|TELEGRAM" backend/app/models/meal.py`; `psql -c "SELECT enumlabel FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='mealsource')"`; `SELECT source, COUNT(*) FROM meals GROUP BY source`
+- **Artefato(s):** `docs/auditoria/artefatos/F3-downgrade.txt`
+- **Achados gerados:** AUD-033, AUD-034
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **10 migrações totais**, todas com `def downgrade()` declarado. **9 reversíveis** (3-25 LOC efetivas), **1 com apenas `pass`**: `20260306_adiciona_dessert_mealtype.py` (AUD-033). Comentário no arquivo justifica como limitação do Postgres, mas recriar o tipo é viável e padrão; `pass` é escolha consciente, não impossibilidade. `pg_trgm` extension confirmada em `20260309_taco_pgtrgm_source.py:20`. **Surpresa do plano § F.2**: `MealSource` enum (`MANUAL/TELEGRAM/WHATSAPP`) ainda tem `TELEGRAM` e `WHATSAPP` no model **E** no DB (verificado via `pg_enum`); 0 hits em `grep -rn "MealSource\.TELEGRAM\|MealSource\.WHATSAPP"` no backend; tabela `meals` vazia (não há dados legados). Dead schema da era de integrações Telegram/WhatsApp — AUD-034 (🟢 baixa). Bônus: `20260320_fix_search_text_taco.py` é migração de dados com partial revert documentado ("não reintroduzimos linhas Open Food Facts removidas") — defensável, sem achado.
