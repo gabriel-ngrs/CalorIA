@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 16 · baixos: 15 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 17 · baixos: 15 (atualizar a cada novo achado)
 
 ---
 
@@ -728,3 +728,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Adicionar 3 hooks (snippet completo em § I.4): mypy via `mirrors-mypy` rodando `--strict` em `^backend/app/`; `gitleaks/gitleaks` para secret scan em todo commit; ESLint frontend via `repo: local` chamando `npx next lint --max-warnings=0` (mais confiável que repo empacotado, que tem problemas com Next 14). Combinar fix com AUD-038 (mesmo PR que move credenciais para env + força secret scan no histórico via `gitleaks-action` em CI).
 - **Esforço:** S (< 1h — adicionar YAML, rodar `pre-commit run --all-files` e tratar achados imediatos)
 - **Origem:** PASSO 10.4
+
+### AUD-048 — `.dockerignore` ausente em `backend/` e `frontend/`
+
+- **Severidade:** 🟡 média
+- **Frente:** I
+- **Arquivo:linha:** `backend/Dockerfile:46` (`COPY . .` sem `.dockerignore`); `frontend/Dockerfile:22` (idem); raízes `backend/` e `frontend/` sem `.dockerignore`
+- **Descrição:** Ambos os Dockerfiles de produção fazem `COPY . .` sem `.dockerignore` correspondente — o build context arrasta para a imagem todo conteúdo das pastas, incluindo: backend (`.venv/`, `__pycache__/`, `.git/`, `tests/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `coverage.xml`, e potencialmente `.env` se acidentalmente commitado); frontend (`node_modules/` antes de ser sobrescrito pelo `--from=deps`, `.next/`, `.git/`, `e2e/test-results/`, `coverage/`, `*.log`). Consequências: (1) **inflação do build context** — `node_modules` de Next 14 + shadcn costuma ser 200-400 MB, enviado ao daemon Docker antes de ser descartado; (2) **cache invalidation** prematuro — qualquer mudança em `.pyc`/`.log`/`coverage.xml` invalida o `COPY . .` e força rebuild das camadas seguintes; (3) **risco de leak** — se `.env` for commitado por engano (não há pre-commit hook bloqueando, vide AUD-047), a próxima build embute as credenciais na imagem. AUD-038 já demonstra que commit de credenciais é possível no projeto.
+- **Evidência:** `ls backend/.dockerignore frontend/.dockerignore` → ambos "No such file or directory"; leitura completa dos 4 Dockerfiles em `09-qualidade.md § I.7`.
+- **Recomendação:** Criar `backend/.dockerignore` (`.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`, `coverage.xml`, `htmlcov/`, `.git/`, `.gitignore`, `.env`, `.env.*`, `tests/`, `README.md`) e `frontend/.dockerignore` (`node_modules/`, `.next/`, `.git/`, `.env`, `.env.*`, `e2e/test-results/`, `playwright-report/`, `coverage/`, `*.log`, `README.md`, `.eslintcache`). Reduz build context para < 5 MB em ambos casos. Snippet completo em `09-qualidade.md § I.7`.
+- **Esforço:** S (< 30 min — criar 2 arquivos, rodar build local para confirmar redução do context)
+- **Origem:** PASSO 10.6

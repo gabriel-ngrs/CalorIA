@@ -7,6 +7,7 @@
 - AUD-045 — 14 erros ruff pré-existentes (1 em `app/`, 13 em `scripts/`); um deles (F821 em `scripts/import_off_local.py:440`) é bug funcional latente (🟢 baixa, mas com gotcha no `--fix`).
 - AUD-046 — 6 erros mypy strict concentrados em `app/services/ai/ai_client.py` — duas classes: tipos do `messages` da Groq SDK e `aioredis.from_url` não-tipada (🟢 baixa).
 - AUD-047 — Pre-commit hooks cobrem ruff + utilitários mas faltam mypy, ESLint, tsc, secret scanner (gitleaks) — gaps de defesa em camadas (🟡 média; sobe para 🟠 com AUD-038 no histórico).
+- AUD-048 — `.dockerignore` ausente em `backend/` e `frontend/` — `COPY . .` arrasta `.venv`, `node_modules`, `.next`, `.git`, `.env`, tests e `docs/` para a imagem (🟡 média; bloat + risco de leak via `.env` se commitado por engano).
 
 ## Notas e contexto
 
@@ -200,3 +201,83 @@ SQLAlchemy chama esses listeners com **todos** os argumentos posicionais; o hand
 **Recomendação opcional** (sem PR dedicado):
 - Prefixar com `_` os 6 parâmetros não-usados dos listeners em `database.py` — silencia vulture com confiança 100% e libera baseline limpa para inclusão eventual no CI (`vulture --min-confidence 80` rodando como check informativo).
 - Remover `app/services/reminders/` se confirmar que não vai materializar como módulo separado.
+
+### § I.7 Dockerfiles (4 arquivos analisados)
+
+**Checklist consolidado:**
+
+| Item | `backend/Dockerfile` | `backend/Dockerfile.dev` | `frontend/Dockerfile` | `frontend/Dockerfile.dev` |
+|---|---|---|---|---|
+| Multi-stage build | ✅ builder → runtime | ❌ single-stage (esperado em dev) | ✅ deps → builder → runner | ❌ single-stage (esperado em dev) |
+| Usuário não-root no final stage | ✅ `appuser` (sem UID fixo) | ⚠️ roda como root (aceitável em dev) | ✅ `nextjs:nodejs` UID 1001 | ⚠️ roda como root |
+| HEALTHCHECK no Dockerfile | ❌ ausente | ❌ ausente | ❌ ausente | ❌ ausente |
+| HEALTHCHECK no compose | ✅ presente (compose:43) | ✅ (compose.dev:43) | — | — |
+| Base image atualizada | ✅ `python:3.12-slim` | ✅ | ✅ `node:20-alpine` | ✅ |
+| Cache de deps separado do código | ✅ `COPY pyproject.toml` antes de `COPY . .` | ✅ | ✅ `COPY package*.json` antes | ✅ |
+| Sem secrets no ENV/ARG | ⚠️ ok no backend | ✅ | ❌ ver AUD-039 abaixo | ✅ |
+| `.dockerignore` presente | ❌ **AUSENTE** | — | ❌ **AUSENTE** | — |
+
+**Detalhes por arquivo:**
+
+**`backend/Dockerfile`** (55 LOC, multi-stage builder + runtime, ✅ bem estruturado):
+- Build deps (`gcc`, `libpq-dev`) só no builder; runtime fica com `libpq5` apenas — boa enxugada.
+- `--workers 2` no `uvicorn` (linha 55) — pontua o cálculo de AUD-035 (pool sizing): 2 workers × pool 30 = até 60 conexões só do backend, vs `max_connections=100` do Postgres.
+- Falta `ENV PYTHONUNBUFFERED=1` e `ENV PYTHONDONTWRITEBYTECODE=1` — convenções de Docker Python que evitam bufferização de logs em stdout.
+
+**`backend/Dockerfile.dev`** (22 LOC, single-stage):
+- Roda como root — aceitável em dev mas vale anotar.
+- Não copia código (volume mount no compose).
+
+**`frontend/Dockerfile`** (60 LOC, 3-stage deps + builder + runner, ✅ bem estruturado, Next.js standalone):
+- **`ARG NEXTAUTH_SECRET=insecure-secret-change-in-production`** (linha 30) + `ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET` (linha 33) — default inseguro sem fail-fast. Cross-ref: **mesmo padrão de AUD-039**; `docker-compose.yml:89` propaga `${NEXTAUTH_SECRET:-insecure-secret-change-in-production}` para o build arg, então se a env de prod não tiver `NEXTAUTH_SECRET`, a imagem é construída com o default. Esse default é **embedded** na imagem porque `NEXTAUTH_SECRET` precisa estar disponível em build time (Next.js inline em alguns paths). Recomendação combinada com AUD-039: o mesmo validator fail-fast no backend deve ter contraparte no frontend — `next.config.mjs` pode falhar build em produção se `NEXTAUTH_SECRET` for o default ou string vazia.
+- `NEXT_TELEMETRY_DISABLED=1` ✅ (boa prática).
+
+**`frontend/Dockerfile.dev`** (20 LOC, single-stage): roda como root, sem `COPY . .` (volume mount), OK para dev.
+
+**`.dockerignore` AUSENTE em backend/ e frontend/** — `COPY . .` (backend:46 e frontend:22) arrasta para a imagem:
+
+- **Backend**: `.venv/`, `__pycache__/`, `.git/`, `tests/`, `alembic/versions/` (todas as migrações, ok), `*.pyc`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `coverage.xml`, `docs/auditoria/` se estiver dentro do contexto (não está, mas o build context é `backend/`, então não arrasta `docs/`), e potencialmente `.env` se commitado por engano (hoje gitignored ✅).
+- **Frontend**: `node_modules/` (sobrescrito pelo `--from=deps`, mas inflado no build context upload), `.next/` (gerado), `.git/`, `coverage/`, `e2e/test-results/`.
+
+**Consequências mensuráveis**:
+- Build context upload: `node_modules/` típico no projeto Next 14 + shadcn é 200-400 MB. Cada `docker build` envia tudo isso para o daemon antes de descartar.
+- Cache invalidation: alterar qualquer arquivo no working tree (mesmo um `.pyc`) invalida o `COPY . .` e força rebuild das camadas posteriores.
+- **Risco de leak**: se alguém commit acidentalmente `.env` (não bloqueado por pre-commit), a próxima build embute o arquivo. AUD-038 mostra que commit de credenciais já aconteceu — `.dockerignore` é defesa em profundidade nesse vetor.
+
+**Recomendação (AUD-048)** — criar `backend/.dockerignore` e `frontend/.dockerignore`:
+
+```
+# backend/.dockerignore
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.git/
+.gitignore
+.env
+.env.*
+tests/
+README.md
+```
+
+```
+# frontend/.dockerignore
+node_modules/
+.next/
+.git/
+.env
+.env.*
+e2e/test-results/
+playwright-report/
+coverage/
+*.log
+README.md
+.eslintcache
+```
+
+Esforço S (< 30 min). Reduz build context para < 5 MB em ambos, melhora cache hit rate, blinda contra leak de `.env`.
