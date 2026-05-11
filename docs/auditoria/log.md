@@ -491,5 +491,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** leitura de `backend/app/api/v1/auth.py` (105 linhas) + `app/core/security.py` (41) + `app/core/deps.py` (40) + `app/services/auth_service.py` (40) + `app/core/config.py` (66)
 - **Artefato(s):** nenhum (matriz embutida em `07-seguranca.md § G.1`)
 - **Achados gerados:** AUD-039 (🟠 alta)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** 431aff2
 - **Notas:** **Auth bem desenhada** — checklist do runbook praticamente todo verde: HS256 (com `algorithms=[ALG]` lista evitando `alg=none`), access 30min/refresh 30d, refresh blacklisted após uso (Redis SETEX com TTL=remaining), token type validado nos 2 callers, `raise ... from None` nos 2 sites de credentials. **Único achado**: `SECRET_KEY` default = `"insecure-default-key-change-in-production"` sem validator de fail-fast (AUD-039). Se alguém esquecer a env em prod, JWTs ficam forjáveis com a string que está no próprio source. Fix simples: `model_validator(mode="after")` que falha se `APP_ENV != development AND SECRET_KEY == default OR len < 32`. Mesmo padrão de gap em `VAPID_*` (defaults vazios sem fail-fast — push falha silenciosamente). Anotações sem novo achado: (a) `_redis_client()` cria conexão por chamada (mesma issue do AUD-014); (b) `blacklist_token` engole exceções com warning — degradação silenciosa se Redis cai; (c) `decode_token` sem `leeway` para clock skew (irrelevante em 1 host). Status totais: altos sobe para **10** (era 9).
+
+## PASSO 8.3 — Validação de inputs (DoS / overflow)
+
+- **Início:** 2026-05-10 22:03
+- **Fim:** 2026-05-10 22:08
+- **Comando(s) executado(s):** `grep -rn "max_length\|StringConstraints" backend/app/schemas/`; `grep -rn ": str\b\|: str | None" backend/app/schemas/*.py | grep -v max_length`; leitura de `schemas/ai.py` (133 linhas) + `api/v1/ai.py:40-75` para confirmar uso (ou não-uso) de `meal_type`/`mime_type`
+- **Artefato(s):** nenhum dedicado (cross-ref embutida em `07-seguranca.md § G.3`)
+- **Achados gerados:** nenhum novo (AUD-009 e AUD-010 do PASSO 3.6 já cobrem)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Cross-validação confirma AUD-009/010 ainda válidos**. `description` em `MealAnalysisRequest` (ai.py:28) **já tem** `Field(min_length=3, max_length=2000)` — runbook listava como gap, mas é falso positivo (provavelmente fixado entre escrita do plano e execução). **Observações sem novo achado**: (1) `mime_type: str` em `PhotoAnalysisRequest` deveria ser `Literal["image/jpeg",...]` — combinar no fix do AUD-009; (2) `meal_type` nas duas requests AI é **dead field** (analyze_meal/analyze_photo não passam para o parser; `_infer_meal_type` em context_builder deriva do texto). Smell de contrato, sem bug funcional. Fica registrado para limpeza no PR de AUD-009/010.
