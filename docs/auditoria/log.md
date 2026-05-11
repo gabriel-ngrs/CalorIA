@@ -381,5 +381,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `rg -n "asyncio\.get_event_loop\(\)" backend/app/` + leitura dos 3 módulos para confirmar que a helper é idêntica em assinatura/docstring/corpo
 - **Artefato(s):** `docs/auditoria/artefatos/E1-get-event-loop.txt`
 - **Achados gerados:** AUD-025
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** 38dc89f
 - **Notas:** **3 ocorrências confirmadas**, exatamente nos arquivos esperados pelo runbook (`reminders.py:21`, `reports.py:19`, `maintenance.py:21`). Cópias **textualmente idênticas** (mesma assinatura `def _run(coro: Any) -> Any`, mesma docstring, mesma implementação) — pede extração para `app/workers/_utils.py`. Severidade 🟠 alta porque, além do `DeprecationWarning` (Python 3.10+ → erro em 3.14), há risco real de `RuntimeError: Event loop is closed` se o pool migrar de prefork para gevent/eventlet ou se alguma task fechar o loop por bug. Fix imediato: trocar por `asyncio.run(coro)`. Também sugerido `PYTHONWARNINGS=error::DeprecationWarning` em CI para pegar regressões.
+
+## PASSO 6.2 — dispatch_due_reminders: timezone
+
+- **Início:** 2026-05-10 19:55
+- **Fim:** 2026-05-10 20:02
+- **Comando(s) executado(s):** leitura de `reminders.py:36-71` + `models/reminder.py` + `docker exec caloria_postgres psql -c "SHOW timezone"` + `docker inspect caloria_postgres` + `grep -nB 1 -A 1 "TZ\|timezone" docker-compose*.yml backend/app/workers/celery_app.py`
+- **Artefato(s):** `docs/auditoria/artefatos/E2-tz.txt`
+- **Achados gerados:** AUD-026
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Bug **latente, não ativo**. `datetime.now()` é naive (linha 37); `Reminder.time` é `Time` sem TZ; comparação direta `hour/minute`. **Hoje funciona por acidente** porque todos os containers (postgres, backend, celery_worker, celery_beat) têm `TZ=America/Sao_Paulo` (verificado em ambos compose files) e `User` não tem campo de fuso — logo "agora naive" == "agora São Paulo" == "horário que o usuário digitou". Quebra silencioso em 3 cenários: (1) migração para UTC (default na maioria dos PaaS) → offset de 3h; (2) usuário fora de São Paulo → lembrete dispara em hora errada para ele; (3) DST em outros países → duplicação ou pulo. Celery `timezone="America/Sao_Paulo"`+`enable_utc=True` cobre só o disparo do beat (cron interpretado em SP), não o conteúdo da task. Recomendação curta: trocar por `datetime.now(ZoneInfo("America/Sao_Paulo"))`. Médio: adicionar `User.timezone`. Longo: pré-calcular `Reminder.next_fire_at`.

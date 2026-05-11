@@ -1,0 +1,29 @@
+     TimeZone      
+-------------------
+ America/Sao_Paulo
+(1 row)
+
+---
+PGTZ=America/Sao_Paulo
+TZ=America/Sao_Paulo
+
+---
+celery_app.py:
+  timezone="America/Sao_Paulo"
+  enable_utc=True
+
+docker-compose.dev.yml:
+  postgres   TZ=America/Sao_Paulo  PGTZ=America/Sao_Paulo
+  backend    TZ=America/Sao_Paulo
+  celery_worker TZ=America/Sao_Paulo
+  celery_beat   TZ=America/Sao_Paulo
+
+docker-compose.yml (produção):
+  postgres   TZ=America/Sao_Paulo
+  backend    TZ=America/Sao_Paulo
+  celery_worker TZ=America/Sao_Paulo
+  celery_beat   TZ=America/Sao_Paulo
+
+User model: SEM campo timezone/tz (apenas DateTime(timezone=True) em created_at/updated_at)
+Reminder.time: Time (naive)
+dispatch_due_reminders linha 37: datetime.now() (naive — usa TZ do processo)

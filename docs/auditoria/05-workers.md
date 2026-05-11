@@ -5,6 +5,7 @@
 ## Achados desta frente
 
 - AUD-025 (🟠 alta) — `_run` em `reminders.py`, `reports.py`, `maintenance.py` chama `asyncio.get_event_loop()` deprecated desde Python 3.10; risco de `RuntimeError: Event loop is closed` em workers Celery
+- AUD-026 (🟠 alta) — `dispatch_due_reminders` usa `datetime.now()` naive: hoje funciona porque todos os containers são `TZ=America/Sao_Paulo`, mas qualquer migração para UTC ou usuário fora de São Paulo quebra silenciosamente
 
 ## E.2 Padrão `_run` em tasks
 
@@ -62,6 +63,76 @@ Cada task module: `from app.workers._utils import run_coro as _run`. Reduz dupli
 
 Para pegar regressões análogas no futuro, adicionar `PYTHONWARNINGS=error::DeprecationWarning` no ambiente de testes (ou pelo menos `default::DeprecationWarning`) faria com que `asyncio.get_event_loop()` (e similares) falhassem o teste em vez de passar silenciosamente.
 
+## E.3 `dispatch_due_reminders`: timezone
+
+Comando de apoio: `docker exec caloria_postgres psql -U caloria -d caloria_db -c "SHOW timezone"` + `docker inspect caloria_postgres ...`. Artefato: `artefatos/E2-tz.txt`.
+
+### Estado atual
+
+| Item | Valor |
+|---|---|
+| `Reminder.time` (modelo) | `Time` (naive — sem `timezone=True`) |
+| `dispatch_due_reminders` linha 37 | `now = datetime.now()` (naive) |
+| Comparação | `reminder.time.hour != current_hour` AND `reminder.time.minute != current_minute` |
+| Celery config | `timezone="America/Sao_Paulo"`, `enable_utc=True` |
+| Postgres `SHOW timezone` | `America/Sao_Paulo` |
+| Container envs (dev e prod) | `TZ=America/Sao_Paulo` em postgres, backend, celery_worker, celery_beat |
+| `User.timezone` | **não existe** (apenas `created_at/updated_at` com `DateTime(timezone=True)`) |
+
+### Por que funciona hoje
+
+`datetime.now()` retorna o relógio local do processo. Como o container do worker tem `TZ=America/Sao_Paulo`, "agora naive" == "agora São Paulo". O usuário típico digita "08:00" pensando em hora de São Paulo, e a comparação coincide. **Coincidência de configuração**, não acerto de design.
+
+### Cenários de quebra
+
+1. **Migração para UTC** — default em Heroku/Railway/Render/Fly.io e em quase todos os clusters Kubernetes (`/etc/localtime` é UTC). Lembrete das 08:00 vira disparo às 05:00 (BRT) ou 11:00 (BRT). Não há nada no código que detecte essa migração.
+2. **Usuário em outro fuso** — sem campo `User.timezone`, o front salva o `Time` como string. Worker compara contra `datetime.now()` em São Paulo. Para alguém em Lisboa, o lembrete das 08:00 dispara ao 12:00 deles.
+3. **DST** — Brasil aboliu em 2019, mas outros países mantém. No "fall back" duas execuções caem na mesma hora local (lembrete dispara duas vezes); no "spring forward" pula uma hora (não dispara). `datetime.now()` naive não tem como diferenciar.
+
+### Acoplamento invisível com Celery
+
+A configuração do Celery (`timezone="America/Sao_Paulo"`+`enable_utc=True`, `celery_app.py:18-24`) cobre apenas a interpretação de crontabs do beat — a hora do **disparo** da task é correta. O **conteúdo** da task (`datetime.now()`) depende da TZ do processo Python e ignora `enable_utc`. Mudar `enable_utc=False` ou trocar a `timezone` no Celery não muda o problema; a única coisa que sustenta o comportamento atual é a env `TZ` do container.
+
+### Correções
+
+**Curto prazo (S)** — fixar TZ canônica no código, parar de depender da TZ do processo:
+
+```python
+from zoneinfo import ZoneInfo
+
+APP_TZ = ZoneInfo("America/Sao_Paulo")  # ou settings.timezone
+
+async def _dispatch_due_reminders_async() -> None:
+    now = datetime.now(APP_TZ)
+    ...
+```
+
+Isso resolve o cenário 1 (migração para UTC) sem mudar schema nem dados.
+
+**Médio prazo (M)** — suportar usuários em outros fusos:
+
+```python
+# models/user.py
+timezone: Mapped[str] = mapped_column(String(64), default="America/Sao_Paulo", server_default="America/Sao_Paulo")
+```
+
+Alembic migration adiciona com `server_default`; backfill desnecessário.
+
+```python
+for reminder in reminders:
+    user_tz = ZoneInfo(reminder.user.timezone)
+    now_local = datetime.now(user_tz)
+    if reminder.time.hour != now_local.hour or reminder.time.minute != now_local.minute:
+        continue
+    ...
+```
+
+Cobertura de teste com `freezegun`/`time-machine` em ≥ 3 fusos (`America/Sao_Paulo`, `UTC`, `Asia/Tokyo`).
+
+**Longo prazo (L)** — pré-calcular próximo disparo:
+
+Adicionar `Reminder.next_fire_at: DateTime(timezone=True)`. A query da task vira `WHERE active AND next_fire_at <= now()`. Após disparar, recalcula `next_fire_at` baseado em `time` + `days_of_week` + `user.timezone`. Escala melhor (índice em `next_fire_at` substitui o full scan minuto-a-minuto) e elimina ambiguidade de DST porque o cálculo do próximo disparo é feito uma vez.
+
 ## Notas e contexto
 
-(seções E.1, E.3-E.7 serão preenchidas nos PASSOS 6.2-6.5)
+(seções E.1, E.4-E.7 serão preenchidas nos PASSOS 6.3-6.5)
