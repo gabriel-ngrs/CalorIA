@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 11 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 11 · médios: 15 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -608,3 +608,41 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     **Defesa em profundidade**: Caddy também aceita rate limit como módulo (`caddy-ratelimit`) — adicionar burst protection no edge para endpoints de auth (5 req/s/IP), redundância contra bypass do middleware FastAPI. **Captcha** (`hCaptcha` / `Cloudflare Turnstile`) em `/register` se a app virar pública.
 - **Esforço:** M (1–4h para `slowapi` + limites por endpoint + testes)
 - **Origem:** PASSO 8.4
+
+### AUD-041 — Headers de segurança HTTP ausentes (X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy)
+
+- **Severidade:** 🟡 média
+- **Frente:** G
+- **Arquivo:linha:** `Caddyfile` (sem bloco `header { }`); `frontend/next.config.mjs` (sem `headers()`); `backend/app/main.py` (sem middleware de headers)
+- **Descrição:** Nenhuma das 3 camadas (Caddy, Next.js, FastAPI) configura headers de segurança HTTP além do `Strict-Transport-Security` que o Caddy injeta automaticamente quando o site usa HTTPS via Let's Encrypt (✅ — confirmado via `{$APP_DOMAIN}` no Caddyfile). Headers ausentes:
+
+    | Header | Risco mitigado | Estado |
+    |---|---|---|
+    | `X-Frame-Options: DENY` | Clickjacking (iframe malicioso embutindo o app) | ❌ ausente |
+    | `X-Content-Type-Options: nosniff` | MIME sniffing — browsers chutam tipo do response e podem executar conteúdo errado | ❌ ausente |
+    | `Strict-Transport-Security` | HTTPS forçado, evita SSL stripping | ✅ Caddy auto |
+    | `Content-Security-Policy` | XSS — restringe origens de script/style/img/connect | ❌ ausente |
+    | `Referrer-Policy: strict-origin-when-cross-origin` | Privacidade — limita info de referer enviada | ❌ ausente |
+    | `Permissions-Policy` | Restringe APIs do browser (camera, mic, geolocation) | ❌ ausente |
+
+  Sem CSP especialmente, qualquer XSS refletido (input do user → DOM sem sanitize) tem free pass. Hoje o frontend é Next.js + React (autoescape), risco baixo, mas defesa em profundidade.
+- **Evidência:** leitura completa de `Caddyfile` (57 linhas), `frontend/next.config.mjs` (19), `backend/app/main.py` (75). 0 menções a `Frame-Options`/`CSP`/`Referrer-Policy` em nenhum.
+- **Recomendação:** Adicionar bloco `header` no Caddyfile (escolha estrutural — Caddy é o entry point único e cobre frontend + API):
+    ```caddy
+    {$APP_DOMAIN} {
+        header {
+            X-Frame-Options "DENY"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "strict-origin-when-cross-origin"
+            Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+            # CSP — começar permissivo e apertar
+            Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'"
+            # Esconde Caddy/Server header
+            -Server
+        }
+        # ... resto da config
+    }
+    ```
+    `unsafe-inline`/`unsafe-eval` em scripts são compromissos para Next.js dev mode + alguns componentes; testar e endurecer com nonces se possível. `microphone=(self)` permitido por causa do recurso de voice capture (refeições por voz).
+- **Esforço:** S (< 1h Caddyfile + smoke test)
+- **Origem:** PASSO 8.5

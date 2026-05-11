@@ -511,5 +511,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `rg -n "rate_limit|slowapi|RateLimit|Limiter" backend/`; `grep -n "rate" Caddyfile`; `grep -n "middleware\|add_middleware" backend/app/main.py`
 - **Artefato(s):** `docs/auditoria/artefatos/G4-rate-limit.txt`
 - **Achados gerados:** AUD-040 (🟠 alta)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** ac6078f
 - **Notas:** **Zero rate limit em qualquer camada**. Backend não tem `slowapi`/equivalente; Caddyfile sem diretiva. `main.py` registra só `CORSMiddleware` (linha 42) + `timing_middleware` (linha 52). Vetores concretos: `/auth/login` exposto a credential stuffing (combina com AUD-038), `/auth/register` a bot signup, `/ai/analyze-*` a abuso de tokens Groq (combina com AUD-013 — sem visibilidade de quem consome), `/notifications/unread-count` a polling abusivo (combina com AUD-031). Severidade 🟠 contextual: hoje 1 usuário, mas sistema é deployable e CLAUDE.md confirma intenção multi-user. Recomendação: `slowapi` Redis-backed com limites por categoria (5/min para login, 3/hora para register, 30/min/user para AI). Defesa em profundidade: `caddy-ratelimit` no edge + captcha em `/register` se virar público.
+
+## PASSO 8.5 — Headers de segurança e CORS
+
+- **Início:** 2026-05-10 22:20
+- **Fim:** 2026-05-10 22:26
+- **Comando(s) executado(s):** leitura completa de `Caddyfile` (57 linhas), `frontend/next.config.mjs` (19), `backend/app/main.py` (75)
+- **Artefato(s):** nenhum (matriz embutida em `07-seguranca.md § G.8`)
+- **Achados gerados:** AUD-041 (🟡 média)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Caddy injeta HSTS automaticamente** quando HTTPS ativo via Let's Encrypt (`{$APP_DOMAIN}`) ✅. Demais headers de segurança ausentes em todas as 3 camadas (Caddy, Next, FastAPI): X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy, Permissions-Policy. **CORS é defensivo por default**: `allow_origins` lê de `BACKEND_CORS_ORIGINS` (CSV); vazio = bloqueia tudo. Risco residual: se alguém setar `*` em prod com `allow_credentials=True`, ainda há especificação browser que rejeita, mas vale validator. Recomendação para AUD-041: bloco `header { }` no Caddyfile (entry único, cobre frontend+API simultaneamente). CSP inicial permissivo (`'unsafe-inline' 'unsafe-eval'` para Next dev) com aperto via nonces depois. `microphone=(self)` permitido pelo recurso de voice capture de refeições.
