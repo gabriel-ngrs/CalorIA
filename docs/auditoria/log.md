@@ -753,3 +753,57 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (passo de consolidação)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **CHANGELOG**: adicionada seção `### Documentação` sob `## [Não lançado]` com sumário da auditoria (57 achados, distribuição por severidade, links para relatório e achados). Texto curto, conforme convenção do Keep a Changelog. **README**: dois pequenos retoques — (a) `docs/auditoria/` adicionado à árvore do "Estrutura do Projeto" (linha 130-ish); (b) seção nova "Documentação adicional" antes de "Licença" com 4 bullets cobrindo architecture.md, setup.md, deploy.md e o relatório de auditoria. Mantém o README enxuto (linha-base 202 LOC, ficou 213). Caveat: README cita `Caddyfile` (full-stack) na árvore mas AUD-053 documentou que o ativo é `Caddyfile.backend` — não corrigido neste passo porque é decisão arquitetural pendente (ADR-009 proposto em AUD-055); fix será no PR que implementar AUD-053.
+
+## PASSO 13.4 — Encerramento e handoff
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** `git log --oneline | grep "docs(auditoria)" | wc -l` (= 63); `ls docs/auditoria/artefatos/ | wc -l` (= 49 — inclui 9 baselines + 36 artefatos por passo + 4 sub-arquivos); compilação dos contadores finais.
+- **Artefato(s):** nenhum novo — seção `§ Encerramento` adicionada ao fim deste arquivo.
+- **Achados gerados:** nenhum (passo final)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Encerra FASE 13 e a auditoria como um todo. Próximo passo operacional: abrir PRs seguindo as **4 ondas de fix** descritas em `relatorio-preliminar.md § Priorização recomendada`. Onda 1 (segurança + bug latente) é bloqueante para o primeiro deploy com tráfego real.
+
+## § Encerramento
+
+- **Início da auditoria:** 2026-05-10 16:50 (PASSO 0.1)
+- **Fim da auditoria:** 2026-05-11 (sessão atual)
+- **Total de passos executados:** 47 (FASE 0 → FASE 13)
+- **Total de commits:** 63 commits `docs(auditoria)` (do plano inicial à consolidação)
+- **Total de achados registrados:** **57** (🔴 2 · 🟠 14 · 🟡 21 · 🟢 20)
+- **Total de artefatos brutos:** 49 arquivos em `docs/auditoria/artefatos/` (baselines + saídas de ferramentas + EXPLAIN ANALYZE + diffs)
+- **Próximos passos:** ver [`relatorio-preliminar.md § Priorização recomendada`](relatorio-preliminar.md) — 4 ondas de fix priorizadas, ~150-200h de esforço estimado para um desenvolvedor solo.
+
+### Frentes em destaque
+
+- **Mais afetadas (alta severidade):** G (segurança — 1 crítico + 2 altos), B (backend — 4 altos), E (workers — 3 altos), H (testes — 3 altos).
+- **Em bom estado:** A (arquitetura — só refatorações), H (testes — gaps tratáveis), workers do compose dev healthchecks (✅), Caddy HTTPS automático (✅), CONTRIBUTING + templates (✅ com 1 desalinhamento documentado).
+
+### Idempotência confirmada
+
+Todos os passos foram desenhados como idempotentes (re-executar não corrompe estado). Se a auditoria precisar ser parcialmente re-rodada, basta:
+
+1. `git log --oneline -10` para ver o último passo commitado.
+2. Abrir este `log.md` e localizar a última entrada `## PASSO X.Y`.
+3. Identificar o próximo PASSO no `runbook.md`.
+4. Continuar a partir dele.
+
+### Handoff
+
+A auditoria está pronta para handoff:
+
+- ✅ Todos os 47 passos do runbook executados.
+- ✅ Cada passo tem entrada cronológica em `log.md`.
+- ✅ Cada passo tem ao menos 1 commit semântico em PT-BR (sem mencionar IA, sem Co-Authored-By).
+- ✅ `achados.md` consolidado e reordenado por severidade.
+- ✅ `relatorio-preliminar.md` preenchido com Top 10, ondas de fix e estimativa de esforço.
+- ✅ CHANGELOG e README citam a auditoria com links.
+- ✅ `git status` limpo (apenas `backend/uv.lock` pré-existente e não-relacionado ao trabalho).
+- ✅ Branch `dev` pronta para `git push origin dev` (58+ commits ahead da origin no início da auditoria; ~120 commits após).
+
+**Próxima ação recomendada do mantenedor:**
+
+1. Revisar `relatorio-preliminar.md § Top 10`.
+2. Iniciar **Onda 1** com **AUD-038 (rotação de senha + remoção do código)** — não pode esperar PR review.
+3. Em paralelo, abrir PR de **AUD-016** (fix S, ganho 70× em food_lookup) para mostrar valor imediato da auditoria.
+4. Daí seguir o restante da Onda 1 como PRs separados.
