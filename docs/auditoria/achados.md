@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 8 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 9 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -479,3 +479,21 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     - **Estrutural**: integrar com observabilidade real (OTEL/Sentry traces) e remover o listener custom.
 - **Esforço:** S (< 1h) para o quick fix
 - **Origem:** PASSO 7.4
+
+### AUD-037 — Sem backup automatizado do Postgres (escalará para 🔴 quando o deploy acontecer)
+
+- **Severidade:** 🟠 alta
+- **Frente:** F
+- **Arquivo:linha:** `scripts/setup-server.sh` (sem backup), `scripts/deploy.sh` (sem backup), `docs/deploy.md:306-321` (apenas instrução manual + dica de cron em blockquote), `Roadmap.md:413` (`[ ] Backups automáticos do PostgreSQL (cron diário)` — pendente)
+- **Descrição:** A política de backup hoje é **inteiramente manual**. `docs/deploy.md` documenta o comando `pg_dump` para uso ad-hoc e oferece uma "dica" de `crontab` numa blockquote, mas: (a) `setup-server.sh` não automatiza nada — quem provisiona o servidor sai sem backup; (b) não há armazenamento offsite (instrução manda escrever em `/opt/caloria/backup_*.sql` no próprio servidor — perda do servidor = perda dos backups); (c) não há política de retenção (vai acumular indefinidamente até encher o disco); (d) não há procedimento documentado de **restore** (apenas implícito).
+
+  Status atual: **não está em produção** (Roadmap § 9.2 com todos os itens em `[ ]`), mas o sistema é deployable a qualquer momento (CI/CD verde, deploy.md detalhado). O risco real materializa no instante do primeiro deploy: dados de usuário (refeições, peso, hidratação, mood, lembretes, conversas IA) sem backup e sem rota de recuperação. Severidade 🟠 enquanto em prep, **escala para 🔴 crítico no minuto pós-deploy**.
+- **Evidência:** `grep -in "backup\|pg_dump\|cron" scripts/*.sh` → 0 hits; `docs/deploy.md:15` ("backups manuais"); `Roadmap.md:413` em aberto.
+- **Recomendação:** Antes do primeiro deploy, executar como condição de release:
+    1. **Automatizar** — adicionar em `scripts/setup-server.sh` um bloco que cria `/etc/cron.d/caloria-backup` com `0 3 * * * root docker exec caloria_postgres pg_dump -U caloria caloria_db | gzip > /opt/caloria/backup/$(date +\%Y\%m\%d_\%H\%M).sql.gz`. Diário às 3h.
+    2. **Offsite** — sincronizar `/opt/caloria/backup/` para Hetzner Storage Box, S3, ou rclone para Dropbox/Drive. Sem offsite, falha de disco = perda total. Adicionar a linha de `rclone copy` (ou similar) no mesmo cron, após o dump.
+    3. **Retenção** — adicionar `find /opt/caloria/backup -name '*.sql.gz' -mtime +30 -delete` no cron para manter 30 dias locais; offsite com versionamento (S3 lifecycle policy ou snapshot).
+    4. **Restore** — incluir em `docs/deploy.md` a seção `## Restore` com `gunzip < backup.sql.gz | docker exec -i caloria_postgres psql -U caloria caloria_db`. **Testar restaurando num staging** (mesma releitura que prod) — backup não-testado é Schrödinger.
+    5. Marcar Roadmap § 9.2 backup como `[x]` e `Roadmap.md:413` resolvido.
+- **Esforço:** M (1–4h para implementar 1+2+3+4)
+- **Origem:** PASSO 7.5

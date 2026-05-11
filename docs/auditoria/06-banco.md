@@ -11,6 +11,7 @@
 - AUD-034 (🟢 baixa) — enum `MealSource` mantém `TELEGRAM`/`WHATSAPP` mortos no schema (não usados em código nem dados)
 - AUD-035 (🟡 média) — pool sizing × processos × `max_connections=100` pode saturar em escala (estimativa 60-150 conn em pico vs 100 do Postgres); PgBouncer resolve estruturalmente
 - AUD-036 (🟢 baixa) — event listener loga TODA query como `INFO` (sem gate por env) — 5-10k linhas/min em escala
+- AUD-037 (🟠 alta) — sem backup automatizado do Postgres (apenas dica manual em `deploy.md`); escalará para 🔴 crítico no instante do primeiro deploy se nada mudar
 
 (referencia também AUD-029 que cobre `ai_conversations.updated_at` — gerado na FASE 6 PASSO 6.5)
 
@@ -153,6 +154,52 @@ Mitigação padrão da indústria: **PgBouncer** entre app e DB. Multiplexa N co
 - **`expire_on_commit=False`** — correto para `AsyncSession` (refresh explícito necessário, padrão FastAPI).
 - **Auditoria do plano § F.4 ("todos services seguem padrão `await db.refresh()`")** — não foi tema deste passo; ficaria como item separado se quiser cobertura completa (não criado como achado por ora — sem evidência de bug funcional).
 
+## F.5 Backup e disaster recovery
+
+Comando: `grep -in "backup\|pg_dump\|cron" scripts/*.sh docs/deploy.md docker-compose*.yml`. Sem artefato dedicado.
+
+### Estado atual
+
+| Item | Estado |
+|---|---|
+| Backup automatizado (cron) | ❌ ausente |
+| Backup manual documentado | ✅ `docs/deploy.md:306-321` (`pg_dump` + dica de cron em blockquote) |
+| Setup do servidor (`scripts/setup-server.sh`) configura backup | ❌ não — 0 menções a backup/pg_dump |
+| Offsite (S3, Storage Box, etc.) | ❌ ausente — instrução escreve em `/opt/caloria/backup_*.sql` no próprio host |
+| Política de retenção | ❌ ausente |
+| Procedimento de restore documentado | ❌ ausente (apenas implícito) |
+| Restore testado | ❌ não há registro |
+| Roadmap | `[ ]` § 9.2 — `Backups automáticos do PostgreSQL (cron diário)` aberto |
+
+### Severidade contextual
+
+Severidade **🟠 alta hoje** porque o sistema **ainda não está em produção** (Roadmap § 9.2 todo aberto, deploy.md descreve "deploy futuro"). **Escalonará para 🔴 crítico** no minuto após o primeiro deploy se a automação não estiver pronta — perdas de dados de saúde (refeições, peso, hidratação, mood) não têm como ser reconstruídas.
+
+### Plano mínimo (gates do PR de release)
+
+1. `scripts/setup-server.sh` cria `/etc/cron.d/caloria-backup` com `pg_dump | gzip > /opt/caloria/backup/$(date +\%Y\%m\%d_\%H\%M).sql.gz` diário às 3h.
+2. Sync para offsite (Hetzner Storage Box, S3, ou rclone).
+3. Retenção: 30 dias locais, ≥ 90 dias offsite com versionamento.
+4. Seção `## Restore` em `docs/deploy.md` + script de restore.
+5. **Teste de restore num staging** antes do go-live.
+6. Marcar Roadmap § 9.2 backup como `[x]`.
+
+Detalhes em **AUD-037**.
+
 ## Notas e contexto
 
-(seção F.5 será preenchida no PASSO 7.5)
+Frente F encerrada com 8 achados:
+
+| ID | Severidade | Origem |
+|---|---|---|
+| AUD-029 | 🟢 baixa | PASSO 6.5 (cleanup_old_conversations) |
+| AUD-030 | 🟡 média | PASSO 7.1 (composto user_id+date) |
+| AUD-031 | 🟡 média | PASSO 7.1 (notifications.read parcial) |
+| AUD-032 | 🟢 baixa | PASSO 7.1 (foods.name duplicado) |
+| AUD-033 | 🟡 média | PASSO 7.3 (downgrade vazio) |
+| AUD-034 | 🟢 baixa | PASSO 7.3 (MealSource enum morto) |
+| AUD-035 | 🟡 média | PASSO 7.4 (pool × max_connections) |
+| AUD-036 | 🟢 baixa | PASSO 7.4 (db_logger.info por query) |
+| AUD-037 | 🟠 alta | PASSO 7.5 (backup ausente) |
+
+Total: 1 alto, 4 médios, 4 baixos.
