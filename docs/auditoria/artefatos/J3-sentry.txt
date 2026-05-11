@@ -1,0 +1,2 @@
+/home/gabriel/projetos/CalorIA/docs/auditoria/runbook.md
+/home/gabriel/projetos/CalorIA/data/processed/alimentos_final.csv

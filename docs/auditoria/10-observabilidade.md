@@ -6,6 +6,7 @@
 
 - AUD-049 — Logging do backend é texto humano (não estruturado) e `logging.basicConfig` global em `main.py` ignora `LOG_LEVEL` — sem agregação possível por `user_id`/`request_id`/módulo (🟡 média).
 - AUD-050 — `/health` retorna `{"status":"ok","version":"0.1.0"}` hardcoded — sem readiness check de Postgres/Redis e versão dessincronizada do CHANGELOG (0.7.0) (🟡 média).
+- AUD-051 — Ausência total de Sentry/APM em backend e frontend — erros em produção são invisíveis até o usuário reportar (🟡 média; acknowledged como `[ ]` no Roadmap 9.3).
 
 ## Notas e contexto
 
@@ -125,3 +126,55 @@ Compose dev (`docker-compose.dev.yml:43`) faz `healthcheck` no serviço backend 
 4. **Apontar o healthcheck do compose** para `/health/ready` no serviço backend — load balancer só roteia para containers prontos.
 
 Combina com AUD-014 (pool Redis persistente facilita o ping); combina com AUD-039 (validator de SECRET_KEY pode usar o mesmo `lifespan` que já roda `SELECT 1`).
+
+### § J.4 Sentry / APM / Tracing (ausência confirmada)
+
+**Busca executada**: `rg -l "sentry" /home/gabriel/projetos/CalorIA/ | grep -v node_modules` (artefato `J3-sentry.txt`).
+
+**Resultado**: 2 matches, **ambos referenciais (não instrumentação)**:
+
+| Arquivo | Por que aparece |
+|---|---|
+| `docs/auditoria/runbook.md` | menção ao próprio PASSO 11.3 — este passo |
+| `data/processed/alimentos_final.csv` | string casual em algum nome de alimento (ex.: "pão sentry"? — irrelevante; CSV importado de Open Food Facts/TACO) |
+
+**Conclusão**: zero código de instrumentação Sentry/APM no projeto, em backend ou frontend.
+
+**Roadmap § 9.3 acknowledge** (`Roadmap.md:417`):
+
+```
+- [ ] Sentry para erros em produção (backend + frontend)
+- [ ] Health check endpoint monitorado (UptimeRobot ou similar)
+- [ ] Logs estruturados com nível configurável
+```
+
+Os 3 itens da seção "Observabilidade" estão abertos. **Logs estruturados** já é AUD-049; **health check monitorado** se relaciona com AUD-050 (precisa do `/health/ready` primeiro). **Sentry** é o item restante — é o que este passo registra.
+
+**Pontos onde a ausência dói mais hoje:**
+
+1. **Erros 500 não-tratados** no FastAPI viram apenas tracebacks no stdout (formato texto humano, AUD-049). Sem alerta, sem agregação por endpoint, sem volume histórico. O usuário fica vendo "Erro inesperado" no toast e a equipe só descobre quando ele reclama.
+2. **`groq.APIConnectionError` (visto no smoke test)** — erros transientes da Groq são logados como warning durante retry e re-elevados após 4 tentativas (`ai_client.py:122`). Em prod, isso quebra silenciosamente o pipeline de IA até alguém manualmente ver o log.
+3. **Frontend** — exceções JavaScript não capturadas (rejected promises, React errors) caem no `console.error` do browser. Zero telemetria do que está quebrando para usuários em campo.
+4. **Workers Celery** — `dispatch_due_reminders`, `cleanup_old_conversations`, `send_daily_summaries`. Falha de qualquer task hoje só aparece se alguém ler o log do `celery_worker`. Combina mal com AUD-026 (TZ latente) — se o bug ativar (mudança de TZ no container), todos os lembretes do dia ficam errados e ninguém percebe até usuário reclamar.
+
+**Plano de instrumentação proposto (AUD-051)** — Esforço M (1-4h):
+
+1. **Backend** — adicionar `sentry-sdk[fastapi,celery,sqlalchemy]` a `pyproject.toml`. No `app/main.py`:
+    ```python
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.APP_ENV,
+            release=APP_VERSION,  # mesma fonte do AUD-050
+            traces_sample_rate=0.1,
+            profiles_sample_rate=0.1,
+            integrations=[FastApiIntegration(), CeleryIntegration(), SqlalchemyIntegration()],
+        )
+    ```
+    `SENTRY_DSN` opcional em `Settings` — não inicializa em dev sem DSN.
+2. **Frontend** — `@sentry/nextjs`. `sentry.client.config.ts` + `sentry.server.config.ts` + `sentry.edge.config.ts` (padrão Next 14). Mesmo padrão de `dsn` opcional via env.
+3. **Tagging consistente**: enriquecer eventos com `user_id` (via Sentry's `setUser({id})`) quando autenticado. Combina com AUD-049 (request_id no contextvar) — passar como `request_id` tag.
+4. **Sampling agressivo em prod**: `traces_sample_rate=0.1` (10%) ou menos para começar; `profiles_sample_rate=0.0` enquanto tráfego baixo (custo do Sentry é por evento).
+5. **Beneficiários colaterais**: AUD-013 (custo Groq) — Sentry pode receber events customizados com tokens; AUD-016 (food_lookup lento) — Sentry profiling pega o hotspot sem precisar do EXPLAIN manual.
+
+**Custo**: Sentry free tier dá 5k errors/mês — suficiente para projeto pessoal. Caso adoção cresça, GlitchTip self-hosted é alternativa free clone.
