@@ -1,0 +1,18 @@
+=== CONTRIBUTING.md ===
+103 /home/gabriel/projetos/CalorIA/CONTRIBUTING.md
+
+=== Templates GitHub ===
+bug_report.md
+feature_request.md
+/home/gabriel/projetos/CalorIA/.github/PULL_REQUEST_TEMPLATE.md
+
+=== .github full ===
+/home/gabriel/projetos/CalorIA/.github/dependabot.yml
+/home/gabriel/projetos/CalorIA/.github/PULL_REQUEST_TEMPLATE.md
+/home/gabriel/projetos/CalorIA/.github/workflows/cd.yml
+/home/gabriel/projetos/CalorIA/.github/workflows/ci.yml
+/home/gabriel/projetos/CalorIA/.github/ISSUE_TEMPLATE/feature_request.md
+/home/gabriel/projetos/CalorIA/.github/ISSUE_TEMPLATE/bug_report.md
+
+=== README ===
+202 /home/gabriel/projetos/CalorIA/README.md

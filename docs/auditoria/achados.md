@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 21 · baixos: 19 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 21 · baixos: 20 (atualizar a cada novo achado)
 
 ---
 
@@ -858,3 +858,16 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Criar `docs/runbook-prod.md` com uma seção por cenário no formato canônico (Sintoma / Verificar / Mitigação imediata / Causa raiz). Lista mínima: Groq 429 persistente, Push 410 em massa, Worker Celery travado, Restore Postgres, Rotação de secrets, Reset de banco em dev (já parcialmente coberto). Cada cenário cita os AUDs relacionados — runbook serve como roteiro de fix imediato e os AUDs como roteiro de fix definitivo. Pode ser construído incremental: começa com Groq + Worker (probabilidade mais alta hoje), e cresce conforme outros riscos materializam. Snippet de cenário em `11-dx-docs.md § K.1.b`.
 - **Esforço:** M (1-4h, incremental)
 - **Origem:** PASSO 12.3
+
+### AUD-057 — `CONTRIBUTING.md:42` afirma que pre-commit roda `mypy` e `eslint` — não roda
+
+- **Severidade:** 🟢 baixa
+- **Frente:** K
+- **Arquivo:linha:** `CONTRIBUTING.md:42` (`"Os hooks rodam automaticamente antes de cada commit: ruff, mypy, eslint."`) vs `.pre-commit-config.yaml` (só `ruff` + `ruff-format` + utilitários — confirmado em PASSO 10.4 / AUD-047)
+- **Descrição:** Documentação adiantada ao código. O `CONTRIBUTING.md` informa o contribuidor novo que mypy e eslint rodam pre-commit, mas só `ruff`/`ruff-format` estão configurados. Resultado: contribuidor confia, commita um diff que regride mypy ou eslint, e o CI quebra surpresa. Provavelmente reflete a intenção original do projeto que ficou pendente. Cobertura geral de DX é boa (CONTRIBUTING + PR template + 2 issue templates + dependabot, todos presentes) — este é o único item desalinhado.
+- **Evidência:** `CONTRIBUTING.md:42` (linha exata); `.pre-commit-config.yaml` em `artefatos/I4-precommit.txt` (8 hooks listados, nenhum é mypy ou eslint); análise em `11-dx-docs.md § K.3`.
+- **Recomendação:** Esforço S (< 10 min):
+    - **Opção A** (mais rápida, conservadora): atualizar a linha 42 para refletir o estado atual ("`ruff` (lint + format) + utilitários `pre-commit-hooks`").
+    - **Opção B** (preferível, mais valor): combinar com fix de AUD-047 — adicionar mypy/eslint/gitleaks ao `.pre-commit-config.yaml` e **manter** a documentação como está. Resolve os dois achados de uma vez.
+- **Esforço:** S (< 10 min isolado; sem overhead bundlado com AUD-047)
+- **Origem:** PASSO 12.4
