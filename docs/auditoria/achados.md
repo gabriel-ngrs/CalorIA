@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 5 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 6 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
 
 ---
 
@@ -277,3 +277,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** `npm install --save-dev @next/bundle-analyzer` + envolver `nextConfig` com `withBundleAnalyzer({ enabled: process.env.ANALYZE === "true" })`. Adicionar script `npm run build:analyze`. Rodar manualmente antes de releases ou em PRs grandes. Considerar verificar `recharts` (~100KB) e `ogl` (Plasma) em rotas onde não são usados.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 5.7
+
+### AUD-025 — `_run` em workers usa `asyncio.get_event_loop()` deprecated (risco real de `RuntimeError`)
+
+- **Severidade:** 🟠 alta
+- **Frente:** E
+- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:19-21`, `backend/app/workers/tasks/reports.py:17-19`, `backend/app/workers/tasks/maintenance.py:19-21` (3 cópias idênticas)
+- **Descrição:** Os 3 módulos de tasks Celery declaram a mesma helper `def _run(coro): return asyncio.get_event_loop().run_until_complete(coro)`. Desde **Python 3.10** chamar `asyncio.get_event_loop()` quando não há loop ativo na thread atual emite `DeprecationWarning` e cria/retorna um loop novo; em **Python 3.12** (versão deste projeto) o aviso continua e o comportamento é instável em threads worker do Celery: a primeira execução cria o loop, mas se uma task anterior tiver fechado o loop dessa thread, a próxima `_run` em geral lança `RuntimeError: There is no current event loop in thread '...'.` ou `RuntimeError: Event loop is closed`. O risco se materializa quando o worker reaproveita threads (default `prefork`+`worker_prefetch_multiplier=1` mitiga, mas não elimina) e/ou quando alguma exceção interna fecha o loop. Em **Python 3.14** a chamada será removida.
+- **Evidência:** `artefatos/E1-get-event-loop.txt` — 3 ocorrências, uma em cada módulo de tasks; código idêntico inclusive na docstring.
+- **Recomendação:** Substituir por `asyncio.run(coro)`, que cria e fecha um event loop dedicado por chamada (semântica correta para tasks Celery síncronas que só precisam executar uma coroutine raiz). Alternativa equivalente: `loop = asyncio.new_event_loop(); try: return loop.run_until_complete(coro); finally: loop.close()`. Como as 3 cópias são idênticas, vale extrair para `app/workers/utils.py` (1 helper compartilhada) — ataca também a duplicação. Acrescentar nota no `Dockerfile` do worker que `PYTHONWARNINGS=error::DeprecationWarning` em CI ajudaria a pegar regressões.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 6.1

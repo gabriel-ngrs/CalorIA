@@ -373,3 +373,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-024
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Build com `ANALYZE=true` pulado (analyzer não instalado, conforme runbook orienta). Configuração atual já tem `output: standalone`, `transpilePackages: ["ogl"]` e `optimizePackageImports: ["lucide-react"]`. Suspeitos por tamanho conhecido: `recharts`, `ogl`, `@radix-ui` (8 pacotes). `date-fns@^2.30.0` poderia subir para v3 (locales tree-shake automático).
+
+## PASSO 6.1 — Padrão `_run` deprecated
+
+- **Início:** 2026-05-10 19:48
+- **Fim:** 2026-05-10 19:52
+- **Comando(s) executado(s):** `rg -n "asyncio\.get_event_loop\(\)" backend/app/` + leitura dos 3 módulos para confirmar que a helper é idêntica em assinatura/docstring/corpo
+- **Artefato(s):** `docs/auditoria/artefatos/E1-get-event-loop.txt`
+- **Achados gerados:** AUD-025
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **3 ocorrências confirmadas**, exatamente nos arquivos esperados pelo runbook (`reminders.py:21`, `reports.py:19`, `maintenance.py:21`). Cópias **textualmente idênticas** (mesma assinatura `def _run(coro: Any) -> Any`, mesma docstring, mesma implementação) — pede extração para `app/workers/_utils.py`. Severidade 🟠 alta porque, além do `DeprecationWarning` (Python 3.10+ → erro em 3.14), há risco real de `RuntimeError: Event loop is closed` se o pool migrar de prefork para gevent/eventlet ou se alguma task fechar o loop por bug. Fix imediato: trocar por `asyncio.run(coro)`. Também sugerido `PYTHONWARNINGS=error::DeprecationWarning` em CI para pegar regressões.
