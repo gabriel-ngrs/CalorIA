@@ -33,9 +33,16 @@ test.describe("Autenticação", () => {
   });
 
   test("deve fazer login com usuário existente", async ({ page }) => {
+    const email = process.env.E2E_LOGIN_EMAIL;
+    const password = process.env.E2E_LOGIN_PASSWORD;
+    test.skip(
+      !email || !password,
+      "E2E_LOGIN_EMAIL/E2E_LOGIN_PASSWORD não definidos",
+    );
+
     await page.goto(`${BASE_URL}/login`);
-    await page.getByLabel(/e-mail/i).fill("gabrielnegreirossaraiva38@gmail.com");
-    await page.getByLabel(/senha/i).fill("***REMOVED***");
+    await page.getByLabel(/e-mail/i).fill(email!);
+    await page.getByLabel(/senha/i).fill(password!);
     await page.getByRole("button", { name: /entrar/i }).click();
 
     await expect(page).toHaveURL(/(dashboard|onboarding)/, { timeout: 15000 });
