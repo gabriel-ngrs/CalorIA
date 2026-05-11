@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 6 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 7 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
 
 ---
 
@@ -288,3 +288,19 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Substituir por `asyncio.run(coro)`, que cria e fecha um event loop dedicado por chamada (semântica correta para tasks Celery síncronas que só precisam executar uma coroutine raiz). Alternativa equivalente: `loop = asyncio.new_event_loop(); try: return loop.run_until_complete(coro); finally: loop.close()`. Como as 3 cópias são idênticas, vale extrair para `app/workers/utils.py` (1 helper compartilhada) — ataca também a duplicação. Acrescentar nota no `Dockerfile` do worker que `PYTHONWARNINGS=error::DeprecationWarning` em CI ajudaria a pegar regressões.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 6.1
+
+### AUD-026 — `dispatch_due_reminders` usa `datetime.now()` naive — bug latente de timezone
+
+- **Severidade:** 🟠 alta
+- **Frente:** E
+- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:37` (`now = datetime.now()`); comparado em `:60-63` contra `Reminder.time` (`backend/app/models/reminder.py:34` — `Time` sem `timezone`)
+- **Descrição:** A task lê o "agora" sem TZ e compara `reminder.time.hour/minute` com `now.hour/minute`. Hoje **funciona por acidente**: todos os containers (postgres, backend, celery_worker, celery_beat) têm `TZ=America/Sao_Paulo` em ambos `docker-compose.yml` e `docker-compose.dev.yml`, e o `User` não tem campo de fuso. Logo, "agora naive no container" coincide com "horário São Paulo", que coincide com o que o usuário típico digitou no formulário de lembrete. Falha em 3 cenários reais e prováveis:
+    1. **Migração para UTC** (default em quase todos os PaaS/cloud): lembrete configurado para 08:00 dispara às 05:00 ou 11:00 (offset de 3h, varia com horário de verão em outros países).
+    2. **Usuário fora de São Paulo:** o front salva "08:00" como string, sem TZ; o worker assume São Paulo. Para usuário em Lisboa (UTC+0), o lembrete das "08:00" do dele vai para às 12:00 de Lisboa.
+    3. **DST**: Brasil eliminou em 2019, mas outros países (e o próprio Brasil se voltar) terão duplicação no "fall back" ou pulo no "spring forward" — `datetime.now()` naive não consegue lidar.
+
+  Bônus: Celery está com `timezone="America/Sao_Paulo"` + `enable_utc=True` (`celery_app.py:23-24`) para interpretar crons; o **disparo** da task é correto, mas o **conteúdo** depende da TZ do processo. Acoplamento implícito invisível no código.
+- **Evidência:** `artefatos/E2-tz.txt` (postgres TZ, container envs); leitura de `reminders.py:36-71` + `models/reminder.py:34` + `celery_app.py:18-24`.
+- **Recomendação:** **Curto prazo** (sem mudar schema): em `reminders.py`, trocar `datetime.now()` por `datetime.now(ZoneInfo("America/Sao_Paulo"))` (ou ler `settings.timezone`). Documenta a TZ canônica e fica imune à TZ do processo. **Médio prazo**: adicionar `User.timezone: Mapped[str] = mapped_column(default="America/Sao_Paulo")`. A task itera reminders, pega `user.timezone`, e compara `Reminder.time` com `datetime.now(ZoneInfo(user.timezone))`. Cobertura de testes com `freezegun`/`time-machine` testando 3 fusos. **Longo prazo (opcional)**: armazenar `Reminder.next_fire_at: DateTime(timezone=True)` recalculado após cada disparo — task vira `WHERE next_fire_at <= now()`, o que escala melhor que iterar todos os reminders ativos por minuto.
+- **Esforço:** S (curto), M (médio), L (longo)
+- **Origem:** PASSO 6.2
