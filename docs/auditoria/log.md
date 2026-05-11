@@ -543,3 +543,43 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (todos os 6 endpoints com path param filtram por `user_id` corretamente)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **6 endpoints com path param**: 4 em `meals.py` (`GET/PATCH/DELETE /meals/{meal_id}` + `DELETE /meals/{meal_id}/items/{item_id}`), 2 em `reminders.py` (`PATCH /reminders/{reminder_id}/toggle`, `DELETE /reminders/{reminder_id}`). Todos passam `user_id` ao service E o service usa cláusula `WHERE Model.id == X AND Model.user_id == user_id`. Caso especial: `delete_meal_item` filtra `item_id` em memória sobre a lista de items já restrita ao meal do user (carregada via `selectinload`) — defensivo correto. **Nenhum vetor de IDOR**. Cross-validação com PASSO 2.2 (4/47 endpoints sem auth eram todos legitimamente públicos): a defesa de autorização do projeto está consistente. **Encerra Frente G** com 4 achados (1 crítico + 2 altos + 1 médio).
+
+## PASSO 9.1 — Investigar bug de fixture unit
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** `cd backend && .venv/bin/pytest tests/unit/ -q | tail -30` (reprodução); `.venv/bin/pytest tests/unit/test_security.py::TestHashPassword::test_retorna_hash_diferente_da_senha` (trace completo de 1 teste); leitura de `tests/conftest.py` (129 linhas) + `tests/unit/conftest.py` (19 linhas).
+- **Artefato(s):** `docs/auditoria/artefatos/H1-unit-fixture-error.txt`
+- **Achados gerados:** AUD-042 (🟠 alta)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Reproduzido**: `49 passed, 49 errors in 30.79s` — exatamente o padrão descrito no plano. **Causa raiz confirmada**: `tests/unit/conftest.py:12-18` sobrescreve só `setup_test_database` por stub no-op; o `clean_db` raiz (`tests/conftest.py:68-75`) continua `autouse=True` e tenta `TRUNCATE TABLE ... CASCADE` em `127.0.0.1:5432` após cada teste — `ConnectionRefusedError: [Errno 111]` (Postgres parado durante a auditoria) marca cada item como erro de teardown. O teste em si passa (asserts OK); pytest reporta dois eventos por teste, dobrando o sinal. **Impacto principal**: ruído em CI — exit code não-zero apesar dos testes funcionarem; bug clássico de erosão de confiança. **Bônus do diagnóstico**: o próprio stub atual já carrega dois `# type: ignore[override]/[misc]` apontando que `setup_test_database` está sendo cobertor curto; faz sentido cobrir `clean_db` da mesma forma. Recomendação detalhada (curto prazo: stub no-op de `clean_db`; médio prazo: remover `autouse=True` raiz e exigir via marker nos testes de integração) registrada em AUD-042 e em `08-testes.md § H.2`.
+
+## PASSO 9.2 — Cobertura por área
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** leitura de `artefatos/baseline-coverage.txt` (capturado no PASSO 1.4) — coverage report por arquivo; tabulação e classificação por banda (< 50% / 50-65% / ≥ 80%).
+- **Artefato(s):** nenhum novo (usa `baseline-coverage.txt`; matriz consolidada em `08-testes.md § H.3`)
+- **Achados gerados:** AUD-043 (🟠 alta)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Total **62%** (2512 stmts, 942 missing). **10 módulos críticos < 50%**: `workers/celery_app.py` (0%), `services/ai/insights_generator.py` (14%), `services/ai/context_builder.py` (20%), `services/ai/pattern_analyzer.py` (27%), `services/push_service.py` (29%), `services/reminder_service.py` (31%), `workers/tasks/reports.py` (32%), `api/v1/ai.py` (36%), `services/ai/food_lookup.py` (41%), `services/ai/ai_client.py` (43%). 12 outros em zona cinzenta (50-65%). Áreas bem cobertas: schemas (100%), models (~95%), `nutrition/tdee.py` (100%), `core/security.py` (100%). **Padrão consistente**: o "buraco" da cobertura é o **núcleo IA + push + workers** — código com efeitos colaterais que é difícil de testar e que mais quebra silenciosamente. Combina mal com AUD-013 (logs sem dimensões) — sem cobertura nem observabilidade, regressões só aparecem quando o usuário reclama. Recomendação em 3 ondas: Onda 1 (food_lookup, meal_parser, vision_parser, ai_client, auth_service para ≥ 70%) + `--cov-fail-under=70` em CI; Onda 2 (context_builder, pattern_analyzer, push_service+fakeredis, reminder_service) + 75%; Onda 3 (insights_generator pós-decomposição AUD-002) + 80%. Property-based (Hypothesis) para tdee/correct_calories/extract_json. Snapshot tests para prompts de context_builder.
+
+## PASSO 9.3 — Áreas críticas sem teste
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** bloco `ls app/services/ai/*.py + ls app/services/*.py + ls tests/unit/test_*.py + ls tests/integration/test_*.py` redirecionado para artefato; cruzamento manual com cobertura do PASSO 9.2.
+- **Artefato(s):** `docs/auditoria/artefatos/H3-test-coverage.txt`
+- **Achados gerados:** nenhum novo (a lista de gaps consolidada em § H.4 alimenta o plano de AUD-043 — Onda 1/2/3 — sem precisar de novo achado)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **AI (8 arquivos)**: ✅ unit em `meal_parser` e `vision_parser`; ⚠️ smoke-only em `ai_client`; ❌ ausente em `food_lookup` (🟠 — coração da precisão; absorve AUD-016/AUD-006), `context_builder` (🟠 — prompts, CC D(25)), `insights_generator` (🟠 — 184 stmts, 14%; AUD-002), `pattern_analyzer` (🟡). `utils.py` coberto transitivamente — mas `extract_json_from_ai_response` precisa de teste dedicado para fechar AUD-017. **Services raiz (8 arquivos)**: nenhum tem unit test direto; cobertura vem só de integration (test_auth, test_users, test_meals, test_dashboard, test_logs). Gaps 🟡: `auth_service` (blacklist Redis), `push_service` (410 handling), `reminder_service`. **Workers**: `maintenance.py` (82% ✅), `reminders.py` (56% 🟡 — TZ AUD-026 e hardcode 2000 AUD-027 sem regressão test), `reports.py` (32% 🟠 — 114 stmts, duplica push 410). Ações concretas para PR de cobertura: adicionar `fakeredis>=2.20` à deps de dev; criar `tests/unit/test_food_lookup.py` com 50-100 alimentos populares; `test_context_builder.py` com snapshot de 3 personas; `test_ai_client.py` mockando `groq.AsyncGroq` (cache hit/miss, 429, 503, 401).
+
+## PASSO 9.4 — E2E: BASE_URL e credenciais
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** leitura de `frontend/playwright.config.ts` (26 LOC) + `e2e/auth.spec.ts` (43) + `e2e/dashboard.spec.ts` (66) + `e2e/meals.spec.ts` (72).
+- **Artefato(s):** nenhum (matriz embutida em `08-testes.md § H.6`)
+- **Achados gerados:** AUD-044 (🟠 alta)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Inconsistência grave entre suites**: `playwright.config.ts:15` define `baseURL: "http://localhost:3000"` (+ `webServer: npm run dev`). `auth.spec.ts:3` cria constante local `BASE_URL = process.env.BASE_URL ?? "https://frontend-nine-mu-59.vercel.app"` — **ignora completamente** o config e cai em Vercel preview pública sem env var. `dashboard.spec.ts` e `meals.spec.ts` usam caminhos relativos e herdam corretamente (✅). Consequências: (1) o teste "deve cadastrar novo usuário" (linha 24-33) cria `playwright_test_<timestamp>@gmail.com` no banco de produção a cada execução local sem env vars; (2) o teste "login com user existente" (linhas 35-42) usa credenciais reais (AUD-038) contra produção — credential stuffing efetivo a cada run; (3) qualquer mudança de URL de preview quebra a suite sem regressão real no código. **Bug latente menor** (sem achado dedicado): linha 32 inclui `login` no matcher `toHaveURL(/(onboarding|dashboard|login)/)` — voltar pro login é considerado sucesso para "deve cadastrar e redirecionar". **Setup de usuário**: `auth.spec.ts` mistura uso real (Vercel) + mocks; `dashboard`/`meals` mockam tudo (`page.route` para `/api/auth/session` e `/api/v1/*`) — assertions superficiais (`not.toHaveURL(/login/)`), validam só navegação. Sem fixture global criando user via API. Plano: trocar constante por `process.env.E2E_BASE_URL ?? "http://localhost:3000"`; apertar matcher; criar `e2e/fixtures.ts` com registro via API. Combina com fix de AUD-038. **Encerra Frente H** com 3 achados (3 altos), totais agora em 14 altos.
