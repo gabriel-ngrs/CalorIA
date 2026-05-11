@@ -501,5 +501,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `grep -rn "max_length\|StringConstraints" backend/app/schemas/`; `grep -rn ": str\b\|: str | None" backend/app/schemas/*.py | grep -v max_length`; leitura de `schemas/ai.py` (133 linhas) + `api/v1/ai.py:40-75` para confirmar uso (ou não-uso) de `meal_type`/`mime_type`
 - **Artefato(s):** nenhum dedicado (cross-ref embutida em `07-seguranca.md § G.3`)
 - **Achados gerados:** nenhum novo (AUD-009 e AUD-010 do PASSO 3.6 já cobrem)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** 406d08c
 - **Notas:** **Cross-validação confirma AUD-009/010 ainda válidos**. `description` em `MealAnalysisRequest` (ai.py:28) **já tem** `Field(min_length=3, max_length=2000)` — runbook listava como gap, mas é falso positivo (provavelmente fixado entre escrita do plano e execução). **Observações sem novo achado**: (1) `mime_type: str` em `PhotoAnalysisRequest` deveria ser `Literal["image/jpeg",...]` — combinar no fix do AUD-009; (2) `meal_type` nas duas requests AI é **dead field** (analyze_meal/analyze_photo não passam para o parser; `_infer_meal_type` em context_builder deriva do texto). Smell de contrato, sem bug funcional. Fica registrado para limpeza no PR de AUD-009/010.
+
+## PASSO 8.4 — Rate limit assessment
+
+- **Início:** 2026-05-10 22:11
+- **Fim:** 2026-05-10 22:17
+- **Comando(s) executado(s):** `rg -n "rate_limit|slowapi|RateLimit|Limiter" backend/`; `grep -n "rate" Caddyfile`; `grep -n "middleware\|add_middleware" backend/app/main.py`
+- **Artefato(s):** `docs/auditoria/artefatos/G4-rate-limit.txt`
+- **Achados gerados:** AUD-040 (🟠 alta)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Zero rate limit em qualquer camada**. Backend não tem `slowapi`/equivalente; Caddyfile sem diretiva. `main.py` registra só `CORSMiddleware` (linha 42) + `timing_middleware` (linha 52). Vetores concretos: `/auth/login` exposto a credential stuffing (combina com AUD-038), `/auth/register` a bot signup, `/ai/analyze-*` a abuso de tokens Groq (combina com AUD-013 — sem visibilidade de quem consome), `/notifications/unread-count` a polling abusivo (combina com AUD-031). Severidade 🟠 contextual: hoje 1 usuário, mas sistema é deployable e CLAUDE.md confirma intenção multi-user. Recomendação: `slowapi` Redis-backed com limites por categoria (5/min para login, 3/hora para register, 30/min/user para AI). Defesa em profundidade: `caddy-ratelimit` no edge + captcha em `/register` se virar público.

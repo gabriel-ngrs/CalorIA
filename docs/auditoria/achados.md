@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 10 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 11 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -560,3 +560,51 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
   Bonus: gerar uma SECRET_KEY randômica no `setup-server.sh` (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) e gravar em `/opt/caloria/.env` durante o setup — torna impossível esquecer. Idem para `VAPID_*` que também tem defaults vazios e o backend sobe sem reclamar.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 8.2
+
+### AUD-040 — Ausência total de rate limit no backend (`/auth/*`, `/ai/*` expostos a abuso)
+
+- **Severidade:** 🟠 alta
+- **Frente:** G
+- **Arquivo:linha:** `backend/app/main.py` (sem middleware de rate limit), `Caddyfile` (sem diretiva `rate_limit`), `pyproject.toml` (sem `slowapi`/`limits`)
+- **Descrição:** O backend **não tem nenhum mecanismo de rate limit** — `rg -n "rate_limit|slowapi|RateLimit|Limiter" backend/` retorna 0 hits, `grep -n "rate" Caddyfile` 0 hits, e `add_middleware` no `main.py` só registra `CORSMiddleware` + um `timing_middleware`. Resultado: qualquer cliente pode bater os endpoints públicos (`/auth/login`, `/auth/register`, `/auth/refresh`) e os endpoints autenticados de IA sem qualquer restrição. Vetores concretos:
+    - **`/auth/login`** — credential stuffing trivial (sem rate limit, atacante pode testar milhares de senhas/min). Combina com AUD-038 (vazamento da senha do mantenedor) — atacante já tem 1 par válido, pode tentar variações.
+    - **`/auth/register`** — bot pode criar centenas de contas/seg. Sem CAPTCHA, sem verificação de e-mail, sem rate limit. Inflar tabela `users` + storage.
+    - **`/ai/analyze-meal`/`/ai/analyze-photo`** — cada chamada custa tokens Groq. Free tier tem limites por minuto/dia que, se estourados, deixam o app sem IA para usuários legítimos. Em tier pago = $$ direto. AUD-013 já mapeou ausência de log estruturado de tokens — sem visibilidade quem está consumindo.
+    - **`/ai/insights/*`** — mesma exposição.
+    - **`/notifications/unread-count`** — polling do header já é frequente; sem rate limit, qualquer cliente pode bater 100 req/s e DoS o backend (puxa N notificações por chamada — ver AUD-031 sobre o índice).
+
+  Gravidade contextual: **CLAUDE.md** afirma "Arquitetura pensada para escalar para múltiplos usuários no futuro" — mesmo com 1 usuário hoje, o sistema é deployable a qualquer momento (Roadmap § 9). Rate limit é **fundação** que precisa entrar antes de exposição pública.
+- **Evidência:** `artefatos/G4-rate-limit.txt` — 0 hits nas regexes de rate limit; main.py mostra apenas CORS + timing middleware.
+- **Recomendação:** Adotar `slowapi` (FastAPI-friendly, Redis-backed para multi-worker):
+    ```python
+    # backend/pyproject.toml
+    slowapi = "^0.1.9"
+
+    # backend/app/main.py
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+
+    limiter = Limiter(key_func=get_remote_address, storage_uri=settings.REDIS_URL)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    # backend/app/api/v1/auth.py — em cada endpoint sensível
+    @router.post("/login")
+    @limiter.limit("5/minute")  # 5 tentativas/min por IP
+    async def login(...): ...
+
+    @router.post("/register")
+    @limiter.limit("3/hour")  # 3 registros/h por IP
+    ```
+    Limites sugeridos por categoria:
+    - `/auth/login`: 5/min/IP, 20/hora/IP
+    - `/auth/register`: 3/hora/IP
+    - `/auth/refresh`: 30/min/IP
+    - `/ai/analyze-*`: 30/min/user (key_func custom usando `user_id`)
+    - `/ai/insights/*`: 60/min/user
+    - Outros endpoints autenticados: 120/min/user (default permissivo)
+
+    **Defesa em profundidade**: Caddy também aceita rate limit como módulo (`caddy-ratelimit`) — adicionar burst protection no edge para endpoints de auth (5 req/s/IP), redundância contra bypass do middleware FastAPI. **Captcha** (`hCaptcha` / `Cloudflare Turnstile`) em `/register` se a app virar pública.
+- **Esforço:** M (1–4h para `slowapi` + limites por endpoint + testes)
+- **Origem:** PASSO 8.4
