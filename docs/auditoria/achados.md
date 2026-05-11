@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 9 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 9 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -497,3 +497,31 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     5. Marcar Roadmap § 9.2 backup como `[x]` e `Roadmap.md:413` resolvido.
 - **Esforço:** M (1–4h para implementar 1+2+3+4)
 - **Origem:** PASSO 7.5
+
+### AUD-038 — 🔴 Credenciais reais hardcoded em `frontend/e2e/auth.spec.ts` e expostas no histórico git
+
+- **Severidade:** 🔴 crítica
+- **Frente:** G
+- **Arquivo:linha:** `frontend/e2e/auth.spec.ts:37-38`
+- **Descrição:** O teste e2e "deve fazer login com usuário existente" preenche o formulário com:
+    - email: `gabrielnegreirossaraiva38@gmail.com` (Gmail real do mantenedor — verificado via `git log --format="%ae"` no histórico de commits)
+    - senha: `***REMOVED***` (senha real, em texto claro)
+
+  Os outros testes do mesmo arquivo (linhas 27-29) usam constantes `TEST_EMAIL`/`TEST_PASSWORD` (geradas, descartáveis); este teste específico foi escrito com a credencial direto no source. O par foi commitado em **`4737257` (2026-04-29)** e o repo está hospedado em `https://github.com/gabriel-ngrs/CalorIA.git` — qualquer pessoa com acesso de leitura ao repo (ou ao histórico, mesmo após remoção do HEAD) consegue extrair as credenciais com `git log -p frontend/e2e/auth.spec.ts | grep 082405`.
+
+  **Vetor de risco:**
+    1. Acesso à conta CalorIA do mantenedor (refeições, peso, conversas IA — dados sensíveis de saúde).
+    2. **Password reuse** — se `***REMOVED***` for usada em outros serviços (Google, banco, redes sociais), o blast radius é massivo. É a possibilidade mais provável de explorar uma vez vazada.
+    3. Se a conta `gabrielnegreirossaraiva38@gmail.com` for o login do Google de recuperação de outras contas, o atacante com a senha pode tentar credential stuffing global.
+
+  Já flagado no `plano.md:423` como CRÍTICO 🔴 antes desta auditoria; este achado formaliza com evidência completa.
+- **Evidência:** `artefatos/G1-creds.txt` — 2 hits no `auth.spec.ts:37-38` + 4 ocorrências no `git log -p` (autor + diff). `git remote -v` confirma origem GitHub. Email também aparece em `docs/legacy/analise.md:90` como menção neutra (não é credencial), mas reforça que o email do mantenedor está espalhado.
+- **Recomendação:** **Plano em 4 etapas, ordem importa**:
+    1. **AGORA — trocar a senha** em `gabrielnegreirossaraiva38@gmail.com` (no app CalorIA) **e** em qualquer outro serviço onde tenha sido reusada. Esta etapa não pode esperar PR review.
+    2. **Imediato — remover do código:** trocar `auth.spec.ts:37-38` para usar `process.env.E2E_LOGIN_EMAIL` / `process.env.E2E_LOGIN_PASSWORD` (com fallback para fixture criada por outro teste do próprio arquivo, ex.: o `TEST_EMAIL` gerado no `register`). Configurar GitHub Actions secret `E2E_LOGIN_*` para CI. Commit + push para invalidar a cópia no HEAD.
+    3. **Importante — reescrever histórico** se o repo for público (BFG Repo-Cleaner ou `git filter-repo --replace-text`) e force-push. Avisar colaboradores. Se for privado e único contribuidor, opcional mas recomendado.
+    4. **Defesa em CI** — adicionar `gitleaks` (`gitleaks-action`) em `.github/workflows/ci.yml` para falhar PRs com novas credenciais. Adicionar pre-commit hook `gitleaks protect --staged`.
+
+  Mesmo após (3), assumir como **comprometida** — o vazamento já durou ~12 dias entre commit e este achado; assume-se que alguém pode ter clonado.
+- **Esforço:** S (rotação + remoção do código), M (rewrite do histórico + CI scan)
+- **Origem:** PASSO 8.1

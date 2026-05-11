@@ -1,0 +1,13 @@
+./docs/legacy/analise.md:90:- **Problema:** `gabrielnegreirossaraiva38@gmail.com` ocupa ~280px no header, empurrando os botões de Notificação e Sair para a borda direita.
+./docs/auditoria/artefatos/G1-creds.txt:1:./docs/legacy/analise.md:90:- **Problema:** `gabrielnegreirossaraiva38@gmail.com` ocupa ~280px no header, empurrando os botões de Notificação e Sair para a borda direita.
+./frontend/e2e/auth.spec.ts:37:    await page.getByLabel(/e-mail/i).fill("gabrielnegreirossaraiva38@gmail.com");
+./frontend/e2e/auth.spec.ts:38:    await page.getByLabel(/senha/i).fill("***REMOVED***");
+./docs/auditoria/plano.md:423:- [ ] **CRÍTICO 🔴**: `frontend/e2e/auth.spec.ts:40` contém senha real `***REMOVED***` e email `gabrielnegreirossaraiva38@gmail.com`. **Trocar a senha no app + remover do código + reescrever histórico** (ou ao menos remover do HEAD e trocar a senha).
+./docs/auditoria/runbook.md:1185:rg -n "***REMOVED***|gabrielnegreirossaraiva38@gmail" \
+=== Histórico git do auth.spec.ts ===
+Author: Gabriel <gabrielnegreirossaraiva38@gmail.com>
+Author: Gabriel <gabrielnegreirossaraiva38@gmail.com>
++    await page.getByLabel(/e-mail/i).fill("gabrielnegreirossaraiva38@gmail.com");
++    await page.getByLabel(/senha/i).fill("***REMOVED***");
+Author: Gabriel <gabrielnegreirossaraiva38@gmail.com>
+Author: Gabriel <gabrielnegreirossaraiva38@gmail.com>

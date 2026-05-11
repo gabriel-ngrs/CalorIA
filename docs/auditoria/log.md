@@ -471,5 +471,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `grep -in "backup\|pg_dump\|cron\|restore" scripts/*.sh docs/deploy.md docs/setup.md docker-compose*.yml`; `grep -in "backup\|disaster\|restore" Roadmap.md README.md docs/architecture.md`; leitura de `docs/deploy.md:1-35` + `Roadmap.md § 9.2`
 - **Artefato(s):** nenhum (matriz embutida em `06-banco.md § F.5`)
 - **Achados gerados:** AUD-037
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** a3f76b2
 - **Notas:** Backup é **inteiramente manual** hoje. `docs/deploy.md:306-321` documenta `pg_dump` e oferece uma dica de cron numa blockquote, mas `scripts/setup-server.sh`/`deploy.sh` não automatizam nada (0 hits para `backup\|pg_dump\|cron`). Sem offsite, retenção, ou procedimento de restore. **Sistema não está em produção** ainda (Roadmap § 9.2 todo aberto, item específico de backup também `[ ]`) — por isso severidade é 🟠 alta, não 🔴 crítico. **Mas escala para 🔴 no instante do primeiro deploy** — refeições/peso/hidratação são dados de saúde irreplicáveis. Plano mínimo de release: cron `pg_dump|gzip` em `setup-server.sh` + sync offsite (Hetzner Storage Box ou rclone) + retenção 30d local/90d offsite + seção Restore em `deploy.md` + teste de restore em staging. **Encerra Frente F** com 8 achados (1 alto + 4 médios + 4 baixos), considerando AUD-029 que veio do PASSO 6.5.
+
+## PASSO 8.1 — 🔴 CRÍTICO: credenciais em e2e
+
+- **Início:** 2026-05-10 21:40
+- **Fim:** 2026-05-10 21:48
+- **Comando(s) executado(s):** `rg -n "***REMOVED***|gabrielnegreirossaraiva38@gmail" .`; `git log --all --full-history -p -- frontend/e2e/auth.spec.ts | grep -E "082405|gabrielnegreiros" | head -20`; `git remote -v`; `git log --oneline -- frontend/e2e/auth.spec.ts`
+- **Artefato(s):** `docs/auditoria/artefatos/G1-creds.txt`
+- **Achados gerados:** AUD-038 (🔴 crítica)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Confirmado**: par email+senha real em `frontend/e2e/auth.spec.ts:37-38`. Email = `gabrielnegreirossaraiva38@gmail.com` (mantenedor confirmado via `%ae` do commit `4737257` de 2026-04-29). Senha `***REMOVED***` em texto claro. Repo público em GitHub (`https://github.com/gabriel-ngrs/CalorIA.git`) — `git log -p` extrai trivialmente. Outros testes no mesmo arquivo (linhas 27-29) já usam fixture (`TEST_EMAIL`/`TEST_PASSWORD`); só o "login com user existente" foi escrito com credencial direta. **Vetor primário**: password reuse — se `***REMOVED***` está em outros serviços (Google, banco, etc.), comprometimento se propaga. **Ações pós-auditoria** (4 etapas, ordem importa): (1) trocar a senha AGORA em todos os lugares onde está; (2) substituir por `process.env.E2E_LOGIN_*` + GitHub Actions secret; (3) `git filter-repo --replace-text` para remover do histórico + force-push; (4) `gitleaks-action` no CI + pre-commit hook. Status totais: críticos sobe para **2** (era 1).
