@@ -9,6 +9,8 @@
 - AUD-032 (🟢 baixa) — `foods.name` tem 2 índices redundantes (`ix_foods_name` non-unique + `taco_foods_name_key` UNIQUE legado); UNIQUE pode bloquear seeds futuros do Open Food Facts
 - AUD-033 (🟡 média) — migração `adiciona_dessert_mealtype.py` tem `downgrade()` apenas `pass` — `alembic downgrade -1` não desfaz a adição do enum value
 - AUD-034 (🟢 baixa) — enum `MealSource` mantém `TELEGRAM`/`WHATSAPP` mortos no schema (não usados em código nem dados)
+- AUD-035 (🟡 média) — pool sizing × processos × `max_connections=100` pode saturar em escala (estimativa 60-150 conn em pico vs 100 do Postgres); PgBouncer resolve estruturalmente
+- AUD-036 (🟢 baixa) — event listener loga TODA query como `INFO` (sem gate por env) — 5-10k linhas/min em escala
 
 (referencia também AUD-029 que cobre `ai_conversations.updated_at` — gerado na FASE 6 PASSO 6.5)
 
@@ -108,6 +110,49 @@ Comando: extração do corpo de `def downgrade()` em cada `backend/alembic/versi
 
 A justificativa do `pass` em #5 ("PostgreSQL não permite remover valores de enum sem recriar o tipo") é **parcialmente verdadeira** — recriar o tipo é a solução documentada e funciona. O AUD-033 propõe o padrão correto. AUD-034 (limpeza do `MealSource`) usa o mesmo padrão e serve como teste do esforço necessário.
 
+## F.3 Pool sizing e conexões
+
+Comando: `cat backend/app/core/database.py` (`pool_size=10, max_overflow=20, pool_pre_ping=True`) + `grep --workers backend/Dockerfile` (`--workers 2`) + `psql -c "SHOW max_connections"` (`100`) + leitura de `docker-compose.yml`.
+
+### Estado atual
+
+| Parâmetro | Valor | Fonte |
+|---|---|---|
+| `pool_size` | 10 | `database.py:21` |
+| `max_overflow` | 20 | `database.py:22` |
+| `pool_pre_ping` | True | `database.py:20` |
+| `expire_on_commit` | False | `database.py:60` (correto para async) |
+| Uvicorn workers (prod) | 2 | `backend/Dockerfile:55` |
+| Uvicorn workers (dev) | 1 | `docker-compose.dev.yml:59` (`--reload`) |
+| Celery workers | 1 master + N children | `docker-compose.yml` |
+| Celery beat | 1 process | `docker-compose.yml` |
+| Postgres `max_connections` | 100 | `SHOW max_connections` |
+| Postgres `shared_buffers` | 128 MB | `SHOW shared_buffers` (default) |
+
+### Aritmética de saturação
+
+Cada processo Python carrega `app.core.database` ao importar, criando seu próprio `engine` e portanto seu próprio pool (até 30 conn — 10 size + 20 overflow).
+
+| Cenário | uvicorn | celery worker | celery beat | Total |
+|---|---|---|---|---|
+| Atual mínimo | 2×30=60 | 1×30=30 | 1×30=30 | **120** |
+| Celery com `concurrency=4` | 60 | 4×30=120 | 30 | **210** |
+| Cenário escala (4 uvicorn) | 4×30=120 | 4×30=120 | 30 | **270** |
+
+Postgres `max_connections=100` — **qualquer cenário acima passa do teto**. Hoje não acontece (1 usuário, baixíssima carga), mas é arquitetural: aumentar workers vai estourar.
+
+Mitigação padrão da indústria: **PgBouncer** entre app e DB. Multiplexa N conn de app em M < N conn reais de DB (modo `transaction`). Permite manter pool generoso por processo sem estourar o DB. Ver AUD-035.
+
+### Logging de cada query
+
+`event.listens_for(engine.sync_engine, "after_cursor_execute")` chama `db_logger.info(f"[DB] {ms:7.1f}ms | {first_line}{flag}")` **em cada query** (linhas 39-52). Sem gate de env. Quick win: trocar `info` por `debug` e manter `warning` quando `ms > 100`. Ver AUD-036.
+
+### Não-achados (verificados)
+
+- **`pool_pre_ping=True`** — bom (valida conn antes de usar, evita "stale connection"); overhead trivial.
+- **`expire_on_commit=False`** — correto para `AsyncSession` (refresh explícito necessário, padrão FastAPI).
+- **Auditoria do plano § F.4 ("todos services seguem padrão `await db.refresh()`")** — não foi tema deste passo; ficaria como item separado se quiser cobertura completa (não criado como achado por ora — sem evidência de bug funcional).
+
 ## Notas e contexto
 
-(seções F.3-F.5 serão preenchidas nos PASSOS 7.4-7.5)
+(seção F.5 será preenchida no PASSO 7.5)
