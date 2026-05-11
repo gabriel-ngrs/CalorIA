@@ -421,5 +421,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** leitura de `backend/app/workers/tasks/maintenance.py` (todo, 129 linhas) + `docker exec caloria_postgres psql -c "\d ai_conversations"` + `\d weight_logs` + `EXPLAIN DELETE FROM ai_conversations WHERE updated_at < NOW() - INTERVAL '90 days' RETURNING id`
 - **Artefato(s):** `docs/auditoria/artefatos/E5-ai-conv-indexes.txt`
 - **Achados gerados:** AUD-029
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** 629f196
 - **Notas:** **`cleanup_old_conversations`** — usa `updated_at < cutoff` mas índices da tabela são apenas em `id`, `external_chat_id`, `user_id`. `EXPLAIN` confirma Seq Scan (cost 12.28, ~43 rows). Hoje irrelevante (Postgres escolhe Seq Scan corretamente nesse tamanho); vira problema quando a tabela crescer. Já é TZ-aware (`datetime.now(tz=UTC)`) — não tem o problema do AUD-026. **`recalculate_tdee`** — threshold de 2 kg é coerente clinicamente (flutuação diária típica ≈ 1 kg). N+1 do `for user in users` + 1 `SELECT WeightLog` por user já está em AUD-008, sem novo achado. Apenas atualiza `current_weight`+`tdee_calculated`; hoje as metas derivam de `tdee_calculated` na UI, então não há cascade de updates faltando. `weight_logs` tem `ix_weight_logs_user_id` + `ix_weight_logs_date` — para a query agregada do AUD-008 idealmente um índice composto `(user_id, date DESC, created_at DESC)`, fora de escopo deste passo (anotar para PASSO 7.1).
+
+## PASSO 7.1 — Inventário de índices
+
+- **Início:** 2026-05-10 20:38
+- **Fim:** 2026-05-10 20:48
+- **Comando(s) executado(s):** `docker exec caloria_postgres psql -c "SELECT ... FROM pg_indexes WHERE schemaname='public'"` + `EXPLAIN` em 3 queries candidatas (`meals user+date`, `notifications unread count`, `reminders active=true`) + `pg_relation_size` para tamanhos
+- **Artefato(s):** `docs/auditoria/artefatos/F1-indexes.txt`
+- **Achados gerados:** AUD-030, AUD-031, AUD-032
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **35 índices não-pkey** mapeados em 13 tabelas. Padrão observado: SQLAlchemy gera índices separados por coluna FK/filtro, **nunca compostos**. 4 tabelas (`meals`, `weight_logs`, `mood_logs`, `hydration_logs`) repetem o caso clássico `WHERE user_id AND date` sem composto — `EXPLAIN` confirma `Index Cond: (user_id=1)` + `Filter: (date=...)` (heap scan extra). `notifications` ainda pior: sem nenhum índice em `read`, polling do badge varre todo histórico do usuário no heap. **Surpresa**: `foods.name` tem 2 índices (`ix_foods_name` non-unique + `taco_foods_name_key` UNIQUE legado da era TACO-only); UNIQUE pode bloquear seed do Open Food Facts (duplicatas legítimas por marca). Não-achados verificados: `meal_items(meal_id, food_id)` composto sugerido no plano não agrega valor (joins simples cobertos); `reminders(active)` Seq Scan é correto para tabela pequena hoje. Achados criados: 2× 🟡 (compostos faltando) + 1× 🟢 (índices duplicados em foods).
