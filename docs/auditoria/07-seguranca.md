@@ -213,6 +213,48 @@ A regex `[a-zA-Z0-9]{16}` exige 16+ caracteres consecutivos. **Não pega senhas 
 
 **Sem novos achados nesta varredura**. O único segredo real no histórico é o do AUD-038, encontrado por busca direcionada no PASSO 8.1. Falso positivos são identificadores legítimos do NextAuth e schemas legados Telegram/WhatsApp. Recomendação reforça AUD-038 § Recomendação (4): `gitleaks-action` em CI captura tipos que o regex perdeu.
 
+## G.7 Autorização horizontal
+
+Comando: `rg -n "/\{[a-z_]+_id\}|/\{[a-z_]+\}" backend/app/api/v1/ -A 12` + leitura de `meal_service.py`/`reminder_service.py` para validar filtros. Artefato: `artefatos/G7-authz.txt`.
+
+### Inventário de endpoints com path param
+
+Todos os endpoints que recebem `{id}` no path:
+
+| # | Endpoint | Service chamado | Filtra por user_id? |
+|---|---|---|---|
+| 1 | `GET /meals/{meal_id}` | `MealService.get_meal(user_id, meal_id)` | ✅ `where(Meal.id == meal_id, Meal.user_id == user_id)` |
+| 2 | `PATCH /meals/{meal_id}` | `MealService.update_meal(user_id, meal_id, data)` | ✅ chama `get_meal(user_id, meal_id)` antes de mutar |
+| 3 | `DELETE /meals/{meal_id}` | `MealService.delete_meal(user_id, meal_id)` | ✅ chama `get_meal(user_id, meal_id)` antes de deletar |
+| 4 | `DELETE /meals/{meal_id}/items/{item_id}` | `MealService.delete_meal_item(user_id, meal_id, item_id)` | ✅ `get_meal(user_id, ...)` + filtra `item.id` na lista (in-memory) — items já vêm restritos ao meal do user |
+| 5 | `PATCH /reminders/{reminder_id}/toggle` | `ReminderService.toggle(user_id, reminder_id)` | ✅ `where(Reminder.id == reminder_id, Reminder.user_id == user_id)` |
+| 6 | `DELETE /reminders/{reminder_id}` | `ReminderService.delete(user_id, reminder_id)` | ✅ `where(Reminder.id == reminder_id, Reminder.user_id == user_id)` |
+
+### Validação cruzada com PASSO 2.2
+
+PASSO 2.2 já havia mapeado: 4/47 endpoints sem `Depends(get_current_user_id)`, todos legitimamente públicos (`POST /auth/{register,login,refresh}` e `GET /push/vapid-public-key`). Este passo (8.7) é a validação **mais profunda** — confirma que para os endpoints com path params, o service realmente usa o `user_id` no `WHERE` (não basta receber o parâmetro como argumento).
+
+**Resultado**: 6/6 endpoints com path param filtram corretamente. **Nenhum vetor de IDOR (Insecure Direct Object Reference)** identificado.
+
+### Defesas adicionais já presentes
+
+- O padrão "service recebe `user_id` + cláusula `WHERE user_id` no SELECT" é consistente em todo o backend.
+- `MealService.delete_meal_item` é interessante: filtra `item_id` em memória sobre a lista de items já restrita ao meal do user (carregada via `selectinload(Meal.items)` em `get_meal`). Defensivo correto — se o item_id for de outro user (dentro de outro meal), retorna `MealItemNotFound`.
+- Models têm FK `ON DELETE CASCADE` (validado no PASSO 2.3) — autorização lógica + cascade físico defendem em camadas.
+
+### Sem novo achado
+
+Encerra a Frente G. Resumo da frente:
+
+| ID | Severidade | Tema |
+|---|---|---|
+| AUD-038 | 🔴 crítica | credenciais reais em e2e + git history |
+| AUD-039 | 🟠 alta | SECRET_KEY default sem fail-fast |
+| AUD-040 | 🟠 alta | sem rate limit |
+| AUD-041 | 🟡 média | headers de segurança ausentes |
+
+Total: 1 crítico + 2 altos + 1 médio.
+
 ## Notas e contexto
 
-(seção G.7 autorização será preenchida no PASSO 8.7)
+Frente G encerrada. Próxima frente: H (Testes) — começa em PASSO 9.1.

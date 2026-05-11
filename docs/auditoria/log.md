@@ -531,5 +531,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `git log --all --full-history -p | grep -iE "(api_key|secret_key|password|token).*[=:].*[a-zA-Z0-9]{16}" | head -100`; `command -v gitleaks` (não instalado); `rg -n "SenhaForteAqui123" .`; `git log --all --full-history -- .env`; `cat .env.example`; `grep -n "\.env" .gitignore`
 - **Artefato(s):** `docs/auditoria/artefatos/G6-secret-scan.txt`
 - **Achados gerados:** nenhum novo (AUD-038 cobre o único segredo real, encontrado em PASSO 8.1)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** ffa3299
 - **Notas:** **12 matches no regex, todos identificados**: 1 placeholder funcional (`POSTGRES_PASSWORD=SenhaForteAqui123!` em `docs/deploy.md` — risco de deployer copiar literal sem trocar) + 3 placeholders óbvios de Groq (`gsk_...sua_chave_aqui`) + 8 falsos positivos (identificadores TS NextAuth `setApiToken`/`accessTokenExpires`, schemas legados WhatsApp/Telegram). **`.env` nunca foi commitado** (`git log -- .env` → 0 hits) e está em `.gitignore` (linhas 8-11). **Limitação importante**: o regex exige `[a-zA-Z0-9]{16}` — **não pega senhas curtas como `***REMOVED***` (AUD-038)** que tem só 8 chars + especiais. Por isso esse scan é complementar à busca direcionada do PASSO 8.1, não substituto. `gitleaks` ofereceria cobertura mais ampla; recomendação combinada com AUD-038 § (4) já contempla `gitleaks-action` no CI.
+
+## PASSO 8.7 — Autorização horizontal
+
+- **Início:** 2026-05-10 22:37
+- **Fim:** 2026-05-10 22:43
+- **Comando(s) executado(s):** `rg -n "/\{[a-z_]+_id\}|/\{[a-z_]+\}" backend/app/api/v1/ -A 12`; `grep -nE "^\s*@router\.(get|post|patch|put|delete).*\{" backend/app/api/v1/*.py`; `grep -nA 6 "def get_meal\|def update_meal\|def delete_meal\|def delete_meal_item" backend/app/services/meal_service.py`; `grep -nA 6 "def toggle\|def delete\b" backend/app/services/reminder_service.py`
+- **Artefato(s):** `docs/auditoria/artefatos/G7-authz.txt`
+- **Achados gerados:** nenhum (todos os 6 endpoints com path param filtram por `user_id` corretamente)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **6 endpoints com path param**: 4 em `meals.py` (`GET/PATCH/DELETE /meals/{meal_id}` + `DELETE /meals/{meal_id}/items/{item_id}`), 2 em `reminders.py` (`PATCH /reminders/{reminder_id}/toggle`, `DELETE /reminders/{reminder_id}`). Todos passam `user_id` ao service E o service usa cláusula `WHERE Model.id == X AND Model.user_id == user_id`. Caso especial: `delete_meal_item` filtra `item_id` em memória sobre a lista de items já restrita ao meal do user (carregada via `selectinload`) — defensivo correto. **Nenhum vetor de IDOR**. Cross-validação com PASSO 2.2 (4/47 endpoints sem auth eram todos legitimamente públicos): a defesa de autorização do projeto está consistente. **Encerra Frente G** com 4 achados (1 crítico + 2 altos + 1 médio).

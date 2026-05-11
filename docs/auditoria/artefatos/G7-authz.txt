@@ -1,0 +1,94 @@
+backend/app/api/v1/meals.py:48:@router.get("/{meal_id}", response_model=MealResponse)
+backend/app/api/v1/meals.py-49-async def get_meal(
+backend/app/api/v1/meals.py-50-    meal_id: int,
+backend/app/api/v1/meals.py-51-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/meals.py-52-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-53-) -> MealResponse:
+backend/app/api/v1/meals.py-54-    meal = await MealService(db).get_meal(user_id, meal_id)
+backend/app/api/v1/meals.py-55-    if not meal:
+backend/app/api/v1/meals.py-56-        raise HTTPException(
+backend/app/api/v1/meals.py-57-            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+backend/app/api/v1/meals.py-58-        )
+backend/app/api/v1/meals.py-59-    return MealResponse.model_validate(meal)
+backend/app/api/v1/meals.py-60-
+--
+backend/app/api/v1/meals.py:62:@router.patch("/{meal_id}", response_model=MealResponse)
+backend/app/api/v1/meals.py-63-async def update_meal(
+backend/app/api/v1/meals.py-64-    meal_id: int,
+backend/app/api/v1/meals.py-65-    data: MealUpdate,
+backend/app/api/v1/meals.py-66-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/meals.py-67-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-68-) -> MealResponse:
+backend/app/api/v1/meals.py-69-    meal = await MealService(db).update_meal(user_id, meal_id, data)
+backend/app/api/v1/meals.py-70-    if not meal:
+backend/app/api/v1/meals.py-71-        raise HTTPException(
+backend/app/api/v1/meals.py-72-            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+backend/app/api/v1/meals.py-73-        )
+backend/app/api/v1/meals.py-74-    return MealResponse.model_validate(meal)
+--
+backend/app/api/v1/meals.py:77:@router.delete("/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/meals.py-78-async def delete_meal(
+backend/app/api/v1/meals.py-79-    meal_id: int,
+backend/app/api/v1/meals.py-80-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/meals.py-81-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-82-) -> None:
+backend/app/api/v1/meals.py-83-    deleted = await MealService(db).delete_meal(user_id, meal_id)
+backend/app/api/v1/meals.py-84-    if not deleted:
+backend/app/api/v1/meals.py-85-        raise HTTPException(
+backend/app/api/v1/meals.py-86-            status_code=status.HTTP_404_NOT_FOUND, detail="Refeição não encontrada"
+backend/app/api/v1/meals.py-87-        )
+backend/app/api/v1/meals.py-88-
+backend/app/api/v1/meals.py-89-
+backend/app/api/v1/meals.py:90:@router.delete("/{meal_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/meals.py-91-async def delete_meal_item(
+backend/app/api/v1/meals.py-92-    meal_id: int,
+backend/app/api/v1/meals.py-93-    item_id: int,
+backend/app/api/v1/meals.py-94-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/meals.py-95-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/meals.py-96-) -> None:
+backend/app/api/v1/meals.py-97-    """Remove um item individual de uma refeição."""
+backend/app/api/v1/meals.py-98-    try:
+backend/app/api/v1/meals.py-99-        await MealService(db).delete_meal_item(user_id, meal_id, item_id)
+backend/app/api/v1/meals.py-100-    except MealItemNotFound:
+backend/app/api/v1/meals.py-101-        raise HTTPException(
+backend/app/api/v1/meals.py-102-            status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado"
+--
+backend/app/api/v1/reminders.py:51:@router.patch("/{reminder_id}/toggle", response_model=ReminderResponse)
+backend/app/api/v1/reminders.py-52-async def toggle_reminder(
+backend/app/api/v1/reminders.py-53-    reminder_id: int,
+backend/app/api/v1/reminders.py-54-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/reminders.py-55-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-56-) -> ReminderResponse:
+backend/app/api/v1/reminders.py-57-    reminder = await ReminderService(db).toggle(user_id, reminder_id)
+backend/app/api/v1/reminders.py-58-    if not reminder:
+backend/app/api/v1/reminders.py-59-        raise HTTPException(
+backend/app/api/v1/reminders.py-60-            status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado"
+backend/app/api/v1/reminders.py-61-        )
+backend/app/api/v1/reminders.py-62-    return ReminderResponse.model_validate(reminder)
+backend/app/api/v1/reminders.py-63-
+--
+backend/app/api/v1/reminders.py:65:@router.delete("/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/reminders.py-66-async def delete_reminder(
+backend/app/api/v1/reminders.py-67-    reminder_id: int,
+backend/app/api/v1/reminders.py-68-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/reminders.py-69-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/reminders.py-70-) -> None:
+backend/app/api/v1/reminders.py-71-    deleted = await ReminderService(db).delete(user_id, reminder_id)
+backend/app/api/v1/reminders.py-72-    if not deleted:
+backend/app/api/v1/reminders.py-73-        raise HTTPException(
+backend/app/api/v1/reminders.py-74-            status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado"
+backend/app/api/v1/reminders.py-75-        )
+--
+backend/app/api/v1/push.py:162:    "/notifications/{notification_id}/read", response_model=NotificationResponse
+backend/app/api/v1/push.py-163-)
+backend/app/api/v1/push.py-164-async def mark_notification_read(
+backend/app/api/v1/push.py-165-    notification_id: int,
+backend/app/api/v1/push.py-166-    user_id: int = Depends(get_current_user_id),
+backend/app/api/v1/push.py-167-    db: AsyncSession = Depends(get_db),
+backend/app/api/v1/push.py-168-) -> NotificationResponse:
+backend/app/api/v1/push.py-169-    """Mark a single notification as read."""
+backend/app/api/v1/push.py-170-    result = await db.execute(
+backend/app/api/v1/push.py-171-        select(Notification).where(
+backend/app/api/v1/push.py-172-            Notification.id == notification_id,
+backend/app/api/v1/push.py-173-            Notification.user_id == user_id,
+backend/app/api/v1/push.py-174-        )
