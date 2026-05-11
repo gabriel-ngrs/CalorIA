@@ -1,0 +1,33 @@
+=== Pacotes vazios ===
+/home/gabriel/projetos/CalorIA/backend/app/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/core/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/workers/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/api/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/workers/tasks/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/reminders/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/nutrition/__init__.py
+
+=== Arquivos size 0 ===
+/home/gabriel/projetos/CalorIA/backend/app/__init__.py
+/home/gabriel/projetos/CalorIA/backend/tests/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/core/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/workers/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/api/__init__.py
+/home/gabriel/projetos/CalorIA/backend/tests/unit/__init__.py
+/home/gabriel/projetos/CalorIA/backend/tests/integration/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/reminders/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/nutrition/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/workers/tasks/__init__.py
+
+=== Imports nao usados (vulture, se instalado) ===
+Installed 1 package in 8ms
+backend/app/core/database.py:30: unused variable 'cursor' (100% confidence)
+backend/app/core/database.py:32: unused variable 'parameters' (100% confidence)
+backend/app/core/database.py:34: unused variable 'executemany' (100% confidence)
+backend/app/core/database.py:42: unused variable 'cursor' (100% confidence)
+backend/app/core/database.py:44: unused variable 'parameters' (100% confidence)
+backend/app/core/database.py:46: unused variable 'executemany' (100% confidence)
