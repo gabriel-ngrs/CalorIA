@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 18 · baixos: 15 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 19 · baixos: 15 (atualizar a cada novo achado)
 
 ---
 
@@ -756,3 +756,18 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     6. Habilitar lint rule `G004` no ruff (proíbe `logger.info(f"...")`).
 - **Esforço:** M (1-4h)
 - **Origem:** PASSO 11.1
+
+### AUD-050 — `/health` hardcoded — sem readiness check de Postgres/Redis e versão dessincronizada do CHANGELOG
+
+- **Severidade:** 🟡 média
+- **Frente:** J
+- **Arquivo:linha:** `backend/app/main.py:72-74` (`/health` retorna `{"status":"ok","version":"0.1.0"}` literal); `backend/app/main.py:33-40` (`FastAPI(version="0.1.0")` → OpenAPI também desalinhado); `backend/pyproject.toml:7` (`version = "0.1.0"`) vs `CHANGELOG.md:14` (`[0.7.0] - 2026-05-10`)
+- **Descrição:** Endpoint `/health` retorna apenas status fixo + versão hardcoded; sem nenhuma checagem das dependências externas (Postgres, Redis). Container fica `healthy` no Docker/K8s mesmo se Postgres ou Redis caíram — load balancer continua mandando tráfego para backend que vai 500ar. **Inconsistência interna**: o `lifespan` (linhas 23-30) **já** roda `SELECT 1` no startup; o conhecimento "DB respondeu" existe mas não é exposto. **3 gaps**: (1) sem readiness check (Postgres/Redis); (2) versão hardcoded `"0.1.0"` desalinhada do CHANGELOG `[0.7.0]` e do `pyproject.toml`; (3) `FastAPI(version="0.1.0")` no `app.main` também desalinhado — OpenAPI/Swagger reporta versão errada. Conceitualmente, faltam separar **liveness** (processo vivo? K8s usa para recriar container) de **readiness** (pode receber tráfego? load balancer usa para rotear). Hoje só liveness; mais grave porque o healthcheck do `docker-compose.dev.yml:43` aponta para `/health` e ratifica "saudável" mesmo com banco caído.
+- **Evidência:** `backend/app/main.py:72-74` (corpo do endpoint); `backend/app/main.py:33-40` (FastAPI version); `backend/pyproject.toml:7` (version="0.1.0"); `CHANGELOG.md:14` ([0.7.0]); `backend/app/main.py:23-30` (lifespan já executa `SELECT 1`, conhecimento subutilizado).
+- **Recomendação:** PR S (<1h):
+    1. Trocar versão hardcoded por `importlib.metadata.version("caloria-backend")` no startup; usar em `FastAPI(version=...)` E em `/health/live` — fonte única de verdade. Resolve gap de OpenAPI também (cross-ref PASSO 12.1).
+    2. Adicionar `/health/live` (sem deps, retorna apenas status+versão) e `/health/ready` (executa `SELECT 1` no Postgres + `PING` no Redis; retorna `503` se algo degradado, com `checks: {postgres: ok|fail, redis: ok|fail}` no body para diagnóstico).
+    3. Manter `/health` como alias de `/health/live` para retrocompat com healthcheck atual do compose.
+    4. Apontar `healthcheck` do `docker-compose.dev.yml` e `docker-compose.yml` para `/health/ready` — load balancer só roteia para containers prontos.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 11.2
