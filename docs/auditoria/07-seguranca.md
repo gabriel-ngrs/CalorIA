@@ -67,6 +67,42 @@ Comando: leitura de `backend/app/api/v1/auth.py` + `app/core/security.py` + `app
 - `decode_token` não passa `leeway` — clock skew entre app/server pode causar edges raros (token "do futuro" rejeitado em segundos antes do `now` do servidor). Trivial; não é problema na arquitetura atual (1 host).
 - `VAPID_PRIVATE_KEY`/`VAPID_PUBLIC_KEY` também têm defaults vazios sem fail-fast — push silenciosamente não funciona. Cabe no mesmo validator do AUD-039.
 
+## G.3 Validação de inputs (DoS / overflow)
+
+Comando: `grep -rn "max_length\|StringConstraints" backend/app/schemas/` + `grep -rn ": str\b\|: str | None" backend/app/schemas/*.py | grep -v max_length`.
+
+### Cross-referência com achados existentes
+
+A análise sistemática de `max_length` foi feita em **PASSO 3.6** (Frente B). Os achados:
+
+- **AUD-009 (🟠 alta)** — `PhotoAnalysisRequest.image_base64` sem `max_length` — DoS via base64 gigante.
+- **AUD-010 (🟡 média)** — 8 campos texto livre sem `max_length` (`InsightRequest.question`, `MealItemCreate.raw_input`, `Meal*.notes`, `*Log.notes`, `Reminder*.message`).
+
+Este passo (8.3) revisita os schemas com lente de segurança. **Confirmado** que ambos achados continuam válidos.
+
+### Verificações adicionais nesta varredura
+
+| Schema | Campo | Estado |
+|---|---|---|
+| `MealAnalysisRequest.description` | `Field(min_length=3, max_length=2000)` | ✅ — runbook listava como gap, mas já tem constraint |
+| `MealItemCreate.food_name` | `max_length=255` | ✅ |
+| `MealItemCreate.unit` | `max_length=50` | ✅ |
+| `UserCreate.password` | `min_length=8, max_length=128` | ✅ |
+| `UserCreate.name` | `min_length=1, max_length=255` | ✅ |
+| `Meal*.name` | `max_length=255` | ✅ |
+| `PhotoAnalysisRequest.image_base64` | sem | ❌ **AUD-009** |
+| `PhotoAnalysisRequest.mime_type` | `str = Field(default="image/jpeg")` — sem `Literal[...]` | observação (não-achado) |
+| `PhotoAnalysisRequest.meal_type` | `str | None = None` — não validado e **ignorado** no endpoint (`analyze_photo` em `ai.py`) | observação (dead field) |
+| `MealAnalysisRequest.meal_type` | idem — `analyze_meal:54` chama `parse(description=...)` sem passar `meal_type` | observação (dead field) |
+| `*Log.notes`, `Reminder.message`, `Insight.question` | sem max | ❌ **AUD-010** |
+
+### Observações sem achado novo
+
+- **`mime_type` aceita string arbitrária** — deveria ser `Literal["image/jpeg", "image/png", "image/webp"]`. Risco de segurança baixo (Groq Vision rejeita MIMEs inválidos), mas seria higienização de contrato. Combinar no fix do AUD-009 (que já recomenda `Literal[...]` em recommendation).
+- **`meal_type` em `MealAnalysisRequest`/`PhotoAnalysisRequest` é dead field** — front pode enviar, backend nunca consome. `_infer_meal_type` em `context_builder.py:103` deriva do texto, ignorando o que vem na request. Smell de contrato, não bug funcional. Fica registrado para limpeza futura.
+
+Sem achado novo neste passo — encaminha-se para o release combinado dos AUD-009 + AUD-010 + observações acima.
+
 ## Notas e contexto
 
-(seções G.3-G.5, G.7-G.8 serão preenchidas nos PASSOS 8.3-8.7)
+(seções G.4-G.5, G.7-G.8 serão preenchidas nos PASSOS 8.4-8.7)
