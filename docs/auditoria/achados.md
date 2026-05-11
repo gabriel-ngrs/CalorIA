@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 19 · baixos: 15 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 15 (atualizar a cada novo achado)
 
 ---
 
@@ -771,3 +771,20 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     4. Apontar `healthcheck` do `docker-compose.dev.yml` e `docker-compose.yml` para `/health/ready` — load balancer só roteia para containers prontos.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 11.2
+
+### AUD-051 — Sentry/APM ausente — erros em produção invisíveis até usuário reportar
+
+- **Severidade:** 🟡 média (acknowledged como `[ ]` no `Roadmap.md:417`; sobe para 🟠 a partir do primeiro deploy com múltiplos usuários)
+- **Frente:** J
+- **Arquivo:linha:** projeto inteiro — `rg "sentry" | grep -v node_modules` retorna 0 hits funcionais (2 falsos positivos em `runbook.md` e em CSV de alimentos)
+- **Descrição:** Não há nenhuma instrumentação Sentry/APM no backend ou frontend. Erros 500 não-tratados do FastAPI viram traceback em texto plano no stdout (combinado com AUD-049, ficam quase impossíveis de agregar); exceções JavaScript não-capturadas no frontend caem no `console.error` do browser (zero telemetria de o que está quebrando em campo); falhas de worker Celery (reminders, reports, maintenance) só aparecem se alguém ler o log do `celery_worker` (combina mal com AUD-026 — TZ latente vai ativar silenciosamente). Casos concretos hoje no projeto: `groq.APIConnectionError` (vista no smoke test do PASSO 1.4) é re-elevada após 4 tentativas em `ai_client.py:122` sem nenhum alerta; o pipeline de IA quebra para o usuário e a equipe só descobre via toast "Erro inesperado". Itens 2 e 3 de Roadmap § 9.3 (logs estruturados e health monitorado) são, respectivamente, AUD-049 e parte de AUD-050; este achado fecha o item 1 (Sentry).
+- **Evidência:** `artefatos/J3-sentry.txt` (rg -l retornou 2 matches, ambos referenciais não-funcionais); `Roadmap.md:416-419` marca os 3 itens da seção "Observabilidade" como `[ ]`; análise em `10-observabilidade.md § J.4`.
+- **Recomendação:** PR de instrumentação (M, 1-4h):
+    1. Backend: `sentry-sdk[fastapi,celery,sqlalchemy]` em `pyproject.toml`; init opcional em `app/main.py` gated por `settings.SENTRY_DSN`; integrações `FastApiIntegration()`, `CeleryIntegration()`, `SqlalchemyIntegration()`; `release=APP_VERSION` (cross-ref AUD-050).
+    2. Frontend: `@sentry/nextjs` com `sentry.client.config.ts` / `server` / `edge`; gated por env var.
+    3. Tagging: `setUser({id})` na resolução de auth; `request_id` como tag (cross-ref AUD-049).
+    4. Sampling conservador: `traces_sample_rate=0.1`, `profiles_sample_rate=0.0` enquanto tráfego baixo.
+    5. Beneficiários colaterais: AUD-013 (custo Groq via custom events), AUD-016 (food_lookup hotspot via profiling).
+    Alternativa zero-custo: GlitchTip self-hosted (clone open source do Sentry).
+- **Esforço:** M (1-4h)
+- **Origem:** PASSO 11.3
