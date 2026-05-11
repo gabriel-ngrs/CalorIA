@@ -6,6 +6,7 @@
 
 - AUD-054 — Versões dessincronizadas: `pyproject.toml`, `app/main.py` e `package.json` em `0.1.0` vs CHANGELOG em `[0.7.0]` (🟢 baixa).
 - AUD-055 — ADR-002 (Groq) registra a decisão atual mas não documenta alternativas avaliadas; decisões recentes (Vercel + backend Hetzner, workflow de release) sem ADR (🟢 baixa).
+- AUD-056 — `docs/deploy.md § Troubleshooting` cobre 4 cenários básicos mas faltam runbooks operacionais para incidentes específicos: Groq free-tier estourado, push HTTP 410 em massa, Celery worker travado, restore de backup Postgres (🟡 média).
 
 ## Notas e contexto
 
@@ -79,3 +80,82 @@ Mas vira problema no momento que:
 4. **Adicionar ADR-011** quando AUD-049/050/051 forem atacados (pode esperar — ADRs são para decisões tomadas, não para backlog).
 
 ADR é a melhor ferramenta para fechar pendências de decisão arquitetural — combina bem com o padrão do runbook de listar "decisões pendentes" em vários passos.
+
+### § K.1.b Runbook operacional (de `artefatos/K3-docs-list.txt`)
+
+**Estrutura atual de `docs/`:**
+
+```
+docs/
+├── architecture.md          (8 ADRs)
+├── auditoria/               (este trabalho)
+├── deploy.md                391 LOC — guia de deploy + Troubleshooting básico
+├── deploy-checklist.md      152 LOC — checklist sequencial pré-release
+├── flow.md                  fluxo do registro ao banco
+├── fluxos/                  11 subpastas com diagramas Mermaid por feature
+├── git-workflow.md          branches e CI/CD
+├── legacy/                  análise pré-migração
+└── setup.md                 setup do zero
+```
+
+**Sem `docs/runbook-prod.md`** nem equivalente. Conteúdo operacional de incidente mora numa seção `## Troubleshooting` em `deploy.md` (linhas 352-391).
+
+**O que existe** (4 cenários, `deploy.md:352-391`):
+
+| Cenário | Ação documentada |
+|---|---|
+| App não abre no browser | `docker compose logs caddy/frontend` + DNS check |
+| Erro 502 Bad Gateway | `logs backend` + `restart backend` |
+| Banco de dados com erro | `logs backend | grep error` + `alembic upgrade head` |
+| Push não chega | check permissão + `VAPID_PUBLIC_KEY` + logs celery |
+| Reset com/sem dados | `down [-v]` + `up --build` + `alembic upgrade head` |
+
+Cobertura razoável para problemas **básicos de Day 0**, mas **falta** instrumentação para incidentes específicos que o resto desta auditoria já identificou como possíveis:
+
+| Cenário previsto pelo runbook | Estado | Vínculo |
+|---|---|---|
+| `GROQ_API_KEY` estoura free tier (429 sustentado, não transitório) | ❌ não documentado | AUD-012 (retry baseado em substring "429" pode falhar; AUD-013 sem visibilidade de custo) |
+| Push HTTP 410 em mais de 50% das subs simultaneamente | ❌ não documentado | AUD-028 (cleanup já existe mas em 4 sites duplicados; sem alerta) |
+| Worker Celery travado (beat sem disparar, worker consumindo sem retornar ack) | ❌ não documentado | AUD-025/-026/-027 (workers têm 3 bugs latentes que viram silenciosos sem este runbook) |
+| Restore de backup do Postgres | ❌ não documentado | AUD-037 (sem backup automatizado; quando houver, restore é o "metade que falta") |
+| Rotação de `SECRET_KEY` / `NEXTAUTH_SECRET` | ❌ não documentado | AUD-039 (defaults inseguros) — rotação exige logout em massa, raciocínio próprio |
+| Resposta a Sentry alertando 5xx burst | ❌ N/A (Sentry não existe) | AUD-051 |
+
+**Recomendação (AUD-056)** — Esforço M (1-4h, pode ser feito incremental):
+
+Criar `docs/runbook-prod.md` (ou seção dedicada em `deploy.md`) com **uma seção por cenário** seguindo o formato canônico de runbook:
+
+```markdown
+## Cenário: Groq retorna 429 persistentemente
+
+**Sintoma:** logs do backend mostram `groq.APIConnectionError` ou retry exausto;
+usuários veem "Erro inesperado" ao registrar refeição.
+
+**Verificar:**
+1. `docker logs caloria_backend | grep "Rate limit Groq"` — confirma 429
+2. https://console.groq.com/usage — quota disponível para o mês
+
+**Mitigação imediata:**
+- Se quota acabou: aumentar plano OU desativar análise IA temporariamente
+  (`MEAL_AI_DISABLED=true` em `.env` — requer feature flag a implementar)
+- Cache de IA (`AIClient`) ainda serve resultados conhecidos por 7 dias —
+  refeições novas falham, repetidas funcionam.
+
+**Causa raiz / pós-incidente:**
+- Adicionar alerta Sentry (AUD-051) com threshold em 80% da quota.
+- Revisar AUD-012 (retry baseado em substring é frágil).
+```
+
+Cenários a documentar (lista mínima):
+
+1. **Groq 429 persistente** (cross-ref AUD-012, AUD-013, AUD-051).
+2. **Push 410 em massa** (cross-ref AUD-028) — quando rodar limpeza manual extra; quando suspeitar de bug em vez de churn natural.
+3. **Worker Celery travado** (cross-ref AUD-025/-026) — `docker exec caloria_celery_worker celery -A app.workers.celery_app inspect active`; quando reiniciar; checar lock files.
+4. **Restore de backup Postgres** (cross-ref AUD-037) — `pg_restore` com `--clean --if-exists`; verificar estado do `pg_trgm` e do enum `MealSource`.
+5. **Rotação de secrets** — `SECRET_KEY` → invalida todos os tokens; `NEXTAUTH_SECRET` → mesmo no frontend; `VAPID_*` → todas as subscriptions perdem alvo.
+6. **Reset de banco em dev** (já parcialmente em `deploy.md:386-391`) — incluir aviso sobre seed obrigatório de `foods` (vide `deploy.md:233`).
+
+Médio prazo, o runbook se acopla naturalmente com:
+- AUD-049 — logs estruturados, `request_id` no log facilita "encontrar todas linhas do incidente".
+- AUD-050 — `/health/ready` permite que monitoring detecte degradação antes do incidente virar pageable.
+- AUD-051 — Sentry corta o "como descubro o problema" — o runbook responde "o que faço agora".

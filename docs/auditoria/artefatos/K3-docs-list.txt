@@ -1,0 +1,9 @@
+architecture.md
+auditoria
+deploy-checklist.md
+deploy.md
+flow.md
+fluxos
+git-workflow.md
+legacy
+setup.md
