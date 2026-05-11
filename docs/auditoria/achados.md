@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 8 · médios: 10 · baixos: 10 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 8 · médios: 12 · baixos: 11 (atualizar a cada novo achado)
 
 ---
 
@@ -349,3 +349,62 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Migration adicionando `Index("ix_ai_conversations_updated_at", "updated_at")`. Custo: poucos KB de espaço, escrita marginalmente mais cara em INSERT/UPDATE, leitura/DELETE da cleanup vira `Bitmap Heap Scan` (logarítmico). Alternativa estrutural se a tabela ficar muito grande no futuro: particionamento por mês/trimestre, fazendo o cleanup ser `DROP PARTITION` (O(1)) — fora de escopo agora. Aproveitar o mesmo PR para revisar se outras colunas usadas em filtros de tasks (ex.: `WeightLog.date` já tem índice; `MealItem.created_at` precisa checar) também precisam de índice.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 6.5
+
+### AUD-030 — Falta índice composto `(user_id, date)` em `meals` (e nos 3 logs diários)
+
+- **Severidade:** 🟡 média
+- **Frente:** F
+- **Arquivo:linha:** `backend/app/models/meal.py` (sem `Index("ix_meals_user_date", "user_id", "date")`); idem `weight_log.py`, `mood_log.py`, `hydration_log.py`
+- **Descrição:** As tabelas `meals`, `weight_logs`, `mood_logs` e `hydration_logs` têm índices **separados** em `user_id` e `date`, mas nenhuma tem o composto `(user_id, date)`. Quase toda query de dashboard filtra pelas duas colunas: `WHERE user_id = :u AND date = :d` (resumo do dia) ou `WHERE user_id = :u AND date BETWEEN ...` (semana/mês). Hoje o planner usa o índice `user_id` e filtra `date` no heap (`EXPLAIN SELECT * FROM meals WHERE user_id=1 AND date=CURRENT_DATE` → `Index Scan using ix_meals_user_id ... Filter: (date = CURRENT_DATE)`). Para usuários com muitas refeições, a etapa de filtro percorre todas as linhas do user no heap. Com composto `(user_id, date)`, vira Index Cond direto nos dois campos (sem heap scan adicional).
+- **Evidência:** `artefatos/F1-indexes.txt` — `meals` lista `ix_meals_user_id` + `ix_meals_date` separados; idem `weight_logs`/`mood_logs`/`hydration_logs`. `EXPLAIN` confirma `Filter: (date = CURRENT_DATE)` após `Index Cond: (user_id = 1)`.
+- **Recomendação:** 1 migration adicionando 4 índices compostos:
+    ```python
+    op.create_index("ix_meals_user_date", "meals", ["user_id", "date"])
+    op.create_index("ix_weight_logs_user_date", "weight_logs", ["user_id", "date"])
+    op.create_index("ix_mood_logs_user_date", "mood_logs", ["user_id", "date"])
+    op.create_index("ix_hydration_logs_user_date", "hydration_logs", ["user_id", "date"])
+    ```
+    Mantém os índices `user_id` separados (são úteis para outras queries — listagem de tudo por usuário); pode-se remover `ix_meals_date` etc. se nenhuma query filtra apenas por `date` global (verificar com `pg_stat_user_indexes` antes). Ganho proporcional ao número de linhas por usuário (negligenciável hoje, real com volume).
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 7.1
+
+### AUD-031 — Falta índice composto `(user_id, read)` em `notifications` (unread-count é polled pelo header)
+
+- **Severidade:** 🟡 média
+- **Frente:** F
+- **Arquivo:linha:** `backend/app/models/notification.py` (sem índice em `read` nem composto); endpoint `GET /notifications/unread-count` (rota interna do header, polled em intervalo curto)
+- **Descrição:** `notifications` tem apenas `ix_notifications_user_id`. A query mais frequente da tabela é `SELECT COUNT(*) FROM notifications WHERE user_id = :u AND read = false` (badge do header). `EXPLAIN` mostra `Bitmap Index Scan on ix_notifications_user_id` seguido de `Filter: (NOT read)` em Bitmap Heap Scan: o planner pega TODAS as notificações do usuário e descarta as lidas no heap. Para um usuário com 1.000 notificações antigas (todas lidas) e 2 novas, o COUNT toca 1.002 linhas em vez de 2. Como o front faz polling regular, a query roda muito.
+- **Evidência:** `artefatos/F1-indexes.txt` — `notifications` lista apenas `ix_notifications_user_id` e pkey. `EXPLAIN SELECT COUNT(*) ... WHERE user_id=1 AND read=false` → `Bitmap Index Scan ... Index Cond: (user_id=1)` + `Filter: (NOT read)`.
+- **Recomendação:** Índice **parcial** otimizado para a query mais comum:
+    ```python
+    op.create_index(
+        "ix_notifications_user_unread",
+        "notifications",
+        ["user_id"],
+        postgresql_where=sa.text("NOT read"),
+    )
+    ```
+    Parcial cobre exatamente o "unread badge" e ocupa muito menos espaço (tipicamente <5% das notificações ficam não-lidas). Alternativa mais simples (não-parcial) é o composto `(user_id, read)` — também resolve mas sem o tamanho reduzido. **Combinar com paginação consistente (AUD-005)** para auditar todos os endpoints de listagem da mesma tabela. Bônus: avaliar se `created_at` precisa de índice para `ORDER BY created_at DESC LIMIT N` da listagem.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 7.1
+
+### AUD-032 — `foods.name` tem 2 índices redundantes (`ix_foods_name` + `taco_foods_name_key` UNIQUE)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** F
+- **Arquivo:linha:** `backend/app/models/food.py` + histórico de migrações que criou `taco_foods_name_key` na tabela legada `taco_foods` (renomeada para `foods`)
+- **Descrição:** `\d foods` mostra **dois índices em `name`**:
+    - `ix_foods_name` — `CREATE INDEX ... ON foods USING btree (name)` (não-único, criado pelo modelo SQLAlchemy)
+    - `taco_foods_name_key` — `CREATE UNIQUE INDEX ... ON foods USING btree (name)` (legado, originário da migration que criou `taco_foods` antes da unificação para `foods` com TACO + Open Food Facts)
+
+  O índice **non-unique** é redundante: qualquer query que use ele pode usar o UNIQUE igual ou melhor (UNIQUE garante 1 valor por chave, planner trata igual ou prefere). Custos: ~8 MB de tabela hoje (TACO + parcial OFF), índice extra adiciona ~1-2 MB no disco e custo de manutenção em cada INSERT/UPDATE de `name`. Pior ainda: o UNIQUE está bloqueando inserções de duplicatas com o mesmo nome — o que é incorreto após a unificação (Open Food Facts pode ter "Arroz branco" de marcas diferentes). Se o seed enriquecer a tabela com OFF completo (~19.500 alimentos), o UNIQUE pode falhar inserções legítimas.
+- **Evidência:** `artefatos/F1-indexes.txt` — 2 entradas em `foods.name`: `ix_foods_name` (btree) e `taco_foods_name_key` (UNIQUE btree).
+- **Recomendação:** Migration:
+    ```python
+    op.drop_index("ix_foods_name", table_name="foods")  # redundante
+    op.drop_constraint("taco_foods_name_key", "foods", type_="unique")  # incorreto pós-unificação
+    op.create_index("ix_foods_name", "foods", ["name"])  # recria não-único
+    ```
+    Antes de aplicar: revisar se `food_lookup.py` ou seed dependem da unicidade (não devem; o lookup usa `pg_trgm`). Documentar que a unicidade era um artefato da era TACO-only.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 7.1
