@@ -521,5 +521,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** leitura completa de `Caddyfile` (57 linhas), `frontend/next.config.mjs` (19), `backend/app/main.py` (75)
 - **Artefato(s):** nenhum (matriz embutida em `07-seguranca.md § G.8`)
 - **Achados gerados:** AUD-041 (🟡 média)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** 888f51e
 - **Notas:** **Caddy injeta HSTS automaticamente** quando HTTPS ativo via Let's Encrypt (`{$APP_DOMAIN}`) ✅. Demais headers de segurança ausentes em todas as 3 camadas (Caddy, Next, FastAPI): X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy, Permissions-Policy. **CORS é defensivo por default**: `allow_origins` lê de `BACKEND_CORS_ORIGINS` (CSV); vazio = bloqueia tudo. Risco residual: se alguém setar `*` em prod com `allow_credentials=True`, ainda há especificação browser que rejeita, mas vale validator. Recomendação para AUD-041: bloco `header { }` no Caddyfile (entry único, cobre frontend+API simultaneamente). CSP inicial permissivo (`'unsafe-inline' 'unsafe-eval'` para Next dev) com aperto via nonces depois. `microphone=(self)` permitido pelo recurso de voice capture de refeições.
+
+## PASSO 8.6 — Secret scan no histórico git
+
+- **Início:** 2026-05-10 22:29
+- **Fim:** 2026-05-10 22:34
+- **Comando(s) executado(s):** `git log --all --full-history -p | grep -iE "(api_key|secret_key|password|token).*[=:].*[a-zA-Z0-9]{16}" | head -100`; `command -v gitleaks` (não instalado); `rg -n "SenhaForteAqui123" .`; `git log --all --full-history -- .env`; `cat .env.example`; `grep -n "\.env" .gitignore`
+- **Artefato(s):** `docs/auditoria/artefatos/G6-secret-scan.txt`
+- **Achados gerados:** nenhum novo (AUD-038 cobre o único segredo real, encontrado em PASSO 8.1)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **12 matches no regex, todos identificados**: 1 placeholder funcional (`POSTGRES_PASSWORD=SenhaForteAqui123!` em `docs/deploy.md` — risco de deployer copiar literal sem trocar) + 3 placeholders óbvios de Groq (`gsk_...sua_chave_aqui`) + 8 falsos positivos (identificadores TS NextAuth `setApiToken`/`accessTokenExpires`, schemas legados WhatsApp/Telegram). **`.env` nunca foi commitado** (`git log -- .env` → 0 hits) e está em `.gitignore` (linhas 8-11). **Limitação importante**: o regex exige `[a-zA-Z0-9]{16}` — **não pega senhas curtas como `***REMOVED***` (AUD-038)** que tem só 8 chars + especiais. Por isso esse scan é complementar à busca direcionada do PASSO 8.1, não substituto. `gitleaks` ofereceria cobertura mais ampla; recomendação combinada com AUD-038 § (4) já contempla `gitleaks-action` no CI.

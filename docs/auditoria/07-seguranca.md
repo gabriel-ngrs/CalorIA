@@ -186,6 +186,33 @@ app.add_middleware(
 
 Sem novo achado — comportamento defensivo por default.
 
+## G.6.1 Secret scan no histórico git
+
+Comando: `git log --all --full-history -p | grep -iE "(api_key|secret_key|password|token).*[=:].*[a-zA-Z0-9]{16}" | head -100`. Artefato: `artefatos/G6-secret-scan.txt`. `gitleaks` não disponível no ambiente.
+
+### Resultados (12 matches no regex)
+
+| Match | Categoria | Status |
+|---|---|---|
+| `+POSTGRES_PASSWORD=SenhaForteAqui123!` em `docs/deploy.md:178` | Placeholder de documentação | ⚠️ não é segredo, mas é "plausível" (deployer descuidado pode deixar como está) |
+| `+GROQ_API_KEY=gsk_...sua_chave_aqui` / `gsk_SUACHAVEGROQ` / `gsk_...` | Placeholder em `.env.example`/`docs` | ✅ obviamente placeholder |
+| `setApiToken(...)` / `accessTokenExpires` / `RefreshAccessTokenError` | Identificadores TS NextAuth | ✅ falso positivo (nomes de função/variável, não segredo) |
+| `LinkTokenResponse` / `WhatsAppLinkTokenResponse` | Schema legado | ✅ falso positivo |
+
+### Verificações complementares
+
+- **`.env` no histórico**: `git log --all -- .env` → 0 commits. ✅ nunca foi commitado.
+- **`.gitignore`** contém `.env`, `.env.local`, `.env.*.local`, `*.env` (linhas 8-11). ✅ defesa em camadas.
+- **`.env.example`** usa apenas defaults de dev (`POSTGRES_PASSWORD=caloria`) — sem valor sensível.
+
+### Limitação do regex
+
+A regex `[a-zA-Z0-9]{16}` exige 16+ caracteres consecutivos. **Não pega senhas curtas com caracteres especiais** — é exatamente por isso que `***REMOVED***` (8 chars + especiais) do **AUD-038** passou despercebido por esse scan e só foi encontrado pela busca específica do PASSO 8.1. Para cobertura mais ampla, usar `gitleaks` (instalar via `brew/apt` ou rodar via `gitleaks-action` em CI).
+
+### Conclusão
+
+**Sem novos achados nesta varredura**. O único segredo real no histórico é o do AUD-038, encontrado por busca direcionada no PASSO 8.1. Falso positivos são identificadores legítimos do NextAuth e schemas legados Telegram/WhatsApp. Recomendação reforça AUD-038 § Recomendação (4): `gitleaks-action` em CI captura tipos que o regex perdeu.
+
 ## Notas e contexto
 
-(seções G.6 secret scan e G.7 autorização serão preenchidas nos PASSOS 8.6-8.7)
+(seção G.7 autorização será preenchida no PASSO 8.7)
