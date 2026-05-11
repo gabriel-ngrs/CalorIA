@@ -391,5 +391,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** leitura de `reminders.py:36-71` + `models/reminder.py` + `docker exec caloria_postgres psql -c "SHOW timezone"` + `docker inspect caloria_postgres` + `grep -nB 1 -A 1 "TZ\|timezone" docker-compose*.yml backend/app/workers/celery_app.py`
 - **Artefato(s):** `docs/auditoria/artefatos/E2-tz.txt`
 - **Achados gerados:** AUD-026
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** cd9adc3
 - **Notas:** Bug **latente, não ativo**. `datetime.now()` é naive (linha 37); `Reminder.time` é `Time` sem TZ; comparação direta `hour/minute`. **Hoje funciona por acidente** porque todos os containers (postgres, backend, celery_worker, celery_beat) têm `TZ=America/Sao_Paulo` (verificado em ambos compose files) e `User` não tem campo de fuso — logo "agora naive" == "agora São Paulo" == "horário que o usuário digitou". Quebra silencioso em 3 cenários: (1) migração para UTC (default na maioria dos PaaS) → offset de 3h; (2) usuário fora de São Paulo → lembrete dispara em hora errada para ele; (3) DST em outros países → duplicação ou pulo. Celery `timezone="America/Sao_Paulo"`+`enable_utc=True` cobre só o disparo do beat (cron interpretado em SP), não o conteúdo da task. Recomendação curta: trocar por `datetime.now(ZoneInfo("America/Sao_Paulo"))`. Médio: adicionar `User.timezone`. Longo: pré-calcular `Reminder.next_fire_at`.
+
+## PASSO 6.3 — Hardcode de meta de hidratação
+
+- **Início:** 2026-05-10 20:05
+- **Fim:** 2026-05-10 20:10
+- **Comando(s) executado(s):** `rg -n "2000" backend/app/workers/tasks/reminders.py` + `grep -n "water_goal_ml" backend/app/models/user.py` + leitura de `_send_hydration_reminders_async` (linhas 154-220)
+- **Artefato(s):** `docs/auditoria/artefatos/E3-hydration-hardcode.txt`
+- **Achados gerados:** AUD-027
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Confirmado**: 2 sites com `2000` em `reminders.py:174,179`; `User.water_goal_ml: Mapped[int | None]` declarado em `models/user.py:44` mas nenhum uso em `backend/app/workers/`. Frontend já edita o campo (perfil/onboarding). Impacto: usuários com meta < 2000 recebem push depois da meta dele; usuários com meta > 2000 param de receber em 2000 (silencioso, difícil debugar sem logs estruturados — vide AUD-013). Bônus identificado: a mesma função tem N+1 já mapeado em AUD-008 (`for user in users: HydrationService(db).get_day_summary(user.id, today)`); fix do AUD-027 e do AUD-008 cabem no mesmo PR. Recomendação trivial: `goal_ml = user.water_goal_ml or 2000` e usar nas duas linhas.

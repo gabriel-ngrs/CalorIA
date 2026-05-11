@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 1 · altos: 7 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
+**Status totais:** críticos: 1 · altos: 8 · médios: 9 · baixos: 9 (atualizar a cada novo achado)
 
 ---
 
@@ -288,6 +288,29 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Substituir por `asyncio.run(coro)`, que cria e fecha um event loop dedicado por chamada (semântica correta para tasks Celery síncronas que só precisam executar uma coroutine raiz). Alternativa equivalente: `loop = asyncio.new_event_loop(); try: return loop.run_until_complete(coro); finally: loop.close()`. Como as 3 cópias são idênticas, vale extrair para `app/workers/utils.py` (1 helper compartilhada) — ataca também a duplicação. Acrescentar nota no `Dockerfile` do worker que `PYTHONWARNINGS=error::DeprecationWarning` em CI ajudaria a pegar regressões.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 6.1
+
+### AUD-027 — `_send_hydration_reminders_async` ignora `User.water_goal_ml` (hardcode 2000ml)
+
+- **Severidade:** 🟠 alta
+- **Frente:** E
+- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:174` (`if summary.total_ml >= 2000`) e `:179` (body `"… / 2000 ml hoje."`)
+- **Descrição:** A task `send_hydration_reminders` compara o consumo do dia contra `2000` ml fixo e a mensagem de notificação anuncia a meta como `2000 ml`. O modelo `User` já tem o campo `water_goal_ml: Mapped[int | None]` (`backend/app/models/user.py:44`), preenchido pelo perfil/onboarding, mas a task **ignora** este valor. Resultado:
+    - Usuário com meta menor (ex.: 1500 ml em criança/idoso) recebe push depois da meta dele atingida.
+    - Usuário com meta maior (ex.: 3500 ml em atleta) atinge "2000" e **não** recebe mais lembretes — falha silenciosa porque o push some sem motivo aparente.
+    - A mensagem mostra "X / 2000 ml" para todo mundo, contradizendo o que aparece no dashboard que usa `water_goal_ml` real.
+
+  Já documentado no plano (`plano.md` § E.5 como "🟠 hardcode") — apenas confirmado aqui.
+- **Evidência:** `artefatos/E3-hydration-hardcode.txt` — 2 hits de `"2000"`. `User.water_goal_ml` declarado mas sem nenhuma referência em `backend/app/workers/`.
+- **Recomendação:** Trocar pelas duas linhas correspondentes:
+    ```python
+    goal_ml = user.water_goal_ml or 2000
+    if summary.total_ml >= goal_ml:
+        continue
+    body = f"Hidratação: {summary.total_ml} ml / {goal_ml} ml hoje. Lembre-se de se hidratar!"
+    ```
+  O fallback `or 2000` cobre `None` (perfil não configurado). Considerar mover `2000` para `app/core/config.py` como `DEFAULT_WATER_GOAL_ML` para evitar reaparecer em outros pontos. Combinar com refator do AUD-008 (query agregada para hidratação) elimina N+1 da mesma task no mesmo PR.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 6.3
 
 ### AUD-026 — `dispatch_due_reminders` usa `datetime.now()` naive — bug latente de timezone
 
