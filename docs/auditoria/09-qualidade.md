@@ -152,3 +152,51 @@ useEffect(() => {
 ```
 
 A escolha de `eslint` como `local` hook é deliberada — o repo de ESLint pre-commit empacotado tem problemas conhecidos com Next.js 14; rodar via `next lint` é mais confiável.
+
+### § I.6 Dead code (de `artefatos/I5-dead-code.txt`)
+
+**Resumo: nenhum dead code real detectado.** Os hits do vulture e do `find -size 0` são todos falsos positivos esperados.
+
+**`__init__.py` vazios** (12 arquivos, todos esperados):
+
+```
+backend/app/__init__.py
+backend/app/api/__init__.py
+backend/app/core/__init__.py
+backend/app/services/__init__.py
+backend/app/services/ai/__init__.py
+backend/app/services/nutrition/__init__.py
+backend/app/services/reminders/__init__.py
+backend/app/workers/__init__.py
+backend/app/workers/tasks/__init__.py
+backend/tests/__init__.py
+backend/tests/integration/__init__.py
+backend/tests/unit/__init__.py
+```
+
+Todos marcadores padrão de pacote Python — não são dead code. (`tests/__init__.py` e `tests/unit/__init__.py` ajudam o pytest a resolver imports.)
+
+**Vulture (6 hits @ confidence 100%, todos falso positivo):**
+
+| Linha | Var | Por que é falso positivo |
+|---|---|---|
+| `app/core/database.py:30` | `cursor` | parâmetro do listener `before_cursor_execute` da SQLAlchemy — assinatura obrigatória |
+| `app/core/database.py:32` | `parameters` | idem |
+| `app/core/database.py:34` | `executemany` | idem |
+| `app/core/database.py:42` | `cursor` | parâmetro do listener `after_cursor_execute` |
+| `app/core/database.py:44` | `parameters` | idem |
+| `app/core/database.py:46` | `executemany` | idem |
+
+SQLAlchemy chama esses listeners com **todos** os argumentos posicionais; o handler não pode renomear/remover. Convenção em outros projetos é prefixar com `_` (ex.: `_cursor`, `_parameters`) para silenciar warnings — neutro funcionalmente. **Sem achado dedicado**.
+
+**Cross-ref com outros achados que tocam dead code real (já mapeados):**
+- AUD-034 — `MealSource.TELEGRAM` e `MealSource.WHATSAPP` (enum legado da era pré-Groq, sem usos no backend) → **dead schema** real, mas precisa de migração Alembic para remover do banco, e tabela `meals` está vazia.
+- AUD-027 hardcode `2000` em `reminders.py` ao lado de `user.water_goal_ml` declarado mas não usado por esse worker → **dead read** funcional (campo existe, valor é ignorado), não dead code estrutural.
+
+**Notas extras (sem achado):**
+- O comentário identificado em AUD-013 (`logger.info("Groq tokens — entrada: %d, saída: %d", ...)` em `ai_client.py:111`) é log órfão (sem dimensão para agregar), não dead code.
+- Pasta `app/services/reminders/__init__.py` é vazia E a lógica de reminders está em `app/services/reminder_service.py` (raiz) — **smell** de pacote planejado mas não materializado. Não é dead code (não polui imports), mas o diretório poderia ser removido. Anotado como nota — não merece achado dedicado.
+
+**Recomendação opcional** (sem PR dedicado):
+- Prefixar com `_` os 6 parâmetros não-usados dos listeners em `database.py` — silencia vulture com confiança 100% e libera baseline limpa para inclusão eventual no CI (`vulture --min-confidence 80` rodando como check informativo).
+- Remover `app/services/reminders/` se confirmar que não vai materializar como módulo separado.

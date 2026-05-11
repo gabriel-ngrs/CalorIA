@@ -623,3 +623,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-047 (🟡 média, com cross-ref importante a AUD-038)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **8 hooks ativos em 2 repos**: `ruff` (com `--fix`) + `ruff-format` em `^backend/`; e o pacote `pre-commit-hooks` v5.0.0 (`trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-merge-conflict`, `check-added-large-files --maxkb=1000`, `no-commit-to-branch --branch main`). **4 gaps importantes**: (1) **mypy** ausente — typecheck só em CI; (2) **eslint** frontend ausente — único warning passou; (3) **tsc --noEmit** ausente — TS estrito só em CI; (4) **gitleaks** ausente — **vetor crítico**: AUD-038 (credenciais reais commitadas) teria sido bloqueado se houvesse secret scan. `no-commit-to-branch --branch main` ✅ protege main; `--no-verify` bypassa tudo (esperado). Cross-ref forte: fix de AUD-047 deve ser bundlado com AUD-038 no mesmo PR (adicionar gitleaks pre-commit + GitHub Actions + filter-repo da senha do histórico). Snippet YAML completo em § I.4.
+
+## PASSO 10.5 — Dead code
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** bloco `find __init__.py -size 0 + find -size 0 type f + uvx vulture app/ --min-confidence 70` redirecionado para artefato.
+- **Artefato(s):** `docs/auditoria/artefatos/I5-dead-code.txt`
+- **Achados gerados:** nenhum (todos os hits são falsos positivos esperados)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Nenhum dead code real detectado.** Os 12 `__init__.py` vazios são marcadores padrão de pacote Python. Os 6 hits do vulture @ confidence 100% são todos parâmetros obrigatórios de listeners SQLAlchemy (`before_cursor_execute` e `after_cursor_execute` em `app/core/database.py` linhas 30/32/34/42/44/46) — assinatura ditada pela API. Convenção mais limpa: prefixar com `_` (`_cursor`, `_parameters`, `_executemany`) para silenciar vulture. **Dead code real já mapeado em outros achados**: AUD-034 (`MealSource.TELEGRAM`/`WHATSAPP` legado, dead schema) e AUD-027 (`user.water_goal_ml` ignorado pelo worker de hidratação, "dead read"). **Smell extra anotado sem achado**: pasta `app/services/reminders/__init__.py` é vazia e a lógica real está em `app/services/reminder_service.py` (raiz) — pacote planejado e nunca materializado, pode ser removido. Recomendação opcional: rodar `vulture --min-confidence 80` como check informativo após prefixar os 6 params com `_`.
