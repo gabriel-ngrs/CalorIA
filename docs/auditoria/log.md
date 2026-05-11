@@ -683,3 +683,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-052 (🟢 baixa) + AUD-053 (🟢 baixa)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **Funcionalmente o Caddy está bem**: HTTPS automático via Let's Encrypt através do envelope `{$APP_DOMAIN}`; `reverse_proxy` injeta `X-Forwarded-For`/`X-Forwarded-Proto` automaticamente; routing por `handle` é correto. **3 gaps complementares (AUD-052)**: `format console` (não JSON, combina com AUD-049); sem rate limit (combina com AUD-040); sem bloco `header { }` (AUD-041 já cobre). **Decisão pendente sobre 2 deployments (AUD-053)**: `Caddyfile` (56 linhas, full-stack frontend+backend, com `handle /api/auth/*` → `frontend:3000`) vs `Caddyfile.backend` (22 linhas, backend-only, sem catchall). **CD atual usa apenas o backend-only** (`cd.yml:33` → `docker-compose.backend.yml` → `Caddyfile.backend`); frontend está na Vercel (AUD-044 confirmou `frontend-nine-mu-59.vercel.app`). `docker-compose.yml` + `Caddyfile` full-stack continuam no repo mas não são deployados — pendência registrada como evidência sem prescrição forte. Recomendação suave para AUD-053: opção 1 (remover/renomear full-stack) reduz superfície; opção 2 (manter com README/ADR) mantém alternativa. **Encerra Frente J** com 5 achados (3 médios + 2 baixos): AUD-049, AUD-050, AUD-051, AUD-052, AUD-053. Status totais agora: críticos 2, altos 14, médios 20, baixos 17.
+
+## PASSO 12.1 — Coerência das versões
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** bloco `grep version` em `pyproject.toml`, `app/main.py`, `CHANGELOG.md` e `package.json` redirecionado para artefato.
+- **Artefato(s):** `docs/auditoria/artefatos/K1-versions.txt`
+- **Achados gerados:** AUD-054 (🟢 baixa, mas cross-ref forte com AUD-049/050/051)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Dessincronia confirmada — 6 minor versions de gap**. `pyproject.toml`, `app/main.py:36` (FastAPI), `app/main.py:74` (`/health`), `frontend/package.json` todos em `0.1.0`; `CHANGELOG.md:14` em `[0.7.0] - 2026-05-10`. Hoje não quebra ninguém (não há publicação em PyPI/npm, nenhum monitoring ligado), mas vira problema imediato quando: (1) Sentry/APM entra em cena (AUD-051) — todos eventos agregam por release="0.1.0"; (2) UptimeRobot lê `/health` (AUD-050) — rollback por versão impossível; (3) bug report do usuário não correlaciona com commit. **Recomendação consolidada**: bumpar para `0.7.0` agora + substituir hardcode em `main.py` por `importlib.metadata.version("caloria-backend")` (combina com fix de AUD-050) + documentar workflow de release em CONTRIBUTING/ADR-007 (proposto em AUD-055). Alternativa robusta: `setuptools-scm` + git tags como fonte de verdade.
