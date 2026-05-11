@@ -1,0 +1,13 @@
+./docs/legacy/analise.md:90:- **Problema:** `email-redigido@example.com` ocupa ~280px no header, empurrando os botões de Notificação e Sair para a borda direita.
+./docs/auditoria/artefatos/G1-creds.txt:1:./docs/legacy/analise.md:90:- **Problema:** `email-redigido@example.com` ocupa ~280px no header, empurrando os botões de Notificação e Sair para a borda direita.
+./frontend/e2e/auth.spec.ts:37:    await page.getByLabel(/e-mail/i).fill("email-redigido@example.com");
+./frontend/e2e/auth.spec.ts:38:    await page.getByLabel(/senha/i).fill("SENHA-REDIGIDA");
+./docs/auditoria/plano.md:423:- [ ] **CRÍTICO 🔴**: `frontend/e2e/auth.spec.ts:40` contém senha real `SENHA-REDIGIDA` e email `email-redigido@example.com`. **Trocar a senha no app + remover do código + reescrever histórico** (ou ao menos remover do HEAD e trocar a senha).
+./docs/auditoria/runbook.md:1185:rg -n "SENHA-REDIGIDA|gabrielnegreirossaraiva38@gmail" \
+=== Histórico git do auth.spec.ts ===
+Author: Gabriel <email-redigido@example.com>
+Author: Gabriel <email-redigido@example.com>
++    await page.getByLabel(/e-mail/i).fill("email-redigido@example.com");
++    await page.getByLabel(/senha/i).fill("SENHA-REDIGIDA");
+Author: Gabriel <email-redigido@example.com>
+Author: Gabriel <email-redigido@example.com>
