@@ -7,6 +7,8 @@
 - AUD-030 (🟡 média) — falta índice composto `(user_id, date)` em `meals` (e nos 3 logs diários `weight_logs`/`mood_logs`/`hydration_logs`); dashboard filtra pelas duas colunas
 - AUD-031 (🟡 média) — falta índice em `notifications.read` (idealmente parcial `WHERE NOT read`); endpoint `unread-count` é polled pelo header
 - AUD-032 (🟢 baixa) — `foods.name` tem 2 índices redundantes (`ix_foods_name` non-unique + `taco_foods_name_key` UNIQUE legado); UNIQUE pode bloquear seeds futuros do Open Food Facts
+- AUD-033 (🟡 média) — migração `adiciona_dessert_mealtype.py` tem `downgrade()` apenas `pass` — `alembic downgrade -1` não desfaz a adição do enum value
+- AUD-034 (🟢 baixa) — enum `MealSource` mantém `TELEGRAM`/`WHATSAPP` mortos no schema (não usados em código nem dados)
 
 (referencia também AUD-029 que cobre `ai_conversations.updated_at` — gerado na FASE 6 PASSO 6.5)
 
@@ -77,6 +79,35 @@ Comando: 5 queries representativas via `docker exec caloria_postgres psql -c "EX
 
 **Q4 — Seq Scan é uma escolha correta hoje** (tabela 0 rows, mesmo com selectivity default de 335 rows estimadas o Seq Scan sai ~16). O risco está no acoplamento futuro: a query do worker (`SELECT * FROM reminders WHERE active = true`) puxa todos os ativos por minuto e filtra hora/minuto em Python. Para 1.000 lembretes ativos isso é 1000 rows/minuto trafegando do DB para a app. Reescrever a query para `WHERE active AND time = make_time(:h, :m, 0)` permitiria índice composto `(active, time)` — fora de escopo desta auditoria, mas anotado.
 
+## F.2 Migrações Alembic — reversibilidade
+
+Comando: extração do corpo de `def downgrade()` em cada `backend/alembic/versions/*.py` via Python regex. Artefato: `artefatos/F3-downgrade.txt`.
+
+### Estado das 10 migrações
+
+| # | Arquivo | LOC downgrade | Reversível |
+|---|---|---|---|
+| 1 | `20260224_..._schema_inicial.py` | 24 | ✅ drop completo das tabelas/índices |
+| 2 | `20260305_a1b2c3d4e5f6_novos_campos_e_categorias.py` | 3 | ✅ drop colunas + DROP TYPE goaltype |
+| 3 | `20260305_b2c3d4e5f6a1_corrige_case_enums.py` | 4 | ✅ rename de volta dos enum values |
+| 4 | `20260305_d4e5f6a1b2c3_taco_foods.py` | 3 | ✅ drop indexes + table |
+| 5 | **`20260306_e5f6a1b2c3d4_adiciona_dessert_mealtype.py`** | 1 (`pass`) | ❌ **AUD-033** |
+| 6 | `20260309_f1a2b3c4d5e6_taco_pgtrgm_source.py` | 5 | ✅ drop colunas + index |
+| 7 | `20260315_a1b2c3d4e5f6_web_push_notifications.py` | 25 | ✅ drop 2 tables + types + cols |
+| 8 | `20260318_c4d5e6f7a8b9_foods_refactor.py` | 8 | ✅ drop cols + rename indexes/table |
+| 9 | `20260318_d5e6f7a8b9c0_meal_items_food_ref.py` | 7 | ✅ drop cols + FK |
+| 10 | `20260320_e6f7a8b9c0d1_fix_search_text_taco.py` | 11 | ⚠️ partial revert documentado |
+
+### Outras verificações (do plano)
+
+- **`pg_trgm` extension:** `CREATE EXTENSION IF NOT EXISTS pg_trgm` em `20260309_f1a2b3c4d5e6_taco_pgtrgm_source.py:20`. ✅ presente.
+- **Enum `MealSource`:** ainda tem `TELEGRAM`/`WHATSAPP` no model E no DB (`pg_enum`). Nenhum uso em código. **AUD-034**.
+- **Enum `MealType`:** valor `dessert` adicionado em #5; outros valores stable.
+
+### Dead schema vs limitação técnica
+
+A justificativa do `pass` em #5 ("PostgreSQL não permite remover valores de enum sem recriar o tipo") é **parcialmente verdadeira** — recriar o tipo é a solução documentada e funciona. O AUD-033 propõe o padrão correto. AUD-034 (limpeza do `MealSource`) usa o mesmo padrão e serve como teste do esforço necessário.
+
 ## Notas e contexto
 
-(seções F.2-F.5 serão preenchidas nos PASSOS 7.3-7.5)
+(seções F.3-F.5 serão preenchidas nos PASSOS 7.4-7.5)
