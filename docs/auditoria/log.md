@@ -431,5 +431,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `docker exec caloria_postgres psql -c "SELECT ... FROM pg_indexes WHERE schemaname='public'"` + `EXPLAIN` em 3 queries candidatas (`meals user+date`, `notifications unread count`, `reminders active=true`) + `pg_relation_size` para tamanhos
 - **Artefato(s):** `docs/auditoria/artefatos/F1-indexes.txt`
 - **Achados gerados:** AUD-030, AUD-031, AUD-032
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** ebd045c
 - **Notas:** **35 índices não-pkey** mapeados em 13 tabelas. Padrão observado: SQLAlchemy gera índices separados por coluna FK/filtro, **nunca compostos**. 4 tabelas (`meals`, `weight_logs`, `mood_logs`, `hydration_logs`) repetem o caso clássico `WHERE user_id AND date` sem composto — `EXPLAIN` confirma `Index Cond: (user_id=1)` + `Filter: (date=...)` (heap scan extra). `notifications` ainda pior: sem nenhum índice em `read`, polling do badge varre todo histórico do usuário no heap. **Surpresa**: `foods.name` tem 2 índices (`ix_foods_name` non-unique + `taco_foods_name_key` UNIQUE legado da era TACO-only); UNIQUE pode bloquear seed do Open Food Facts (duplicatas legítimas por marca). Não-achados verificados: `meal_items(meal_id, food_id)` composto sugerido no plano não agrega valor (joins simples cobertos); `reminders(active)` Seq Scan é correto para tabela pequena hoje. Achados criados: 2× 🟡 (compostos faltando) + 1× 🟢 (índices duplicados em foods).
+
+## PASSO 7.2 — EXPLAIN ANALYZE de queries críticas
+
+- **Início:** 2026-05-10 20:52
+- **Fim:** 2026-05-10 21:02
+- **Comando(s) executado(s):** `EXPLAIN ANALYZE` em 6 queries representativas via `docker exec caloria_postgres psql` (Q1 daily summary, Q2 dashboard semanal, Q3 unread count, Q4 reminders ativos, Q5 food lookup, Q6 weight history); duas tentativas porque `meal_items.protein_g` não existe (coluna real é `protein`), e `foods.calories_kcal` virou `calories_100g`.
+- **Artefato(s):** `docs/auditoria/artefatos/F2-explain.txt`
+- **Achados gerados:** nenhum novo (as 6 queries validam AUD-016, AUD-030, AUD-031 e o latente de § F.1 sobre `reminders`)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Caveat:** apenas `foods` (42.103 rows) tem dados; outras tabelas vazias. `actual time` é trivial mas o **plano** é representativo (planner usa estatísticas, não volume real). **Insights**: (1) Q2 — planner escolheu `ix_meals_date` em vez de `ix_meals_user_id` para `BETWEEN 7 days` — composto `(user_id, date)` resolve ambos caminhos; (2) Q5 confirma AUD-016 — sem o OR `similarity() >= 0.18`, query leva **19ms** (Bitmap Index Scan + 1166 candidatos + sort top-5); com o OR, vai para 585ms; (3) Q4 — Seq Scan está correto para tabela vazia mas planner estima 335 rows pela selectivity default; risco latente = quando reminders crescer, query continuará puxando todos os ativos para filtrar `time` em Python. Anotado: otimização Q5 adicional possível com KNN `<->` operator (~5ms), fora de escopo. **Sem achados novos** porque os 6 planos já estão cobertos por AUD-016/030/031 e § F.1 latente de `reminders`.

@@ -1,0 +1,87 @@
+=== Q1: Daily summary (meals + meal_items por user+date) ===
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.29..16.34 rows=1 width=24) (actual time=0.017..0.018 rows=0 loops=1)
+   ->  Index Scan using ix_meals_user_id on meals m  (cost=0.14..8.17 rows=1 width=8) (actual time=0.017..0.017 rows=0 loops=1)
+         Index Cond: (user_id = 1)
+         Filter: (date = CURRENT_DATE)
+   ->  Index Scan using ix_meal_items_meal_id on meal_items mi  (cost=0.14..8.16 rows=1 width=20) (never executed)
+         Index Cond: (meal_id = m.id)
+ Planning Time: 3.074 ms
+ Execution Time: 0.067 ms
+(8 rows)
+
+
+=== Q2: Macros por intervalo (dashboard semanal) ===
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=0.30..16.37 rows=1 width=36) (actual time=0.040..0.041 rows=0 loops=1)
+   Group Key: m.date
+   ->  Nested Loop  (cost=0.30..16.35 rows=1 width=36) (actual time=0.039..0.040 rows=0 loops=1)
+         ->  Index Scan using ix_meals_date on meals m  (cost=0.15..8.17 rows=1 width=8) (actual time=0.038..0.039 rows=0 loops=1)
+               Index Cond: ((date >= (CURRENT_DATE - '7 days'::interval)) AND (date <= CURRENT_DATE))
+               Filter: (user_id = 1)
+         ->  Index Scan using ix_meal_items_meal_id on meal_items mi  (cost=0.14..8.16 rows=1 width=36) (never executed)
+               Index Cond: (meal_id = m.id)
+ Planning Time: 6.437 ms
+ Execution Time: 0.159 ms
+(10 rows)
+
+
+=== Q3: Notifications unread count ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=12.65..12.66 rows=1 width=8) (actual time=0.007..0.008 rows=1 loops=1)
+   ->  Bitmap Heap Scan on notifications  (cost=4.18..12.64 rows=2 width=0) (actual time=0.005..0.005 rows=0 loops=1)
+         Recheck Cond: (user_id = 1)
+         Filter: (NOT read)
+         ->  Bitmap Index Scan on ix_notifications_user_id  (cost=0.00..4.18 rows=4 width=0) (actual time=0.002..0.002 rows=0 loops=1)
+               Index Cond: (user_id = 1)
+ Planning Time: 0.689 ms
+ Execution Time: 0.067 ms
+(8 rows)
+
+
+=== Q4: Reminders due (worker, todo minuto) ===
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Seq Scan on reminders  (cost=0.00..16.70 rows=335 width=93) (actual time=0.002..0.003 rows=0 loops=1)
+   Filter: active
+ Planning Time: 0.627 ms
+ Execution Time: 0.033 ms
+(4 rows)
+
+
+=== Q5: Food fuzzy lookup (caminho síncrono do user) ===
+                                                                   QUERY PLAN                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1251.39..1251.40 rows=5 width=51) (actual time=18.936..18.939 rows=5 loops=1)
+   ->  Sort  (cost=1251.39..1253.52 rows=851 width=51) (actual time=18.934..18.935 rows=5 loops=1)
+         Sort Key: (similarity(search_text, 'arroz integral'::text)) DESC
+         Sort Method: top-N heapsort  Memory: 25kB
+         ->  Bitmap Heap Scan on foods  (cost=139.05..1237.26 rows=851 width=51) (actual time=3.056..18.639 rows=1109 loops=1)
+               Recheck Cond: (search_text %>> 'arroz integral'::text)
+               Rows Removed by Index Recheck: 57
+               Heap Blocks: exact=517
+               ->  Bitmap Index Scan on ix_foods_search_trgm  (cost=0.00..138.84 rows=851 width=0) (actual time=2.984..2.984 rows=1166 loops=1)
+                     Index Cond: (search_text %>> 'arroz integral'::text)
+ Planning Time: 14.125 ms
+ Execution Time: 19.223 ms
+(12 rows)
+
+
+=== Q6: Histórico de peso (chart com limit) ===
+                                                                QUERY PLAN                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=12.72..12.73 rows=5 width=60) (actual time=0.038..0.039 rows=0 loops=1)
+   ->  Sort  (cost=12.72..12.73 rows=5 width=60) (actual time=0.037..0.037 rows=0 loops=1)
+         Sort Key: date DESC
+         Sort Method: quicksort  Memory: 25kB
+         ->  Bitmap Heap Scan on weight_logs  (cost=4.19..12.66 rows=5 width=60) (actual time=0.003..0.003 rows=0 loops=1)
+               Recheck Cond: (user_id = 1)
+               ->  Bitmap Index Scan on ix_weight_logs_user_id  (cost=0.00..4.19 rows=5 width=0) (actual time=0.002..0.002 rows=0 loops=1)
+                     Index Cond: (user_id = 1)
+ Planning Time: 14.128 ms
+ Execution Time: 0.089 ms
+(10 rows)
+
