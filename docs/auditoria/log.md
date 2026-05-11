@@ -693,3 +693,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-054 (🟢 baixa, mas cross-ref forte com AUD-049/050/051)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **Dessincronia confirmada — 6 minor versions de gap**. `pyproject.toml`, `app/main.py:36` (FastAPI), `app/main.py:74` (`/health`), `frontend/package.json` todos em `0.1.0`; `CHANGELOG.md:14` em `[0.7.0] - 2026-05-10`. Hoje não quebra ninguém (não há publicação em PyPI/npm, nenhum monitoring ligado), mas vira problema imediato quando: (1) Sentry/APM entra em cena (AUD-051) — todos eventos agregam por release="0.1.0"; (2) UptimeRobot lê `/health` (AUD-050) — rollback por versão impossível; (3) bug report do usuário não correlaciona com commit. **Recomendação consolidada**: bumpar para `0.7.0` agora + substituir hardcode em `main.py` por `importlib.metadata.version("caloria-backend")` (combina com fix de AUD-050) + documentar workflow de release em CONTRIBUTING/ADR-007 (proposto em AUD-055). Alternativa robusta: `setuptools-scm` + git tags como fonte de verdade.
+
+## PASSO 12.2 — ADR pendente
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** `grep -nE "^## ADR-" docs/architecture.md`; `ls docs/adrs/` (não existe — todos os ADRs estão inline em `architecture.md`); leitura completa de ADR-002 e ADR-006 para comparação de qualidade.
+- **Artefato(s):** nenhum (matriz em `11-dx-docs.md § K.1`)
+- **Achados gerados:** AUD-055 (🟢 baixa)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Premissa do runbook era falsa**: previa "criar ADR-006 sobre Groq", mas ADR-006 já existe (e cobre banco nutricional pg_trgm). O repo tem **8 ADRs** (001-008) inline em `docs/architecture.md`, cobertura estrutural boa. **Gap real**: ADR-002 (Groq) é "skinny" — descreve a decisão atual mas não registra alternativas (OpenAI, Anthropic, Ollama) nem trade-offs explícitos; ADR-003 (Web Push) tem mesmo padrão de "fato consumado sem racional"; ADR-006 (banco nutricional) é o melhor template — cita números (feijão carioca kcal, threshold 0.65, latência < 20ms). **ADRs propostos**: ADR-009 para AUD-053 (Vercel + Hetzner backend-only — registra o porquê de `docker-compose.backend.yml` ser canônico); ADR-010 para AUD-054 (workflow de release com sincronia CHANGELOG/pyproject/package.json); ADR-011 opcional para AUD-049/050/051 quando observabilidade for implementada. ADRs servem para decisões **tomadas**, não para backlog — adicionar à medida que cada AUD for atacado.

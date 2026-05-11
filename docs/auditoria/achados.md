@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 18 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 19 (atualizar a cada novo achado)
 
 ---
 
@@ -832,3 +832,18 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     Alternativa estrutural (mais robusta): `setuptools-scm` no backend e `git describe` no frontend, usando tags `v0.7.0` como fonte — exige mais setup mas elimina o problema de raiz.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 12.1
+
+### AUD-055 — ADR-002 (Groq) sem alternativas avaliadas e decisões recentes (Vercel + release workflow) sem ADR
+
+- **Severidade:** 🟢 baixa
+- **Frente:** K
+- **Arquivo:linha:** `docs/architecture.md:67-82` (ADR-002 "skinny"); ADR-003:85-95 (idem, sem racional da migração); ausência de ADR para deploy hybrid (cross-ref AUD-053) e para workflow de release (cross-ref AUD-054)
+- **Descrição:** O repo tem 8 ADRs (001-008) cobrindo bem as decisões estruturais. **Premissa do runbook era falsa**: previa "ADR-006 sobre Groq" como gap, mas ADR-006 já existe (e cobre banco nutricional pg_trgm). O gap real é mais sutil: ADR-002 documenta a decisão de usar Groq mas **não registra as alternativas avaliadas** (OpenAI gpt-4o-mini, Anthropic Claude Haiku, Ollama+Llama3.1 local) nem os trade-offs (custo, latência, complexidade operacional). Decisão é defensável, mas o "porquê não X" fica não-rastreável. ADR-003 (Web Push em vez de Telegram/WhatsApp) tem o mesmo padrão — fato consumado sem racional. ADR-006 (banco nutricional) é o mais bem escrito (cita números: kcal feijão carioca, threshold 0.65, latência < 20ms) — serve de template. **Decisões recentes surgidas nesta auditoria sem ADR**: deploy hybrid Vercel + Hetzner backend-only (cross-ref AUD-053) e workflow de sincronia de versões (cross-ref AUD-054).
+- **Evidência:** `grep "^## ADR-" docs/architecture.md` mostra 8 ADRs; leitura de ADR-002 (`docs/architecture.md:67-82`) confirma ausência de seção "Alternativas consideradas"; análise comparativa em `11-dx-docs.md § K.1`.
+- **Recomendação:** Esforço S (<1h):
+    1. Retocar ADR-002 com seção "Alternativas consideradas" (OpenAI/Anthropic/Ollama) e o porquê de cada rejeição.
+    2. Adicionar **ADR-009** registrando "Frontend Vercel + backend Hetzner self-hosted" — fecha a decisão pendente de AUD-053.
+    3. Adicionar **ADR-010** quando AUD-054 for atacado (workflow de release — sincronia CHANGELOG/pyproject/package.json).
+    4. (Opcional) ADR-011 quando AUD-049/050/051 forem implementados — observabilidade consolidada.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 12.2
