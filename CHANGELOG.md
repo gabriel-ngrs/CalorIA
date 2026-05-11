@@ -9,6 +9,10 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Documentação
+
+- **Auditoria de arquitetura, qualidade e segurança** — documentação completa em [`docs/auditoria/`](docs/auditoria/). Identifica **57 achados** (🔴 2 · 🟠 14 · 🟡 21 · 🟢 20) cobrindo 12 frentes (arquitetura, backend, IA, frontend, workers, banco, segurança, testes, qualidade, observabilidade, DX/docs). Inclui plano priorizado de correção em 4 ondas (Onda 1 — segurança + bug latente; Onda 2 — resiliência + observabilidade; Onda 3 — refator IA + cobertura; Onda 4 — hardening). Ver [`docs/auditoria/relatorio-preliminar.md`](docs/auditoria/relatorio-preliminar.md) para resumo executivo e [`docs/auditoria/achados.md`](docs/auditoria/achados.md) para lista completa.
+
 ---
 
 ## [0.7.0] - 2026-05-10

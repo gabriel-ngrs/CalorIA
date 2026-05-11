@@ -127,6 +127,7 @@ CalorIA/
 │   └── types/              # TypeScript types
 ├── docs/
 │   ├── architecture.md     # Decisões de arquitetura (ADRs)
+│   ├── auditoria/          # Auditoria de arquitetura/qualidade/segurança
 │   ├── setup.md            # Guia de setup do zero
 │   ├── deploy.md           # Guia de deploy em produção (Hetzner)
 │   ├── git-workflow.md     # Estratégia de branches e CI/CD
@@ -194,6 +195,15 @@ chore(deps): atualiza dependências do backend
 | `meta-llama/llama-4-scout-17b-16e-instruct` | Visão | 30 RPM, 7.000 tokens/min |
 
 O projeto implementa cache Redis (7 dias, SHA-256) para reduzir chamadas redundantes, e o banco nutricional local (~19.800 alimentos) evita chamadas à IA para cálculo de macros de alimentos comuns.
+
+---
+
+## Documentação adicional
+
+- [`docs/architecture.md`](docs/architecture.md) — decisões de arquitetura (ADRs).
+- [`docs/setup.md`](docs/setup.md) — guia de setup do zero.
+- [`docs/deploy.md`](docs/deploy.md) — guia de deploy em produção.
+- [`docs/auditoria/relatorio-preliminar.md`](docs/auditoria/relatorio-preliminar.md) — relatório de auditoria de arquitetura, qualidade e segurança (57 achados com plano priorizado de correção).
 
 ---
 

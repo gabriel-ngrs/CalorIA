@@ -743,3 +743,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (passo de consolidação)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** Relatório com 7 seções: (1) Visão geral com distribuição por frente; (2) Métricas baseline; (3) Top 10 achados de maior impacto (com critério: severidade primeiro, depois raio de impacto, depois esforço/valor); (4) Priorização em 4 ondas de fix; (5) Esforço total estimado (~150-200h, ~3 meses solo); (6) Referências cruzadas para todos os artefatos da auditoria; (7) Definition of Done com checklist das FASES. **Decisões importantes da redação**: (a) **Ondas, não fases** — agrupar PRs por sinergia operacional, não por ordem do runbook; Onda 1 (segurança + bug latente) bloqueia primeiro deploy; (b) **Bundling de achados em PR** — vários PRs combinam 3-5 AUDs com sinergia técnica (ex.: AUD-014+046+049 do pool Redis); (c) **Top 10** prioriza AUD-016 e AUD-038 como críticos mas também eleva AUD-026 (TZ latente, hoje funciona "por acidente") e AUD-039 (NEXTAUTH_SECRET default replicado entre frontend e backend); (d) Caveats explícitos: estimativas são para um dev solo, Onda 3 (refator IA) pode escalar se quebra do InsightsGenerator revelar acoplamentos. Frentes mais afetadas: G (3 críticos+altos), B (4 altos), E (3 altos); frentes em bom estado: A e H.
+
+## PASSO 13.3 — Atualizar CHANGELOG e README
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** edição direta de `CHANGELOG.md` (adição em `## [Não lançado]`) e `README.md` (adição de `docs/auditoria/` à árvore + nova seção "Documentação adicional" com link para o relatório).
+- **Artefato(s):** nenhum novo
+- **Achados gerados:** nenhum (passo de consolidação)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **CHANGELOG**: adicionada seção `### Documentação` sob `## [Não lançado]` com sumário da auditoria (57 achados, distribuição por severidade, links para relatório e achados). Texto curto, conforme convenção do Keep a Changelog. **README**: dois pequenos retoques — (a) `docs/auditoria/` adicionado à árvore do "Estrutura do Projeto" (linha 130-ish); (b) seção nova "Documentação adicional" antes de "Licença" com 4 bullets cobrindo architecture.md, setup.md, deploy.md e o relatório de auditoria. Mantém o README enxuto (linha-base 202 LOC, ficou 213). Caveat: README cita `Caddyfile` (full-stack) na árvore mas AUD-053 documentou que o ativo é `Caddyfile.backend` — não corrigido neste passo porque é decisão arquitetural pendente (ADR-009 proposto em AUD-055); fix será no PR que implementar AUD-053.
