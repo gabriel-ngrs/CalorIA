@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 19 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 21 · baixos: 19 (atualizar a cada novo achado)
 
 ---
 
@@ -847,3 +847,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     4. (Opcional) ADR-011 quando AUD-049/050/051 forem implementados — observabilidade consolidada.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 12.2
+
+### AUD-056 — Runbook operacional incompleto — `deploy.md § Troubleshooting` cobre Day 0 mas falta instrução para incidentes específicos
+
+- **Severidade:** 🟡 média
+- **Frente:** K
+- **Arquivo:linha:** `docs/deploy.md:352-391` (seção Troubleshooting com 4 cenários básicos); ausência de `docs/runbook-prod.md` ou equivalente
+- **Descrição:** A seção `## Troubleshooting` em `deploy.md` (40 linhas, linhas 352-391) cobre cenários básicos de Day 0: "app não abre", "502", "banco com erro", "push não chega", "reset com/sem dados". Cobertura razoável para o operador colocar o sistema no ar, mas **não cobre** os cenários específicos que esta auditoria já identificou como possíveis incidentes: (1) Groq estourar free tier (cross-ref AUD-012/-013); (2) HTTP 410 em massa nas subscriptions push (cross-ref AUD-028); (3) Worker Celery travado (cross-ref AUD-025/-026 — bugs latentes que viram silenciosos sem runbook); (4) Restore de backup Postgres (cross-ref AUD-037 — quando backup automatizado existir); (5) Rotação de secrets (cross-ref AUD-039 — `SECRET_KEY`/`NEXTAUTH_SECRET`/VAPID); (6) Resposta a alerta Sentry de 5xx burst (cross-ref AUD-051). Falta runbook acoplado à observabilidade: hoje, mesmo quando alguém **descobre** que um worker está travado, não há documento que diga "execute X, depois Y, depois confira Z".
+- **Evidência:** `ls docs/` mostra ausência de `runbook-prod.md`; `grep -niE "troubleshoot|runbook|incident|emergência" docs/*.md` retorna apenas a seção de `deploy.md` (1 ocorrência); detalhamento em `11-dx-docs.md § K.1.b`.
+- **Recomendação:** Criar `docs/runbook-prod.md` com uma seção por cenário no formato canônico (Sintoma / Verificar / Mitigação imediata / Causa raiz). Lista mínima: Groq 429 persistente, Push 410 em massa, Worker Celery travado, Restore Postgres, Rotação de secrets, Reset de banco em dev (já parcialmente coberto). Cada cenário cita os AUDs relacionados — runbook serve como roteiro de fix imediato e os AUDs como roteiro de fix definitivo. Pode ser construído incremental: começa com Groq + Worker (probabilidade mais alta hoje), e cresce conforme outros riscos materializam. Snippet de cenário em `11-dx-docs.md § K.1.b`.
+- **Esforço:** M (1-4h, incremental)
+- **Origem:** PASSO 12.3
