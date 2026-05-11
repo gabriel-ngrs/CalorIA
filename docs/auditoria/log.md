@@ -481,5 +481,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `rg -n "***REMOVED***|gabrielnegreirossaraiva38@gmail" .`; `git log --all --full-history -p -- frontend/e2e/auth.spec.ts | grep -E "082405|gabrielnegreiros" | head -20`; `git remote -v`; `git log --oneline -- frontend/e2e/auth.spec.ts`
 - **Artefato(s):** `docs/auditoria/artefatos/G1-creds.txt`
 - **Achados gerados:** AUD-038 (🔴 crítica)
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** b6e6e7b
 - **Notas:** **Confirmado**: par email+senha real em `frontend/e2e/auth.spec.ts:37-38`. Email = `gabrielnegreirossaraiva38@gmail.com` (mantenedor confirmado via `%ae` do commit `4737257` de 2026-04-29). Senha `***REMOVED***` em texto claro. Repo público em GitHub (`https://github.com/gabriel-ngrs/CalorIA.git`) — `git log -p` extrai trivialmente. Outros testes no mesmo arquivo (linhas 27-29) já usam fixture (`TEST_EMAIL`/`TEST_PASSWORD`); só o "login com user existente" foi escrito com credencial direta. **Vetor primário**: password reuse — se `***REMOVED***` está em outros serviços (Google, banco, etc.), comprometimento se propaga. **Ações pós-auditoria** (4 etapas, ordem importa): (1) trocar a senha AGORA em todos os lugares onde está; (2) substituir por `process.env.E2E_LOGIN_*` + GitHub Actions secret; (3) `git filter-repo --replace-text` para remover do histórico + force-push; (4) `gitleaks-action` no CI + pre-commit hook. Status totais: críticos sobe para **2** (era 1).
+
+## PASSO 8.2 — Auth flow review
+
+- **Início:** 2026-05-10 21:52
+- **Fim:** 2026-05-10 22:00
+- **Comando(s) executado(s):** leitura de `backend/app/api/v1/auth.py` (105 linhas) + `app/core/security.py` (41) + `app/core/deps.py` (40) + `app/services/auth_service.py` (40) + `app/core/config.py` (66)
+- **Artefato(s):** nenhum (matriz embutida em `07-seguranca.md § G.1`)
+- **Achados gerados:** AUD-039 (🟠 alta)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **Auth bem desenhada** — checklist do runbook praticamente todo verde: HS256 (com `algorithms=[ALG]` lista evitando `alg=none`), access 30min/refresh 30d, refresh blacklisted após uso (Redis SETEX com TTL=remaining), token type validado nos 2 callers, `raise ... from None` nos 2 sites de credentials. **Único achado**: `SECRET_KEY` default = `"insecure-default-key-change-in-production"` sem validator de fail-fast (AUD-039). Se alguém esquecer a env em prod, JWTs ficam forjáveis com a string que está no próprio source. Fix simples: `model_validator(mode="after")` que falha se `APP_ENV != development AND SECRET_KEY == default OR len < 32`. Mesmo padrão de gap em `VAPID_*` (defaults vazios sem fail-fast — push falha silenciosamente). Anotações sem novo achado: (a) `_redis_client()` cria conexão por chamada (mesma issue do AUD-014); (b) `blacklist_token` engole exceções com warning — degradação silenciosa se Redis cai; (c) `decode_token` sem `leeway` para clock skew (irrelevante em 1 host). Status totais: altos sobe para **10** (era 9).
