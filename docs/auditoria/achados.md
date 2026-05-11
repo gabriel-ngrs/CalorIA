@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 15 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 15 · baixos: 14 (atualizar a cada novo achado)
 
 ---
 
@@ -695,3 +695,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     5. Combinar com fix de AUD-038 (mover senha para env `E2E_LOGIN_PASSWORD` ou — preferível — derrubar o login com user pré-existente e usar a fixture do item 4).
 - **Esforço:** S (< 1h para itens 1-3; fixture do item 4 é M, 1-2h)
 - **Origem:** PASSO 9.4
+
+### AUD-045 — 14 erros ruff pré-existentes, com 1 bug funcional latente disfarçado de F401
+
+- **Severidade:** 🟢 baixa
+- **Frente:** I
+- **Arquivo:linha:** `backend/app/api/v1/meals.py:1` (I001) + `:101` (B904, duplicata de AUD-004) + `backend/app/services/meal_service.py:15` (N818) + 11 erros em `backend/scripts/*.py` (F401/I001/N806/B007/F821)
+- **Descrição:** O ruff reporta 14 errors no baseline (artefato `baseline-ruff.txt`), com 9 marcados como auto-fixáveis. Distribuição: 2 em `app/` (produção), 1 em `services/meal_service.py` (produção), 11 em `scripts/` (utilitários one-shot). **Item destacado**: o par `F401 (line 385) + F821 (line 440)` em `scripts/import_off_local.py` indica que `from sqlalchemy import text as sa_text` está dentro de uma função, mas `sa_text` é referenciado em `_flush()`, fora do escopo do import. Rodar `ruff --fix` cego **remove** o import e o F821 fica ativo, quebrando o script em runtime — bug funcional disfarçado de lint warning. F821 já é a evidência de que o script provavelmente não funciona como está hoje.
+- **Evidência:** `artefatos/baseline-ruff.txt` (14 erros completos com linhas e mensagens; análise detalhada em `09-qualidade.md § I.1`).
+- **Recomendação:** PR de cleanup em duas frentes: (1) corrigir os 2 erros em `app/`: I001 (auto-fix) + B904 manual com `from None` (alinha com fix de AUD-004); (2) Decisão sobre `scripts/`: opção A — **mover** `from sqlalchemy import text as sa_text` para o topo de `import_off_local.py` antes de rodar `ruff --fix`, para não regredir; ou opção B — adicionar `extend-exclude = ["scripts/"]` em `[tool.ruff]` no `pyproject.toml` e documentar em ADR (alinha com exclusão já existente do mypy). N818 (sufixo `Error` em exception) é estilístico e pode entrar no mesmo PR ou ficar pendente sem urgência.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 10.1
