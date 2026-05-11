@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 17 · baixos: 15 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 18 · baixos: 15 (atualizar a cada novo achado)
 
 ---
 
@@ -739,3 +739,20 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Criar `backend/.dockerignore` (`.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`, `coverage.xml`, `htmlcov/`, `.git/`, `.gitignore`, `.env`, `.env.*`, `tests/`, `README.md`) e `frontend/.dockerignore` (`node_modules/`, `.next/`, `.git/`, `.env`, `.env.*`, `e2e/test-results/`, `playwright-report/`, `coverage/`, `*.log`, `README.md`, `.eslintcache`). Reduz build context para < 5 MB em ambos casos. Snippet completo em `09-qualidade.md § I.7`.
 - **Esforço:** S (< 30 min — criar 2 arquivos, rodar build local para confirmar redução do context)
 - **Origem:** PASSO 10.6
+
+### AUD-049 — Logging do backend é texto humano (não estruturado), sem `request_id`/`user_id` e `LOG_LEVEL` hardcoded
+
+- **Severidade:** 🟡 média
+- **Frente:** J
+- **Arquivo:linha:** `backend/app/main.py:14-18` (`logging.basicConfig` hardcoded em INFO, formato texto); 15 loggers nomeados espalhados (`caloria.db`, `caloria.http`, e 12 por módulo via `__name__`)
+- **Descrição:** O backend usa `logging.basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s", datefmt="%H:%M:%S")` — formato texto humano com apenas hora, level, logger e mensagem livre. Sem JSON estruturado, sem campos dimensionais (`user_id`, `request_id`, `model`, `duration_ms`, `meal_id`). Consequências mensuráveis: (1) **impossível agregar custo IA por user** (AUD-013 já apontava); (2) **debugging de incidentes exige `grep` em texto** — não dá pra rodar query no destino (CloudWatch Logs Insights, Loki, ELK) por usuário ou rota; (3) `LOG_LEVEL` **não é lido** (`Settings` em `config.py` nem tem o campo) — ajustar level em produção exige redeploy; (4) **sem `request_id`** propagado via `contextvars` — quando o `timing_middleware` loga `[HTTP] POST /meals 200 823ms` e 50ms depois o `ai_client` loga `Groq tokens — entrada: 1200`, não há como correlacionar que pertencem ao mesmo request. Bônus: `datefmt="%H:%M:%S"` sem data perde rastro de dia em logs 24h; inconsistência entre `logger.info("%s %s", a, b)` (correto) e `logger.info(f"...")` (interpolação eager). Cross-ref: combina forte com AUD-013, AUD-027, AUD-028, AUD-040 — todos esses ficam significativamente mais fáceis de debugar com logs estruturados.
+- **Evidência:** `artefatos/J1-loggers.txt` (15 loggers, todos via `logging.getLogger`); `backend/app/main.py:14-18` (`basicConfig`); `backend/app/core/config.py` (sem campo `LOG_LEVEL`). Detalhamento em `10-observabilidade.md § J.1`.
+- **Recomendação:** PR de instrumentação (M, 1-4h):
+    1. Adicionar `structlog` (preferível) ou `python-json-logger` a `pyproject.toml`. Configurar processor chain com JSON output em prod e console renderer em dev.
+    2. Adicionar `request_id` no `timing_middleware`: gerar UUID4, setar em `contextvars.ContextVar[str]`, ecoar no header `X-Request-Id` do response.
+    3. Adicionar `user_id` ao contexto quando `Depends(get_current_user_id)` resolver — facilmente via wrapper que seta no contextvar.
+    4. Ler `LOG_LEVEL` do `Settings`: `LOG_LEVEL: str = Field(default="INFO")` + `setup_logging()` lendo do settings no startup. Permite ajustar level por namespace via `LOG_LEVEL_AI=DEBUG`.
+    5. Trocar `datefmt="%H:%M:%S"` por ISO 8601 completo (`%Y-%m-%dT%H:%M:%S.%fZ`) ou deixar structlog formatar.
+    6. Habilitar lint rule `G004` no ruff (proíbe `logger.info(f"...")`).
+- **Esforço:** M (1-4h)
+- **Origem:** PASSO 11.1
