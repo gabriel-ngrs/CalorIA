@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 11 · médios: 15 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 15 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -646,3 +646,52 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     `unsafe-inline`/`unsafe-eval` em scripts são compromissos para Next.js dev mode + alguns componentes; testar e endurecer com nonces se possível. `microphone=(self)` permitido por causa do recurso de voice capture (refeições por voz).
 - **Esforço:** S (< 1h Caddyfile + smoke test)
 - **Origem:** PASSO 8.5
+
+### AUD-042 — Fixture `clean_db` autouse trunca tabelas após cada teste unit, falhando porque o stub local não cria DB
+
+- **Severidade:** 🟠 alta
+- **Frente:** H
+- **Arquivo:linha:** `backend/tests/conftest.py:68-75` (`clean_db` autouse) + `backend/tests/unit/conftest.py:12-18` (stub que sobrescreve apenas `setup_test_database`)
+- **Descrição:** `tests/unit/conftest.py` sobrescreve `setup_test_database` por um stub no-op para permitir rodar `pytest tests/unit/` sem Postgres, mas **não** sobrescreve `clean_db`, que continua marcada como `autouse=True` no conftest raiz. Resultado: ao final de cada teste, o teardown tenta `TRUNCATE TABLE meal_items, meals, weight_logs, ...` em `127.0.0.1:5432`, recebe `ConnectionRefusedError: [Errno 111]` (ou erro similar quando o DB de teste não existe) e cada teste é contabilizado como `1 passed, 1 error`. Saída agregada: `49 passed, 49 errors` — exit code não-zero apesar de todos os asserts passarem.
+- **Evidência:** `artefatos/H1-unit-fixture-error.txt` (trecho com `ConnectionRefusedError ('127.0.0.1', 5432)` no teardown do `clean_db`). Confirmado em 5 arquivos: `test_security.py`, `test_tdee.py`, `test_meal_parser.py`, `test_vision_parser.py`, `test_celery_tasks.py`. Detalhamento e racional em `08-testes.md § H.2`.
+- **Recomendação:** Em `tests/unit/conftest.py`, adicionar um override de `clean_db` que também é no-op:
+    ```python
+    @pytest.fixture(autouse=True)
+    def clean_db() -> Iterator[None]:  # type: ignore[override]
+        """No-op: testes unit não dependem de banco."""
+        yield
+    ```
+    Médio prazo (estrutural): remover o `autouse=True` do `clean_db` raiz e exigir explicitamente nos testes de integração via `@pytest.mark.usefixtures("clean_db")` ou parâmetro de função — autouse global é anti-padrão e dificulta diagnóstico. Verificação esperada: `pytest tests/unit/ -q` retorna `49 passed in <tempo>` sem dependência de Postgres.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 9.1
+
+### AUD-043 — Cobertura crítica abaixo da meta em 10 módulos do núcleo IA/push/workers
+
+- **Severidade:** 🟠 alta
+- **Frente:** H
+- **Arquivo:linha:** `app/services/ai/insights_generator.py` (14%), `app/services/ai/context_builder.py` (20%), `app/services/ai/pattern_analyzer.py` (27%), `app/services/push_service.py` (29%), `app/services/reminder_service.py` (31%), `app/workers/tasks/reports.py` (32%), `app/api/v1/ai.py` (36%), `app/services/ai/food_lookup.py` (41%), `app/services/ai/ai_client.py` (43%), `app/workers/celery_app.py` (0%).
+- **Descrição:** Cobertura global do backend está em **62%** (2512 stmts, 942 missing), mas o "buraco" se concentra exatamente no núcleo de IA + push + workers periódicos — código com efeitos colaterais (Groq, Redis, scheduler), portanto o mais difícil de testar **e** o que mais quebra silenciosamente. `InsightsGenerator` (cuja decomposição já é objeto de AUD-002) sobe a coleção de não-testados com 184 stmts, dos quais 158 sem cobertura. `food_lookup` (coração da precisão nutricional — vide AUD-016) e `meal_parser` (61%) compõem o pipeline crítico; o seed de `tests/unit/test_meal_parser.py` cobre apenas o happy path. Combina mal com AUD-013 (logs sem `user_id`/`model`/`request_id`): sem cobertura **e** sem dimensão para agregar, regressões só aparecem quando o usuário reclama. Sem fail-under em CI, novas mudanças degradam cobertura sem sinal.
+- **Evidência:** `artefatos/baseline-coverage.txt` (consolidado em `08-testes.md § H.3`). 10 módulos < 50%, mais 12 entre 50–65%. Áreas bem cobertas: schemas (100%), models (~95%), `nutrition/tdee.py` (100%), `core/security.py` (100%), `workers/tasks/maintenance.py` (82%).
+- **Recomendação:** Plano em 3 ondas, ordenado por valor de regressão:
+    1. **Onda 1 (curto prazo, ~1 sprint)** — subir para ≥ 70% os módulos do caminho quente: `food_lookup.py`, `meal_parser.py`, `vision_parser.py`, `ai_client.py`, `auth_service.py`. Esses cinco arquivos são executados em toda criação de refeição e em todo login; falhas neles afetam UX direto.
+    2. **Onda 2 (médio prazo)** — `context_builder.py`, `pattern_analyzer.py`, `push_service.py` (com `fakeredis` para o handling de 410), `reminder_service.py`.
+    3. **Onda 3 (estrutural)** — `insights_generator.py` (após decomposição do AUD-002 — cada novo service nasce com ≥ 70%).
+    Travar em CI com `pytest --cov=app --cov-fail-under=70` após Onda 1; subir para 75% após Onda 2; 80% após Onda 3. Adicionar property-based (Hypothesis) para `tdee`, `correct_calories` e `extract_json_from_ai_response` (cobre regressões de AUD-017 e variações de parser). Snapshot tests para os prompts gerados em `context_builder` — pega regressão silenciosa de prompt sem precisar bater no Groq.
+- **Esforço:** L (> 4h — várias semanas distribuídas; cada onda é incremento independente)
+- **Origem:** PASSO 9.2
+
+### AUD-044 — `auth.spec.ts` ignora `baseURL` do Playwright config e default aponta para Vercel preview pública
+
+- **Severidade:** 🟠 alta
+- **Frente:** H
+- **Arquivo:linha:** `frontend/e2e/auth.spec.ts:3` (`BASE_URL = process.env.BASE_URL ?? "https://frontend-nine-mu-59.vercel.app"`) vs `frontend/playwright.config.ts:15` (`baseURL: "http://localhost:3000"`)
+- **Descrição:** O `playwright.config.ts` define `baseURL: "http://localhost:3000"` e sobe um `webServer` com `npm run dev`. Os outros dois specs (`dashboard.spec.ts`, `meals.spec.ts`) usam caminhos relativos e herdam corretamente. **Apenas `auth.spec.ts` declara uma constante local `BASE_URL`** que, sem env var, cai em `https://frontend-nine-mu-59.vercel.app` (URL de preview/produção do projeto na Vercel). Resultado quando alguém roda `npx playwright test` sem env: a suite `auth` bate na Vercel real, os outros testes batem em `localhost`. Três consequências graves: (1) o teste "deve cadastrar novo usuário" (linhas 24-33) cria `playwright_test_<timestamp>@gmail.com` no banco de **produção** a cada execução; (2) o teste "deve fazer login com usuário existente" (linhas 35-42) usa credenciais reais hardcoded (AUD-038) contra produção — credential-stuffing efetivo em CI/local; (3) qualquer mudança/queda do deploy preview quebra a suite sem regressão real no código. Bug latente extra: linha 32 inclui `login` no matcher `toHaveURL(/(onboarding|dashboard|login)/)` — voltar pro login é tratado como sucesso de cadastro. Por que 🟠 e não 🔴: o vetor depende de combinação com AUD-038 (credenciais), que já é 🔴; isolado é "só" poluição de produção + falsos verdes.
+- **Evidência:** `frontend/playwright.config.ts:14-17`, `frontend/e2e/auth.spec.ts:3-6,32,35-42`, `frontend/e2e/dashboard.spec.ts:15` (mostra padrão correto com caminho relativo).
+- **Recomendação:**
+    1. Trocar a constante por `process.env.E2E_BASE_URL ?? "http://localhost:3000"` ou eliminá-la inteiramente e usar caminhos relativos (consistente com `dashboard.spec.ts`/`meals.spec.ts`).
+    2. Em `playwright.config.ts`, ler de `process.env.E2E_BASE_URL ?? "http://localhost:3000"` para permitir override em CI sem editar código.
+    3. Apertar o matcher do teste de cadastro: aceitar apenas `(onboarding|dashboard)`.
+    4. Criar fixture global em `e2e/fixtures.ts` que cria usuário via `POST /api/v1/auth/register` antes do teste e o deleta no `afterAll` — substitui credenciais reais e o cadastro acumulado em prod.
+    5. Combinar com fix de AUD-038 (mover senha para env `E2E_LOGIN_PASSWORD` ou — preferível — derrubar o login com user pré-existente e usar a fixture do item 4).
+- **Esforço:** S (< 1h para itens 1-3; fixture do item 4 é M, 1-2h)
+- **Origem:** PASSO 9.4

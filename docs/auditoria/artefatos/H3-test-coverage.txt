@@ -1,0 +1,35 @@
+=== Services AI ===
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/ai_client.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/context_builder.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/food_lookup.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/insights_generator.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/meal_parser.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/pattern_analyzer.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/utils.py
+/home/gabriel/projetos/CalorIA/backend/app/services/ai/vision_parser.py
+
+=== Tests cobrindo services AI ===
+/home/gabriel/projetos/CalorIA/backend/tests/unit/test_celery_tasks.py
+/home/gabriel/projetos/CalorIA/backend/tests/unit/test_meal_parser.py
+/home/gabriel/projetos/CalorIA/backend/tests/unit/test_security.py
+/home/gabriel/projetos/CalorIA/backend/tests/unit/test_tdee.py
+/home/gabriel/projetos/CalorIA/backend/tests/unit/test_vision_parser.py
+
+=== Services (raiz) ===
+/home/gabriel/projetos/CalorIA/backend/app/services/__init__.py
+/home/gabriel/projetos/CalorIA/backend/app/services/auth_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/dashboard_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/log_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/meal_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/profile_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/push_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/reminder_service.py
+/home/gabriel/projetos/CalorIA/backend/app/services/user_service.py
+
+=== Tests de integração ===
+/home/gabriel/projetos/CalorIA/backend/tests/integration/test_auth.py
+/home/gabriel/projetos/CalorIA/backend/tests/integration/test_dashboard.py
+/home/gabriel/projetos/CalorIA/backend/tests/integration/test_logs.py
+/home/gabriel/projetos/CalorIA/backend/tests/integration/test_meals.py
+/home/gabriel/projetos/CalorIA/backend/tests/integration/test_users.py

@@ -1,0 +1,78 @@
+=== pytest tests/unit/ -q (tail) ===
+ERROR tests/unit/test_celery_tasks.py::TestDispatchDueReminders::test_reminder_dispatched_when_time_matches
+ERROR tests/unit/test_celery_tasks.py::TestDispatchDueReminders::test_reminder_skipped_when_wrong_day
+ERROR tests/unit/test_celery_tasks.py::TestDispatchDueReminders::test_reminder_skipped_when_wrong_time
+ERROR tests/unit/test_celery_tasks.py::TestDispatchDueReminders::test_reminder_skipped_when_no_user
+ERROR tests/unit/test_celery_tasks.py::TestSendHydrationReminders::test_hydration_reminder_sent_when_below_goal
+ERROR tests/unit/test_celery_tasks.py::TestSendHydrationReminders::test_no_reminder_when_goal_reached
+ERROR tests/unit/test_celery_tasks.py::TestCleanupOldConversations::test_deletes_old_conversations
+ERROR tests/unit/test_celery_tasks.py::TestCleanupOldConversations::test_no_error_when_nothing_to_delete
+ERROR tests/unit/test_celery_tasks.py::TestRecalculateTdee::test_updates_tdee_when_weight_diff_significant
+ERROR tests/unit/test_celery_tasks.py::TestRecalculateTdee::test_skips_when_diff_small
+ERROR tests/unit/test_celery_tasks.py::TestRecalculateTdee::test_skips_user_without_profile
+ERROR tests/unit/test_celery_tasks.py::TestSendDailySummaries::test_calls_send_to_user_for_each_active_user
+ERROR tests/unit/test_celery_tasks.py::TestSendDailySummaries::test_continues_on_user_error
+ERROR tests/unit/test_celery_tasks.py::TestSendWeeklyReports::test_calls_send_to_user_for_each_active_user
+ERROR tests/unit/test_celery_tasks.py::TestSendWeeklyReports::test_continues_on_user_error
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_parse_retorna_itens_corretos
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_parse_low_confidence_false_quando_alta
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_parse_low_confidence_true_quando_baixa
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_parse_multiplos_itens
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_parse_json_com_markdown_wrapper
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_parse_json_invalido_levanta_value_error
+ERROR tests/unit/test_meal_parser.py::TestMealParser::test_user_context_e_passado_para_o_client
+ERROR tests/unit/test_security.py::TestHashPassword::test_retorna_hash_diferente_da_senha
+ERROR tests/unit/test_security.py::TestHashPassword::test_hash_bcrypt_comeca_com_prefixo
+ERROR tests/unit/test_security.py::TestHashPassword::test_hashes_distintos_para_mesma_senha
+ERROR tests/unit/test_security.py::TestVerifyPassword::test_senha_correta_retorna_true
+ERROR tests/unit/test_security.py::TestVerifyPassword::test_senha_errada_retorna_false
+ERROR tests/unit/test_security.py::TestVerifyPassword::test_senha_vazia_retorna_false
+ERROR tests/unit/test_security.py::TestCreateAccessToken::test_token_decodifica_com_subject_correto
+ERROR tests/unit/test_security.py::TestCreateAccessToken::test_subject_string_e_preservado
+ERROR tests/unit/test_security.py::TestCreateAccessToken::test_token_tem_expiracao
+ERROR tests/unit/test_security.py::TestCreateRefreshToken::test_tipo_e_refresh
+ERROR tests/unit/test_security.py::TestCreateRefreshToken::test_expiracao_maior_que_access
+ERROR tests/unit/test_security.py::TestDecodeToken::test_token_invalido_levanta_excecao
+ERROR tests/unit/test_security.py::TestDecodeToken::test_token_adulterado_levanta_excecao
+ERROR tests/unit/test_security.py::TestDecodeToken::test_token_expirado_levanta_excecao
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_homem_sedentario - Con...
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_mulher_sedentaria - Co...
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_homem_muito_ativo - Co...
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_niveis_atividade_aumentam_tdee
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_retorna_float_arredondado
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_peso_maior_implica_tdee_maior
+ERROR tests/unit/test_tdee.py::TestCalculateTdee::test_idade_maior_implica_tdee_menor
+ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_parse_retorna_itens_corretos
+ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_low_confidence_false_quando_alta
+ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_low_confidence_true_quando_baixa
+ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_base64_invalido_levanta_value_error
+ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_json_invalido_levanta_value_error
+ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_mime_type_e_passado_ao_client
+49 passed, 49 errors in 96.82s (0:01:36)
+
+=== Detalhe de 1 erro (test_security::test_retorna_hash_diferente_da_senha) ===
+    await self.sock_connect(sock, address)
+../../../.local/share/uv/python/cpython-3.12.11-linux-x86_64-gnu/lib/python3.12/asyncio/selector_events.py:651: in sock_connect
+    return await fut
+           ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+fut = None, sock = <socket.socket [closed] fd=-1, family=2, type=1, proto=6>
+address = ('127.0.0.1', 5432)
+
+    def _sock_connect_cb(self, fut, sock, address):
+        if fut.done():
+            return
+    
+        try:
+            err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if err != 0:
+                # Jump to any except clause below.
+>               raise OSError(err, f'Connect call failed {address}')
+E               ConnectionRefusedError: [Errno 111] Connect call failed ('127.0.0.1', 5432)
+
+../../../.local/share/uv/python/cpython-3.12.11-linux-x86_64-gnu/lib/python3.12/asyncio/selector_events.py:691: ConnectionRefusedError
+=========================== short test summary info ============================
+ERROR tests/unit/test_security.py::TestHashPassword::test_retorna_hash_diferente_da_senha
+========================== 1 passed, 1 error in 2.18s ==========================
