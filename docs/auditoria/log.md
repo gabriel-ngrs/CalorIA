@@ -401,5 +401,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `rg -n "2000" backend/app/workers/tasks/reminders.py` + `grep -n "water_goal_ml" backend/app/models/user.py` + leitura de `_send_hydration_reminders_async` (linhas 154-220)
 - **Artefato(s):** `docs/auditoria/artefatos/E3-hydration-hardcode.txt`
 - **Achados gerados:** AUD-027
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** b0da6c2
 - **Notas:** **Confirmado**: 2 sites com `2000` em `reminders.py:174,179`; `User.water_goal_ml: Mapped[int | None]` declarado em `models/user.py:44` mas nenhum uso em `backend/app/workers/`. Frontend já edita o campo (perfil/onboarding). Impacto: usuários com meta < 2000 recebem push depois da meta dele; usuários com meta > 2000 param de receber em 2000 (silencioso, difícil debugar sem logs estruturados — vide AUD-013). Bônus identificado: a mesma função tem N+1 já mapeado em AUD-008 (`for user in users: HydrationService(db).get_day_summary(user.id, today)`); fix do AUD-027 e do AUD-008 cabem no mesmo PR. Recomendação trivial: `goal_ml = user.water_goal_ml or 2000` e usar nas duas linhas.
+
+## PASSO 6.4 — Duplicação de tratamento WebPush 410
+
+- **Início:** 2026-05-10 20:13
+- **Fim:** 2026-05-10 20:20
+- **Comando(s) executado(s):** `rg -n "WebPushException|status_code == 410|expired_ids" backend/app/workers/ backend/app/services/push_service.py` + leitura de `services/push_service.py` (todo) + 4 trechos dos workers para confirmar identidade
+- **Artefato(s):** `docs/auditoria/artefatos/E4-push-410.txt`
+- **Achados gerados:** AUD-028
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **4 sites** confirmados, ~30 LOC cada (≈120 LOC duplicados): `reminders.py:100-137` (lembrete pontual), `reminders.py:194-228` (hidratação), `reports.py:80-118` (resumo diário), `reports.py:179-217` (relatório semanal). Diferenças reais: apenas `body` e `url` (`/dashboard` × 2 vs `/relatorios` × 2). `services/push_service.py:11-50` já tem `send_push_notification_sync` mas NÃO tem o wrapper que busca subs+envia+deleta — esse ficou repetido. Bônus de smell: cada site repete `try: from pywebpush import WebPushException; except ImportError: pass` que nunca dispara (pywebpush é dependência direta no `pyproject.toml`). Severidade 🟡 (duplicação clássica, sem bug funcional hoje, mas custo de mudança ×4). Plano: `PushService(db).send_with_cleanup(user_id, title, body, url)` — cada caller vira 1 linha. Combina bem com AUD-013 (logs estruturados) e AUD-014 (pool Redis) num PR só de "limpeza de PushService".

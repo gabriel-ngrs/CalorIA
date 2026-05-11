@@ -7,6 +7,7 @@
 - AUD-025 (🟠 alta) — `_run` em `reminders.py`, `reports.py`, `maintenance.py` chama `asyncio.get_event_loop()` deprecated desde Python 3.10; risco de `RuntimeError: Event loop is closed` em workers Celery
 - AUD-026 (🟠 alta) — `dispatch_due_reminders` usa `datetime.now()` naive: hoje funciona porque todos os containers são `TZ=America/Sao_Paulo`, mas qualquer migração para UTC ou usuário fora de São Paulo quebra silenciosamente
 - AUD-027 (🟠 alta) — `_send_hydration_reminders_async` compara contra `2000` ml fixo e ignora `User.water_goal_ml` (que existe no modelo) — meta personalizada do usuário é silenciosamente descartada
+- AUD-028 (🟡 média) — tratamento de Web Push 410 (subscription expirada) duplicado em 4 sites de workers (`reminders.py` ×2 + `reports.py` ×2): mesmo bloco de ~30 LOC, ~120 LOC totais; pede `PushService.send_with_cleanup()`
 
 ## E.2 Padrão `_run` em tasks
 
@@ -182,6 +183,108 @@ Considerar extrair `2000` para `app/core/config.py` (`DEFAULT_WATER_GOAL_ML: int
 
 A task itera `for user in users:` chamando `HydrationService(db).get_day_summary(user.id, today)` por usuário (linha 172) — mesmo padrão N+1 já mapeado no **AUD-008** (workers iteram usuários ativos com 1 query DB por usuário). O fix do AUD-027 (linhas 174/179) e o do AUD-008 (substituir o loop por query agregada) cabem no mesmo PR.
 
+## E.4 Tratamento de Web Push 410 duplicado
+
+Comando: `rg -n "WebPushException|status_code == 410|expired_ids" backend/app/workers/ backend/app/services/push_service.py`. Artefato: `artefatos/E4-push-410.txt`.
+
+### Mapa de ocorrências
+
+| Arquivo | Função | Linhas | URL |
+|---|---|---|---|
+| `workers/tasks/reminders.py` | `_send_reminder_notification` | 100-137 | `/dashboard` (default) |
+| `workers/tasks/reminders.py` | `_send_hydration_reminders_async` | 194-228 | `/dashboard` (default) |
+| `workers/tasks/reports.py` | `_send_daily_summaries_async` | 80-118 | `/relatorios` |
+| `workers/tasks/reports.py` | `send_weekly_reports` (`_send_weekly_reports_async`) | 179-217 | `/relatorios` |
+
+`services/push_service.py:11-50` já encapsula o `webpush(...)` síncrono e re-emite `WebPushException` em 410, mas **não** tem o helper que (a) busca subscriptions, (b) envia em loop, (c) deleta as expiradas. Isso ficou duplicado nos 4 workers.
+
+### Estrutura repetida (forma essencial)
+
+```python
+subs = (await db.execute(
+    select(PushSubscription).where(PushSubscription.user_id == user.id)
+)).scalars().all()
+expired_ids: list[int] = []
+for sub in subs:
+    try:
+        await asyncio.to_thread(
+            send_push_notification_sync,
+            sub.endpoint, sub.p256dh, sub.auth,
+            title, body, url,  # url omitido nos sites de reminders.py
+        )
+    except Exception as ex:  # noqa: BLE001
+        try:
+            from pywebpush import WebPushException
+            if (
+                isinstance(ex, WebPushException)
+                and ex.response
+                and ex.response.status_code == 410
+            ):
+                expired_ids.append(sub.id)
+        except ImportError:
+            pass
+
+if expired_ids:
+    await db.execute(
+        delete(PushSubscription).where(PushSubscription.id.in_(expired_ids))
+    )
+```
+
+Diferença real entre as 4 cópias: só `body` e `url`. ~30 LOC × 4 sites = ~120 LOC duplicadas.
+
+Bônus de smell: o `try: from pywebpush import WebPushException; except ImportError: pass` interno é over-engineering — `pywebpush` está em `pyproject.toml` (`dependencies`); o `ImportError` nunca dispara. Acrescenta indentação e ruído.
+
+### Plano de extração
+
+Estender `PushService` (já existe em `services/push_service.py`) com:
+
+```python
+class PushService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def send_with_cleanup(
+        self,
+        user_id: int,
+        title: str,
+        body: str,
+        url: str = "/dashboard",
+    ) -> int:
+        """Envia push para todas as subscriptions do user; deleta expiradas. Retorna contagem enviada."""
+        subs = (await self.db.execute(
+            select(PushSubscription).where(PushSubscription.user_id == user_id)
+        )).scalars().all()
+
+        expired: list[int] = []
+        sent = 0
+        for sub in subs:
+            try:
+                await asyncio.to_thread(
+                    send_push_notification_sync,
+                    sub.endpoint, sub.p256dh, sub.auth, title, body, url,
+                )
+                sent += 1
+            except WebPushException as ex:
+                if ex.response and ex.response.status_code == 410:
+                    expired.append(sub.id)
+                else:
+                    logger.exception("WebPush erro não-410 para sub=%d", sub.id)
+
+        if expired:
+            await self.db.execute(
+                delete(PushSubscription).where(PushSubscription.id.in_(expired))
+            )
+        return sent
+```
+
+Cada call site nos workers vira:
+
+```python
+sent = await PushService(db).send_with_cleanup(user.id, title, body, "/relatorios")
+```
+
+Ganhos: (a) ~120 LOC viram 1 import + 1 chamada; (b) política de cleanup centralizada (mudança futura — soft delete, dead-letter, métricas — atinge todos automaticamente); (c) ponto único para AUD-013 (logs estruturados de envio); (d) `WebPushException` importado no topo do módulo, não dentro do `except ImportError`.
+
 ## Notas e contexto
 
-(seções E.1, E.4, E.6, E.7 serão preenchidas nos PASSOS 6.4-6.5)
+(seções E.1, E.6, E.7 serão preenchidas no PASSO 6.5)
