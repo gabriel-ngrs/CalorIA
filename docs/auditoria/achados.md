@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 9 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 10 · médios: 14 · baixos: 13 (atualizar a cada novo achado)
 
 ---
 
@@ -525,3 +525,38 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
   Mesmo após (3), assumir como **comprometida** — o vazamento já durou ~12 dias entre commit e este achado; assume-se que alguém pode ter clonado.
 - **Esforço:** S (rotação + remoção do código), M (rewrite do histórico + CI scan)
 - **Origem:** PASSO 8.1
+
+### AUD-039 — `SECRET_KEY` tem default inseguro hardcoded sem fail-fast em produção
+
+- **Severidade:** 🟠 alta
+- **Frente:** G
+- **Arquivo:linha:** `backend/app/core/config.py:32` (`SECRET_KEY: str = "insecure-default-key-change-in-production"`)
+- **Descrição:** A `Settings` class declara `SECRET_KEY` com default `"insecure-default-key-change-in-production"`. Sem validator que impeça subir o backend com esse valor — `APP_ENV` existe (`is_development` property) mas nunca é cruzado com `SECRET_KEY` para forçar troca em produção. Se alguém deploya esquecendo de setar a env var (ou se o `docker run` falha em montar o `.env`), o backend sobe **assinando JWTs com uma chave conhecida publicamente** (a string está em source aberto neste mesmo arquivo). Qualquer pessoa que ler o repo pode forjar `access_token` para qualquer `user_id`:
+    ```python
+    jwt.encode({"sub": "1", "type": "access", "exp": ...}, "insecure-default-key-change-in-production", algorithm="HS256")
+    ```
+  E o `decode_token` aceita esse token como válido. Com o `user_id` forjado, `get_current_user_id` retorna 1 e o atacante tem sessão completa de qualquer usuário.
+
+  Mitigantes parciais já presentes:
+    - `algorithms=[settings.ALGORITHM]` em `decode_token` (passa lista, não string) — evita ataque `alg=none`. ✅
+    - `bcrypt` para senhas (rounds default 12). ✅
+    - Refresh blacklist em Redis. ✅
+    - Token `type` ("access"/"refresh") validado em `decode_token` callers. ✅
+
+  Mas nenhum protege contra SECRET_KEY default em prod.
+- **Evidência:** leitura de `backend/app/core/config.py:1-65` + `backend/app/core/security.py` + `backend/app/core/deps.py`.
+- **Recomendação:** Adicionar validator no `Settings` que falha o boot se SECRET_KEY for default e APP_ENV != development:
+    ```python
+    from pydantic import model_validator
+
+    @model_validator(mode="after")
+    def _enforce_secret_in_prod(self) -> "Settings":
+        if self.APP_ENV != "development" and self.SECRET_KEY == "insecure-default-key-change-in-production":
+            raise ValueError("SECRET_KEY must be set in production (APP_ENV != development)")
+        if len(self.SECRET_KEY) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 chars")
+        return self
+    ```
+  Bonus: gerar uma SECRET_KEY randômica no `setup-server.sh` (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) e gravar em `/opt/caloria/.env` durante o setup — torna impossível esquecer. Idem para `VAPID_*` que também tem defaults vazios e o backend sobe sem reclamar.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 8.2
