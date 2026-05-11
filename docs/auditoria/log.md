@@ -613,3 +613,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** nenhum (1 warning de cosmética, sem entrada dedicada em `achados.md`; anotado para PR de cleanup frontend junto com AUD-022)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **1 warning, 0 errors.** `components/auth/Plasma.tsx:155` — regra `react-hooks/exhaustive-deps`: uso de `containerRef.current` dentro da cleanup do `useEffect` (linhas 151-157). O ref pode ter sido reassinado entre o setup e a cleanup; o código tenta `containerRef.current?.removeChild(canvas)` mas está envolto em `try { } catch {}` que mascara possível erro. Fix idiomático: snapshot `const container = containerRef.current` no início do effect e usar `container.removeChild(canvas)` na cleanup. Impacto real pequeno (componente só monta na rota `/login`, sem re-renders frequentes), mas como single warning do projeto vale corrigir para baseline 0 e habilitar `eslint --max-warnings=0` em CI. Sem achado dedicado — combina em PR genérico de "frontend cleanup" com AUD-022 (extração `useVoiceCapture`).
+
+## PASSO 10.4 — Pre-commit hooks atuais
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** `cat .pre-commit-config.yaml > docs/auditoria/artefatos/I4-precommit.txt`; inventário e cross-ref com gaps de outras frentes.
+- **Artefato(s):** `docs/auditoria/artefatos/I4-precommit.txt`
+- **Achados gerados:** AUD-047 (🟡 média, com cross-ref importante a AUD-038)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **8 hooks ativos em 2 repos**: `ruff` (com `--fix`) + `ruff-format` em `^backend/`; e o pacote `pre-commit-hooks` v5.0.0 (`trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-merge-conflict`, `check-added-large-files --maxkb=1000`, `no-commit-to-branch --branch main`). **4 gaps importantes**: (1) **mypy** ausente — typecheck só em CI; (2) **eslint** frontend ausente — único warning passou; (3) **tsc --noEmit** ausente — TS estrito só em CI; (4) **gitleaks** ausente — **vetor crítico**: AUD-038 (credenciais reais commitadas) teria sido bloqueado se houvesse secret scan. `no-commit-to-branch --branch main` ✅ protege main; `--no-verify` bypassa tudo (esperado). Cross-ref forte: fix de AUD-047 deve ser bundlado com AUD-038 no mesmo PR (adicionar gitleaks pre-commit + GitHub Actions + filter-repo da senha do histórico). Snippet YAML completo em § I.4.

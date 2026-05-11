@@ -6,6 +6,7 @@
 
 - AUD-045 — 14 erros ruff pré-existentes (1 em `app/`, 13 em `scripts/`); um deles (F821 em `scripts/import_off_local.py:440`) é bug funcional latente (🟢 baixa, mas com gotcha no `--fix`).
 - AUD-046 — 6 erros mypy strict concentrados em `app/services/ai/ai_client.py` — duas classes: tipos do `messages` da Groq SDK e `aioredis.from_url` não-tipada (🟢 baixa).
+- AUD-047 — Pre-commit hooks cobrem ruff + utilitários mas faltam mypy, ESLint, tsc, secret scanner (gitleaks) — gaps de defesa em camadas (🟡 média; sobe para 🟠 com AUD-038 no histórico).
 
 ## Notas e contexto
 
@@ -92,3 +93,62 @@ useEffect(() => {
 **Impacto real**: pequeno. O componente só renderiza na rota `/login` (estática, sem re-renders frequentes). O `try/catch` esconde qualquer erro. Mas como single warning do projeto inteiro, vale o cleanup — deixa baseline em **0 warnings** e libera CI estrito (`eslint --max-warnings=0`).
 
 **Sem achado dedicado** — 1 warning de cosmética não justifica entrada em `achados.md`. Anotado aqui para inclusão em PR genérico de "frontend cleanup" (combina bem com AUD-022 — extração de `useVoiceCapture` para resolver duplicação SpeechRecognition).
+
+### § I.4 Pre-commit hooks atuais (de `artefatos/I4-precommit.txt`)
+
+**`.pre-commit-config.yaml` mapeado** — 2 repos, 8 hooks:
+
+| Hook | Origem | Escopo | Estado |
+|---|---|---|---|
+| `ruff` (com `--fix`) | astral-sh/ruff-pre-commit v0.8.0 | `^backend/` | ✅ ativo |
+| `ruff-format` | astral-sh/ruff-pre-commit v0.8.0 | `^backend/` | ✅ ativo |
+| `trailing-whitespace` | pre-commit-hooks v5.0.0 | global | ✅ ativo |
+| `end-of-file-fixer` | pre-commit-hooks v5.0.0 | global | ✅ ativo |
+| `check-yaml` | pre-commit-hooks v5.0.0 | global | ✅ ativo |
+| `check-merge-conflict` | pre-commit-hooks v5.0.0 | global | ✅ ativo |
+| `check-added-large-files` (`--maxkb=1000`) | pre-commit-hooks v5.0.0 | global | ✅ ativo |
+| `no-commit-to-branch` (`--branch main`) | pre-commit-hooks v5.0.0 | global | ✅ ativo |
+
+**Gaps mapeados** (alinhados com runbook):
+
+| Hook | Estado | Por quê falta |
+|---|---|---|
+| `mypy` | ❌ ausente | Type checking só roda em `make typecheck` / CI; commits podem regredir tipos silenciosamente |
+| `eslint` (frontend) | ❌ ausente | Único warning do projeto (AUD-046 cobertura) passou batido sem CI estrito |
+| `tsc --noEmit` (frontend) | ❌ ausente | TypeScript estrito do frontend só em `make typecheck` / CI |
+| `gitleaks` ou equivalente | ❌ ausente | **Crítico** — AUD-038 (credenciais em e2e) teria sido bloqueado no commit se houvesse secret scan; recomendação reforçada em § (4) do plano de AUD-038 |
+| Build sanity (`npm run build` / `uvicorn --check`) | ❌ ausente | Aceitável (lento demais para pre-commit; melhor em CI) |
+
+**Observação importante**: o hook `no-commit-to-branch --branch main` ✅ protege contra commit direto na `main` (alinhado com fluxo `dev` → PR → `main`). Mas o atalho hoje é trivial — `git commit --no-verify` bypassa tudo. Nenhum hook é à prova de quem realmente quer desviar; o valor é em pegar acidentes.
+
+**Cross-referências**:
+- AUD-038 (credenciais hardcoded em `e2e/auth.spec.ts`) **seria pego** por `gitleaks` rodando como pre-commit hook. A senha `***REMOVED***` é detectável pela regex de Generic API Key / High Entropy String que vem no `gitleaks` default config.
+- AUD-045 (ruff em `scripts/`) **não é pego** pelo hook atual porque `files: ^backend/` cobre `^backend/scripts/`, mas a regra é restritiva quanto a quais files passam pelo ruff; verificar se o hook efetivamente roda em scripts/ ou se está bypassed por config local.
+
+**Recomendação consolidada** (AUD-047): adicionar 3 hooks ao `.pre-commit-config.yaml`:
+
+```yaml
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.13.0
+  hooks:
+    - id: mypy
+      files: ^backend/app/
+      additional_dependencies: [pydantic, types-passlib]
+      args: [--strict]
+
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.21.2
+  hooks:
+    - id: gitleaks
+
+- repo: local
+  hooks:
+    - id: eslint-frontend
+      name: ESLint frontend
+      entry: bash -c 'cd frontend && npx next lint --max-warnings=0'
+      language: system
+      files: ^frontend/.*\.(ts|tsx|js|jsx)$
+      pass_filenames: false
+```
+
+A escolha de `eslint` como `local` hook é deliberada — o repo de ESLint pre-commit empacotado tem problemas conhecidos com Next.js 14; rodar via `next lint` é mais confiável.

@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 15 · baixos: 15 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 16 · baixos: 15 (atualizar a cada novo achado)
 
 ---
 
@@ -717,3 +717,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** Bundlear no PR de refatoração de IA (mesmo PR que atenderia AUD-002/AUD-015/AUD-016). Itens: (1) importar `TypedDict`s da Groq SDK e anotar `messages: list[ChatCompletionMessageParam]` (cobre linhas 69/79/106); (2) migrar `aioredis.from_url` para pool persistente via `redis.asyncio.ConnectionPool` instanciado uma vez no `AIClient.__init__` (alinha com AUD-014; cobre 135/143/136). Sem refator estrutural, alternativa S: adicionar `# type: ignore[arg-type]` nos 3 sites de Groq e `# type: ignore[no-untyped-call]` nos 2 de aioredis — mas isso só anestesia o sintoma.
 - **Esforço:** S (isolado, < 1h) / bundlado no PR de IA: zero overhead
 - **Origem:** PASSO 10.2
+
+### AUD-047 — Pre-commit cobre ruff/utilitários mas falta mypy, ESLint, tsc e secret scanner (gitleaks)
+
+- **Severidade:** 🟡 média (mas sobe para 🟠 considerando que AUD-038 — credenciais commitadas — teria sido bloqueado se houvesse gitleaks)
+- **Frente:** I
+- **Arquivo:linha:** `.pre-commit-config.yaml` (2 repos, 8 hooks — listados em `09-qualidade.md § I.4`)
+- **Descrição:** O `.pre-commit-config.yaml` cobre **ruff (com `--fix`) + ruff-format** em `^backend/` mais os utilitários padrão `pre-commit-hooks` (`trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-merge-conflict`, `check-added-large-files --maxkb=1000`, `no-commit-to-branch --branch main`). **Faltam 4 hooks defensivos**: (1) **mypy** — typecheck só roda em `make typecheck`/CI; commits podem regredir tipos sem sinal local; (2) **eslint** frontend — único warning do projeto (Plasma.tsx `react-hooks/exhaustive-deps`) passou direto sem `--max-warnings=0`; (3) **tsc --noEmit** — TypeScript estrito só em CI; (4) **gitleaks** ou equivalente — vetor crítico: **AUD-038 (credenciais reais em `e2e/auth.spec.ts`) teria sido bloqueado no commit** se houvesse secret scan local; a senha `***REMOVED***` é detectável pelas regras default do gitleaks. O hook `no-commit-to-branch --branch main` ✅ protege contra commit direto na branch principal; `git commit --no-verify` bypassa tudo, mas o valor é pegar acidentes.
+- **Evidência:** `artefatos/I4-precommit.txt` (cópia integral do `.pre-commit-config.yaml`); checklist em `09-qualidade.md § I.4`.
+- **Recomendação:** Adicionar 3 hooks (snippet completo em § I.4): mypy via `mirrors-mypy` rodando `--strict` em `^backend/app/`; `gitleaks/gitleaks` para secret scan em todo commit; ESLint frontend via `repo: local` chamando `npx next lint --max-warnings=0` (mais confiável que repo empacotado, que tem problemas com Next 14). Combinar fix com AUD-038 (mesmo PR que move credenciais para env + força secret scan no histórico via `gitleaks-action` em CI).
+- **Esforço:** S (< 1h — adicionar YAML, rodar `pre-commit run --all-files` e tratar achados imediatos)
+- **Origem:** PASSO 10.4
