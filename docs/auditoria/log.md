@@ -461,5 +461,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `cat backend/app/core/database.py` (verifica `pool_size=10, max_overflow=20, pool_pre_ping=True`); `grep -nE "uvicorn|--workers" backend/Dockerfile docker-compose*.yml`; `psql -c "SHOW max_connections; SHOW shared_buffers"`
 - **Artefato(s):** nenhum (matriz embutida em `06-banco.md § F.3`)
 - **Achados gerados:** AUD-035, AUD-036
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** ab7a13e
 - **Notas:** Pool atual: 30 conn por processo (10 size + 20 overflow). Prod: 2 uvicorn workers + 1 celery worker (concurrency default cpu_count) + 1 beat → pode chegar a 120-210 conn em pico vs Postgres `max_connections=100`. Hoje não acontece (1 usuário, baixíssima carga), mas é arquitetural — qualquer escala estoura. Fix curto: reduzir pool por processo OU introduzir PgBouncer (escolha padrão da indústria). Bônus identificado: event listener `db_logger.info` em `after_cursor_execute` registra TODA query em INFO, sem gate de env (AUD-036) — em escala 5-10k linhas/min só de log. Quick fix: trocar `info` por `debug`. Plano § F.4 (auditar `await db.refresh()` em services) **não foi coberto** — sem evidência de bug, sem achado criado por ora. Sem achados em `expire_on_commit=False` e `pool_pre_ping=True` (corretos).
+
+## PASSO 7.5 — Backup e disaster recovery
+
+- **Início:** 2026-05-10 21:28
+- **Fim:** 2026-05-10 21:35
+- **Comando(s) executado(s):** `grep -in "backup\|pg_dump\|cron\|restore" scripts/*.sh docs/deploy.md docs/setup.md docker-compose*.yml`; `grep -in "backup\|disaster\|restore" Roadmap.md README.md docs/architecture.md`; leitura de `docs/deploy.md:1-35` + `Roadmap.md § 9.2`
+- **Artefato(s):** nenhum (matriz embutida em `06-banco.md § F.5`)
+- **Achados gerados:** AUD-037
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** Backup é **inteiramente manual** hoje. `docs/deploy.md:306-321` documenta `pg_dump` e oferece uma dica de cron numa blockquote, mas `scripts/setup-server.sh`/`deploy.sh` não automatizam nada (0 hits para `backup\|pg_dump\|cron`). Sem offsite, retenção, ou procedimento de restore. **Sistema não está em produção** ainda (Roadmap § 9.2 todo aberto, item específico de backup também `[ ]`) — por isso severidade é 🟠 alta, não 🔴 crítico. **Mas escala para 🔴 no instante do primeiro deploy** — refeições/peso/hidratação são dados de saúde irreplicáveis. Plano mínimo de release: cron `pg_dump|gzip` em `setup-server.sh` + sync offsite (Hetzner Storage Box ou rclone) + retenção 30d local/90d offsite + seção Restore em `deploy.md` + teste de restore em staging. **Encerra Frente F** com 8 achados (1 alto + 4 médios + 4 baixos), considerando AUD-029 que veio do PASSO 6.5.
