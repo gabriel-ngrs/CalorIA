@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 15 · baixos: 14 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 15 · baixos: 15 (atualizar a cada novo achado)
 
 ---
 
@@ -706,3 +706,14 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Recomendação:** PR de cleanup em duas frentes: (1) corrigir os 2 erros em `app/`: I001 (auto-fix) + B904 manual com `from None` (alinha com fix de AUD-004); (2) Decisão sobre `scripts/`: opção A — **mover** `from sqlalchemy import text as sa_text` para o topo de `import_off_local.py` antes de rodar `ruff --fix`, para não regredir; ou opção B — adicionar `extend-exclude = ["scripts/"]` em `[tool.ruff]` no `pyproject.toml` e documentar em ADR (alinha com exclusão já existente do mypy). N818 (sufixo `Error` em exception) é estilístico e pode entrar no mesmo PR ou ficar pendente sem urgência.
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 10.1
+
+### AUD-046 — 6 erros mypy strict em `app/services/ai/ai_client.py` (tipos Groq + aioredis não-tipada)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** I
+- **Arquivo:linha:** `backend/app/services/ai/ai_client.py:69` (dict-item), `:79` (arg-type Vision), `:106` (arg-type texto), `:135` (no-untyped-call), `:136` (no-any-return), `:143` (no-untyped-call)
+- **Descrição:** `mypy --strict` reporta 6 erros, todos concentrados em um único arquivo (67 sources checked). Duas classes claras: (1) **tipagem do payload Groq** — o mypy não consegue inferir que cada `dict` literal em `messages` é um dos `TypedDict`s da Groq SDK (`ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ...`); particularmente a linha 67 (vision) usa `content: list[dict]` (image_url + text blocos) que só encaixa em `ChatCompletionUserMessageParam`. (2) **`aioredis.from_url` sem stub** — `redis.asyncio` exporta `from_url` sem type hints; gera 3 erros em cascata (untyped-call duas vezes + no-any-return do `r.get`). Cross-referências importantes: combina com AUD-011 (22 `# type: ignore` totais — 12 do mesmo padrão de parsers IA) e **combina diretamente com AUD-014** (`aioredis.from_url` cria conexão por chamada; migrar para pool persistente compartilhado resolve **AUD-014 + as 3 linhas de aioredis aqui + parte do AUD-011 simultaneamente**).
+- **Evidência:** `artefatos/baseline-mypy.txt` (6 erros completos com linhas; análise em `09-qualidade.md § I.2`).
+- **Recomendação:** Bundlear no PR de refatoração de IA (mesmo PR que atenderia AUD-002/AUD-015/AUD-016). Itens: (1) importar `TypedDict`s da Groq SDK e anotar `messages: list[ChatCompletionMessageParam]` (cobre linhas 69/79/106); (2) migrar `aioredis.from_url` para pool persistente via `redis.asyncio.ConnectionPool` instanciado uma vez no `AIClient.__init__` (alinha com AUD-014; cobre 135/143/136). Sem refator estrutural, alternativa S: adicionar `# type: ignore[arg-type]` nos 3 sites de Groq e `# type: ignore[no-untyped-call]` nos 2 de aioredis — mas isso só anestesia o sintoma.
+- **Esforço:** S (isolado, < 1h) / bundlado no PR de IA: zero overhead
+- **Origem:** PASSO 10.2
