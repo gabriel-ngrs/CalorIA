@@ -289,27 +289,21 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 6.1
 
-### AUD-029 — `cleanup_old_conversations` faz Seq Scan em `ai_conversations` (sem índice em `updated_at`)
+### AUD-026 — `dispatch_due_reminders` usa `datetime.now()` naive — bug latente de timezone
 
-- **Severidade:** 🟢 baixa
-- **Frente:** E / F
-- **Arquivo:linha:** `backend/app/workers/tasks/maintenance.py:42-46` (`DELETE FROM ai_conversations WHERE updated_at < cutoff RETURNING id`); migrações Alembic não declaram índice em `ai_conversations.updated_at`
-- **Descrição:** A task diária de limpeza filtra por `updated_at < (now - 90 days)` mas a tabela `ai_conversations` só tem índices em `(id)`, `(external_chat_id)` e `(user_id)`. `EXPLAIN` no banco real confirma `Seq Scan on ai_conversations Filter: (updated_at < ...)`. Hoje a tabela tem ~43 linhas (custo 12.28) — irrelevante. Em 6 meses de uso ativo (5 conversas/dia × 1 user × 180 dias = 900 linhas) ainda passa sem dor; em 5 anos com 100 usuários ativos (~90k linhas) o `DELETE` faz scan completo da tabela inteira a cada execução, e como roda à 3h da manhã com pouca contenção, o impacto é baixo, mas o crescimento é linear.
-- **Evidência:** `artefatos/E5-ai-conv-indexes.txt` — `\d ai_conversations` lista 3 índices, nenhum em `updated_at`. `EXPLAIN DELETE ... WHERE updated_at < NOW() - INTERVAL '90 days'` retorna `Seq Scan`.
-- **Recomendação:** Migration adicionando `Index("ix_ai_conversations_updated_at", "updated_at")`. Custo: poucos KB de espaço, escrita marginalmente mais cara em INSERT/UPDATE, leitura/DELETE da cleanup vira `Bitmap Heap Scan` (logarítmico). Alternativa estrutural se a tabela ficar muito grande no futuro: particionamento por mês/trimestre, fazendo o cleanup ser `DROP PARTITION` (O(1)) — fora de escopo agora. Aproveitar o mesmo PR para revisar se outras colunas usadas em filtros de tasks (ex.: `WeightLog.date` já tem índice; `MealItem.created_at` precisa checar) também precisam de índice.
-- **Esforço:** S (< 1h)
-- **Origem:** PASSO 6.5
-
-### AUD-028 — Tratamento de Web Push 410 (subscription expirada) duplicado em 4 sites de workers
-
-- **Severidade:** 🟡 média
+- **Severidade:** 🟠 alta
 - **Frente:** E
-- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:100-137` (`_send_reminder_notification`), `:194-228` (`_send_hydration_reminders_async`); `backend/app/workers/tasks/reports.py:80-118` (`_send_daily_summaries_async`), `:179-217` (`send_weekly_reports`)
-- **Descrição:** Os 4 caminhos de envio de Web Push do projeto repetem o mesmo bloco de ~30 LOC: (1) `select PushSubscription where user_id`; (2) loop `await asyncio.to_thread(send_push_notification_sync, ...)`; (3) `except Exception as ex: try: from pywebpush import WebPushException; if isinstance(ex, WebPushException) and ex.response.status_code == 410: expired_ids.append(sub.id) except ImportError: pass`; (4) `if expired_ids: db.execute(delete(PushSubscription).where(id.in_(expired_ids)))`. Diferenças entre as 4 cópias: apenas o `body` e o `url` (default `/dashboard` em reminders, `/relatorios` em reports). Resultado: ~120 LOC duplicadas, e qualquer mudança na política de cleanup (ex.: marcar como inativo em vez de deletar; ou adicionar logging estruturado, AUD-013) precisa ser replicada 4×, com risco de divergência. Curiosidade: o `try: from pywebpush import WebPushException; except ImportError: pass` interno **nunca dispara** — `pywebpush` está em `pyproject.toml` como dependência direta — é over-engineering defensivo que polui o trace.
-- **Evidência:** `artefatos/E4-push-410.txt` — 4 sites com `expired_ids: list[int] = []` + `WebPushException` + `status_code == 410` + `delete(PushSubscription)`. Estrutura textualmente igual nos 4.
-- **Recomendação:** Estender `PushService` (`backend/app/services/push_service.py`) com um método `async def send_with_cleanup(self, user_id: int, title: str, body: str, url: str = "/dashboard") -> int` que: busca subscriptions do usuário, envia em loop (mantendo o `asyncio.to_thread` para não bloquear o loop), coleta expirados, deleta numa única query, e retorna a contagem enviada com sucesso (útil para logs/metrics). Cada um dos 4 sites vira uma única linha: `await PushService(db).send_with_cleanup(user.id, title, body, url="/relatorios")`. Remove o `try: from pywebpush import WebPushException; except ImportError` dos workers (manter só dentro do service, onde já existe). Combinar com AUD-013 (logs estruturados) para emitir `push.sent`/`push.expired` por chamada num único ponto.
-- **Esforço:** M (1–4h)
-- **Origem:** PASSO 6.4
+- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:37` (`now = datetime.now()`); comparado em `:60-63` contra `Reminder.time` (`backend/app/models/reminder.py:34` — `Time` sem `timezone`)
+- **Descrição:** A task lê o "agora" sem TZ e compara `reminder.time.hour/minute` com `now.hour/minute`. Hoje **funciona por acidente**: todos os containers (postgres, backend, celery_worker, celery_beat) têm `TZ=America/Sao_Paulo` em ambos `docker-compose.yml` e `docker-compose.dev.yml`, e o `User` não tem campo de fuso. Logo, "agora naive no container" coincide com "horário São Paulo", que coincide com o que o usuário típico digitou no formulário de lembrete. Falha em 3 cenários reais e prováveis:
+    1. **Migração para UTC** (default em quase todos os PaaS/cloud): lembrete configurado para 08:00 dispara às 05:00 ou 11:00 (offset de 3h, varia com horário de verão em outros países).
+    2. **Usuário fora de São Paulo:** o front salva "08:00" como string, sem TZ; o worker assume São Paulo. Para usuário em Lisboa (UTC+0), o lembrete das "08:00" do dele vai para às 12:00 de Lisboa.
+    3. **DST**: Brasil eliminou em 2019, mas outros países (e o próprio Brasil se voltar) terão duplicação no "fall back" ou pulo no "spring forward" — `datetime.now()` naive não consegue lidar.
+
+  Bônus: Celery está com `timezone="America/Sao_Paulo"` + `enable_utc=True` (`celery_app.py:23-24`) para interpretar crons; o **disparo** da task é correto, mas o **conteúdo** depende da TZ do processo. Acoplamento implícito invisível no código.
+- **Evidência:** `artefatos/E2-tz.txt` (postgres TZ, container envs); leitura de `reminders.py:36-71` + `models/reminder.py:34` + `celery_app.py:18-24`.
+- **Recomendação:** **Curto prazo** (sem mudar schema): em `reminders.py`, trocar `datetime.now()` por `datetime.now(ZoneInfo("America/Sao_Paulo"))` (ou ler `settings.timezone`). Documenta a TZ canônica e fica imune à TZ do processo. **Médio prazo**: adicionar `User.timezone: Mapped[str] = mapped_column(default="America/Sao_Paulo")`. A task itera reminders, pega `user.timezone`, e compara `Reminder.time` com `datetime.now(ZoneInfo(user.timezone))`. Cobertura de testes com `freezegun`/`time-machine` testando 3 fusos. **Longo prazo (opcional)**: armazenar `Reminder.next_fire_at: DateTime(timezone=True)` recalculado após cada disparo — task vira `WHERE next_fire_at <= now()`, o que escala melhor que iterar todos os reminders ativos por minuto.
+- **Esforço:** S (curto), M (médio), L (longo)
+- **Origem:** PASSO 6.2
 
 ### AUD-027 — `_send_hydration_reminders_async` ignora `User.water_goal_ml` (hardcode 2000ml)
 
@@ -334,18 +328,24 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
 - **Esforço:** S (< 1h)
 - **Origem:** PASSO 6.3
 
-### AUD-026 — `dispatch_due_reminders` usa `datetime.now()` naive — bug latente de timezone
+### AUD-028 — Tratamento de Web Push 410 (subscription expirada) duplicado em 4 sites de workers
 
-- **Severidade:** 🟠 alta
+- **Severidade:** 🟡 média
 - **Frente:** E
-- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:37` (`now = datetime.now()`); comparado em `:60-63` contra `Reminder.time` (`backend/app/models/reminder.py:34` — `Time` sem `timezone`)
-- **Descrição:** A task lê o "agora" sem TZ e compara `reminder.time.hour/minute` com `now.hour/minute`. Hoje **funciona por acidente**: todos os containers (postgres, backend, celery_worker, celery_beat) têm `TZ=America/Sao_Paulo` em ambos `docker-compose.yml` e `docker-compose.dev.yml`, e o `User` não tem campo de fuso. Logo, "agora naive no container" coincide com "horário São Paulo", que coincide com o que o usuário típico digitou no formulário de lembrete. Falha em 3 cenários reais e prováveis:
-    1. **Migração para UTC** (default em quase todos os PaaS/cloud): lembrete configurado para 08:00 dispara às 05:00 ou 11:00 (offset de 3h, varia com horário de verão em outros países).
-    2. **Usuário fora de São Paulo:** o front salva "08:00" como string, sem TZ; o worker assume São Paulo. Para usuário em Lisboa (UTC+0), o lembrete das "08:00" do dele vai para às 12:00 de Lisboa.
-    3. **DST**: Brasil eliminou em 2019, mas outros países (e o próprio Brasil se voltar) terão duplicação no "fall back" ou pulo no "spring forward" — `datetime.now()` naive não consegue lidar.
+- **Arquivo:linha:** `backend/app/workers/tasks/reminders.py:100-137` (`_send_reminder_notification`), `:194-228` (`_send_hydration_reminders_async`); `backend/app/workers/tasks/reports.py:80-118` (`_send_daily_summaries_async`), `:179-217` (`send_weekly_reports`)
+- **Descrição:** Os 4 caminhos de envio de Web Push do projeto repetem o mesmo bloco de ~30 LOC: (1) `select PushSubscription where user_id`; (2) loop `await asyncio.to_thread(send_push_notification_sync, ...)`; (3) `except Exception as ex: try: from pywebpush import WebPushException; if isinstance(ex, WebPushException) and ex.response.status_code == 410: expired_ids.append(sub.id) except ImportError: pass`; (4) `if expired_ids: db.execute(delete(PushSubscription).where(id.in_(expired_ids)))`. Diferenças entre as 4 cópias: apenas o `body` e o `url` (default `/dashboard` em reminders, `/relatorios` em reports). Resultado: ~120 LOC duplicadas, e qualquer mudança na política de cleanup (ex.: marcar como inativo em vez de deletar; ou adicionar logging estruturado, AUD-013) precisa ser replicada 4×, com risco de divergência. Curiosidade: o `try: from pywebpush import WebPushException; except ImportError: pass` interno **nunca dispara** — `pywebpush` está em `pyproject.toml` como dependência direta — é over-engineering defensivo que polui o trace.
+- **Evidência:** `artefatos/E4-push-410.txt` — 4 sites com `expired_ids: list[int] = []` + `WebPushException` + `status_code == 410` + `delete(PushSubscription)`. Estrutura textualmente igual nos 4.
+- **Recomendação:** Estender `PushService` (`backend/app/services/push_service.py`) com um método `async def send_with_cleanup(self, user_id: int, title: str, body: str, url: str = "/dashboard") -> int` que: busca subscriptions do usuário, envia em loop (mantendo o `asyncio.to_thread` para não bloquear o loop), coleta expirados, deleta numa única query, e retorna a contagem enviada com sucesso (útil para logs/metrics). Cada um dos 4 sites vira uma única linha: `await PushService(db).send_with_cleanup(user.id, title, body, url="/relatorios")`. Remove o `try: from pywebpush import WebPushException; except ImportError` dos workers (manter só dentro do service, onde já existe). Combinar com AUD-013 (logs estruturados) para emitir `push.sent`/`push.expired` por chamada num único ponto.
+- **Esforço:** M (1–4h)
+- **Origem:** PASSO 6.4
 
-  Bônus: Celery está com `timezone="America/Sao_Paulo"` + `enable_utc=True` (`celery_app.py:23-24`) para interpretar crons; o **disparo** da task é correto, mas o **conteúdo** depende da TZ do processo. Acoplamento implícito invisível no código.
-- **Evidência:** `artefatos/E2-tz.txt` (postgres TZ, container envs); leitura de `reminders.py:36-71` + `models/reminder.py:34` + `celery_app.py:18-24`.
-- **Recomendação:** **Curto prazo** (sem mudar schema): em `reminders.py`, trocar `datetime.now()` por `datetime.now(ZoneInfo("America/Sao_Paulo"))` (ou ler `settings.timezone`). Documenta a TZ canônica e fica imune à TZ do processo. **Médio prazo**: adicionar `User.timezone: Mapped[str] = mapped_column(default="America/Sao_Paulo")`. A task itera reminders, pega `user.timezone`, e compara `Reminder.time` com `datetime.now(ZoneInfo(user.timezone))`. Cobertura de testes com `freezegun`/`time-machine` testando 3 fusos. **Longo prazo (opcional)**: armazenar `Reminder.next_fire_at: DateTime(timezone=True)` recalculado após cada disparo — task vira `WHERE next_fire_at <= now()`, o que escala melhor que iterar todos os reminders ativos por minuto.
-- **Esforço:** S (curto), M (médio), L (longo)
-- **Origem:** PASSO 6.2
+### AUD-029 — `cleanup_old_conversations` faz Seq Scan em `ai_conversations` (sem índice em `updated_at`)
+
+- **Severidade:** 🟢 baixa
+- **Frente:** E / F
+- **Arquivo:linha:** `backend/app/workers/tasks/maintenance.py:42-46` (`DELETE FROM ai_conversations WHERE updated_at < cutoff RETURNING id`); migrações Alembic não declaram índice em `ai_conversations.updated_at`
+- **Descrição:** A task diária de limpeza filtra por `updated_at < (now - 90 days)` mas a tabela `ai_conversations` só tem índices em `(id)`, `(external_chat_id)` e `(user_id)`. `EXPLAIN` no banco real confirma `Seq Scan on ai_conversations Filter: (updated_at < ...)`. Hoje a tabela tem ~43 linhas (custo 12.28) — irrelevante. Em 6 meses de uso ativo (5 conversas/dia × 1 user × 180 dias = 900 linhas) ainda passa sem dor; em 5 anos com 100 usuários ativos (~90k linhas) o `DELETE` faz scan completo da tabela inteira a cada execução, e como roda à 3h da manhã com pouca contenção, o impacto é baixo, mas o crescimento é linear.
+- **Evidência:** `artefatos/E5-ai-conv-indexes.txt` — `\d ai_conversations` lista 3 índices, nenhum em `updated_at`. `EXPLAIN DELETE ... WHERE updated_at < NOW() - INTERVAL '90 days'` retorna `Seq Scan`.
+- **Recomendação:** Migration adicionando `Index("ix_ai_conversations_updated_at", "updated_at")`. Custo: poucos KB de espaço, escrita marginalmente mais cara em INSERT/UPDATE, leitura/DELETE da cleanup vira `Bitmap Heap Scan` (logarítmico). Alternativa estrutural se a tabela ficar muito grande no futuro: particionamento por mês/trimestre, fazendo o cleanup ser `DROP PARTITION` (O(1)) — fora de escopo agora. Aproveitar o mesmo PR para revisar se outras colunas usadas em filtros de tasks (ex.: `WeightLog.date` já tem índice; `MealItem.created_at` precisa checar) também precisam de índice.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 6.5
