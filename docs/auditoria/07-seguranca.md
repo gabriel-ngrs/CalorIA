@@ -7,6 +7,7 @@
 - AUD-038 (🔴 crítica) — credenciais reais (`gabrielnegreirossaraiva38@gmail.com` / `***REMOVED***`) hardcoded em `frontend/e2e/auth.spec.ts` e no histórico git público
 - AUD-039 (🟠 alta) — `SECRET_KEY` tem default `"insecure-default-key-change-in-production"` sem fail-fast; deploy esquecendo a env var dá origem a forge de JWTs trivial
 - AUD-040 (🟠 alta) — ausência total de rate limit no backend (sem `slowapi`, sem diretiva no Caddy); `/auth/*` exposto a credential stuffing, `/ai/*` exposto a abuso de tokens Groq
+- AUD-041 (🟡 média) — headers HTTP de segurança ausentes (X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy, Permissions-Policy); apenas HSTS é injetado automaticamente pelo Caddy
 
 ## G.6 Credenciais expostas no código
 
@@ -138,6 +139,53 @@ Detalhes em **AUD-040**.
 
 CLAUDE.md afirma "Arquitetura pensada para escalar para múltiplos usuários no futuro". Hoje com 1 usuário não há exploração ativa, mas o sistema está pronto pra deploy (Roadmap § 9 com CI/CD verde). **Rate limit é fundação** — sem ele, qualquer abertura ao público vira presa fácil. Severidade 🟠 hoje, escalonando se ficar pendente além do primeiro deploy.
 
+## G.8 Headers de segurança e CORS
+
+Comando: leitura de `Caddyfile`, `frontend/next.config.mjs`, `backend/app/main.py`.
+
+### Headers HTTP
+
+| Header | Estado | Origem |
+|---|---|---|
+| `Strict-Transport-Security` | ✅ presente | Caddy injeta automaticamente quando HTTPS ativo (Let's Encrypt via `{$APP_DOMAIN}`) |
+| `X-Frame-Options` | ❌ ausente | — |
+| `X-Content-Type-Options` | ❌ ausente | — |
+| `Content-Security-Policy` | ❌ ausente | — |
+| `Referrer-Policy` | ❌ ausente | — |
+| `Permissions-Policy` | ❌ ausente | — |
+| `Server` exposto | ⚠️ sim (Caddy não anonimiza por default) | — |
+
+`Caddyfile` define apenas `handle` blocks de proxy + `log` — sem `header { }`. `next.config.mjs` não declara `headers()`. `main.py` (FastAPI) só registra CORS + timing.
+
+Detalhes em **AUD-041**.
+
+### CORS (FastAPI)
+
+`main.py:42-49`:
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    max_age=3600,
+)
+```
+
+| Item | Avaliação |
+|---|---|
+| `allow_origins` | Lê de `BACKEND_CORS_ORIGINS` (string CSV) — vazio por default → bloqueia tudo. ✅ defensivo |
+| `allow_credentials=True` | Necessário para enviar JWT via Bearer + cookies (NextAuth). Combina mal com `allow_origins=["*"]`, mas como o default é vazio, não é problema atual |
+| `allow_methods=["*"]` | Permissivo. Aceitável para API REST |
+| `allow_headers=["*"]` | Permissivo. Aceitável para enviar `Authorization`+`Content-Type` |
+| `max_age=3600` | OK — preflight cache reduz round-trip |
+
+**Risco contextual**: se alguém setar `BACKEND_CORS_ORIGINS` em produção sem cuidado (ex.: `*`), com `allow_credentials=True` o navegador rejeita por especificação, mas se a config virar `["*"]` strict, browsers podem permitir CSRF-via-XHR. Recomendação: validator no `Settings` rejeitando `*` quando `allow_credentials=True`. Combina com fix do AUD-039 (mesmo arquivo).
+
+Sem novo achado — comportamento defensivo por default.
+
 ## Notas e contexto
 
-(seções G.7-G.8 serão preenchidas nos PASSOS 8.5-8.7)
+(seções G.6 secret scan e G.7 autorização serão preenchidas nos PASSOS 8.6-8.7)
