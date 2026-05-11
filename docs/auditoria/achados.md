@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 17 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 18 (atualizar a cada novo achado)
 
 ---
 
@@ -816,3 +816,19 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     Recomendação suave: opção 1 reduz superfície de manutenção. ADR poderia documentar "Frontend deployado externamente (Vercel) — backend Hetzner via `docker-compose.backend.yml`".
 - **Esforço:** S (< 30 min — decisão + cleanup ou ADR)
 - **Origem:** PASSO 11.4
+
+### AUD-054 — Versões dessincronizadas: arquivos canônicos em `0.1.0` vs CHANGELOG em `[0.7.0]`
+
+- **Severidade:** 🟢 baixa (sobe para 🟡 média no momento que Sentry/APM ou rollback automático entram em cena)
+- **Frente:** K
+- **Arquivo:linha:** `backend/pyproject.toml:7` (`version = "0.1.0"`); `backend/app/main.py:36` (`FastAPI(version="0.1.0")`); `backend/app/main.py:74` (`/health` retorna `"0.1.0"`); `frontend/package.json:version` (`"0.1.0"`); vs `CHANGELOG.md:14` (`[0.7.0] - 2026-05-10`)
+- **Descrição:** Os 4 metadados canônicos de versão estão **6 minor versions** atrás do CHANGELOG. Padrão comum em projetos cedo: bumps narrativos no CHANGELOG sem propagar para arquivos de pacote. Hoje não quebra ninguém porque (a) não há publicação em PyPI/npm; (b) nenhum SDK externo consome esses pacotes; (c) `/health` reporta versão mas nenhum monitoring está ligado (AUD-050/051). **Vira problema imediato no momento que**: (1) Sentry/APM é ativado (AUD-051) — events agregam por `release="0.1.0"`, impossível separar regressões por deploy; (2) UptimeRobot/CloudWatch é ligado contra `/health` (AUD-050) — rollback automático por versão impossível; (3) bug report do usuário — "qual deploy?" sem resposta. Cross-ref forte com AUD-050 (versão no health), AUD-049 (release como tag de log), AUD-051 (release no Sentry).
+- **Evidência:** `artefatos/K1-versions.txt` (4 fontes mostrando `0.1.0` vs CHANGELOG `[0.7.0]`); análise em `11-dx-docs.md § K.4`.
+- **Recomendação:** Esforço S (<1h):
+    1. Definir fonte única — preferir `pyproject.toml` + `importlib.metadata.version("caloria-backend")` em runtime (já recomendado em AUD-050).
+    2. Bumpar agora: `pyproject.toml`, `package.json` e o hardcode em `app/main.py:36,74` para `0.7.0`.
+    3. Substituir o hardcode por leitura dinâmica — combina com fix de AUD-050.
+    4. Documentar em `CONTRIBUTING.md` ou ADR-007 (proposto em AUD-055 abaixo) o workflow: PR de release atualiza CHANGELOG + pyproject + package.json em sincronia antes de mergear para `main`.
+    Alternativa estrutural (mais robusta): `setuptools-scm` no backend e `git describe` no frontend, usando tags `v0.7.0` como fonte — exige mais setup mas elimina o problema de raiz.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 12.1
