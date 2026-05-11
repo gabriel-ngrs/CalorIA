@@ -593,3 +593,13 @@ Cronologia detalhada de cada passo executado.
 - **Achados gerados:** AUD-045 (🟢 baixa, mas com gotcha funcional)
 - **Commit:** _(preenchido após o commit deste passo)_
 - **Notas:** **14 erros, 9 auto-fixáveis.** Distribuição: 2 em `app/api/v1/meals.py` (I001 + B904 — esse último é o **mesmo** caso de AUD-004), 1 em `services/meal_service.py` (N818, sufixo `Error` em exception — estilístico), 11 em `scripts/` (utilitários one-shot). **Achado funcional disfarçado**: par F401(385) + F821(440) em `scripts/import_off_local.py` indica que `from sqlalchemy import text as sa_text` está dentro de uma função e `sa_text` é referenciado em outra função (`_flush()`) — `ruff --fix` cego remove o import e quebra o script em runtime. F821 já é a evidência. Recomendação: PR em duas frentes — corrigir 2 erros em `app/` (auto + manual com `from None`); para `scripts/`, mover o import para o topo do módulo antes do `--fix`, OU adicionar `extend-exclude = ["scripts/"]` em `[tool.ruff]` (alinha com exclusão já existente do mypy). N818 pode ficar pendente sem urgência.
+
+## PASSO 10.2 — Detalhar warnings mypy
+
+- **Início:** 2026-05-11 (sessão atual)
+- **Fim:** 2026-05-11 (sessão atual)
+- **Comando(s) executado(s):** leitura de `artefatos/baseline-mypy.txt` (capturado em PASSO 1.2); leitura de `app/services/ai/ai_client.py:60-150` para confirmar contexto dos 6 erros.
+- **Artefato(s):** nenhum novo (usa `baseline-mypy.txt`; tabela em `09-qualidade.md § I.2`)
+- **Achados gerados:** AUD-046 (🟢 baixa, mas com sinergia forte com AUD-011 e AUD-014)
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **6 erros, todos em 1 arquivo** (`ai_client.py`), 67 source files checked. Duas classes: (1) tipos do `messages` da Groq SDK (linhas 69, 79, 106) — `dict` literal não encaixa nos `TypedDict`s `ChatCompletion*MessageParam`; particularmente vision (linha 67) usa `content: list[dict]` que só `ChatCompletionUserMessageParam` aceita; (2) `aioredis.from_url` não-tipada (linhas 135, 143) + `no-any-return` derivado (136). Sinergia importante: **fix do AUD-014 (pool persistente Redis) elimina automaticamente 3 dos 6 erros** (135/136/143) — vale bundlear. Para tipos Groq, importar `TypedDict`s do SDK e anotar `messages: list[ChatCompletionMessageParam]` cobre os outros 3. Sem refator, alternativa é `# type: ignore` em 5 sites (anestesia o sintoma, alimenta AUD-011). Recomendação: bundlar no PR maior de refator de IA (AUD-002/AUD-015/AUD-016) — overhead zero.

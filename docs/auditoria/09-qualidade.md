@@ -5,6 +5,7 @@
 ## Achados desta frente
 
 - AUD-045 — 14 erros ruff pré-existentes (1 em `app/`, 13 em `scripts/`); um deles (F821 em `scripts/import_off_local.py:440`) é bug funcional latente (🟢 baixa, mas com gotcha no `--fix`).
+- AUD-046 — 6 erros mypy strict concentrados em `app/services/ai/ai_client.py` — duas classes: tipos do `messages` da Groq SDK e `aioredis.from_url` não-tipada (🟢 baixa).
 
 ## Notas e contexto
 
@@ -39,3 +40,28 @@
 **Recomendação de PR de cleanup**:
 1. Corrigir os 2 erros em `app/` (I001 auto + B904 manual com `from None`).
 2. Decidir scripts: opção A — rodar `ruff --fix` em scripts/ E mover `sa_text` para o topo de `import_off_local.py` antes do fix (para não quebrar); opção B — adicionar `extend-exclude = ["scripts/"]` em `[tool.ruff]` no `pyproject.toml` e documentar a decisão em ADR (alinhamento com exclusão do mypy).
+
+### § I.2 Warnings mypy strict (de `artefatos/baseline-mypy.txt`)
+
+**6 errors em 1 arquivo (67 source files checked).** Todos concentrados em `app/services/ai/ai_client.py`.
+
+| Linha | Código | Mensagem | Origem |
+|---|---|---|---|
+| 69 | `dict-item` | Dict entry 1: `"str": "list[object]"` vs `"str": "str"` | construção do `messages` para Groq Vision (content é lista de blocos, não string) |
+| 79 | `arg-type` | `messages: list[dict[str, str]]` vs `Iterable[ChatCompletion*MessageParam]` | passagem para `groq.AsyncCompletions.create` (Vision) |
+| 106 | `arg-type` | idem, mas em `_call()` (texto) | idem |
+| 135 | `no-untyped-call` | `aioredis.from_url(...)` não-tipada em contexto tipado | leitura de cache em `_get_cached` |
+| 136 | `no-any-return` | retorno `Any` quando assinatura promete `str \| None` | `await r.get(key)` retorna `Any` (consequência do 135) |
+| 143 | `no-untyped-call` | `aioredis.from_url(...)` não-tipada | gravação de cache em `_set_cached` |
+
+**Duas classes claras de problema:**
+
+1. **Tipagem do payload Groq (linhas 69, 79, 106)** — o mypy não consegue inferir que cada `dict` literal no `messages` corresponde a um dos `TypedDict`s da Groq SDK (`ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ...`). Caminho mais limpo: importar os `TypedDict`s da Groq e anotar `messages: list[ChatCompletionMessageParam]`. Particularmente importante na linha 67 (vision) que usa `content: list[dict]` (image_url + text blocos) — só `ChatCompletionUserMessageParam` aceita esse formato.
+2. **`aioredis.from_url` sem stub (linhas 135, 143)** — `redis.asyncio` (alias `aioredis`) exporta `from_url` sem type hints completos. As 7 ocorrências de `# type: ignore` já mapeadas em AUD-011 cobrem esses casos via supressão. Solução adequada: `redis-stubs` (existem stubs externos) ou casts locais.
+
+**Cross-referências**:
+- Combina com AUD-011 (22 `# type: ignore`, 12 derivados desse mesmo padrão em parsers de IA).
+- Combina com AUD-014 (`aioredis.from_url` cria conexão por chamada; refatorar para pool persistente resolve **três** achados de uma vez: AUD-011, AUD-014 e AUD-046 linhas 135/143).
+- Combina com AUD-002/AUD-016 do plano de refatoração de IA — a tipagem do payload Groq cabe no mesmo PR que extrai `BaseAIFoodParser` (AUD-015).
+
+**Recomendação compacta**: adicionar `TypedDict`s da Groq e tipar `messages` cobre 3 erros (69/79/106); migrar `aioredis.from_url` para pool persistente (compartilhado com AUD-014) elimina os outros 3. Esforço **S** isolado, mas faz mais sentido bundlear no PR de refatoração de IA.
