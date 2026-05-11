@@ -411,5 +411,15 @@ Cronologia detalhada de cada passo executado.
 - **Comando(s) executado(s):** `rg -n "WebPushException|status_code == 410|expired_ids" backend/app/workers/ backend/app/services/push_service.py` + leitura de `services/push_service.py` (todo) + 4 trechos dos workers para confirmar identidade
 - **Artefato(s):** `docs/auditoria/artefatos/E4-push-410.txt`
 - **Achados gerados:** AUD-028
-- **Commit:** _(preenchido após o commit deste passo)_
+- **Commit:** f4ca308
 - **Notas:** **4 sites** confirmados, ~30 LOC cada (≈120 LOC duplicados): `reminders.py:100-137` (lembrete pontual), `reminders.py:194-228` (hidratação), `reports.py:80-118` (resumo diário), `reports.py:179-217` (relatório semanal). Diferenças reais: apenas `body` e `url` (`/dashboard` × 2 vs `/relatorios` × 2). `services/push_service.py:11-50` já tem `send_push_notification_sync` mas NÃO tem o wrapper que busca subs+envia+deleta — esse ficou repetido. Bônus de smell: cada site repete `try: from pywebpush import WebPushException; except ImportError: pass` que nunca dispara (pywebpush é dependência direta no `pyproject.toml`). Severidade 🟡 (duplicação clássica, sem bug funcional hoje, mas custo de mudança ×4). Plano: `PushService(db).send_with_cleanup(user_id, title, body, url)` — cada caller vira 1 linha. Combina bem com AUD-013 (logs estruturados) e AUD-014 (pool Redis) num PR só de "limpeza de PushService".
+
+## PASSO 6.5 — Maintenance e cleanup
+
+- **Início:** 2026-05-10 20:24
+- **Fim:** 2026-05-10 20:32
+- **Comando(s) executado(s):** leitura de `backend/app/workers/tasks/maintenance.py` (todo, 129 linhas) + `docker exec caloria_postgres psql -c "\d ai_conversations"` + `\d weight_logs` + `EXPLAIN DELETE FROM ai_conversations WHERE updated_at < NOW() - INTERVAL '90 days' RETURNING id`
+- **Artefato(s):** `docs/auditoria/artefatos/E5-ai-conv-indexes.txt`
+- **Achados gerados:** AUD-029
+- **Commit:** _(preenchido após o commit deste passo)_
+- **Notas:** **`cleanup_old_conversations`** — usa `updated_at < cutoff` mas índices da tabela são apenas em `id`, `external_chat_id`, `user_id`. `EXPLAIN` confirma Seq Scan (cost 12.28, ~43 rows). Hoje irrelevante (Postgres escolhe Seq Scan corretamente nesse tamanho); vira problema quando a tabela crescer. Já é TZ-aware (`datetime.now(tz=UTC)`) — não tem o problema do AUD-026. **`recalculate_tdee`** — threshold de 2 kg é coerente clinicamente (flutuação diária típica ≈ 1 kg). N+1 do `for user in users` + 1 `SELECT WeightLog` por user já está em AUD-008, sem novo achado. Apenas atualiza `current_weight`+`tdee_calculated`; hoje as metas derivam de `tdee_calculated` na UI, então não há cascade de updates faltando. `weight_logs` tem `ix_weight_logs_user_id` + `ix_weight_logs_date` — para a query agregada do AUD-008 idealmente um índice composto `(user_id, date DESC, created_at DESC)`, fora de escopo deste passo (anotar para PASSO 7.1).

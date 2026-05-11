@@ -1,0 +1,40 @@
+                                          Table "public.ai_conversations"
+      Column      |           Type           | Collation | Nullable |                   Default                    
+------------------+--------------------------+-----------+----------+----------------------------------------------
+ id               | integer                  |           | not null | nextval('ai_conversations_id_seq'::regclass)
+ user_id          | integer                  |           | not null | 
+ channel          | conversationchannel      |           | not null | 
+ external_chat_id | character varying(255)   |           | not null | 
+ messages         | json                     |           | not null | 
+ created_at       | timestamp with time zone |           | not null | now()
+ updated_at       | timestamp with time zone |           | not null | now()
+Indexes:
+    "ai_conversations_pkey" PRIMARY KEY, btree (id)
+    "ix_ai_conversations_external_chat_id" btree (external_chat_id)
+    "ix_ai_conversations_user_id" btree (user_id)
+Foreign-key constraints:
+    "ai_conversations_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+                                       Table "public.weight_logs"
+   Column   |           Type           | Collation | Nullable |                 Default                 
+------------+--------------------------+-----------+----------+-----------------------------------------
+ id         | integer                  |           | not null | nextval('weight_logs_id_seq'::regclass)
+ user_id    | integer                  |           | not null | 
+ weight_kg  | double precision         |           | not null | 
+ date       | date                     |           | not null | 
+ notes      | text                     |           |          | 
+ created_at | timestamp with time zone |           | not null | now()
+Indexes:
+    "weight_logs_pkey" PRIMARY KEY, btree (id)
+    "ix_weight_logs_date" btree (date)
+    "ix_weight_logs_user_id" btree (user_id)
+Foreign-key constraints:
+    "weight_logs_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ Delete on ai_conversations  (cost=0.00..12.28 rows=43 width=6)
+   ->  Seq Scan on ai_conversations  (cost=0.00..12.28 rows=43 width=6)
+         Filter: (updated_at < (now() - '90 days'::interval))
+(3 rows)
+
