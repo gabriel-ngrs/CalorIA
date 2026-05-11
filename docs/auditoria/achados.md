@@ -2,7 +2,7 @@
 
 Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver `relatorio-preliminar.md` ao fim da auditoria.
 
-**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 15 (atualizar a cada novo achado)
+**Status totais:** críticos: 2 · altos: 14 · médios: 20 · baixos: 17 (atualizar a cada novo achado)
 
 ---
 
@@ -788,3 +788,31 @@ Lista de problemas encontrados, ordenada por ID. Para visão por severidade ver 
     Alternativa zero-custo: GlitchTip self-hosted (clone open source do Sentry).
 - **Esforço:** M (1-4h)
 - **Origem:** PASSO 11.3
+
+### AUD-052 — Caddy: log em texto humano, sem rate limit, sem headers de segurança
+
+- **Severidade:** 🟢 baixa (combina com AUD-040 — sem rate limit no backend — e AUD-041 — headers de segurança)
+- **Frente:** J
+- **Arquivo:linha:** `Caddyfile:51-55` e `Caddyfile.backend:18-22` (ambos com `format console`); ambos os arquivos sem bloco `header { }` e sem diretiva de rate limit
+- **Descrição:** O Caddy está bem configurado no que importa funcionalmente: HTTPS automático via Let's Encrypt através do envelope `{$APP_DOMAIN}` ✅, `reverse_proxy` injeta `X-Forwarded-For`/`X-Forwarded-Proto` automaticamente ✅, routing por `handle` é correto e separa `/api/auth/*` (NextAuth no frontend) de `/api/*` (FastAPI backend) — pelo menos no `Caddyfile` full-stack. **Mas 3 gaps complementares**: (1) `log { format console }` em ambos arquivos — saída humana, não JSON; difícil rotacionar para Loki/CloudWatch sem parser custom (combina com AUD-049); (2) **sem rate limit** — combina com AUD-040; defesa em profundidade no edge bloquearia credential stuffing antes de chegar no FastAPI; (3) **sem bloco `header { }`** — AUD-041 já cobre a recomendação detalhada de X-Frame-Options/X-Content-Type-Options/Referrer-Policy/Permissions-Policy/CSP. Este achado consolida os 3 itens "Caddy" sem repetir os fixes já registrados.
+- **Evidência:** leitura completa de `Caddyfile` (57 linhas) e `Caddyfile.backend` (22 linhas); detalhamento em `10-observabilidade.md § J.5`.
+- **Recomendação:** Esforço S (<1h, em PR único):
+    1. Trocar `format console` por `format json` em ambos Caddyfiles — saída estruturada com `ts`, `request.host`, `request.uri`, `status`, `duration`.
+    2. Adicionar bloco `header { }` (snippet completo em AUD-041) — aplicar nos **dois** Caddyfiles, mas priorizar `Caddyfile.backend` que é o deploy ativo (cross-ref AUD-053).
+    3. Adicionar `caddy-ratelimit` plugin com limites para `/api/auth/*` (5 req/s/IP) e `/api/*` (30 req/s/IP) — funciona como defesa em profundidade ao backend `slowapi` proposto em AUD-040.
+- **Esforço:** S (< 1h)
+- **Origem:** PASSO 11.4
+
+### AUD-053 — Dois deployments concorrentes commitados (`Caddyfile` full-stack vs `Caddyfile.backend`), sem documentação clara da escolha
+
+- **Severidade:** 🟢 baixa
+- **Frente:** J
+- **Arquivo:linha:** `Caddyfile` (56 linhas, full-stack frontend+backend) + `docker-compose.yml` (não referenciado pelo CD) vs `Caddyfile.backend` (22 linhas, backend-only) + `docker-compose.backend.yml` (usado em `.github/workflows/cd.yml:33`)
+- **Descrição:** O projeto commit os dois cenários de deploy lado a lado: (a) full-stack — `docker-compose.yml` que sobe backend+frontend+caddy juntos, com `Caddyfile` roteando `/api/auth/*` → `frontend:3000`, `/api/*` → `backend:8000` e catchall → `frontend:3000`; (b) backend-only — `docker-compose.backend.yml` sem serviço frontend e `Caddyfile.backend` sem catchall. **O CD atual usa apenas o backend-only** (`docker compose -f docker-compose.backend.yml up -d --build` em `cd.yml:33`); o frontend está hospedado na Vercel (preview confirmado em AUD-044: `frontend-nine-mu-59.vercel.app`). Resultado: o full-stack `docker-compose.yml`+`Caddyfile` continua no repo, mas **não está sendo deployado** — vira ambiguidade para quem edita e potencial confusão futura. Decisão pendente do mantenedor (registrada no runbook como "verificar e decidir depois"). Sem prescrição forte — registro de evidência conforme PASSO 11.4.
+- **Evidência:** `git log -p -- Caddyfile.backend` mostra commit `c5676fb "ci(deploy): adiciona compose e caddy para backend-only e atualiza cd.yml"` (2026-04-29); `.github/workflows/cd.yml:33` referencia explicitamente `docker-compose.backend.yml`; `docker-compose.backend.yml:75` monta `Caddyfile.backend`; nada referencia `Caddyfile`+`docker-compose.yml` no CI/CD.
+- **Recomendação:** Decisão arquitetural pendente. Duas opções viáveis:
+    1. **Manter só `Caddyfile.backend`+`docker-compose.backend.yml`** — frontend continua na Vercel. Remover `Caddyfile` e `docker-compose.yml` (full-stack) ou renomeá-los para `*.fullstack.yml` para explicitar que é alternativa não-deployada.
+    2. **Manter os 2** com README/ADR explicando "este Caddyfile é para deploy A, este é para deploy B" — qualquer pessoa que mexer sabe qual editar.
+    Recomendação suave: opção 1 reduz superfície de manutenção. ADR poderia documentar "Frontend deployado externamente (Vercel) — backend Hetzner via `docker-compose.backend.yml`".
+- **Esforço:** S (< 30 min — decisão + cleanup ou ADR)
+- **Origem:** PASSO 11.4
