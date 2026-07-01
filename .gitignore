@@ -128,3 +128,4 @@ vapid_private.pem
 data/raw/*.gz
 data/raw/*.zip
 data/raw/*.jsonl
+.codeflow/checkpoints/
