@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import date
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Date, Float, ForeignKey, Integer
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -35,7 +36,7 @@ class UserProfile(Base):
     )
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     current_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
-    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     sex: Mapped[Sex | None] = mapped_column(SAEnum(Sex), nullable=True)
     activity_level: Mapped[ActivityLevel] = mapped_column(
         SAEnum(ActivityLevel), nullable=False, default=ActivityLevel.SEDENTARY
