@@ -100,7 +100,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.Re
 interface Step1Fields {
   weight: string;
   height: string;
-  age: string;
+  birthDate: string;
   sex: Sex | "";
   activity: ActivityLevel | "";
 }
@@ -138,13 +138,13 @@ function Step1({
       </div>
 
       <div className="space-y-1.5">
-        <FieldLabel htmlFor="age">Idade (anos)</FieldLabel>
+        <FieldLabel htmlFor="birth_date">Data de nascimento</FieldLabel>
         <Input
-          id="age"
-          placeholder="25"
-          inputMode="numeric"
-          value={fields.age}
-          onChange={(e) => onChange({ age: e.target.value })}
+          id="birth_date"
+          type="date"
+          max={new Date().toISOString().slice(0, 10)}
+          value={fields.birthDate}
+          onChange={(e) => onChange({ birthDate: e.target.value })}
         />
       </div>
 
@@ -383,7 +383,7 @@ export default function OnboardingPage() {
   const [step1, setStep1] = useState<Step1Fields>({
     weight: "",
     height: "",
-    age: "",
+    birthDate: "",
     sex: "",
     activity: "",
   });
@@ -403,7 +403,7 @@ export default function OnboardingPage() {
         ...prev,
         weight: profile.current_weight_kg != null ? String(profile.current_weight_kg) : prev.weight,
         height: profile.height_cm != null ? String(profile.height_cm) : prev.height,
-        age: profile.age != null ? String(profile.age) : prev.age,
+        birthDate: profile.birth_date ?? prev.birthDate,
         sex: profile.sex ?? prev.sex,
         activity: profile.activity_level ?? prev.activity,
       }));
@@ -429,7 +429,7 @@ export default function OnboardingPage() {
         await updateProfile.mutateAsync({
           current_weight_kg: parseNum(step1.weight) ?? undefined,
           height_cm: parseNum(step1.height) ?? undefined,
-          age: parseNum(step1.age) ?? undefined,
+          birth_date: step1.birthDate || undefined,
           sex: step1.sex || undefined,
           activity_level: step1.activity || undefined,
         } as Parameters<typeof updateProfile.mutateAsync>[0]);
