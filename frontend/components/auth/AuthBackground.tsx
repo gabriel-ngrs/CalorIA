@@ -28,7 +28,7 @@ const FOODS = [
 
 /* ─── Cards de features — posições livres ─────────────────── */
 const FEATURES = [
-  { id: "ai",      icon: "🤖", label: "IA analisa macros",      sub: "Gemini 2.5 Flash",      color: "#10B981", homeX: 2,  homeY: 12, floatDelay: 0.0, floatDur: 5.0 },
+  { id: "ai",      icon: "🤖", label: "IA analisa macros",      sub: "Groq · Llama",          color: "#10B981", homeX: 2,  homeY: 12, floatDelay: 0.0, floatDur: 5.0 },
   { id: "history", icon: "📊", label: "Histórico detalhado",    sub: "Gráficos e tendências",  color: "#60A5FA", homeX: 2,  homeY: 44, floatDelay: 1.4, floatDur: 6.2 },
   { id: "water",   icon: "💧", label: "Hidratação diária",      sub: "Metas personalizadas",   color: "#3B82F6", homeX: 3,  homeY: 74, floatDelay: 0.7, floatDur: 5.8 },
   { id: "weight",  icon: "⚖️", label: "Evolução de peso",       sub: "Linha do tempo visual",  color: "#22C55E", homeX: 76, homeY: 14, floatDelay: 0.4, floatDur: 6.5 },
