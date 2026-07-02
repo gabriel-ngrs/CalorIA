@@ -9,6 +9,8 @@ import {
   useHydrationToday,
   useHydrationHistory,
   useLogHydration,
+  useDeleteHydration,
+  useUpdateHydration,
   useMoodLogs,
   useLogMood,
 } from "@/lib/hooks/useLogs";
@@ -230,6 +232,55 @@ describe("useLogHydration", () => {
     expect(mockedToast.success).toHaveBeenCalledWith(
       "Água registrada",
       expect.objectContaining({ description: "+500 ml adicionados." })
+    );
+  });
+});
+
+// ─── useDeleteHydration ───────────────────────────────────────────────────────
+
+describe("useDeleteHydration", () => {
+  it("faz DELETE em /api/v1/hydration/{id}", async () => {
+    mockedApi.delete.mockResolvedValueOnce({ data: undefined });
+
+    const { result } = renderHook(() => useDeleteHydration(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(42);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedApi.delete).toHaveBeenCalledWith("/api/v1/hydration/42");
+    expect(mockedToast.success).toHaveBeenCalledWith("Registro removido");
+  });
+});
+
+// ─── useUpdateHydration ───────────────────────────────────────────────────────
+
+describe("useUpdateHydration", () => {
+  it("faz PUT em /api/v1/hydration/{id} sem o campo id no corpo", async () => {
+    mockedApi.put.mockResolvedValueOnce({
+      data: { ...mockHydrationLog, amount_ml: 350 },
+    });
+
+    const { result } = renderHook(() => useUpdateHydration(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ id: 2, amount_ml: 350 });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedApi.put).toHaveBeenCalledWith("/api/v1/hydration/2", {
+      amount_ml: 350,
+    });
+    expect(mockedToast.success).toHaveBeenCalledWith(
+      "Registro atualizado",
+      expect.objectContaining({ description: "350 ml salvos." })
     );
   });
 });

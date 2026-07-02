@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { CheckCircle2, Droplets, Flame, Plus, Trophy, Zap } from "lucide-react";
+import { Check, CheckCircle2, Droplets, Flame, Pencil, Plus, Trash2, Trophy, X, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const HydrationBarChart = dynamic(
@@ -13,7 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useHydrationHistory, useHydrationToday, useLogHydration } from "@/lib/hooks/useLogs";
+import {
+  useDeleteHydration,
+  useHydrationHistory,
+  useHydrationToday,
+  useLogHydration,
+  useUpdateHydration,
+} from "@/lib/hooks/useLogs";
 import { useMe } from "@/lib/hooks/useProfile";
 
 const QUICK_OPTIONS = [
@@ -36,10 +42,31 @@ function getLocalToday(): string {
 export default function HidratacaoPage() {
   const [custom, setCustom] = useState("");
   const [historyDays, setHistoryDays] = useState(7);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
   const { data: user } = useMe();
   const { data: summary } = useHydrationToday();
   const { data: history } = useHydrationHistory(historyDays);
   const logHydration = useLogHydration();
+  const deleteHydration = useDeleteHydration();
+  const updateHydration = useUpdateHydration();
+
+  function startEdit(id: number, amountMl: number) {
+    setEditingId(id);
+    setEditValue(String(amountMl));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValue("");
+  }
+
+  async function saveEdit(id: number) {
+    const ml = parseInt(editValue, 10);
+    if (!Number.isFinite(ml) || ml <= 0) return;
+    await updateHydration.mutateAsync({ id, amount_ml: ml });
+    cancelEdit();
+  }
 
   const goalMl = user?.water_goal_ml ?? DEFAULT_GOAL_ML;
   const today = getLocalToday();
@@ -174,6 +201,104 @@ export default function HidratacaoPage() {
                   Adicionar
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Registros de hoje */}
+          <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-blue-500/30">
+            <CardHeader>
+              <CardTitle className="text-sm">Registros de hoje</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(summary?.entries?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Nenhum registro hoje. Adicione água acima.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {summary!.entries.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="flex items-center justify-between gap-2 py-2.5"
+                    >
+                      {editingId === entry.id ? (
+                        <>
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min="1"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              className="h-8 w-28"
+                              aria-label="Editar quantidade em ml"
+                            />
+                            <span className="text-xs text-muted-foreground">ml</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-green-500"
+                              disabled={updateHydration.isPending}
+                              onClick={() => saveEdit(entry.id)}
+                              aria-label="Salvar"
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground"
+                              onClick={cancelEdit}
+                              aria-label="Cancelar"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 shrink-0">
+                              <Droplets className="h-4 w-4 text-blue-500" />
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">
+                                {entry.amount_ml.toLocaleString("pt-BR")} ml
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {entry.time.slice(0, 5)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-blue-500"
+                              onClick={() => startEdit(entry.id, entry.amount_ml)}
+                              aria-label="Editar registro"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                              disabled={deleteHydration.isPending}
+                              onClick={() => deleteHydration.mutate(entry.id)}
+                              aria-label="Remover registro"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -130,7 +130,7 @@ export interface HydrationLog {
 export interface HydrationDaySummary {
   date: string;
   total_ml: number;
-  entries_count: number;
+  entries: HydrationLog[];
 }
 
 export interface MoodLog {
