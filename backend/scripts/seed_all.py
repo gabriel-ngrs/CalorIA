@@ -699,7 +699,7 @@ async def seed():
             user_id=USER_ID,
             height_cm=178.0,
             current_weight=85.0,
-            age=27,
+            birth_date=date(1997, 6, 1),
             sex=Sex.MALE,
             activity_level=ActivityLevel.MODERATELY_ACTIVE,
             tdee_calculated=2380.0,

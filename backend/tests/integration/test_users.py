@@ -45,7 +45,7 @@ class TestProfile:
             json={
                 "height_cm": 175.0,
                 "current_weight": 70.0,
-                "age": 30,
+                "birth_date": "1994-01-01",
                 "sex": "male",
                 "activity_level": "moderately_active",
             },
@@ -53,6 +53,7 @@ class TestProfile:
         assert resp.status_code == 200
         data = resp.json()
         assert data["height_cm"] == 175.0
+        assert data["birth_date"] == "1994-01-01"
         assert data["tdee_calculated"] is not None
 
     async def test_perfil_calcula_tdee(self, client: AsyncClient) -> None:
@@ -61,7 +62,7 @@ class TestProfile:
             json={
                 "height_cm": 170.0,
                 "current_weight": 65.0,
-                "age": 25,
+                "birth_date": "1999-01-01",
                 "sex": "female",
                 "activity_level": "lightly_active",
             },
@@ -71,3 +72,25 @@ class TestProfile:
         profile = resp.json()
         assert profile["tdee_calculated"] is not None
         assert profile["tdee_calculated"] > 0
+
+    async def test_perfil_expoe_birthdate_bmr_e_formula(
+        self, client: AsyncClient
+    ) -> None:
+        await client.put(
+            "/api/v1/users/me/profile",
+            json={
+                "height_cm": 175.0,
+                "current_weight": 70.0,
+                "birth_date": "1994-01-01",
+                "sex": "male",
+                "activity_level": "moderately_active",
+            },
+        )
+        resp = await client.get("/api/v1/users/me/profile")
+        assert resp.status_code == 200
+        profile = resp.json()
+        assert "age" not in profile
+        assert profile["birth_date"] == "1994-01-01"
+        assert profile["bmr"] is not None
+        assert profile["bmr"] > 0
+        assert profile["formula"] == "Mifflin-St Jeor"
