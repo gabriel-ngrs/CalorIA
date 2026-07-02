@@ -271,6 +271,17 @@ export interface InsightResponse {
   generated_at: string;
 }
 
+export interface ChatMessage {
+  role: "user" | "model";
+  content: string;
+  timestamp: string;
+}
+
+export interface ConversationResponse {
+  channel: string;
+  messages: ChatMessage[];
+}
+
 export interface SuggestedMealItem {
   food_name: string;
   quantity: number;

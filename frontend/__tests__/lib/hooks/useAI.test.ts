@@ -6,6 +6,7 @@ import {
   useDailyInsight,
   useWeeklyInsight,
   useAskQuestion,
+  useChatHistory,
   useMealSuggestion,
   useEatingPatterns,
   useNutritionalAlerts,
@@ -273,6 +274,52 @@ describe("useAskQuestion", () => {
       question,
     });
     expect(result.current.data).toEqual(questionResponse);
+  });
+});
+
+// ─── Histórico do chat web (B20 frontend) ────────────────────────────────────
+
+describe("useChatHistory", () => {
+  const mockConversation = {
+    channel: "web",
+    messages: [
+      { role: "user", content: "Posso comer pizza?", timestamp: "2026-03-15T20:00:00Z" },
+      { role: "model", content: "Com moderação, sim.", timestamp: "2026-03-15T20:00:01Z" },
+    ],
+  };
+
+  it("carrega o histórico de /api/v1/ai/conversations no mount (AC-C3)", async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: mockConversation });
+
+    const { result } = renderHook(() => useChatHistory(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/conversations");
+    expect(result.current.data).toEqual(mockConversation);
+    expect(result.current.data?.messages).toHaveLength(2);
+  });
+});
+
+describe("useAskQuestion (invalidação do histórico)", () => {
+  it("invalida ['ai','conversations'] ao concluir para recarregar o histórico", async () => {
+    mockedApi.post.mockResolvedValueOnce({
+      data: { type: "question", content: "resposta" },
+    });
+    const client = makeClient();
+    const spy = jest.spyOn(client, "invalidateQueries");
+
+    const { result } = renderHook(() => useAskQuestion(), {
+      wrapper: wrapperFor(client),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync("Posso comer pizza?");
+    });
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai", "conversations"] });
   });
 });
 

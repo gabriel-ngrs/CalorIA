@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import type {
   InsightResponse,
@@ -7,6 +7,7 @@ import type {
   NutritionalAlertsResponse,
   GoalAdjustmentSuggestion,
   MonthlyReport,
+  ConversationResponse,
 } from "@/types";
 
 // Controle de custo Groq (FR-C1): os insights nunca disparam sozinhos.
@@ -44,7 +45,21 @@ export function useWeeklyInsight() {
   });
 }
 
+// Histórico do chat web "Pergunte à IA". Diferente dos insights, é só leitura
+// (não chama a IA/Groq), então carrega no mount para exibir o histórico ao abrir.
+export function useChatHistory() {
+  return useQuery<ConversationResponse>({
+    queryKey: ["ai", "conversations"],
+    queryFn: async () => {
+      const { data } = await api.get("/api/v1/ai/conversations");
+      return data as ConversationResponse;
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useAskQuestion() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (question: string) => {
       const { data } = await api.post("/api/v1/ai/insights", {
@@ -52,6 +67,10 @@ export function useAskQuestion() {
         question,
       });
       return data as InsightResponse;
+    },
+    // O backend persiste o par pergunta/resposta; recarrega o histórico.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai", "conversations"] });
     },
   });
 }

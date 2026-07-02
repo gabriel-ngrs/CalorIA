@@ -11,6 +11,7 @@ import {
   useDailyInsight,
   useWeeklyInsight,
   useAskQuestion,
+  useChatHistory,
   useMealSuggestion,
   useEatingPatterns,
   useNutritionalAlerts,
@@ -59,7 +60,6 @@ function SectionHeader({ icon, title, description }: { icon: React.ReactNode; ti
 
 export default function InsightsPage() {
   const [question, setQuestion] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ q: string; a: string }[]>([]);
   const [patternDays, setPatternDays] = useState(30);
   const [alertDays, setAlertDays] = useState(14);
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
@@ -68,6 +68,7 @@ export default function InsightsPage() {
   const dailyInsight  = useDailyInsight();
   const weeklyInsight = useWeeklyInsight();
   const askQuestion   = useAskQuestion();
+  const chatHistory   = useChatHistory();
   const mealSuggestion = useMealSuggestion();
   const eatingPatterns = useEatingPatterns(patternDays);
   const nutritionalAlerts = useNutritionalAlerts(alertDays);
@@ -79,12 +80,11 @@ export default function InsightsPage() {
     if (!question.trim()) return;
     const q = question.trim();
     setQuestion("");
-    askQuestion.mutate(q, {
-      onSuccess: (data) => {
-        setChatHistory((prev) => [...prev, { q, a: data.content }]);
-      },
-    });
+    // O backend persiste o par; useAskQuestion invalida ["ai","conversations"].
+    askQuestion.mutate(q);
   }
+
+  const messages = chatHistory.data?.messages ?? [];
 
   return (
     <div className="space-y-6">
@@ -368,20 +368,21 @@ export default function InsightsPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {chatHistory.length > 0 && (
+          {messages.length > 0 && (
             <div className="space-y-3 max-h-80 overflow-y-auto">
-              {chatHistory.map((item, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex justify-end">
+              {messages.map((msg, i) =>
+                msg.role === "user" ? (
+                  <div key={i} className="flex justify-end">
                     <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 max-w-[85%]">
-                      <p className="text-xs text-primary font-medium">{item.q}</p>
+                      <p className="text-xs text-primary font-medium">{msg.content}</p>
                     </div>
                   </div>
-                  <div className="bg-muted/50 rounded-lg px-3 py-2">
-                    <MarkdownLite content={item.a} />
+                ) : (
+                  <div key={i} className="bg-muted/50 rounded-lg px-3 py-2">
+                    <MarkdownLite content={msg.content} />
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           )}
           {askQuestion.isPending && (
