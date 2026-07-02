@@ -52,6 +52,21 @@ class InsightResponse(BaseModel):
     content: str
 
 
+class ChatMessage(BaseModel):
+    """Mensagem persistida na conversa web (formato do modelo AIConversation)."""
+
+    role: str  # "user" | "model"
+    content: str
+    timestamp: str
+
+
+class ConversationResponse(BaseModel):
+    """Histórico do chat web "Pergunte à IA" do usuário autenticado."""
+
+    channel: str
+    messages: list[ChatMessage]
+
+
 class SuggestedMealItem(BaseModel):
     food_name: str
     quantity: float

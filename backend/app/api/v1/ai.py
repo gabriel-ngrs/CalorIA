@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import get_current_user_id, get_db
+from app.models.ai_conversation import ConversationChannel
 from app.schemas.ai import (
+    ChatMessage,
+    ConversationResponse,
     EatingPattern,
     GoalAdjustmentSuggestion,
     InsightRequest,
@@ -21,6 +24,7 @@ from app.schemas.ai import (
 )
 from app.services.ai.ai_client import get_ai_client
 from app.services.ai.context_builder import build_meal_context
+from app.services.ai.conversation_service import ConversationService
 from app.services.ai.insights_generator import InsightsGenerator
 from app.services.ai.meal_parser import MealParser
 from app.services.ai.pattern_analyzer import PatternAnalyzer
@@ -108,13 +112,34 @@ async def generate_insight(
             return await gen.daily_insight(user_id, today)
         elif data.type == "weekly":
             return await gen.weekly_insight(user_id, today)
-        else:
-            return await gen.answer_question(user_id, data.question or "", today)
+        question = data.question or ""
+        response = await gen.answer_question(user_id, question, today)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao consultar a IA: {exc}",
         ) from exc
+
+    # Persiste o par pergunta/resposta do chat web (fora do try de IA: um erro de
+    # banco aqui não deve ser mascarado como falha da IA). B20.
+    await ConversationService(db).append_web_exchange(
+        user_id, question, response.content
+    )
+    return response
+
+
+@router.get("/conversations", response_model=ConversationResponse)
+async def get_conversations(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationResponse:
+    """Retorna o histórico do chat web "Pergunte à IA" do usuário autenticado."""
+    conversation = await ConversationService(db).get_web_conversation(user_id)
+    messages = conversation.messages if conversation else []
+    return ConversationResponse(
+        channel=ConversationChannel.WEB.value,
+        messages=[ChatMessage(**m) for m in messages],
+    )
 
 
 @router.get("/suggest-meal", response_model=MealSuggestion)
