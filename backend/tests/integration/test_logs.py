@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date, time
 
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import create_access_token, hash_password
+from app.main import app
 from app.models import User
 from app.models.hydration_log import HydrationLog
 from app.schemas.logs import HydrationLogUpdate
@@ -183,6 +185,107 @@ class TestHydrationServiceCRUD:
         original = await HydrationService(db).get_by_id(user_a.id, log.id)
         assert original is not None
         assert original.amount_ml == 200
+
+
+class TestHydrationCrudAPI:
+    """B.2 — DELETE/PUT /api/v1/hydration/{id} com 404 por posse."""
+
+    async def _criar_log(self, client: AsyncClient, amount_ml: int = 200) -> int:
+        resp = await client.post(
+            "/api/v1/hydration",
+            json={
+                "amount_ml": amount_ml,
+                "date": str(date.today()),
+                "time": "08:00:00",
+            },
+        )
+        assert resp.status_code == 201
+        return int(resp.json()["id"])
+
+    async def _total_hoje(self, client: AsyncClient) -> int:
+        resp = await client.get(f"/api/v1/hydration/today?day={date.today()}")
+        assert resp.status_code == 200
+        return int(resp.json()["total_ml"])
+
+    async def test_delete_do_proprio_log_retorna_204(self, client: AsyncClient) -> None:
+        log_id = await self._criar_log(client, amount_ml=200)
+        assert await self._total_hoje(client) == 200
+
+        resp = await client.delete(f"/api/v1/hydration/{log_id}")
+
+        assert resp.status_code == 204
+        assert await self._total_hoje(client) == 0  # sumiu do resumo (AC-B2)
+
+    async def test_put_edita_amount_e_reflete_no_total(
+        self, client: AsyncClient
+    ) -> None:
+        log_id = await self._criar_log(client, amount_ml=200)
+
+        resp = await client.put(f"/api/v1/hydration/{log_id}", json={"amount_ml": 350})
+
+        assert resp.status_code == 200
+        assert resp.json()["amount_ml"] == 350
+        assert await self._total_hoje(client) == 350  # AC-B3
+
+    async def test_delete_de_log_de_outro_usuario_retorna_404(
+        self, client: AsyncClient, test_user: User, db: AsyncSession
+    ) -> None:
+        # Log pertence a `test_user` (o `client` autenticado).
+        log_id = await self._criar_log(client, amount_ml=200)
+
+        # Cria o usuário B e um client autenticado como ele.
+        user_b = User(
+            email="intruso@caloria.com",
+            name="Intruso",
+            password_hash=hash_password("senha123"),
+        )
+        db.add(user_b)
+        await db.commit()
+        await db.refresh(user_b)
+        token_b = create_access_token(user_b.id)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {token_b}"},
+        ) as client_b:
+            resp = await client_b.delete(f"/api/v1/hydration/{log_id}")
+
+        assert resp.status_code == 404  # AC-B1
+        # O log de A permanece (total intacto).
+        assert await self._total_hoje(client) == 200
+
+    async def test_put_de_log_de_outro_usuario_retorna_404(
+        self, client: AsyncClient, test_user: User, db: AsyncSession
+    ) -> None:
+        log_id = await self._criar_log(client, amount_ml=200)
+        user_b = User(
+            email="intruso2@caloria.com",
+            name="Intruso2",
+            password_hash=hash_password("senha123"),
+        )
+        db.add(user_b)
+        await db.commit()
+        await db.refresh(user_b)
+        token_b = create_access_token(user_b.id)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {token_b}"},
+        ) as client_b:
+            resp = await client_b.put(
+                f"/api/v1/hydration/{log_id}", json={"amount_ml": 999}
+            )
+
+        assert resp.status_code == 404
+        assert await self._total_hoje(client) == 200
+
+    async def test_delete_log_inexistente_retorna_404(
+        self, client: AsyncClient
+    ) -> None:
+        resp = await client.delete("/api/v1/hydration/999999")
+        assert resp.status_code == 404
 
 
 class TestMoodLog:
