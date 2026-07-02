@@ -3,7 +3,7 @@ id: 001
 slug: 001-backlog-features-qa-v1
 title: "Backlog de features do QA (lote bugs-teste-v1): hidratação CRUD, perfil/TDEE, persistência de IA e recuperação de senha"
 type: feature
-status: draft
+status: active
 priority: P2
 size: XL
 risk_level: YELLOW
@@ -14,6 +14,7 @@ bounded_context: multi
 cross_context: [perfil-nutricao, hidratacao, ai-persistencia, auth]
 created_at: 2026-07-02
 updated_at: 2026-07-02
+last_execution: 2026-07-02
 owner: Gabriel
 linked_adr: [ADR-001, ADR-002, ADR-005, ADR-007]
 related_bugs: [B8, B11, B12, B15, B16, B20]
