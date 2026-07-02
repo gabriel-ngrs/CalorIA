@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { describeAnalyzeError } from "@/lib/aiErrors";
 import {
   Dialog,
   DialogContent,
@@ -413,16 +414,30 @@ export default function RefeicoesPage() {
   const [editMeal, setEditMeal] = useState<Meal | null>(null);
   const [editMealType, setEditMealType] = useState<MealType>("lunch");
   const [editNotes, setEditNotes] = useState("");
+  // Itens editáveis apenas em estado local: remover a lixeira só altera este
+  // array; a exclusão só é persistida ao clicar em "Salvar" (BUG 6).
+  const [editItems, setEditItems] = useState<Meal["items"]>([]);
 
   function openEdit(meal: Meal) {
     setEditMeal(meal);
     setEditMealType(meal.meal_type);
     setEditNotes(meal.notes ?? "");
+    setEditItems(meal.items);
     setEditOpen(true);
   }
 
   async function handleSaveEdit() {
     if (!editMeal) return;
+    // Persiste as remoções pendentes (itens que estavam na refeição e foram
+    // retirados no modal) e só então salva tipo/notas.
+    const remainingIds = new Set(editItems.map((it) => it.id));
+    const removedIds = editMeal.items
+      .filter((it) => !remainingIds.has(it.id))
+      .map((it) => it.id);
+
+    for (const itemId of removedIds) {
+      await deleteMealItem.mutateAsync({ mealId: editMeal.id, itemId });
+    }
     await updateMeal.mutateAsync({
       id: editMeal.id,
       data: { meal_type: editMealType, notes: editNotes || undefined },
@@ -728,7 +743,7 @@ export default function RefeicoesPage() {
               {(analyzeMeal.isError || analyzePhoto.isError) && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  Erro ao analisar. Verifique sua conexão e tente novamente.
+                  {describeAnalyzeError(analyzeMeal.error ?? analyzePhoto.error)}
                 </div>
               )}
 
@@ -838,13 +853,13 @@ export default function RefeicoesPage() {
             </div>
 
             {/* Alimentos da refeição */}
-            {editMeal && editMeal.items.length > 0 && (
+            {editMeal && editItems.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Alimentos
                 </Label>
                 <div className="rounded-lg border border-border divide-y divide-border/50 overflow-hidden">
-                  {editMeal.items.map((item) => (
+                  {editItems.map((item) => (
                     <div key={item.id} className="flex items-center justify-between px-3 py-2">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{item.food_name}</p>
@@ -854,8 +869,7 @@ export default function RefeicoesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 ml-2"
-                        disabled={deleteMealItem.isPending}
-                        onClick={() => deleteMealItem.mutate({ mealId: editMeal.id, itemId: item.id })}
+                        onClick={() => setEditItems((prev) => prev.filter((i) => i.id !== item.id))}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -882,9 +896,9 @@ export default function RefeicoesPage() {
               <Button variant="outline" onClick={() => setEditOpen(false)} className="flex-1">
                 Cancelar
               </Button>
-              <Button onClick={handleSaveEdit} disabled={updateMeal.isPending} className="flex-1">
-                {!updateMeal.isPending && <Check className="h-3.5 w-3.5 mr-1.5" />}
-                {updateMeal.isPending ? "Salvando..." : "Salvar"}
+              <Button onClick={handleSaveEdit} disabled={updateMeal.isPending || deleteMealItem.isPending} className="flex-1">
+                {!(updateMeal.isPending || deleteMealItem.isPending) && <Check className="h-3.5 w-3.5 mr-1.5" />}
+                {updateMeal.isPending || deleteMealItem.isPending ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </div>

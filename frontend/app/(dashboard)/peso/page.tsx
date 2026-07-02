@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { useWeightLogs, useLogWeight } from "@/lib/hooks/useLogs";
 import { useWeightChart } from "@/lib/hooks/useDashboard";
 import { useMe } from "@/lib/hooks/useProfile";
+import { weightGoalStatus } from "@/lib/weightGoal";
 
 function getLocalToday(): string {
   const d = new Date();
@@ -53,14 +54,16 @@ export default function PesoPage() {
   const prev = logs?.[1];
   const delta = latest && prev ? latest.weight_kg - prev.weight_kg : null;
 
-  const goalPct = (() => {
-    if (!latest || !user?.weight_goal || !logs?.length) return null;
-    const start = logs[logs.length - 1]?.weight_kg ?? latest.weight_kg;
-    const goal = user.weight_goal;
-    if (start === goal) return 100;
-    const pct = ((start - latest.weight_kg) / (start - goal)) * 100;
-    return Math.min(Math.max(pct, 0), 100);
-  })();
+  const goalStatus =
+    latest && user?.weight_goal && logs?.length
+      ? weightGoalStatus({
+          current: latest.weight_kg,
+          goal: user.weight_goal,
+          start: logs[logs.length - 1]?.weight_kg ?? latest.weight_kg,
+          goalType: user.goal_type,
+        })
+      : null;
+  const goalPct = goalStatus?.progressPct ?? null;
 
   const hasNoLogs = !logs || logs.length === 0;
 
@@ -144,10 +147,10 @@ export default function PesoPage() {
                   {user.weight_goal}
                   <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
                 </p>
-                <p className={`text-xs mt-1.5 font-medium ${latest.weight_kg <= user.weight_goal ? "text-green-500" : "text-orange-400"}`}>
-                  {latest.weight_kg <= user.weight_goal
+                <p className={`text-xs mt-1.5 font-medium ${goalStatus?.reached ? "text-green-500" : "text-orange-400"}`}>
+                  {goalStatus?.reached
                     ? "Meta atingida!"
-                    : `Faltam ${(latest.weight_kg - user.weight_goal).toFixed(1)} kg`}
+                    : `Faltam ${(goalStatus?.remainingKg ?? 0).toFixed(1)} kg`}
                 </p>
               </CardContent>
             </Card>

@@ -118,7 +118,8 @@ export function Plasma({ speed = 0.35, scale = 1.0, opacity = 0.55 }: PlasmaProp
     const mesh = new Mesh(gl, { geometry, program });
 
     const onMouseMove = (e: MouseEvent) => {
-      const rect = containerRef.current!.getBoundingClientRect();
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
       mousePosRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const u = program.uniforms.uMouse.value as Float32Array;
       u[0] = mousePosRef.current.x;

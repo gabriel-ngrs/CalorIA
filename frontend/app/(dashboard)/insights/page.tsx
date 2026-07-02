@@ -18,6 +18,7 @@ import {
   useMonthlyReport,
 } from "@/lib/hooks/useAI";
 import type { MonthlyReport, NutritionalAlertsResponse, EatingPattern, MealSuggestion, GoalAdjustmentSuggestion } from "@/types";
+import { MarkdownLite } from "@/components/MarkdownLite";
 
 const MONTH_NAMES = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -31,9 +32,7 @@ const SEVERITY_CONFIG = {
 };
 
 function InsightText({ content }: { content: string }) {
-  return (
-    <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{content}</p>
-  );
+  return <MarkdownLite content={content} className="text-foreground/90" />;
 }
 
 function LoadingLines({ lines = 3 }: { lines?: number }) {
@@ -379,7 +378,7 @@ export default function InsightsPage() {
                     </div>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
-                    <p className="text-sm leading-relaxed whitespace-pre-line">{item.a}</p>
+                    <MarkdownLite content={item.a} />
                   </div>
                 </div>
               ))}

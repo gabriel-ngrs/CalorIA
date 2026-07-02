@@ -59,11 +59,17 @@ export default function PerfilPage() {
   const [calorieGoal, setCalorieGoal] = useState("");
   const [weightGoal, setWeightGoal] = useState("");
   const [waterGoal, setWaterGoal] = useState("");
-  const [goalType, setGoalType] = useState<GoalType | "">("");
+  // Selects (Radix) inicializam do cache já disponível para exibirem o valor
+  // no primeiro render — na navegação SPA os dados vêm síncronos do cache e o
+  // Radix não reflete uma atualização de value feita só depois, no useEffect
+  // (BUG 13). Os inputs de texto não sofrem disso, mas mantê-los aqui é inócuo.
+  const [goalType, setGoalType] = useState<GoalType | "">(() => user?.goal_type ?? "");
   const [height, setHeight] = useState("");
   const [age, setAge] = useState("");
-  const [sex, setSex] = useState<Sex | "">("");
-  const [activity, setActivity] = useState<ActivityLevel | "">("");
+  const [sex, setSex] = useState<Sex | "">(() => profile?.sex ?? "");
+  const [activity, setActivity] = useState<ActivityLevel | "">(
+    () => profile?.activity_level ?? "",
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {

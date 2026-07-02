@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { describeAnalyzeError } from "@/lib/aiErrors";
 import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal } from "@/lib/hooks/useMeals";
 import { useLogHydration, useLogMood, useLogWeight } from "@/lib/hooks/useLogs";
 import type { MealItemCreate, MealType, ParsedFoodItem } from "@/types";
@@ -380,7 +381,7 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
           {(analyzeMeal.isError || analyzePhoto.isError) && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              Erro ao analisar. Verifique sua conexão e tente novamente.
+              {describeAnalyzeError(analyzeMeal.error ?? analyzePhoto.error)}
             </div>
           )}
 
