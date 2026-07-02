@@ -14,6 +14,7 @@ schema_version: 1.0
 ## Leia se relevante ao contexto
 - `discovered.md` — snapshot do onboarding (consultar em dúvida sobre estrutura/estado do projeto).
 - `decisions/INDEX.md` — índice navegável de decisões. Filtrar por tag relevante antes de carregar decisions individuais.
+- `specs/INDEX.md` — registro enumerado das specs (ordem cronológica). **Ao criar uma nova spec, é obrigatório enumerá-la** conforme a convenção descrita ali (próximo número em `proximo_numero`, prefixo `NNN-` na pasta/slug).
 
 ## Arquivos gerados automaticamente — não editar manualmente
 - `checkpoints/*` — estado intermediário de workflows em execução. Efêmero, vai para `.gitignore`.

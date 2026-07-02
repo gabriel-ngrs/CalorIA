@@ -39,6 +39,7 @@ Arquitetura em camadas no backend: `api/` (endpoints finos) → `services/` (ló
 - **Fotos de comida não são persistidas** — apenas os dados nutricionais extraídos da análise.
 - **Banco nutricional é a tabela `foods`** (não `taco_foods`); o sanity check calórico (divergência > 35% entre banco e estimativa da IA descarta o match) protege contra registros incorretos.
 - **Nunca commitar `.env`, chaves ou segredos** (`vapid_private.pem`, credenciais). `.env` deriva de `.env.example`.
+- **Toda spec é enumerada cronologicamente.** Ao criar uma nova spec (via `/create-spec` ou manual), atribuir o próximo número sequencial de 3 dígitos (`NNN`) lido de `.codeflow/specs/INDEX.md` (`proximo_numero`), usá-lo como prefixo da pasta/slug (`.codeflow/specs/NNN-<slug>/`) e como `id` no frontmatter, registrar a spec na tabela de `specs/INDEX.md` e incrementar `proximo_numero`. Números não são reusados nem reordenados. Convenção completa em `.codeflow/specs/INDEX.md`.
 
 ## Áreas de alto risco
 
