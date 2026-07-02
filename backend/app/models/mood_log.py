@@ -3,7 +3,16 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -19,6 +28,7 @@ class MoodLog(Base):
             "energy_level BETWEEN 1 AND 5", name="ck_mood_logs_energy_level"
         ),
         CheckConstraint("mood_level BETWEEN 1 AND 5", name="ck_mood_logs_mood_level"),
+        UniqueConstraint("user_id", "date", name="uq_mood_logs_user_date"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

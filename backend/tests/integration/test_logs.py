@@ -42,6 +42,20 @@ class TestWeightLog:
         )
         assert resp.status_code == 401
 
+    async def test_segundo_registro_no_mesmo_dia_sobrescreve(
+        self, client: AsyncClient, test_user: User
+    ) -> None:
+        """Regressão B7: registrar peso duas vezes no mesmo dia não duplica —
+        sobrescreve o registro do dia (um único registro por data)."""
+        today = str(date.today())
+        await client.post("/api/v1/weight", json={"weight_kg": 79.7, "date": today})
+        await client.post("/api/v1/weight", json={"weight_kg": 81.0, "date": today})
+
+        resp = await client.get("/api/v1/weight")
+        registros = [r for r in resp.json() if r["date"] == today]
+        assert len(registros) == 1
+        assert registros[0]["weight_kg"] == 81.0
+
 
 class TestHydrationLog:
     async def test_registra_hidratacao(
@@ -92,6 +106,27 @@ class TestMoodLog:
         resp = await client.get("/api/v1/mood")
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
+
+    async def test_segundo_registro_no_mesmo_dia_sobrescreve(
+        self, client: AsyncClient, test_user: User
+    ) -> None:
+        """Regressão B9: registrar humor duas vezes no mesmo dia não duplica —
+        sobrescreve o registro do dia (um único registro por data)."""
+        today = str(date.today())
+        await client.post(
+            "/api/v1/mood",
+            json={"date": today, "energy_level": 2, "mood_level": 2},
+        )
+        await client.post(
+            "/api/v1/mood",
+            json={"date": today, "energy_level": 5, "mood_level": 4},
+        )
+
+        resp = await client.get("/api/v1/mood")
+        registros = [r for r in resp.json() if r["date"] == today]
+        assert len(registros) == 1
+        assert registros[0]["energy_level"] == 5
+        assert registros[0]["mood_level"] == 4
 
     async def test_nivel_acima_do_limite_retorna_422(self, client: AsyncClient) -> None:
         resp = await client.post(

@@ -34,7 +34,24 @@ class WeightService:
         )
         return list(result.scalars().all())
 
+    async def get_by_date(self, user_id: int, day: date) -> WeightLog | None:
+        result = await self.db.execute(
+            select(WeightLog)
+            .where(WeightLog.user_id == user_id, WeightLog.date == day)
+            .order_by(WeightLog.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, user_id: int, data: WeightLogCreate) -> WeightLog:
+        """Upsert por (user_id, date): um único registro de peso por dia."""
+        existing = await self.get_by_date(user_id, data.date)
+        if existing is not None:
+            existing.weight_kg = data.weight_kg
+            existing.notes = data.notes
+            await self.db.commit()
+            await self.db.refresh(existing)
+            return existing
         log = WeightLog(user_id=user_id, **data.model_dump())
         self.db.add(log)
         await self.db.commit()
@@ -127,6 +144,15 @@ class MoodService:
         return list(result.scalars().all())
 
     async def create(self, user_id: int, data: MoodLogCreate) -> MoodLog:
+        """Upsert por (user_id, date): um único registro de humor por dia."""
+        existing = await self.get_by_date(user_id, data.date)
+        if existing is not None:
+            existing.energy_level = data.energy_level
+            existing.mood_level = data.mood_level
+            existing.notes = data.notes
+            await self.db.commit()
+            await self.db.refresh(existing)
+            return existing
         log = MoodLog(user_id=user_id, **data.model_dump())
         self.db.add(log)
         await self.db.commit()
