@@ -401,7 +401,7 @@ export default function OnboardingPage() {
     if (profile) {
       setStep1((prev) => ({
         ...prev,
-        weight: profile.current_weight_kg != null ? String(profile.current_weight_kg) : prev.weight,
+        weight: profile.current_weight != null ? String(profile.current_weight) : prev.weight,
         height: profile.height_cm != null ? String(profile.height_cm) : prev.height,
         birthDate: profile.birth_date ?? prev.birthDate,
         sex: profile.sex ?? prev.sex,
@@ -427,7 +427,7 @@ export default function OnboardingPage() {
     try {
       if (step === 1) {
         await updateProfile.mutateAsync({
-          current_weight_kg: parseNum(step1.weight) ?? undefined,
+          current_weight: parseNum(step1.weight) ?? undefined,
           height_cm: parseNum(step1.height) ?? undefined,
           birth_date: step1.birthDate || undefined,
           sex: step1.sex || undefined,

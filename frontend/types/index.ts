@@ -19,7 +19,7 @@ export type GoalType = "lose_weight" | "gain_muscle" | "maintain" | "body_recomp
 
 export interface UserProfile {
   height_cm: number | null;
-  current_weight_kg: number | null;
+  current_weight: number | null;
   birth_date: string | null;
   sex: Sex | null;
   activity_level: ActivityLevel | null;

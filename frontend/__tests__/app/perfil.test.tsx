@@ -5,7 +5,7 @@ import type { UserProfile } from "@/types";
 
 const fullProfile: UserProfile = {
   height_cm: 175,
-  current_weight_kg: 70,
+  current_weight: 70,
   birth_date: "1994-01-01",
   sex: "male",
   activity_level: "moderately_active",
