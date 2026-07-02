@@ -48,6 +48,18 @@ quality_gate:
 > **persistente** de insights no backend (B16 é resolvido só no frontend);
 > qualquer canal de bot (Telegram/WhatsApp) — desativado por ADR-003.
 
+> **Revisão de refinamento (2026-07-02):** passada de crítica sobre o codebase real
+> corrigiu 8 pontos: (1) **C.1** — `useQuery` de insights fica **opt-in** (`enabled:false`
+> + `refetch()`), sem auto-fetch que queimaria a quota Groq; (2) **A.1** — SQL da
+> migração com cast `::int` obrigatório em `EXTRACT`; (3) **gate** — `make check` não
+> roda `tests/integration/`, onde vivem os testes de endpoint (B.2/C.2/D.2) → exigir
+> `make test-integration`; (4) **§7** — CI/CD está desabilitado, migrações aplicadas
+> à mão; (5) **A.2/FR-A3/OQ3** — peso do último log é **efetivo só no cálculo**, não
+> sobrescreve `current_weight`; (6) **D.2** — envio de e-mail via Celery p/ timing
+> uniforme + validação explícita de `type=reset`/expiração; (7) **C.2** — case do enum
+> confirmado **UPPERCASE** (`'WEB'`) e formato de `messages` `{role,content,timestamp}`;
+> (8) refs de linha e determinismo de teste (AC-A1).
+
 ## Resumo executivo (TL;DR)
 
 | O quê | Por quê | Backend/Infra | Frontend | Decisão | Tamanho |
@@ -77,7 +89,7 @@ spec os transforma em features ancoradas na arquitetura real:
 
 - **B8 — Hidratação só soma.** `POST /hydration` insere logs, mas não há como
   editar ou remover. Descoberta da sondagem: `HydrationDaySummary.entries`
-  (`backend/app/schemas/logs.py:49`) **já expõe os logs individuais** do dia e
+  (`backend/app/schemas/logs.py:52`) **já expõe os logs individuais** do dia e
   `useHydrationToday` já os recebe — o ledger estava desatualizado nesse ponto.
   Falta apenas o CRUD (`DELETE`/`PUT`) e a UI de lista.
 - **B11 — Idade fixa.** `user_profiles.age` (`backend/app/models/profile.py:38`)
@@ -154,9 +166,11 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
 - **FR-A2:** A idade usada no cálculo é **derivada** de `birth_date`; o TDEE passa
   a usar a fórmula **Mifflin-St Jeor**; o TMB (BMR) é calculado e exposto
   separadamente do TDEE.
-- **FR-A3:** Quando o form não envia `current_weight`, o `ProfileService` o popula
-  a partir do último `WeightLog` (`WeightService.latest()`), permitindo o cálculo
-  do TDEE.
+- **FR-A3:** Quando o form não envia `current_weight`, o `ProfileService` usa o
+  último `WeightLog` (`WeightService.latest()`) como **peso efetivo** apenas para o
+  cálculo do TDEE — **sem sobrescrever** `profile.current_weight` (que mantém o
+  significado de "peso informado manualmente" e pode continuar null). O cálculo
+  passa a operar sobre `effective_weight = current_weight or latest.weight_kg`.
 - **FR-A4:** `ProfileResponse` expõe `birth_date`, `bmr` (TMB), `tdee_calculated`
   (TDEE) e o nome da fórmula usada; o endpoint `PUT/GET /users/me/profile` reflete
   o novo contrato.
@@ -166,8 +180,15 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
 **Track C — Persistência de IA (B16 + B20)**
 - **FR-C1:** Os hooks de insights (`useDailyInsight`, `useWeeklyInsight`,
   `useEatingPatterns`, `useNutritionalAlerts`, `useGoalAdjustment`,
-  `useMonthlyReport`) usam `useQuery` com `queryKey` estável + `staleTime`, de modo
-  que o resultado **persiste ao navegar** e voltar dentro da sessão.
+  `useMonthlyReport`) usam `useQuery` com `queryKey` estável, de modo que o resultado
+  **persiste ao navegar** e voltar dentro da sessão. **Restrição de custo
+  (obrigatória):** a geração continua **opt-in por botão** — cada query nasce com
+  `enabled: false` e só dispara via `refetch()` no clique (preserva o
+  comportamento atual, que nunca chama a IA no mount). Para não regenerar
+  automaticamente: `refetchOnWindowFocus: false`, `refetchOnReconnect: false`,
+  `refetchOnMount: false`, `staleTime: Infinity` e `gcTime` alto (ex.: 30 min) para
+  o dado sobreviver ao unmount/remount. Nenhum insight pode ser disparado sem ação
+  explícita do usuário.
 - **FR-C2:** O enum `ConversationChannel` inclui o valor `WEB`; cada pergunta do
   chat "Pergunte à IA" e sua resposta são persistidas em `AIConversation` com
   `channel=WEB` e `external_chat_id="web:{user_id}"`.
@@ -182,10 +203,15 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   variáveis de ambiente; sem SMTP configurado (dev), loga o conteúdo/link em vez
   de falhar.
 - **FR-D2:** `POST /api/v1/auth/forgot-password` gera um token de reset
-  (JWT `type=reset`, expirável ≤ 1h) e dispara o e-mail; a resposta é **uniforme**,
-  não revelando se o e-mail existe.
-- **FR-D3:** `POST /api/v1/auth/reset-password` valida o token (single-use via
-  blacklist Redis), troca a senha (bcrypt) e invalida o token.
+  (JWT `type=reset`, expirável ≤ 1h) e dispara o e-mail; a resposta é **uniforme**
+  (mesmo corpo e mesmo HTTP 200) exista ou não o e-mail. Para não vazar por
+  **timing**, o envio de e-mail é despachado ao worker Celery (fire-and-forget), de
+  modo que o handler retorne imediatamente tanto para e-mail existente quanto
+  inexistente. (Se o disparo assíncrono for descartado, o vazamento por timing é
+  **aceito e documentado** — ver Risco #4.)
+- **FR-D3:** `POST /api/v1/auth/reset-password` valida o token — rejeitando token
+  cujo `type` ≠ `reset`, expirado ou inválido (retorno genérico 400) — e single-use
+  via blacklist Redis; troca a senha (bcrypt) e invalida o token.
 - **FR-D4:** Existem as telas `/forgot-password` e `/reset-password` e o link
   "Esqueci minha senha" no login.
 - **FR-D5:** A copy "Gemini 2.5 Flash" é substituída por Groq/Llama nos componentes
@@ -202,7 +228,12 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   em pt-BR; segredos SMTP só em `.env` (nunca commitados; `.env.example` só com
   placeholders).
 - **NFR-5:** Cada mudança de comportamento tem teste correspondente (pytest no
-  backend, jest no frontend); `make check` verde antes do PR.
+  backend, jest no frontend). **Atenção ao gate:** `make check` roda apenas
+  `test-unit` + `test-frontend` (Makefile:284) — **não** roda `tests/integration/`.
+  Como todo teste de endpoint desta spec (B.2, C.2, D.2 via httpx `AsyncClient`)
+  vive em `tests/integration/`, qualquer fase que adicione endpoint deve rodar
+  também `make test-integration` (ou `make test-backend`) antes do PR; `make check`
+  sozinho **não** os executa.
 - **NFR-6:** Telas novas seguem o design system glass/neu (ADR-007).
 
 ## 3. Critérios de aceite
@@ -349,7 +380,8 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   (AC-B1/B2/B3).
 - **Escopo travado / violações BLOQUEANTES:** endpoint fino (só orquestra); nenhuma
   regra de negócio no router; sem alterar `POST`/`GET` existentes.
-- **Critério de conclusão (gate):** testes de API verdes; `make check` backend verde.
+- **Critério de conclusão (gate):** testes de API verdes; `make test-integration` +
+  `make check` backend verdes (a integração é obrigatória — `make check` não a roda).
 
 ### Fase B.3 — UI de lista/edição de hidratação *(M)*
 - **id:** `B.3`
@@ -381,11 +413,16 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   `backend/alembic/versions/…_profile_birthdate.py`.
 - **Passos:** 1) trocar `age: Mapped[int | None]` por `birth_date: Mapped[date |
   None]` (`Date`, nullable). 2) migração: `add_column birth_date`; `UPDATE` setando
-  `birth_date = make_date(extract(year, current_date) - age, 1, 1)` onde `age` não
-  é null; `drop_column age`. `downgrade` recria `age` a partir do ano de
-  `birth_date`. 3) revisar a migração à mão (não confiar 100% no autogenerate).
+  `birth_date = make_date((EXTRACT(YEAR FROM CURRENT_DATE)::int) - age, 1, 1)` onde
+  `age` não é null — **atenção:** `EXTRACT` retorna `double precision`, então o cast
+  `::int` é obrigatório senão `make_date` falha em runtime; `drop_column age`.
+  `downgrade` recria `age = (EXTRACT(YEAR FROM CURRENT_DATE)::int) - EXTRACT(YEAR
+  FROM birth_date)::int`. 3) revisar a migração à mão (não confiar 100% no
+  autogenerate).
 - **Testes:** `backend/tests/` — teste de migração (upgrade/downgrade num perfil
   seed) OU teste de modelo confirmando o campo (AC-A1). Rodar em Postgres (ADR-001).
+  **O ano no assert deve ser calculado relativo ao ano corrente** (`date.today().year
+  - 30`), nunca hard-coded, para o teste não apodrecer na virada de ano.
 - **Escopo travado / violações BLOQUEANTES:** não editar migrations já aplicadas;
   não remover `age` sem antes popular `birth_date`; migração é a única forma de
   mudar schema (constitution).
@@ -404,8 +441,11 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   Mifflin-St Jeor (`10*peso + 6.25*altura − 5*idade + s`, s=+5 masc / −161 fem) e
   `calculate_tdee` reusando `calculate_bmr * multiplicador`; helper
   `age_from_birthdate(birth_date) -> int`. 2) em `ProfileService.update_profile`,
-  derivar idade de `birth_date`, e se `current_weight` vier null, buscar
-  `WeightService(self.db).latest(user_id)` e usar `weight_kg`. Persistir `tdee_calculated`.
+  derivar idade de `birth_date`; calcular `effective_weight = profile.current_weight
+  or (await WeightService(self.db).latest(user_id)).weight_kg` e usar esse valor no
+  cálculo — **sem** escrever de volta em `profile.current_weight` (ver FR-A3). Guardar
+  o TDEE em `tdee_calculated` (persistido). O guard de recálculo passa a checar
+  `effective_weight is not None` (não mais `profile.current_weight`).
 - **Testes:** unit de `calculate_bmr`/`calculate_tdee` (valores conhecidos) +
   `test` de `ProfileService` populando current_weight do último log (AC-A2/A3).
 - **Escopo travado / violações BLOQUEANTES:** não alterar `_ACTIVITY_MULTIPLIERS`
@@ -429,8 +469,8 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   (AC-A2).
 - **Escopo travado / violações BLOQUEANTES:** não vazar `age` no contrato; endpoint
   fino.
-- **Critério de conclusão (gate):** contrato novo coberto por teste; `make check`
-  backend verde.
+- **Critério de conclusão (gate):** contrato novo coberto por teste de API
+  (`tests/integration/`); `make test-integration` + `make check` backend verdes.
 
 ### Fase A.4 — UI de perfil: date picker + card TMB/TDEE *(M)*
 - **id:** `A.4`
@@ -461,10 +501,13 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
 - **Passos:** 1) migrar `useDailyInsight`/`useWeeklyInsight`/`useEatingPatterns`/
   `useNutritionalAlerts`/`useGoalAdjustment`/`useMonthlyReport` de `useMutation`
   para `useQuery` com `queryKey` estável (ex: `["ai","weekly"]`, incluindo params
-  como `days`/`month`) + `staleTime` (padrão do `useProfile`) e `enabled` sob
-  demanda quando fizer sentido. 2) ajustar `insights/page.tsx` para ler de
-  `query.data` em vez de `mutation.data`; preservar botões de "regenerar"
-  (`refetch`).
+  como `days`/`month`). **Config obrigatória de cada query (controle de custo Groq —
+  ver FR-C1):** `enabled: false`, `staleTime: Infinity`, `gcTime: 30*60*1000`,
+  `refetchOnWindowFocus: false`, `refetchOnReconnect: false`, `refetchOnMount: false`.
+  2) ajustar `insights/page.tsx`: os botões (hoje `onClick={() => x.mutate()}`,
+  linhas 125-342) passam a chamar `x.refetch()`; ler de `query.data` em vez de
+  `mutation.data`. **Nenhuma query pode disparar no mount** — o comportamento atual
+  (IA só ao clicar) é preservado; o ganho é apenas o cache sobreviver à navegação.
 - **Testes:** jest confirmando que o hook expõe `data` cacheada; ou teste de página
   que re-render mantém o insight (AC-C1).
 - **Escopo travado / violações BLOQUEANTES:** não criar tabela/endpoint backend
@@ -483,13 +526,16 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   `backend/alembic/versions/…_conversation_web.py`; possível service
   `backend/app/services/ai/conversation_service.py`.
 - **Passos:** 1) adicionar `WEB = "web"` a `ConversationChannel`. 2) migração
-  `ALTER TYPE conversationchannel ADD VALUE 'WEB'` — **atenção ao case**: usar o
-  label que o SQLAlchemy persiste (nome do membro, coerente com a migração
-  `corrige_case_enums`); verificar no repo qual case os labels de
-  `conversationchannel` já usam e seguir. 3) ao responder `type=question`
-  (`generate_insight`), fazer upsert da `AIConversation` `channel=WEB`,
-  `external_chat_id=f"web:{user_id}"`, anexando `{role:"user"}` e `{role:"model"}`
-  a `messages`. 4) `GET /ai/conversations` retorna a conversa web do usuário.
+  `ALTER TYPE conversationchannel ADD VALUE 'WEB'` — **case confirmado no repo:
+  UPPERCASE**. O enum PG `conversationchannel` armazena o **nome do membro**
+  (`'TELEGRAM'`/`'WHATSAPP'`, ver `schema_inicial.py:45`, convenção da
+  `corrige_case_enums`), logo o novo label é `'WEB'` (não `'web'`). 3) ao responder
+  `type=question` (`generate_insight`), via service `conversation_service`, fazer
+  upsert da `AIConversation` `channel=WEB`, `external_chat_id=f"web:{user_id}"`,
+  anexando a `messages` os dicts no formato já documentado no modelo
+  (`{role, content, timestamp}`): `{"role":"user","content":<pergunta>,"timestamp":…}`
+  e `{"role":"model","content":<resposta>,"timestamp":…}`. 4) `GET /ai/conversations`
+  retorna a conversa web do usuário.
 - **Testes:** teste de API: pergunta grava par user/model; `GET /ai/conversations`
   retorna o histórico (AC-C2). Rodar em PG (enum real).
 - **Escopo travado / violações BLOQUEANTES:** não quebrar canais `telegram`/
@@ -538,20 +584,25 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
 - **Depende de:** `D.1`.
 - **Arquivos alterados:** `backend/app/core/security.py` (novo
   `create_reset_token`/validação), `backend/app/api/v1/auth.py`,
-  `backend/app/schemas/user.py`; reuso de `auth_service` (blacklist).
+  `backend/app/schemas/user.py`; **novo** task Celery em `backend/app/workers/`
+  para o envio assíncrono do e-mail de reset; reuso de `auth_service` (blacklist).
 - **Passos:** 1) `create_reset_token(user_id)` = JWT `type=reset`, exp ≤ 1h.
   2) `POST /auth/forgot-password` (`ForgotPasswordRequest{email}`): busca usuário;
-  se existe, gera token e `EmailService.send` com link; **resposta uniforme**
-  (mesmo corpo/HTTP exista ou não). 3) `POST /auth/reset-password`
-  (`ResetPasswordRequest{token,new_password}`): valida `type=reset` + não
-  blacklistado; troca `password_hash` (`hash_password`); blacklista o token
-  (single-use, reusa `blacklist_token`).
+  se existe, gera token e despacha `EmailService.send` **via Celery** (o handler não
+  espera o envio); **resposta uniforme** (mesmo corpo/HTTP exista ou não, e sem
+  ramo de custo distinto observável por timing). 3) `POST /auth/reset-password`
+  (`ResetPasswordRequest{token,new_password}`): `decode_token` **não valida `type`
+  sozinho** — checar explicitamente `payload["type"] == "reset"` e capturar
+  `ExpiredSignatureError`/`JWTError` → 400 genérico; rejeitar token blacklistado;
+  troca `password_hash` (`hash_password`); blacklista o token (single-use, reusa
+  `blacklist_token`).
 - **Testes:** API: forgot uniforme p/ email inexistente (AC-D1); reset single-use
   (AC-D2); login com nova senha (AC-D3).
 - **Escopo travado / violações BLOQUEANTES:** não vazar existência de e-mail;
   token single-use obrigatório; auth é alto risco — cobrir com teste; sem regra no
   router além de orquestração.
-- **Critério de conclusão (gate):** os 3 ACs verdes; `make check` backend verde.
+- **Critério de conclusão (gate):** os 3 ACs verdes (testes em `tests/integration/`);
+  `make test-integration` + `make check` backend verdes.
 
 ### Fase D.3 — Telas de forgot/reset + link no login *(M)*
 - **id:** `D.3`
@@ -591,20 +642,25 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
 | # | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|---|
 | 1 | Migração age→birth_date perde precisão (01/01 aproximado) | Alta | Baixo | Documentado (OQ2); usuário pode ajustar no form; downgrade recria `age` |
-| 2 | `ALTER TYPE … ADD VALUE` de enum não roda em transação em PG antigo | Média | Médio | PG 16 (compose) suporta; migração isolada, revisada à mão em PG de teste |
+| 2 | `ALTER TYPE … ADD VALUE` — o novo valor não pode ser **usado** na mesma transação que o adiciona (PG12+) | Baixa | Baixo | A migração só adiciona o label; o uso (`channel=WEB`) ocorre em runtime, noutra transação. Revisar à mão em PG de teste |
 | 3 | Troca de fórmula (Harris→Mifflin) muda valores exibidos ao usuário | Média | Baixo | Documentado (OQ1); testes com valores conhecidos; card explica a fórmula |
-| 4 | Reset de senha vaza existência de e-mail por timing/resposta | Média | Alto | NFR-3: resposta uniforme; teste AC-D1; token single-use |
+| 4 | Reset de senha vaza existência de e-mail por **timing** (envio inline só p/ existentes) | Média | Alto | FR-D2: envio via Celery → handler retorna igual nos dois casos; resposta e HTTP uniformes; teste AC-D1. Se o disparo assíncrono for descartado, o leak por timing é **aceito e documentado** (projeto pessoal) |
 | 5 | SMTP mal configurado quebra forgot em prod | Média | Médio | Fallback console em dev; erro de envio não vaza; validar SMTP no rollout |
-| 6 | Migração de hooks para `useQuery` quebra telas de insights | Baixa | Médio | Fase isolada (C.1) com testes; sem mudança de contrato de API |
+| 6 | **C.1 converte insights opt-in em auto-fetch**, disparando IA no mount / window-focus e queimando quota Groq | Média | Alto | FR-C1: `enabled:false` + `refetch()` no botão + `refetchOnWindowFocus/Reconnect/Mount:false` + `staleTime:Infinity`; teste garante que nada dispara no mount |
+| 7 | Gate `make check` **não roda** `tests/integration/`, deixando endpoints novos sem cobertura executada no PR | Média | Alto | NFR-5: fases com endpoint rodam `make test-integration`/`make test-backend` além de `make check` |
+| 8 | CI/CD **desabilitado** (commit `4af2310`): migrações não aplicam sozinhas no merge | Alta | Médio | §7: aplicar migrações **manualmente** (`make migrate` / `alembic upgrade head` no servidor) até a esteira ser reativada |
 
 ## 7. Rollout
 
 - **Ordem operacional:** B → A → C → D, uma fase por vez
   (`/execute-spec-phase` → `/evaluate-spec-phase`, gate 8.5). O grafo de
   dependências (§5) força essa ordem.
-- **Migrações:** A.1 (`birth_date`) e C.2 (`WEB`) rodam via `alembic upgrade head`
-  no deploy (o `cd.yml` já aplica Alembic ao mergear `main`). Rodar em PG de teste
-  antes.
+- **Migrações:** A.1 (`birth_date`) e C.2 (`WEB`) rodam via `alembic upgrade head`.
+  **Atenção — CI/CD está desabilitado** (commit `4af2310`; `ci.yml`/`cd.yml` só em
+  `workflow_dispatch`): o `cd.yml` **não** aplica Alembic automaticamente no merge.
+  Enquanto a esteira estiver em correção, aplicar as migrações **manualmente** no
+  servidor (`make migrate` ou `alembic upgrade head` no container backend). Rodar em
+  PG de teste antes. Reativar a aplicação automática quando a esteira voltar.
 - **Config nova:** vars SMTP entram no `.env` do servidor no rollout do Track D;
   sem elas o forgot degrada para log (não quebra).
 - **Rollback:** cada migração tem `downgrade`; a copy e os hooks são revertíveis por
@@ -628,8 +684,12 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
   aceitável e ajustável no form. Alternativa rejeitada: birth_date nullable exigindo
   re-preenchimento (deixaria TDEE null no meio-tempo).
 - **OQ3 (Track A / B12) — Origem de `current_weight`. RESOLVIDO (2026-07-02):**
-  popular automaticamente do último `WeightLog` via `WeightService.latest()`.
-  Justificativa: `latest()` já existe; diff mínimo; sem novo campo no form.
+  usar o último `WeightLog` (`WeightService.latest()`) como **peso efetivo apenas no
+  cálculo** (`effective_weight = current_weight or latest.weight_kg`), **sem
+  sobrescrever** `profile.current_weight`. Justificativa: `latest()` já existe; diff
+  mínimo; sem novo campo no form; e preserva o significado de `current_weight`
+  (peso informado manualmente) — evita gravar silenciosamente um snapshot de peso no
+  perfil. Ver FR-A3/A.2.
 - **OQ4 (Track C / B16) — Persistência de insights. RESOLVIDO (2026-07-02):**
   **frontend-only** (`useQuery` + `staleTime`), padrão do `useProfile`. Histórico
   persistente no backend fica **fora de escopo** desta spec (futura). Justificativa:
@@ -663,7 +723,9 @@ Cada princípio rastreia a uma rule/ADR/constitution real do repositório:
 
 **Transversais (globais):**
 - [ ] Cada FR com ao menos um AC coberto por teste (pytest/jest).
-- [ ] `make check` verde (ruff + mypy strict + pytest + lint/tsc/jest frontend).
+- [ ] `make check` verde (ruff + mypy strict + `test-unit` + lint/tsc/jest frontend)
+      **e** `make test-integration` verde nas fases que adicionam endpoint (B.2, C.2,
+      D.2) — `make check` sozinho não roda `tests/integration/`.
 - [ ] Mudanças de schema (A.1, C.2) com migração Alembic revisada; migrations
       existentes intactas.
 - [ ] Nenhum segredo/SMTP/PII vazado no diff; `.env.example` só com placeholders.
