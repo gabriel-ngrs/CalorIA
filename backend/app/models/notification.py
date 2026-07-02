@@ -30,7 +30,8 @@ class Notification(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     type: Mapped[NotificationType] = mapped_column(
-        SAEnum(NotificationType), nullable=False
+        SAEnum(NotificationType, values_callable=lambda enum: [m.value for m in enum]),
+        nullable=False,
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
