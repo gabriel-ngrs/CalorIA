@@ -1,10 +1,13 @@
 name: CI
 
+# CI temporariamente desabilitado — esteira de CI/CD em correcao.
+# Reativar restaurando os gatilhos abaixo:
+#   push:
+#     branches: [dev]
+#   pull_request:
+#     branches: [main]
 on:
-  push:
-    branches: [dev]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   backend:

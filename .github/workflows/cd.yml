@@ -1,8 +1,11 @@
 name: CD — Deploy em Produção
 
+# CD temporariamente desabilitado — esteira de CI/CD em correcao.
+# Reativar restaurando o gatilho abaixo:
+#   push:
+#     branches: [main]
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 # Garante que apenas um deploy rode por vez
 concurrency:
