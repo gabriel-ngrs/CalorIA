@@ -33,6 +33,14 @@ def create_refresh_token(subject: Any) -> str:
     )
 
 
+def create_reset_token(subject: Any) -> str:
+    expire = datetime.now(UTC) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": str(subject), "exp": expire, "type": "reset"}
+    return cast(
+        str, jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    )
+
+
 def decode_token(token: str) -> dict[str, Any]:
     return cast(
         dict[str, Any],
