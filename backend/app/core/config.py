@@ -57,6 +57,21 @@ class Settings(BaseSettings):
     VAPID_PUBLIC_KEY: str = ""
     VAPID_CLAIMS_EMAIL: str = "admin@caloria.app"
 
+    # --------------------------------------------------------------------------
+    # E-mail transacional (SMTP) — sem SMTP_HOST, EmailService degrada para log
+    # --------------------------------------------------------------------------
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "CalorIA <no-reply@caloria.app>"
+
+    # URL base do frontend, usada para montar o link de reset de senha
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # Expiração do token de reset de senha (minutos, ≤ 60)
+    RESET_TOKEN_EXPIRE_MINUTES: int = 60
+
     @property
     def is_development(self) -> bool:
         return self.APP_ENV == "development"
