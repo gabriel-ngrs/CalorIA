@@ -287,6 +287,45 @@ class TestHydrationCrudAPI:
         resp = await client.delete("/api/v1/hydration/999999")
         assert resp.status_code == 404
 
+    async def test_put_amount_null_retorna_422(self, client: AsyncClient) -> None:
+        """Regressão B.2: `null` explícito em campo NOT NULL vira 422, não 500."""
+        log_id = await self._criar_log(client, amount_ml=200)
+
+        resp = await client.put(f"/api/v1/hydration/{log_id}", json={"amount_ml": None})
+
+        assert resp.status_code == 422
+        assert await self._total_hoje(client) == 200  # log intacto
+
+    async def test_put_date_null_retorna_422(self, client: AsyncClient) -> None:
+        """A rejeição de `null` cobre também `date`/`time` (colunas NOT NULL)."""
+        log_id = await self._criar_log(client, amount_ml=200)
+
+        resp = await client.put(f"/api/v1/hydration/{log_id}", json={"date": None})
+
+        assert resp.status_code == 422
+        assert await self._total_hoje(client) == 200
+
+    async def test_put_vazio_e_no_op_retorna_200(self, client: AsyncClient) -> None:
+        """Payload vazio (nenhum campo enviado) é no-op válido (200)."""
+        log_id = await self._criar_log(client, amount_ml=200)
+
+        resp = await client.put(f"/api/v1/hydration/{log_id}", json={})
+
+        assert resp.status_code == 200
+        assert resp.json()["amount_ml"] == 200
+
+    async def test_put_atualiza_time(self, client: AsyncClient) -> None:
+        """Caminho feliz de update em `time` (antes só `amount_ml` era exercitado)."""
+        log_id = await self._criar_log(client, amount_ml=200)
+
+        resp = await client.put(
+            f"/api/v1/hydration/{log_id}", json={"time": "21:30:00"}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["time"] == "21:30:00"
+        assert resp.json()["amount_ml"] == 200  # campo não enviado intacto
+
 
 class TestMoodLog:
     async def test_registra_humor(self, client: AsyncClient, test_user: User) -> None:
