@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.profile import UserProfile
+from app.models.weight_log import WeightLog
 from app.schemas.profile import ProfileUpdate
 from app.services.log_service import WeightService
 from app.services.nutrition.tdee import (
@@ -16,12 +17,21 @@ from app.services.nutrition.tdee import (
 class ProfileService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+        # Memoiza o último WeightLog por usuário na mesma requisição: update_profile
+        # (TDEE) e compute_bmr (TMB) usam o mesmo peso efetivo, então o PUT não
+        # consulta WeightService.latest() duas vezes.
+        self._latest_weight: dict[int, WeightLog | None] = {}
 
     async def get_profile(self, user_id: int) -> UserProfile | None:
         result = await self.db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
         return result.scalar_one_or_none()
+
+    async def _latest_weight_log(self, user_id: int) -> WeightLog | None:
+        if user_id not in self._latest_weight:
+            self._latest_weight[user_id] = await WeightService(self.db).latest(user_id)
+        return self._latest_weight[user_id]
 
     async def _effective_weight(
         self, user_id: int, profile: UserProfile
@@ -33,7 +43,7 @@ class ProfileService:
         """
         if profile.current_weight is not None:
             return profile.current_weight
-        latest = await WeightService(self.db).latest(user_id)
+        latest = await self._latest_weight_log(user_id)
         return latest.weight_kg if latest is not None else None
 
     async def compute_bmr(self, user_id: int, profile: UserProfile) -> float | None:
