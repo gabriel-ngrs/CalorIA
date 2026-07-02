@@ -1060,7 +1060,7 @@ def update_user_profile(session: Session, user_id: int) -> None:
             text("""
                 UPDATE user_profiles
                 SET height_cm=178, current_weight=84.5, age=28,
-                    sex='male', activity_level='moderately_active', tdee_calculated=2380
+                    sex='MALE', activity_level='MODERATELY_ACTIVE', tdee_calculated=2380
                 WHERE user_id=:uid
             """),
             {"uid": user_id},
@@ -1069,7 +1069,7 @@ def update_user_profile(session: Session, user_id: int) -> None:
         session.execute(
             text("""
                 INSERT INTO user_profiles (user_id, height_cm, current_weight, age, sex, activity_level, tdee_calculated)
-                VALUES (:uid, 178, 84.5, 28, 'male', 'moderately_active', 2380)
+                VALUES (:uid, 178, 84.5, 28, 'MALE', 'MODERATELY_ACTIVE', 2380)
             """),
             {"uid": user_id},
         )
@@ -1086,7 +1086,7 @@ def seed_meals(
     meal_id = session.execute(
         text("""
             INSERT INTO meals (user_id, meal_type, date, source, notes)
-            VALUES (:uid, 'breakfast', :d, 'manual', :notes)
+            VALUES (:uid, 'BREAKFAST', :d, 'MANUAL', :notes)
             RETURNING id
         """),
         {"uid": user_id, "d": target_date, "notes": breakfast["name"]},
@@ -1095,7 +1095,7 @@ def seed_meals(
         session.execute(
             text("""
                 INSERT INTO meal_items (meal_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber)
-                VALUES (:mid, :fn, :qty, :unit, :cal, :pro, :carb, :fat, :fib)
+                VALUES (:mid, :food_name, :quantity, :unit, :calories, :protein, :carbs, :fat, :fiber)
             """),
             {**item, "mid": meal_id},
         )
@@ -1105,7 +1105,7 @@ def seed_meals(
     meal_id = session.execute(
         text("""
             INSERT INTO meals (user_id, meal_type, date, source, notes)
-            VALUES (:uid, 'lunch', :d, 'manual', :notes)
+            VALUES (:uid, 'LUNCH', :d, 'MANUAL', :notes)
             RETURNING id
         """),
         {"uid": user_id, "d": target_date, "notes": lunch["name"]},
@@ -1114,7 +1114,7 @@ def seed_meals(
         session.execute(
             text("""
                 INSERT INTO meal_items (meal_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber)
-                VALUES (:mid, :fn, :qty, :unit, :cal, :pro, :carb, :fat, :fib)
+                VALUES (:mid, :food_name, :quantity, :unit, :calories, :protein, :carbs, :fat, :fiber)
             """),
             {**item, "mid": meal_id},
         )
@@ -1124,7 +1124,7 @@ def seed_meals(
     meal_id = session.execute(
         text("""
             INSERT INTO meals (user_id, meal_type, date, source, notes)
-            VALUES (:uid, 'dinner', :d, 'manual', :notes)
+            VALUES (:uid, 'DINNER', :d, 'MANUAL', :notes)
             RETURNING id
         """),
         {"uid": user_id, "d": target_date, "notes": dinner["name"]},
@@ -1133,7 +1133,7 @@ def seed_meals(
         session.execute(
             text("""
                 INSERT INTO meal_items (meal_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber)
-                VALUES (:mid, :fn, :qty, :unit, :cal, :pro, :carb, :fat, :fib)
+                VALUES (:mid, :food_name, :quantity, :unit, :calories, :protein, :carbs, :fat, :fiber)
             """),
             {**item, "mid": meal_id},
         )
@@ -1144,7 +1144,7 @@ def seed_meals(
         meal_id = session.execute(
             text("""
                 INSERT INTO meals (user_id, meal_type, date, source, notes)
-                VALUES (:uid, 'snack', :d, 'manual', :notes)
+                VALUES (:uid, 'SNACK', :d, 'MANUAL', :notes)
                 RETURNING id
             """),
             {"uid": user_id, "d": target_date, "notes": snack["name"]},
@@ -1153,7 +1153,7 @@ def seed_meals(
             session.execute(
                 text("""
                     INSERT INTO meal_items (meal_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber)
-                    VALUES (:mid, :fn, :qty, :unit, :cal, :pro, :carb, :fat, :fib)
+                    VALUES (:mid, :food_name, :quantity, :unit, :calories, :protein, :carbs, :fat, :fiber)
                 """),
                 {**item, "mid": meal_id},
             )
