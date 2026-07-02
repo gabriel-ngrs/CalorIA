@@ -7,6 +7,9 @@ import {
   useWeeklyInsight,
   useAskQuestion,
   useMealSuggestion,
+  useEatingPatterns,
+  useNutritionalAlerts,
+  useGoalAdjustment,
   useMonthlyReport,
 } from "@/lib/hooks/useAI";
 
@@ -23,16 +26,21 @@ jest.mock("@/lib/api", () => ({
 
 const mockedApi = api as jest.Mocked<typeof api>;
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
+// Cliente compartilhado permite testar persistência do cache entre remontagens
+// (simulando navegar para fora e voltar — AC-C1).
+const makeClient = () =>
+  new QueryClient({
     defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
+      queries: { retry: false, gcTime: 30 * 60 * 1000 },
       mutations: { retry: false },
     },
   });
-  return ({ children }: { children: React.ReactNode }) =>
+
+const wrapperFor = (queryClient: QueryClient) =>
+  ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
-};
+
+const createWrapper = () => wrapperFor(makeClient());
 
 const mockInsightResponse = {
   type: "daily",
@@ -58,37 +66,78 @@ const mockMonthlyReport = {
   weight_change: -1.5,
 };
 
+const mockEatingPattern = { analysis: "Você come mais à noite.", frequent_foods: ["arroz"] };
+const mockAlerts = { days_analyzed: 14, alerts: [], analysis: "Tudo certo." };
+const mockGoalAdjustment = {
+  adjustment_recommended: false,
+  weight_trend_kg_per_week: null,
+  current_calorie_goal: 2000,
+  suggested_calorie_goal: null,
+  suggestion: "Mantenha o ritmo.",
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ─── useDailyInsight ──────────────────────────────────────────────────────────
+// ─── Insights migrados para useQuery (opt-in + cache persistente) ─────────────
+//
+// Controle de custo Groq (FR-C1): nenhuma query pode disparar no mount; só via
+// refetch() no clique. O cache sobrevive à navegação (AC-C1).
 
-describe("useDailyInsight", () => {
-  it("faz POST em /api/v1/ai/insights com { type: 'daily' }", async () => {
+describe("useDailyInsight (useQuery opt-in)", () => {
+  it("NÃO dispara fetch no mount (opt-in — controle de custo)", () => {
+    const { result } = renderHook(() => useDailyInsight(), {
+      wrapper: createWrapper(),
+    });
+
+    // Sem clique/refetch, o queryFn nunca roda no mount.
+    expect(result.current.isFetching).toBe(false);
+    expect(mockedApi.post).not.toHaveBeenCalled();
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it("busca e cacheia o insight ao chamar refetch()", async () => {
     mockedApi.post.mockResolvedValueOnce({ data: mockInsightResponse });
 
     const { result } = renderHook(() => useDailyInsight(), {
       wrapper: createWrapper(),
     });
 
+    let refetched;
     await act(async () => {
-      await result.current.mutateAsync();
+      refetched = await result.current.refetch();
     });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(mockedApi.post).toHaveBeenCalledWith("/api/v1/ai/insights", {
       type: "daily",
     });
-    expect(result.current.data).toEqual(mockInsightResponse);
+    expect(refetched!.data).toEqual(mockInsightResponse);
+  });
+
+  it("mantém o insight ao remontar o hook (navegar e voltar — AC-C1)", async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: mockInsightResponse });
+    const client = makeClient();
+    const wrapper = wrapperFor(client);
+
+    const first = renderHook(() => useDailyInsight(), { wrapper });
+    await act(async () => {
+      await first.result.current.refetch();
+    });
+
+    // Desmonta (sai da página) e monta de novo (volta) no mesmo QueryClient.
+    first.unmount();
+    const second = renderHook(() => useDailyInsight(), { wrapper });
+
+    // Dado servido do cache no mount, sem novo fetch (post chamado 1x só).
+    await waitFor(() => expect(second.result.current.data).toEqual(mockInsightResponse));
+    expect(mockedApi.post).toHaveBeenCalledTimes(1);
+    expect(second.result.current.isFetching).toBe(false);
   });
 });
 
-// ─── useWeeklyInsight ─────────────────────────────────────────────────────────
-
-describe("useWeeklyInsight", () => {
-  it("faz POST em /api/v1/ai/insights com { type: 'weekly' }", async () => {
+describe("useWeeklyInsight (useQuery opt-in)", () => {
+  it("não dispara no mount e busca via refetch com type='weekly'", async () => {
     const weeklyResponse = { ...mockInsightResponse, type: "weekly" };
     mockedApi.post.mockResolvedValueOnce({ data: weeklyResponse });
 
@@ -96,20 +145,107 @@ describe("useWeeklyInsight", () => {
       wrapper: createWrapper(),
     });
 
-    await act(async () => {
-      await result.current.mutateAsync();
-    });
+    expect(mockedApi.post).not.toHaveBeenCalled();
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    let refetched;
+    await act(async () => {
+      refetched = await result.current.refetch();
+    });
 
     expect(mockedApi.post).toHaveBeenCalledWith("/api/v1/ai/insights", {
       type: "weekly",
     });
-    expect(result.current.data).toEqual(weeklyResponse);
+    expect(refetched!.data).toEqual(weeklyResponse);
   });
 });
 
-// ─── useAskQuestion ───────────────────────────────────────────────────────────
+describe("useEatingPatterns (useQuery opt-in)", () => {
+  it("não dispara no mount e busca via refetch com days", async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: mockEatingPattern });
+
+    const { result } = renderHook(() => useEatingPatterns(30), {
+      wrapper: createWrapper(),
+    });
+
+    expect(mockedApi.get).not.toHaveBeenCalled();
+
+    let refetched;
+    await act(async () => {
+      refetched = await result.current.refetch();
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/patterns", {
+      params: { days: 30 },
+    });
+    expect(refetched!.data).toEqual(mockEatingPattern);
+  });
+});
+
+describe("useNutritionalAlerts (useQuery opt-in)", () => {
+  it("não dispara no mount e busca via refetch com days", async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: mockAlerts });
+
+    const { result } = renderHook(() => useNutritionalAlerts(14), {
+      wrapper: createWrapper(),
+    });
+
+    expect(mockedApi.get).not.toHaveBeenCalled();
+
+    let refetched;
+    await act(async () => {
+      refetched = await result.current.refetch();
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/nutritional-alerts", {
+      params: { days: 14 },
+    });
+    expect(refetched!.data).toEqual(mockAlerts);
+  });
+});
+
+describe("useGoalAdjustment (useQuery opt-in)", () => {
+  it("não dispara no mount e busca via refetch", async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: mockGoalAdjustment });
+
+    const { result } = renderHook(() => useGoalAdjustment(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(mockedApi.get).not.toHaveBeenCalled();
+
+    let refetched;
+    await act(async () => {
+      refetched = await result.current.refetch();
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/goal-adjustment");
+    expect(refetched!.data).toEqual(mockGoalAdjustment);
+  });
+});
+
+describe("useMonthlyReport (useQuery opt-in)", () => {
+  it("não dispara no mount e busca via refetch com month/year", async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: mockMonthlyReport });
+
+    const { result } = renderHook(() => useMonthlyReport(3, 2026), {
+      wrapper: createWrapper(),
+    });
+
+    expect(mockedApi.get).not.toHaveBeenCalled();
+
+    let refetched;
+    await act(async () => {
+      refetched = await result.current.refetch();
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/monthly-report", {
+      params: { month: 3, year: 2026 },
+    });
+    expect(refetched!.data).toEqual(mockMonthlyReport);
+  });
+});
+
+// ─── Hooks que seguem como mutation (fora do escopo de C.1) ───────────────────
 
 describe("useAskQuestion", () => {
   it("faz POST em /api/v1/ai/insights com type='question' e a pergunta", async () => {
@@ -140,8 +276,6 @@ describe("useAskQuestion", () => {
   });
 });
 
-// ─── useMealSuggestion ────────────────────────────────────────────────────────
-
 describe("useMealSuggestion", () => {
   it("faz GET em /api/v1/ai/suggest-meal e retorna sugestão", async () => {
     mockedApi.get.mockResolvedValueOnce({ data: mockMealSuggestion });
@@ -158,28 +292,5 @@ describe("useMealSuggestion", () => {
 
     expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/suggest-meal");
     expect(result.current.data).toEqual(mockMealSuggestion);
-  });
-});
-
-// ─── useMonthlyReport ─────────────────────────────────────────────────────────
-
-describe("useMonthlyReport", () => {
-  it("faz GET em /api/v1/ai/monthly-report com parâmetros de mês e ano", async () => {
-    mockedApi.get.mockResolvedValueOnce({ data: mockMonthlyReport });
-
-    const { result } = renderHook(() => useMonthlyReport(), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({ month: 3, year: 2026 });
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/ai/monthly-report", {
-      params: { month: 3, year: 2026 },
-    });
-    expect(result.current.data).toEqual(mockMonthlyReport);
   });
 });

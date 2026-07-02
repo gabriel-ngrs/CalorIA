@@ -72,7 +72,7 @@ export default function InsightsPage() {
   const eatingPatterns = useEatingPatterns(patternDays);
   const nutritionalAlerts = useNutritionalAlerts(alertDays);
   const goalAdjustment = useGoalAdjustment();
-  const monthlyReport  = useMonthlyReport();
+  const monthlyReport  = useMonthlyReport(reportMonth, reportYear);
 
   function handleAsk(e: React.FormEvent) {
     e.preventDefault();
@@ -116,19 +116,19 @@ export default function InsightsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {dailyInsight.isPending && <LoadingLines />}
+          {dailyInsight.isFetching && <LoadingLines />}
           {dailyInsight.data && <InsightText content={dailyInsight.data.content} />}
           {dailyInsight.isError && (
             <p className="text-sm text-destructive">Não foi possível gerar o insight. Tente novamente.</p>
           )}
           <Button
-            onClick={() => dailyInsight.mutate()}
-            disabled={dailyInsight.isPending}
+            onClick={() => dailyInsight.refetch()}
+            disabled={dailyInsight.isFetching}
             variant={dailyInsight.data ? "outline" : "default"}
             size="sm"
             className="gap-1.5"
           >
-            {dailyInsight.isPending ? "Gerando..." : (
+            {dailyInsight.isFetching ? "Gerando..." : (
               <>{dailyInsight.data ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}{dailyInsight.data ? "Regenerar" : "Gerar insight"}</>
             )}
           </Button>
@@ -186,19 +186,19 @@ export default function InsightsPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {nutritionalAlerts.isPending && <LoadingLines lines={4} />}
+          {nutritionalAlerts.isFetching && <LoadingLines lines={4} />}
           {nutritionalAlerts.data && <NutritionalAlertsCard data={nutritionalAlerts.data} requestedDays={alertDays} />}
           {nutritionalAlerts.isError && (
             <p className="text-sm text-destructive">Erro ao verificar alertas. Tente novamente.</p>
           )}
           <Button
-            onClick={() => nutritionalAlerts.mutate(alertDays)}
-            disabled={nutritionalAlerts.isPending}
+            onClick={() => nutritionalAlerts.refetch()}
+            disabled={nutritionalAlerts.isFetching}
             variant={nutritionalAlerts.data ? "outline" : "default"}
             size="sm"
             className="gap-1.5"
           >
-            {nutritionalAlerts.isPending ? "Analisando..." : (
+            {nutritionalAlerts.isFetching ? "Analisando..." : (
               <>{nutritionalAlerts.data ? <RefreshCw className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}{nutritionalAlerts.data ? "Reanalisar" : "Verificar alertas"}</>
             )}
           </Button>
@@ -220,19 +220,19 @@ export default function InsightsPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {eatingPatterns.isPending && <LoadingLines lines={4} />}
+          {eatingPatterns.isFetching && <LoadingLines lines={4} />}
           {eatingPatterns.data && <EatingPatternCard data={eatingPatterns.data} />}
           {eatingPatterns.isError && (
             <p className="text-sm text-destructive">Erro ao analisar padrões. Tente novamente.</p>
           )}
           <Button
-            onClick={() => eatingPatterns.mutate(patternDays)}
-            disabled={eatingPatterns.isPending}
+            onClick={() => eatingPatterns.refetch()}
+            disabled={eatingPatterns.isFetching}
             variant={eatingPatterns.data ? "outline" : "default"}
             size="sm"
             className="gap-1.5"
           >
-            {eatingPatterns.isPending ? "Analisando..." : (
+            {eatingPatterns.isFetching ? "Analisando..." : (
               <>{eatingPatterns.data ? <RefreshCw className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}{eatingPatterns.data ? "Reanalisar" : "Analisar padrões"}</>
             )}
           </Button>
@@ -255,19 +255,19 @@ export default function InsightsPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {weeklyInsight.isPending && <LoadingLines lines={5} />}
+          {weeklyInsight.isFetching && <LoadingLines lines={5} />}
           {weeklyInsight.data && <InsightText content={weeklyInsight.data.content} />}
           {weeklyInsight.isError && (
             <p className="text-sm text-destructive">Erro ao gerar. Tente novamente.</p>
           )}
           <Button
-            onClick={() => weeklyInsight.mutate()}
-            disabled={weeklyInsight.isPending}
+            onClick={() => weeklyInsight.refetch()}
+            disabled={weeklyInsight.isFetching}
             variant={weeklyInsight.data ? "outline" : "default"}
             size="sm"
             className="gap-1.5"
           >
-            {weeklyInsight.isPending ? "Gerando..." : (
+            {weeklyInsight.isFetching ? "Gerando..." : (
               <>{weeklyInsight.data ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}{weeklyInsight.data ? "Regenerar" : "Gerar análise"}</>
             )}
           </Button>
@@ -284,19 +284,19 @@ export default function InsightsPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {goalAdjustment.isPending && <LoadingLines lines={3} />}
+          {goalAdjustment.isFetching && <LoadingLines lines={3} />}
           {goalAdjustment.data && <GoalAdjustmentCard data={goalAdjustment.data} />}
           {goalAdjustment.isError && (
             <p className="text-sm text-destructive">Erro ao avaliar metas. Tente novamente.</p>
           )}
           <Button
-            onClick={() => goalAdjustment.mutate()}
-            disabled={goalAdjustment.isPending}
+            onClick={() => goalAdjustment.refetch()}
+            disabled={goalAdjustment.isFetching}
             variant={goalAdjustment.data ? "outline" : "default"}
             size="sm"
             className="gap-1.5"
           >
-            {goalAdjustment.isPending ? "Avaliando..." : (
+            {goalAdjustment.isFetching ? "Avaliando..." : (
               <>{goalAdjustment.data ? <RefreshCw className="h-3.5 w-3.5" /> : <Target className="h-3.5 w-3.5" />}{goalAdjustment.data ? "Reavaliar" : "Avaliar metas"}</>
             )}
           </Button>
@@ -333,19 +333,19 @@ export default function InsightsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {monthlyReport.isPending && <LoadingLines lines={6} />}
+          {monthlyReport.isFetching && <LoadingLines lines={6} />}
           {monthlyReport.data && <MonthlyReportCard data={monthlyReport.data} />}
           {monthlyReport.isError && (
             <p className="text-sm text-destructive">Erro ao gerar relatório. Tente novamente.</p>
           )}
           <Button
-            onClick={() => monthlyReport.mutate({ month: reportMonth, year: reportYear })}
-            disabled={monthlyReport.isPending}
+            onClick={() => monthlyReport.refetch()}
+            disabled={monthlyReport.isFetching}
             variant={monthlyReport.data ? "outline" : "default"}
             size="sm"
             className="gap-1.5"
           >
-            {monthlyReport.isPending ? "Gerando..." : (
+            {monthlyReport.isFetching ? "Gerando..." : (
               <>{monthlyReport.data ? <RefreshCw className="h-3.5 w-3.5" /> : <BarChart3 className="h-3.5 w-3.5" />}{monthlyReport.data ? "Regenerar" : "Gerar relatório"}</>
             )}
           </Button>
