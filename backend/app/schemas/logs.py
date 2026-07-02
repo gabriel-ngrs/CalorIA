@@ -2,6 +2,11 @@ from datetime import date, datetime, time
 
 from pydantic import BaseModel, Field
 
+# Aliases para uso em modelos cujos campos se chamam `date`/`time` — o nome do
+# campo sombrearia o tipo homônimo ao resolver a anotação (ver HydrationLogUpdate).
+_DateType = date
+_TimeType = time
+
 # ---------------------------------------------------------------------------
 # WeightLog
 # ---------------------------------------------------------------------------
@@ -33,6 +38,12 @@ class HydrationLogCreate(BaseModel):
     amount_ml: int = Field(gt=0, le=5000)
     date: date
     time: time
+
+
+class HydrationLogUpdate(BaseModel):
+    amount_ml: int | None = Field(default=None, gt=0, le=5000)
+    date: _DateType | None = None
+    time: _TimeType | None = None
 
 
 class HydrationLogResponse(BaseModel):

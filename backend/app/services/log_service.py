@@ -13,6 +13,7 @@ from app.schemas.logs import (
     HydrationDaySummary,
     HydrationLogCreate,
     HydrationLogResponse,
+    HydrationLogUpdate,
     MoodLogCreate,
     WeightLogCreate,
 )
@@ -114,6 +115,37 @@ class HydrationService:
             )
             current += timedelta(days=1)
         return summaries
+
+    async def get_by_id(self, user_id: int, log_id: int) -> HydrationLog | None:
+        """Busca um log filtrando por id **e** user_id (posse obrigatória)."""
+        result = await self.db.execute(
+            select(HydrationLog).where(
+                HydrationLog.id == log_id, HydrationLog.user_id == user_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def delete(self, user_id: int, log_id: int) -> bool:
+        """Remove um log do próprio usuário. Retorna False se não encontrado."""
+        log = await self.get_by_id(user_id, log_id)
+        if log is None:
+            return False
+        await self.db.delete(log)
+        await self.db.commit()
+        return True
+
+    async def update(
+        self, user_id: int, log_id: int, data: HydrationLogUpdate
+    ) -> HydrationLog | None:
+        """Edita um log do próprio usuário. Retorna None se não encontrado."""
+        log = await self.get_by_id(user_id, log_id)
+        if log is None:
+            return None
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(log, field, value)
+        await self.db.commit()
+        await self.db.refresh(log)
+        return log
 
     async def get_day_summary(self, user_id: int, day: date) -> HydrationDaySummary:
         result = await self.db.execute(
