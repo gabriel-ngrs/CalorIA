@@ -38,9 +38,9 @@ Legenda da coluna `verificação`: `✓` verificado; `⚠` corrigido no código 
 | B14 | "Meta atingida" ignora goal_type | corrigido | __tests__/lib/weightGoal.test.ts (jest ✓) | frontend/lib/weightGoal.ts + peso/page.tsx:56,147 | 2026-07-02-lote-bugs-teste-v1.md | ✓ navegador |
 | B15 | Sem recuperação de senha | bloqueado | — | feature grande — ver backlog de specs | | — |
 | B16 | Insights somem ao navegar (sem histórico) | bloqueado | — | feature — ver backlog de specs | | — |
-| B17 | suggest-meal determinístico | corrigido | repro manual: 3x "Nova sugestão" → resultados diferentes (LLM) | app/services/ai/insights_generator.py:158,145 | 2026-07-02-lote-bugs-teste-v1.md | ⚠ pendente (Groq 401) |
-| B18 | Texto da IA com markdown cru | corrigido | __tests__/components/MarkdownLite.test.tsx (jest ✓) | frontend/components/MarkdownLite.tsx + insights/page.tsx:34,381 | 2026-07-02-lote-bugs-teste-v1.md | ⚠ jest ✓; runtime pendente (Groq 401) |
-| B19 | Respostas da IA muito verbosas | corrigido | repro manual: gerar alertas/ajuste/relatório → textos curtos (LLM) | app/services/ai/insights_generator.py:265,318,433 | 2026-07-02-lote-bugs-teste-v1.md | ⚠ pendente (Groq 401) |
+| B17 | suggest-meal determinístico | corrigido | repro manual: 3x "Nova sugestão" → resultados diferentes (LLM) | app/services/ai/insights_generator.py:158,145 | 2026-07-02-lote-bugs-teste-v1.md | ✓ runtime (Groq real, 3/3 varia) |
+| B18 | Texto da IA com markdown cru | corrigido | __tests__/components/MarkdownLite.test.tsx (jest ✓) | frontend/components/MarkdownLite.tsx + insights/page.tsx:34,381 | 2026-07-02-lote-bugs-teste-v1.md | ✓ jest + runtime (IA emite markdown) |
+| B19 | Respostas da IA muito verbosas | corrigido | repro manual: gerar alertas/ajuste/relatório → textos curtos (LLM) | app/services/ai/insights_generator.py:265,318,433 | 2026-07-02-lote-bugs-teste-v1.md | ✓ runtime (textos curtos) |
 | B20 | Chat "Pergunte à IA" sem histórico | bloqueado | — | feature — ver backlog de specs | | — |
 
 ## Verificação em runtime (2026-07-02)
@@ -48,20 +48,29 @@ Stack `docker-compose.dev.yml` subido; migrações aplicadas (inclui `a7b8c9d0e1
 sem erros); suíte backend **100 passando**; navegador logado (`qa@example.com`).
 Confirmados end-to-end: **B4, B5, B6, B7, B9, B10, B13, B14**.
 
-## Pendências de verificação — aguardando GROQ_API_KEY nova
-A `GROQ_API_KEY` do `.env` está **inválida/expirada** (Groq responde `401`;
-chave trocada em **2026-07-01** e ainda não reposta com valor válido). Isso
-**não é bug de código** — mas impede a verificação em runtime dos fixes que
-dependem da IA. **Reexecutar quando a chave nova estiver ativa:**
+## Pendências de verificação — RESOLVIDO (2026-07-03)
+A `GROQ_API_KEY` nova foi reposta e validada (chave `gsk_…`, len 56, ping Groq
+`200 OK`). Os 3 fixes dependentes de IA foram reexecutados em runtime contra o
+Groq **real** (Llama 3.3 70B), dirigindo os métodos reais de
+`InsightsGenerator` com a camada de DB mockada (Postgres/Redis indisponíveis
+nesta máquina; cache Redis degrada sem quebrar, como esperado):
 
-- **B17** — clicar "Nova sugestão" 3× e confirmar que a sugestão **varia**.
-- **B19** — gerar Alertas / Ajuste de metas / Relatório mensal e conferir que os
-  textos ficaram **curtos e objetivos**.
-- **B18** — abrir Insights (Padrões/Semanal/Mensal) e confirmar que o markdown
-  é **renderizado** (negrito/listas, sem `**` cru). *(Já coberto por jest; falta
-  a confirmação visual com texto real da IA.)*
+- **B17** — `suggest_meal` 3× → **3/3 nomes distintos** (Frango c/ Feijão →
+  Salada de Quinoa → Frango c/ Arroz e Queijo). Variação (random foco +
+  `use_cache=False`) confirmada. `verificação: ✓`.
+- **B19** — Alertas (8 linhas / 94 chars), Ajuste de metas (3 frases / 255
+  chars), Relatório mensal (6 linhas / 375 chars) → todos **curtos e
+  objetivos**. `verificação: ✓`.
+- **B18** — Semanal emite `**negrito**` + lista numerada; Alertas e Mensal
+  emitem bullets `-`; o `MarkdownLite` (jest ✓) renderiza esse markdown.
+  Confirmado que a IA **emite** markdown em runtime. `verificação: ✓`.
 
-Estes 3 estão `corrigido` no código, mas com `verificação: ⚠` até o re-teste.
+Bônus (Track C): `answer_question` (chat "Pergunte à IA") respondeu corretamente
+com a IA real — a chamada de IA do chat funciona; a **persistência** WEB em
+`AIConversation` (C.2) depende do stack com Postgres e já está coberta pelos
+testes de integração (avaliação C.2 APROVADO 9.5).
+
+Estes 3 saíram de `⚠` para `✓` na tabela acima.
 
 ## Backlog de specs — bugs bloqueados (features / mudança quebradora)
 Cada item abaixo saiu do loop de bugfix por exigir design/escopo maior. Pegar
