@@ -65,9 +65,7 @@ class TestChatPersistence:
         assert len(msgs) == 4
         assert [m["content"] for m in msgs] == ["P1", _AI_ANSWER, "P2", _AI_ANSWER]
 
-    async def test_conversations_vazio_sem_historico(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_conversations_vazio_sem_historico(self, client: AsyncClient) -> None:
         h = await client.get("/api/v1/ai/conversations")
         assert h.status_code == 200
         assert h.json() == {"channel": "web", "messages": []}

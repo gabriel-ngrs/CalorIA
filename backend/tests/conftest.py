@@ -29,10 +29,12 @@ _TestSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
+
 # Redireciona get_db da app para o banco de teste
 async def _get_test_db() -> AsyncGenerator[AsyncSession, None]:
     async with _TestSessionLocal() as session:
         yield session
+
 
 app.dependency_overrides[get_db] = _get_test_db
 

@@ -500,7 +500,10 @@ def main() -> None:
     start_page = _get_arg(args, "--start-page", 1)
     mode = "language" if lang_pt else "country"
 
-    logger.info("Iniciando importação Open Food Facts (%s)", "língua=pt" if lang_pt else "país=Brasil")
+    logger.info(
+        "Iniciando importação Open Food Facts (%s)",
+        "língua=pt" if lang_pt else "país=Brasil",
+    )
     logger.info(
         "  Limite: %d | página inicial: %d | dry-run: %s | force: %s",
         limit,
@@ -509,7 +512,9 @@ def main() -> None:
         force,
     )
     asyncio.run(
-        import_off(limit=limit, dry_run=dry_run, force=force, start_page=start_page, mode=mode)
+        import_off(
+            limit=limit, dry_run=dry_run, force=force, start_page=start_page, mode=mode
+        )
     )
 
 

@@ -42,10 +42,22 @@ MAX_RETRIES = 3
 RETRY_DELAY = 5
 
 OUT_FIELDS = [
-    "name", "aliases", "category", "source", "external_id", "search_text",
-    "calories_100g", "protein_100g", "carbs_100g", "fat_100g",
-    "fiber_100g", "sodium_100g", "sugar_100g", "saturated_fat_100g",
-    "brands", "original_name_en",
+    "name",
+    "aliases",
+    "category",
+    "source",
+    "external_id",
+    "search_text",
+    "calories_100g",
+    "protein_100g",
+    "carbs_100g",
+    "fat_100g",
+    "fiber_100g",
+    "sodium_100g",
+    "sugar_100g",
+    "saturated_fat_100g",
+    "brands",
+    "original_name_en",
 ]
 
 
@@ -121,22 +133,24 @@ Alimentos:
                         # Recalcula calorias pelos macros
                         cal = round(expected, 1)
 
-                enriched.append({
-                    **item,
-                    "calories_100g": cal or "",
-                    "protein_100g": prot or "",
-                    "carbs_100g": carbs or "",
-                    "fat_100g": fat or "",
-                    "fiber_100g": fiber or "",
-                    "sodium_100g": "",
-                    "sugar_100g": "",
-                    "saturated_fat_100g": "",
-                    "source": "ai_estimated",
-                    "aliases": "{}",
-                    "search_text": item["name"].lower(),
-                    "brands": item.get("brands", ""),
-                    "original_name_en": item.get("name_en", ""),
-                })
+                enriched.append(
+                    {
+                        **item,
+                        "calories_100g": cal or "",
+                        "protein_100g": prot or "",
+                        "carbs_100g": carbs or "",
+                        "fat_100g": fat or "",
+                        "fiber_100g": fiber or "",
+                        "sodium_100g": "",
+                        "sugar_100g": "",
+                        "saturated_fat_100g": "",
+                        "source": "ai_estimated",
+                        "aliases": "{}",
+                        "search_text": item["name"].lower(),
+                        "brands": item.get("brands", ""),
+                        "original_name_en": item.get("name_en", ""),
+                    }
+                )
             return enriched
 
         except Exception as e:
@@ -146,17 +160,25 @@ Alimentos:
 
     # Fallback: retorna itens sem nutrientes
     log.error("Lote falhou — salvando sem nutrientes")
-    return [{
-        **item,
-        "calories_100g": "", "protein_100g": "", "carbs_100g": "",
-        "fat_100g": "", "fiber_100g": "", "sodium_100g": "",
-        "sugar_100g": "", "saturated_fat_100g": "",
-        "source": "ai_estimated",
-        "aliases": "{}",
-        "search_text": item["name"].lower(),
-        "brands": item.get("brands", ""),
-        "original_name_en": item.get("name_en", ""),
-    } for item in items]
+    return [
+        {
+            **item,
+            "calories_100g": "",
+            "protein_100g": "",
+            "carbs_100g": "",
+            "fat_100g": "",
+            "fiber_100g": "",
+            "sodium_100g": "",
+            "sugar_100g": "",
+            "saturated_fat_100g": "",
+            "source": "ai_estimated",
+            "aliases": "{}",
+            "search_text": item["name"].lower(),
+            "brands": item.get("brands", ""),
+            "original_name_en": item.get("name_en", ""),
+        }
+        for item in items
+    ]
 
 
 def _safe(val) -> float | None:
@@ -239,12 +261,17 @@ async def enrich(
     all_enriched = list(existing_rows)
 
     for i in range(0, len(pending), BATCH_SIZE):
-        batch = pending[i: i + BATCH_SIZE]
+        batch = pending[i : i + BATCH_SIZE]
         batch_num = i // BATCH_SIZE + 1
         category = batch[0].get("category", "outros")
 
-        log.info("Lote %d/%d | categoria: %s | %d itens",
-                 batch_num, total_batches, category, len(batch))
+        log.info(
+            "Lote %d/%d | categoria: %s | %d itens",
+            batch_num,
+            total_batches,
+            category,
+            len(batch),
+        )
 
         enriched = await _estimate_batch(client, batch, category)
         all_enriched.extend(enriched)
@@ -254,8 +281,12 @@ async def enrich(
 
         if batch_num % 10 == 0:
             with_nutrients = sum(1 for r in all_enriched if r.get("calories_100g"))
-            log.info("  → %d/%d salvos, %d com nutrientes",
-                     len(all_enriched), len(all_items), with_nutrients)
+            log.info(
+                "  → %d/%d salvos, %d com nutrientes",
+                len(all_enriched),
+                len(all_items),
+                with_nutrients,
+            )
 
         if batch_num < total_batches:
             await asyncio.sleep(1)
@@ -278,7 +309,9 @@ def _write(path: Path, rows: list[dict]) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--input", default="../data/processed/alimentos_para_enriquecer.csv")
+    ap.add_argument(
+        "--input", default="../data/processed/alimentos_para_enriquecer.csv"
+    )
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--resume", action="store_true")
     args = ap.parse_args()
