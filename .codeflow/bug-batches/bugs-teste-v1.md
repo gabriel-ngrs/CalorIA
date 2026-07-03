@@ -72,6 +72,27 @@ testes de integração (avaliação C.2 APROVADO 9.5).
 
 Estes 3 saíram de `⚠` para `✓` na tabela acima.
 
+## Validação com stack completo (2026-07-03, tarde)
+Docker religado. Subido `postgres/redis/backend/celery_worker` via
+`docker-compose.dev.yml`; migrações aplicadas à mão (CI/CD desabilitado):
+`birth_date` (A.1) e label `WEB` no enum (C.2) aplicaram sem erro em PG real —
+schema conferido (`age` ausente, `birth_date` presente; enum
+`TELEGRAM/WHATSAPP/WEB`).
+
+- **Suíte:** unit **59 passando**, integração **78 passando** (determinístico).
+- **C.2 end-to-end (Groq real):** `POST /ai/insights` `type=question` →
+  resposta real; `GET /ai/conversations` devolve o par user/model; linha em
+  `ai_conversations` com `channel=WEB`, `external_chat_id=web:{user_id}`,
+  2 mensagens. **AC-C2 confirmado em runtime.**
+
+### Bug encontrado e corrigido durante a validação (D.2)
+`create_reset_token` não tinha `jti`/`iat` → dois tokens de reset do mesmo
+usuário no mesmo segundo saíam **idênticos**; com o single-use por blacklist
+Redis, o segundo reset legítimo era invalidado (400). Também deixava o teste de
+integração de reset **flaky** (`TRUNCATE ... RESTART IDENTITY` fixa `user_id=1`
++ Redis compartilhado entre testes). **Fix:** `jti` uuid4 no token de reset +
+teste de regressão (`TestCreateResetToken`). Commit `c31bc38`.
+
 ## Backlog de specs — bugs bloqueados (features / mudança quebradora)
 Cada item abaixo saiu do loop de bugfix por exigir design/escopo maior. Pegar
 para `/create-spec`:
