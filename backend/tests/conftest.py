@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncGenerator
 
@@ -48,16 +49,33 @@ _TRUNCATE_TABLES = (
 # ---------------------------------------------------------------------------
 
 
+async def _reset_schema() -> None:
+    engine = create_async_engine(TEST_DATABASE_URL)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    finally:
+        await engine.dispose()
+
+
+# Recria o schema no import do conftest, num event loop próprio e descartável.
+# Fazê-lo aqui (e não numa fixture async session-scoped) garante que as tabelas
+# existam antes de qualquer coleta, independentemente da ordem dos testes — do
+# contrário uma seleção só-unit (ex.: `make test-unit`) rodaria sem o schema e o
+# TRUNCATE de `clean_db` falharia no teardown (engine async é loop-bound).
+asyncio.run(_reset_schema())
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def setup_test_database() -> AsyncGenerator[None, None]:
-    """Cria as tabelas antes dos testes e remove ao final."""
-    async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    """Schema já criado no import (ver _reset_schema); remove ao final da sessão."""
     yield
-    async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await _engine.dispose()
+    try:
+        async with _engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+    finally:
+        await _engine.dispose()
 
 
 # ---------------------------------------------------------------------------
