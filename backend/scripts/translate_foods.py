@@ -31,7 +31,6 @@ import json
 import logging
 import os
 import re
-import time
 from pathlib import Path
 
 from groq import Groq
@@ -157,7 +156,9 @@ async def translate(
         all_rows = list(csv.DictReader(f))
 
     # Separa quem precisa de tradução
-    to_translate = [r for r in all_rows if _needs_translation(r) and r["name"] not in done]
+    to_translate = [
+        r for r in all_rows if _needs_translation(r) and r["name"] not in done
+    ]
     already_pt = [r for r in all_rows if not _needs_translation(r)]
 
     log.info("Total de alimentos:    %d", len(all_rows))
@@ -200,7 +201,9 @@ async def translate(
             await asyncio.sleep(1)
 
     log.info("─" * 50)
-    log.info("Tradução concluída: %d nomes traduzidos → %s", len(translations), output_path)
+    log.info(
+        "Tradução concluída: %d nomes traduzidos → %s", len(translations), output_path
+    )
 
 
 def _write_output(

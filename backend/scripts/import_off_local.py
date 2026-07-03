@@ -48,7 +48,6 @@ from __future__ import annotations
 import asyncio
 import csv
 import gzip
-import io
 import json
 import logging
 import sys
@@ -66,39 +65,85 @@ BATCH_SIZE = 500
 LOG_EVERY = 5_000
 
 _CATEGORY_KEYWORDS: list[tuple[str, str]] = [
-    ("meat", "carnes"), ("poultry", "carnes"), ("beef", "carnes"),
-    ("pork", "carnes"), ("chicken", "carnes"), ("turkey", "carnes"),
-    ("lamb", "carnes"), ("sausage", "carnes"), ("ham", "carnes"),
+    ("meat", "carnes"),
+    ("poultry", "carnes"),
+    ("beef", "carnes"),
+    ("pork", "carnes"),
+    ("chicken", "carnes"),
+    ("turkey", "carnes"),
+    ("lamb", "carnes"),
+    ("sausage", "carnes"),
+    ("ham", "carnes"),
     ("deli", "carnes"),
-    ("fish", "peixes"), ("seafood", "peixes"), ("shrimp", "peixes"),
-    ("tuna", "peixes"), ("salmon", "peixes"),
-    ("dair", "laticinios"), ("cheese", "laticinios"), ("yogurt", "laticinios"),
-    ("milk", "laticinios"), ("butter", "laticinios"), ("cream", "laticinios"),
-    ("whey", "laticinios"), ("fermented-milk", "laticinios"),
-    ("beverage", "bebidas"), ("drink", "bebidas"), ("juice", "bebidas"),
-    ("water", "bebidas"), ("coffee", "bebidas"), ("tea", "bebidas"),
-    ("soda", "bebidas"), ("beer", "bebidas"), ("wine", "bebidas"),
-    ("alcoholic", "bebidas"), ("smoothie", "bebidas"),
-    ("cocoa-powder", "bebidas"), ("instant-beverage", "bebidas"),
+    ("fish", "peixes"),
+    ("seafood", "peixes"),
+    ("shrimp", "peixes"),
+    ("tuna", "peixes"),
+    ("salmon", "peixes"),
+    ("dair", "laticinios"),
+    ("cheese", "laticinios"),
+    ("yogurt", "laticinios"),
+    ("milk", "laticinios"),
+    ("butter", "laticinios"),
+    ("cream", "laticinios"),
+    ("whey", "laticinios"),
+    ("fermented-milk", "laticinios"),
+    ("beverage", "bebidas"),
+    ("drink", "bebidas"),
+    ("juice", "bebidas"),
+    ("water", "bebidas"),
+    ("coffee", "bebidas"),
+    ("tea", "bebidas"),
+    ("soda", "bebidas"),
+    ("beer", "bebidas"),
+    ("wine", "bebidas"),
+    ("alcoholic", "bebidas"),
+    ("smoothie", "bebidas"),
+    ("cocoa-powder", "bebidas"),
+    ("instant-beverage", "bebidas"),
     ("fruit", "frutas"),
-    ("vegetable", "vegetais"), ("plant-based", "vegetais"),
-    ("legume", "leguminosas"), ("bean", "leguminosas"),
-    ("lentil", "leguminosas"), ("chickpea", "leguminosas"),
-    ("bread", "paes"), ("toast", "paes"),
-    ("pasta", "massas"), ("noodle", "massas"),
-    ("cereal", "cereais"), ("oat", "cereais"), ("flour", "cereais"),
+    ("vegetable", "vegetais"),
+    ("plant-based", "vegetais"),
+    ("legume", "leguminosas"),
+    ("bean", "leguminosas"),
+    ("lentil", "leguminosas"),
+    ("chickpea", "leguminosas"),
+    ("bread", "paes"),
+    ("toast", "paes"),
+    ("pasta", "massas"),
+    ("noodle", "massas"),
+    ("cereal", "cereais"),
+    ("oat", "cereais"),
+    ("flour", "cereais"),
     ("grain", "cereais"),
-    ("cocoa", "acucares"), ("chocolate", "acucares"), ("candy", "acucares"),
-    ("sweet", "acucares"), ("biscuit", "acucares"), ("cracker", "acucares"),
-    ("cookie", "acucares"), ("cake", "acucares"), ("sugar", "acucares"),
-    ("confection", "acucares"), ("dessert", "acucares"),
-    ("ice-cream", "acucares"), ("snack", "acucares"),
-    ("fat", "gorduras"), ("oil", "gorduras"), ("nut", "gorduras"),
-    ("seed", "gorduras"), ("margarine", "gorduras"),
-    ("meal", "pratos"), ("soup", "pratos"), ("stew", "pratos"),
-    ("frozen", "pratos"), ("pizza", "pratos"), ("sandwich", "pratos"),
-    ("fast-food", "fastfood"), ("burger", "fastfood"),
+    ("cocoa", "acucares"),
+    ("chocolate", "acucares"),
+    ("candy", "acucares"),
+    ("sweet", "acucares"),
+    ("biscuit", "acucares"),
+    ("cracker", "acucares"),
+    ("cookie", "acucares"),
+    ("cake", "acucares"),
+    ("sugar", "acucares"),
+    ("confection", "acucares"),
+    ("dessert", "acucares"),
+    ("ice-cream", "acucares"),
+    ("snack", "acucares"),
+    ("fat", "gorduras"),
+    ("oil", "gorduras"),
+    ("nut", "gorduras"),
+    ("seed", "gorduras"),
+    ("margarine", "gorduras"),
+    ("meal", "pratos"),
+    ("soup", "pratos"),
+    ("stew", "pratos"),
+    ("frozen", "pratos"),
+    ("pizza", "pratos"),
+    ("sandwich", "pratos"),
+    ("fast-food", "fastfood"),
+    ("burger", "fastfood"),
 ]
+
 
 def _normalize(text: str) -> str:
     nfkd = unicodedata.normalize("NFKD", text)
@@ -128,9 +173,7 @@ def _is_brazil(product: dict) -> bool:
 
 
 def _parse_product(product: dict) -> dict | None:
-    name = (
-        product.get("product_name_pt") or product.get("product_name") or ""
-    ).strip()
+    name = (product.get("product_name_pt") or product.get("product_name") or "").strip()
 
     if not name or len(name) > 200 or not _is_latin_name(name):
         return None
@@ -144,8 +187,7 @@ def _parse_product(product: dict) -> dict | None:
 
     try:
         calories = float(
-            nutriments.get("energy-kcal_100g")
-            or nutriments.get("energy_100g") or 0
+            nutriments.get("energy-kcal_100g") or nutriments.get("energy_100g") or 0
         )
         protein = float(nutriments.get("proteins_100g") or 0)
         carbs = float(nutriments.get("carbohydrates_100g") or 0)
@@ -182,7 +224,12 @@ def _parse_product(product: dict) -> dict | None:
     if brands_raw:
         for brand in brands_raw.split(","):
             brand = brand.strip()
-            if brand and brand.lower() != name.lower() and brand not in aliases and len(brand) <= 100:
+            if (
+                brand
+                and brand.lower() != name.lower()
+                and brand not in aliases
+                and len(brand) <= 100
+            ):
                 aliases.append(brand)
 
     barcode = str(product.get("code") or "").strip() or None
@@ -272,10 +319,22 @@ def _detect_format(path: Path) -> str:
 
 
 _CSV_FIELDS = [
-    "name", "aliases", "category", "preparation", "notes", "source",
-    "external_id", "search_text", "calories_100g", "protein_100g",
-    "carbs_100g", "fat_100g", "fiber_100g", "sodium_100g",
-    "sugar_100g", "saturated_fat_100g",
+    "name",
+    "aliases",
+    "category",
+    "preparation",
+    "notes",
+    "source",
+    "external_id",
+    "search_text",
+    "calories_100g",
+    "protein_100g",
+    "carbs_100g",
+    "fat_100g",
+    "fiber_100g",
+    "sodium_100g",
+    "sugar_100g",
+    "saturated_fat_100g",
 ]
 
 
@@ -304,8 +363,12 @@ def _collect_foods(
         if scanned % LOG_EVERY == 0:
             logger.info(
                 "Lidos: %d | Válidos: %d/%d | Ignorados: qualidade=%d país=%d dup=%d",
-                scanned, inserted, limit,
-                skipped_quality, skipped_country, skipped_duplicate,
+                scanned,
+                inserted,
+                limit,
+                skipped_quality,
+                skipped_country,
+                skipped_duplicate,
             )
 
         if not all_countries and not _is_brazil(product):
@@ -324,7 +387,9 @@ def _collect_foods(
         if food["name"] in existing_names:
             brands_raw = (product.get("brands") or "").strip()
             if brands_raw:
-                food["name"] = f"{food['name']} ({brands_raw.split(',')[0].strip()})"[:200]
+                food["name"] = f"{food['name']} ({brands_raw.split(',')[0].strip()})"[
+                    :200
+                ]
             if food["name"] in existing_names:
                 skipped_duplicate += 1
                 continue
@@ -341,7 +406,8 @@ def _collect_foods(
             break
 
     stats = {
-        "scanned": scanned, "inserted": inserted,
+        "scanned": scanned,
+        "inserted": inserted,
         "skipped_country": skipped_country,
         "skipped_quality": skipped_quality,
         "skipped_duplicate": skipped_duplicate,
@@ -372,8 +438,11 @@ async def import_local(
     # Modo CSV: não precisa do banco para coletar
     if output_path:
         foods, stats = _collect_foods(
-            file_path, limit, all_countries,
-            existing_names=set(), existing_barcodes=set(),
+            file_path,
+            limit,
+            all_countries,
+            existing_names=set(),
+            existing_barcodes=set(),
         )
         _log_stats(stats, dry_run=False)
         if not dry_run:
@@ -382,7 +451,7 @@ async def import_local(
 
     # Modo banco de dados
     from sqlalchemy import delete, select
-    from sqlalchemy import text as sa_text
+
     from app.core.database import AsyncSessionLocal
     from app.models.food import Food
 
@@ -392,7 +461,10 @@ async def import_local(
                 delete(Food).where(Food.source == "openfoodfacts")
             )
             await db.commit()
-            logger.info("Removidos %d registros existentes do Open Food Facts.", deleted.rowcount)
+            logger.info(
+                "Removidos %d registros existentes do Open Food Facts.",
+                deleted.rowcount,
+            )
 
         existing_names: set[str] = set(
             row[0] for row in (await db.execute(select(Food.name))).all()
@@ -436,6 +508,8 @@ def _log_stats(stats: dict, dry_run: bool) -> None:
 
 
 async def _flush(db, batch: list[dict]) -> None:
+    from sqlalchemy import text as sa_text
+
     await db.execute(
         sa_text("""
             INSERT INTO foods
@@ -500,7 +574,8 @@ def main() -> None:
     logger.info("Importando Open Food Facts — arquivo local")
     logger.info(
         "  Arquivo: %s | Limite: %d | País: %s | saída: %s",
-        file_path, limit,
+        file_path,
+        limit,
         "todos" if all_countries else "brasil",
         output_path or "banco de dados",
     )

@@ -4,11 +4,15 @@ import asyncio
 import base64
 import hashlib
 import logging
+from typing import TYPE_CHECKING, Any, cast
 
 import redis.asyncio as aioredis
 from groq import AsyncGroq
 
 from app.core.config import settings
+
+if TYPE_CHECKING:
+    from groq.types.chat import ChatCompletionMessageParam
 
 logger = logging.getLogger(__name__)
 
@@ -61,22 +65,27 @@ class AIClient:
     ) -> str:
         """Gera texto a partir de imagem via Groq Vision (sem cache)."""
         b64 = base64.b64encode(image_bytes).decode()
-        messages = []
+        messages: list[dict[str, Any]] = []
         if system:
             messages.append({"role": "system", "content": system})
-        messages.append({
-            "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
-                {"type": "text", "text": prompt},
-            ],
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{b64}"},
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        )
 
         for attempt in range(4):
             try:
                 response = await self._groq.chat.completions.create(
                     model=_VISION_MODEL,
-                    messages=messages,
+                    messages=cast("list[ChatCompletionMessageParam]", messages),
                     temperature=0.1,
                 )
                 return response.choices[0].message.content or ""
@@ -94,7 +103,7 @@ class AIClient:
     # ------------------------------------------------------------------
 
     async def _call(self, prompt: str, *, system: str | None, model: str) -> str:
-        messages = []
+        messages: list[dict[str, Any]] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
@@ -103,7 +112,7 @@ class AIClient:
             try:
                 response = await self._groq.chat.completions.create(
                     model=model,
-                    messages=messages,
+                    messages=cast("list[ChatCompletionMessageParam]", messages),
                     temperature=0.1 if system else 0.3,
                 )
                 content = response.choices[0].message.content or ""
@@ -116,7 +125,11 @@ class AIClient:
             except Exception as exc:
                 if "429" in str(exc) and attempt < 3:
                     wait = 15 * (2**attempt)
-                    logger.warning("Rate limit Groq — aguardando %ds (tentativa %d/4)", wait, attempt + 1)
+                    logger.warning(
+                        "Rate limit Groq — aguardando %ds (tentativa %d/4)",
+                        wait,
+                        attempt + 1,
+                    )
                     await asyncio.sleep(wait)
                 else:
                     raise
@@ -132,15 +145,19 @@ class AIClient:
 
     async def _get_cached(self, key: str) -> str | None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
-                return await r.get(key)
+            async with aioredis.from_url(  # type: ignore[no-untyped-call]
+                settings.REDIS_URL, decode_responses=True
+            ) as r:
+                return cast("str | None", await r.get(key))
         except Exception as exc:
             logger.warning("Falha ao ler cache (Redis): %s", exc)
             return None
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
-            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+            async with aioredis.from_url(  # type: ignore[no-untyped-call]
+                settings.REDIS_URL, decode_responses=True
+            ) as r:
                 await r.setex(key, _CACHE_TTL, value)
         except Exception as exc:
             logger.warning("Falha ao gravar cache (Redis): %s", exc)

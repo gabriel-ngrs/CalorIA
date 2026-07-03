@@ -25,7 +25,6 @@ import argparse
 import csv
 import logging
 import re
-import unicodedata
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -35,38 +34,82 @@ log = logging.getLogger(__name__)
 # Mapeamento OFF categories → categorias CalorIA
 # ---------------------------------------------------------------------------
 CATEGORY_MAP: list[tuple[str, str]] = [
-    ("meat", "carnes"), ("beef", "carnes"), ("pork", "carnes"),
-    ("poultry", "carnes"), ("chicken", "carnes"), ("turkey", "carnes"),
-    ("sausage", "carnes"), ("ham", "carnes"), ("deli", "carnes"),
-    ("fish", "peixes"), ("seafood", "peixes"), ("shrimp", "peixes"),
-    ("tuna", "peixes"), ("salmon", "peixes"), ("shellfish", "peixes"),
-    ("dairy", "laticinios"), ("cheese", "laticinios"), ("yogurt", "laticinios"),
-    ("milk", "laticinios"), ("butter", "laticinios"), ("cream", "laticinios"),
+    ("meat", "carnes"),
+    ("beef", "carnes"),
+    ("pork", "carnes"),
+    ("poultry", "carnes"),
+    ("chicken", "carnes"),
+    ("turkey", "carnes"),
+    ("sausage", "carnes"),
+    ("ham", "carnes"),
+    ("deli", "carnes"),
+    ("fish", "peixes"),
+    ("seafood", "peixes"),
+    ("shrimp", "peixes"),
+    ("tuna", "peixes"),
+    ("salmon", "peixes"),
+    ("shellfish", "peixes"),
+    ("dairy", "laticinios"),
+    ("cheese", "laticinios"),
+    ("yogurt", "laticinios"),
+    ("milk", "laticinios"),
+    ("butter", "laticinios"),
+    ("cream", "laticinios"),
     ("whey", "laticinios"),
-    ("beverage", "bebidas"), ("drink", "bebidas"), ("juice", "bebidas"),
-    ("water", "bebidas"), ("coffee", "bebidas"), ("tea", "bebidas"),
-    ("soda", "bebidas"), ("beer", "bebidas"), ("wine", "bebidas"),
+    ("beverage", "bebidas"),
+    ("drink", "bebidas"),
+    ("juice", "bebidas"),
+    ("water", "bebidas"),
+    ("coffee", "bebidas"),
+    ("tea", "bebidas"),
+    ("soda", "bebidas"),
+    ("beer", "bebidas"),
+    ("wine", "bebidas"),
     ("alcoholic", "bebidas"),
     ("fruit", "frutas"),
-    ("vegetable", "verduras_legumes"), ("legume", "leguminosas"),
-    ("bean", "leguminosas"), ("lentil", "leguminosas"),
-    ("bread", "paes_massas"), ("pasta", "paes_massas"),
-    ("noodle", "paes_massas"), ("toast", "paes_massas"),
-    ("cereal", "cereais"), ("oat", "cereais"), ("flour", "cereais"),
-    ("grain", "cereais"), ("rice", "cereais"),
-    ("chocolate", "doces"), ("candy", "doces"), ("sweet", "doces"),
-    ("biscuit", "doces"), ("cookie", "doces"), ("cake", "doces"),
-    ("sugar", "doces"), ("confection", "doces"), ("dessert", "doces"),
-    ("ice-cream", "doces"), ("snack", "snacks"), ("chip", "snacks"),
-    ("cracker", "snacks"), ("popcorn", "snacks"),
-    ("oil", "gorduras_oleos"), ("fat", "gorduras_oleos"),
+    ("vegetable", "verduras_legumes"),
+    ("legume", "leguminosas"),
+    ("bean", "leguminosas"),
+    ("lentil", "leguminosas"),
+    ("bread", "paes_massas"),
+    ("pasta", "paes_massas"),
+    ("noodle", "paes_massas"),
+    ("toast", "paes_massas"),
+    ("cereal", "cereais"),
+    ("oat", "cereais"),
+    ("flour", "cereais"),
+    ("grain", "cereais"),
+    ("rice", "cereais"),
+    ("chocolate", "doces"),
+    ("candy", "doces"),
+    ("sweet", "doces"),
+    ("biscuit", "doces"),
+    ("cookie", "doces"),
+    ("cake", "doces"),
+    ("sugar", "doces"),
+    ("confection", "doces"),
+    ("dessert", "doces"),
+    ("ice-cream", "doces"),
+    ("snack", "snacks"),
+    ("chip", "snacks"),
+    ("cracker", "snacks"),
+    ("popcorn", "snacks"),
+    ("oil", "gorduras_oleos"),
+    ("fat", "gorduras_oleos"),
     ("margarine", "gorduras_oleos"),
-    ("nut", "oleaginosas"), ("seed", "oleaginosas"), ("almond", "oleaginosas"),
-    ("sauce", "molhos_temperos"), ("condiment", "molhos_temperos"),
-    ("spice", "molhos_temperos"), ("seasoning", "molhos_temperos"),
-    ("soup", "pratos_prontos"), ("meal", "pratos_prontos"),
-    ("frozen", "pratos_prontos"), ("pizza", "pratos_prontos"),
-    ("sandwich", "pratos_prontos"), ("burger", "pratos_prontos"),
+    ("nut", "oleaginosas"),
+    ("seed", "oleaginosas"),
+    ("almond", "oleaginosas"),
+    ("sauce", "molhos_temperos"),
+    ("condiment", "molhos_temperos"),
+    ("spice", "molhos_temperos"),
+    ("seasoning", "molhos_temperos"),
+    ("soup", "pratos_prontos"),
+    ("meal", "pratos_prontos"),
+    ("frozen", "pratos_prontos"),
+    ("pizza", "pratos_prontos"),
+    ("sandwich", "pratos_prontos"),
+    ("burger", "pratos_prontos"),
     ("baby", "infantil"),
 ]
 
@@ -119,6 +162,7 @@ def _best_name(row: dict) -> str:
 # Validação nutricional
 # ---------------------------------------------------------------------------
 
+
 def _to_float(val: str) -> float | None:
     if val is None or str(val).strip() == "":
         return None
@@ -164,15 +208,33 @@ def _sanity_check(row: dict) -> bool:
 # Campos de saída
 # ---------------------------------------------------------------------------
 OUT_FIELDS = [
-    "name", "aliases", "category", "source", "external_id",
-    "search_text", "calories_100g", "protein_100g", "carbs_100g",
-    "fat_100g", "fiber_100g", "sodium_100g", "sugar_100g",
-    "saturated_fat_100g", "brands", "original_name_en",
+    "name",
+    "aliases",
+    "category",
+    "source",
+    "external_id",
+    "search_text",
+    "calories_100g",
+    "protein_100g",
+    "carbs_100g",
+    "fat_100g",
+    "fiber_100g",
+    "sodium_100g",
+    "sugar_100g",
+    "saturated_fat_100g",
+    "brands",
+    "original_name_en",
 ]
 
 ENRICH_FIELDS = [
-    "name", "name_en", "brands", "categories", "category", "source",
-    "external_id", "countries",
+    "name",
+    "name_en",
+    "brands",
+    "categories",
+    "category",
+    "source",
+    "external_id",
+    "countries",
 ]
 
 
@@ -190,6 +252,7 @@ def _build_search_text(name: str, aliases_str: str, brands: str) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def normalize(input_path: Path, out_clean: Path, out_enrich: Path) -> None:
     seen_barcodes: dict[str, dict] = {}  # barcode → melhor row
@@ -232,17 +295,15 @@ def normalize(input_path: Path, out_clean: Path, out_enrich: Path) -> None:
     enrich: list[dict] = []
 
     # Primeiro processa os que têm barcode (já deduplicados)
-    for barcode, row in seen_barcodes.items():
-        _process_row(row, seen_names, clean, enrich,
-                     discarded_ref=[discarded_sanity])
+    for _barcode, row in seen_barcodes.items():
+        _process_row(row, seen_names, clean, enrich, discarded_ref=[discarded_sanity])
 
     # Depois os sem barcode
     for row in rows_all:
         barcode = (row.get("barcode") or row.get("external_id") or "").strip()
         if barcode and barcode != "None" and barcode in seen_barcodes:
             continue  # já processado
-        _process_row(row, seen_names, clean, enrich,
-                     discarded_ref=[discarded_sanity])
+        _process_row(row, seen_names, clean, enrich, discarded_ref=[discarded_sanity])
 
     # Salva
     _write_clean(out_clean, clean)
@@ -303,28 +364,32 @@ def _process_row(
         if not _sanity_check(row):
             discarded_ref[0] += 1
             return
-        clean.append({
-            **base,
-            "calories_100g": row.get("calories_100g", ""),
-            "protein_100g": row.get("protein_100g", ""),
-            "carbs_100g": row.get("carbs_100g", ""),
-            "fat_100g": row.get("fat_100g", ""),
-            "fiber_100g": row.get("fiber_100g", ""),
-            "sodium_100g": row.get("sodium_100g", ""),
-            "sugar_100g": row.get("sugar_100g", ""),
-            "saturated_fat_100g": row.get("saturated_fat_100g", ""),
-        })
+        clean.append(
+            {
+                **base,
+                "calories_100g": row.get("calories_100g", ""),
+                "protein_100g": row.get("protein_100g", ""),
+                "carbs_100g": row.get("carbs_100g", ""),
+                "fat_100g": row.get("fat_100g", ""),
+                "fiber_100g": row.get("fiber_100g", ""),
+                "sodium_100g": row.get("sodium_100g", ""),
+                "sugar_100g": row.get("sugar_100g", ""),
+                "saturated_fat_100g": row.get("saturated_fat_100g", ""),
+            }
+        )
     else:
-        enrich.append({
-            "name": name,
-            "name_en": name_en,
-            "brands": brands,
-            "categories": row.get("categories", ""),
-            "category": category,
-            "source": row.get("source", "openfoodfacts"),
-            "external_id": barcode,
-            "countries": row.get("countries", ""),
-        })
+        enrich.append(
+            {
+                "name": name,
+                "name_en": name_en,
+                "brands": brands,
+                "categories": row.get("categories", ""),
+                "category": category,
+                "source": row.get("source", "openfoodfacts"),
+                "external_id": barcode,
+                "countries": row.get("countries", ""),
+            }
+        )
 
 
 def _write_clean(path: Path, rows: list[dict]) -> None:

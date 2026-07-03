@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user_id, get_db
 from app.models.meal import MealType
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
-from app.services.meal_service import MealService, MealItemNotFound
+from app.services.meal_service import MealItemNotFoundError, MealService
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 
@@ -97,7 +97,7 @@ async def delete_meal_item(
     """Remove um item individual de uma refeição."""
     try:
         await MealService(db).delete_meal_item(user_id, meal_id, item_id)
-    except MealItemNotFound:
+    except MealItemNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado"
-        )
+        ) from None

@@ -46,16 +46,15 @@ import logging
 import os
 import random
 import string
+import sys
 import time
 import urllib.parse
 from pathlib import Path
 
-import sys
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy import text as sa_text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -76,62 +75,184 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 SEARCH_TERMS = [
     # Grains & cereals
-    "white rice cooked", "brown rice cooked", "black beans cooked",
-    "pinto beans cooked", "lentils cooked", "chickpeas cooked",
-    "corn", "cornmeal", "cassava flour", "wheat flour", "oats",
-    "quinoa", "couscous", "pasta cooked", "whole wheat pasta",
+    "white rice cooked",
+    "brown rice cooked",
+    "black beans cooked",
+    "pinto beans cooked",
+    "lentils cooked",
+    "chickpeas cooked",
+    "corn",
+    "cornmeal",
+    "cassava flour",
+    "wheat flour",
+    "oats",
+    "quinoa",
+    "couscous",
+    "pasta cooked",
+    "whole wheat pasta",
     # Poultry
-    "grilled chicken breast", "chicken breast", "chicken thigh",
-    "chicken drumstick", "chicken wing", "roasted chicken", "turkey breast",
+    "grilled chicken breast",
+    "chicken breast",
+    "chicken thigh",
+    "chicken drumstick",
+    "chicken wing",
+    "roasted chicken",
+    "turkey breast",
     # Beef
-    "ground beef", "beef steak", "beef sirloin", "beef tenderloin",
-    "beef chuck", "beef ribs", "beef liver", "beef heart",
+    "ground beef",
+    "beef steak",
+    "beef sirloin",
+    "beef tenderloin",
+    "beef chuck",
+    "beef ribs",
+    "beef liver",
+    "beef heart",
     # Pork & processed meats
-    "pork sausage", "smoked sausage", "ham", "prosciutto",
-    "bacon", "pepperoni", "salami", "hot dog",
+    "pork sausage",
+    "smoked sausage",
+    "ham",
+    "prosciutto",
+    "bacon",
+    "pepperoni",
+    "salami",
+    "hot dog",
     # Fish & seafood
-    "canned tuna", "canned sardine", "salmon", "tilapia",
-    "cod fish", "shrimp", "crab", "squid",
+    "canned tuna",
+    "canned sardine",
+    "salmon",
+    "tilapia",
+    "cod fish",
+    "shrimp",
+    "crab",
+    "squid",
     # Eggs
-    "boiled egg", "fried egg", "scrambled eggs", "poached egg",
+    "boiled egg",
+    "fried egg",
+    "scrambled eggs",
+    "poached egg",
     # Dairy
-    "whole milk", "skim milk", "semi-skim milk",
-    "mozzarella cheese", "cheddar cheese", "cottage cheese",
-    "cream cheese", "plain yogurt", "greek yogurt",
-    "butter", "margarine", "heavy cream", "sour cream",
+    "whole milk",
+    "skim milk",
+    "semi-skim milk",
+    "mozzarella cheese",
+    "cheddar cheese",
+    "cottage cheese",
+    "cream cheese",
+    "plain yogurt",
+    "greek yogurt",
+    "butter",
+    "margarine",
+    "heavy cream",
+    "sour cream",
     # Fruits
-    "banana", "apple", "orange", "papaya", "mango", "pineapple",
-    "grapes", "strawberry", "watermelon", "cantaloupe", "pear",
-    "peach", "guava", "avocado", "coconut", "passion fruit",
-    "acai", "lemon", "lime", "kiwi", "plum",
+    "banana",
+    "apple",
+    "orange",
+    "papaya",
+    "mango",
+    "pineapple",
+    "grapes",
+    "strawberry",
+    "watermelon",
+    "cantaloupe",
+    "pear",
+    "peach",
+    "guava",
+    "avocado",
+    "coconut",
+    "passion fruit",
+    "acai",
+    "lemon",
+    "lime",
+    "kiwi",
+    "plum",
     # Vegetables
-    "lettuce", "tomato", "onion", "garlic", "potato", "sweet potato",
-    "carrot", "beet", "zucchini", "eggplant", "broccoli",
-    "kale", "spinach", "arugula", "cucumber", "bell pepper",
-    "chayote", "cassava", "yam", "okra", "green beans", "peas",
-    "corn on cob", "palm heart", "cabbage", "cauliflower",
+    "lettuce",
+    "tomato",
+    "onion",
+    "garlic",
+    "potato",
+    "sweet potato",
+    "carrot",
+    "beet",
+    "zucchini",
+    "eggplant",
+    "broccoli",
+    "kale",
+    "spinach",
+    "arugula",
+    "cucumber",
+    "bell pepper",
+    "chayote",
+    "cassava",
+    "yam",
+    "okra",
+    "green beans",
+    "peas",
+    "corn on cob",
+    "palm heart",
+    "cabbage",
+    "cauliflower",
     # Breads & bakery
-    "french bread", "white bread", "whole wheat bread",
-    "cheese bread", "crackers", "cornstarch cookies",
-    "lasagna", "pizza", "tapioca",
+    "french bread",
+    "white bread",
+    "whole wheat bread",
+    "cheese bread",
+    "crackers",
+    "cornstarch cookies",
+    "lasagna",
+    "pizza",
+    "tapioca",
     # Brazilian dishes
-    "feijoada", "moqueca", "coxinha", "brigadeiro", "pudim",
+    "feijoada",
+    "moqueca",
+    "coxinha",
+    "brigadeiro",
+    "pudim",
     "pao de queijo",
     # Beverages
-    "orange juice", "grape juice", "coconut water",
-    "cola soda", "beer", "red wine", "white wine", "coffee",
+    "orange juice",
+    "grape juice",
+    "coconut water",
+    "cola soda",
+    "beer",
+    "red wine",
+    "white wine",
+    "coffee",
     # Nuts & seeds
-    "peanuts", "brazil nuts", "cashew nuts", "almonds",
-    "walnuts", "sunflower seeds", "pumpkin seeds", "chia seeds",
+    "peanuts",
+    "brazil nuts",
+    "cashew nuts",
+    "almonds",
+    "walnuts",
+    "sunflower seeds",
+    "pumpkin seeds",
+    "chia seeds",
     # Condiments & oils
-    "mayonnaise", "ketchup", "tomato sauce", "olive oil",
-    "soybean oil", "sunflower oil", "sugar", "honey", "jam",
+    "mayonnaise",
+    "ketchup",
+    "tomato sauce",
+    "olive oil",
+    "soybean oil",
+    "sunflower oil",
+    "sugar",
+    "honey",
+    "jam",
     # Snacks & sweets
-    "chocolate", "milk chocolate", "dark chocolate",
-    "potato chips", "popcorn", "granola bar", "cereal bar",
+    "chocolate",
+    "milk chocolate",
+    "dark chocolate",
+    "potato chips",
+    "popcorn",
+    "granola bar",
+    "cereal bar",
     # Prepared foods
-    "hamburger", "chicken nuggets", "french fries",
-    "beef stew", "chicken soup", "vegetable soup",
+    "hamburger",
+    "chicken nuggets",
+    "french fries",
+    "beef stew",
+    "chicken soup",
+    "vegetable soup",
 ]
 
 # ---------------------------------------------------------------------------
@@ -168,17 +289,20 @@ CATEGORY_MAP = {
 # OAuth 1.0 helpers
 # ---------------------------------------------------------------------------
 
+
 def _oauth_sign(method: str, url: str, params: dict, key: str, secret: str) -> str:
     """Gera OAuth 1.0 signature (HMAC-SHA1)."""
     sorted_params = "&".join(
         f"{urllib.parse.quote(str(k), safe='')}={urllib.parse.quote(str(v), safe='')}"
         for k, v in sorted(params.items())
     )
-    base = "&".join([
-        urllib.parse.quote(method.upper(), safe=""),
-        urllib.parse.quote(url, safe=""),
-        urllib.parse.quote(sorted_params, safe=""),
-    ])
+    base = "&".join(
+        [
+            urllib.parse.quote(method.upper(), safe=""),
+            urllib.parse.quote(url, safe=""),
+            urllib.parse.quote(sorted_params, safe=""),
+        ]
+    )
     signing_key = f"{urllib.parse.quote(secret, safe='')}&"
     signature = hmac.new(signing_key.encode(), base.encode(), hashlib.sha1)
     return base64.b64encode(signature.digest()).decode()
@@ -206,8 +330,12 @@ def _build_params(method: str, url: str, extra: dict, key: str, secret: str) -> 
 BASE_URL = "https://platform.fatsecret.com/rest/server.api"
 
 
-async def _api_call(client: httpx.AsyncClient, key: str, secret: str, method: str, extra: dict) -> dict:
-    params = _build_params("GET", BASE_URL, {"method": method, "format": "json", **extra}, key, secret)
+async def _api_call(
+    client: httpx.AsyncClient, key: str, secret: str, method: str, extra: dict
+) -> dict:
+    params = _build_params(
+        "GET", BASE_URL, {"method": method, "format": "json", **extra}, key, secret
+    )
     resp = await client.get(BASE_URL, params=params, timeout=15)
     resp.raise_for_status()
     return resp.json()
@@ -278,7 +406,9 @@ def _parse_food(food_data: dict) -> dict | None:
         "fiber_100g": round(_f("fiber"), 2),
         "sodium_100g": round(_f("sodium") / 1000, 4) if serving.get("sodium") else None,
         "sugar_100g": round(_f("sugar"), 2) if serving.get("sugar") else None,
-        "saturated_fat_100g": round(_f("saturated_fat"), 2) if serving.get("saturated_fat") else None,
+        "saturated_fat_100g": round(_f("saturated_fat"), 2)
+        if serving.get("saturated_fat")
+        else None,
     }
 
 
@@ -286,10 +416,13 @@ def _parse_food(food_data: dict) -> dict | None:
 # Main import logic
 # ---------------------------------------------------------------------------
 
+
 async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
     key = os.getenv("FATSECRET_KEY")
     secret = os.getenv("FATSECRET_SECRET")
-    db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_db")
+    db_url = os.getenv(
+        "DATABASE_URL", "postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_db"
+    )
 
     if not key or not secret:
         log.error("FATSECRET_KEY e FATSECRET_SECRET devem estar no .env")
@@ -302,9 +435,9 @@ async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
         db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
     engine = create_async_engine(db_url, echo=False)
-    AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    async with AsyncSessionLocal() as session:
+    async with async_session() as session:
         if force and not dry_run:
             log.info("Removendo registros source=fatsecret existentes...")
             await session.execute(delete(Food).where(Food.source == "fatsecret"))
@@ -324,7 +457,10 @@ async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
 
                 try:
                     result = await _api_call(
-                        client, key, secret, "foods.search",
+                        client,
+                        key,
+                        secret,
+                        "foods.search",
                         {"search_expression": term, "max_results": "50"},
                     )
                     api_calls += 1
@@ -340,7 +476,11 @@ async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
                     log.info(f"  Nenhum resultado para '{term}'")
                     continue
 
-                food_ids = [f["food_id"] for f in foods if f.get("food_id") and f["food_id"] not in seen_ids]
+                food_ids = [
+                    f["food_id"]
+                    for f in foods
+                    if f.get("food_id") and f["food_id"] not in seen_ids
+                ]
                 log.info(f"  {len(food_ids)} alimentos encontrados (novos)")
 
                 for food_id in food_ids:
@@ -351,7 +491,10 @@ async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
 
                     try:
                         detail = await _api_call(
-                            client, key, secret, "food.get.v4",
+                            client,
+                            key,
+                            secret,
+                            "food.get.v4",
                             {"food_id": food_id},
                         )
                         api_calls += 1
@@ -370,7 +513,9 @@ async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
                     to_insert.append(parsed)
 
                     if len(to_insert) % 100 == 0:
-                        log.info(f"  {len(to_insert)} alimentos prontos para inserção...")
+                        log.info(
+                            f"  {len(to_insert)} alimentos prontos para inserção..."
+                        )
 
                     # Pausa entre chamadas para respeitar rate limit
                     await asyncio.sleep(0.2)
@@ -394,23 +539,38 @@ async def import_fatsecret(dry_run: bool, force: bool, limit: int) -> None:
         await session.commit()
 
         # Atualiza índice trigrama
-        await session.execute(sa_text("""
+        await session.execute(
+            sa_text("""
             UPDATE foods
             SET search_text = lower(name || ' ' || array_to_string(aliases, ' '))
             WHERE source = 'fatsecret'
-        """))
+        """)
+        )
         await session.commit()
 
-        log.info(f"Importação concluída: {len(to_insert)} alimentos do FatSecret inseridos.")
+        log.info(
+            f"Importação concluída: {len(to_insert)} alimentos do FatSecret inseridos."
+        )
 
     await engine.dispose()
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Importa alimentos do FatSecret Platform API")
+    ap = argparse.ArgumentParser(
+        description="Importa alimentos do FatSecret Platform API"
+    )
     ap.add_argument("--dry-run", action="store_true", help="Não salva nada no banco")
-    ap.add_argument("--force", action="store_true", help="Remove registros fatsecret existentes antes")
-    ap.add_argument("--limit", type=int, default=5000, help="Máximo de alimentos a importar (padrão: 5000)")
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="Remove registros fatsecret existentes antes",
+    )
+    ap.add_argument(
+        "--limit",
+        type=int,
+        default=5000,
+        help="Máximo de alimentos a importar (padrão: 5000)",
+    )
     args = ap.parse_args()
 
     # Carrega .env se existir

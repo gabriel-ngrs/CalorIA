@@ -24,17 +24,28 @@ import gzip
 import json
 import logging
 import sys
-import unicodedata
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 CSV_FIELDS = [
-    "name", "name_pt", "name_en", "barcode", "brands", "categories",
-    "calories_100g", "protein_100g", "carbs_100g", "fat_100g",
-    "fiber_100g", "sodium_100g", "sugar_100g", "saturated_fat_100g",
-    "countries", "source",
+    "name",
+    "name_pt",
+    "name_en",
+    "barcode",
+    "brands",
+    "categories",
+    "calories_100g",
+    "protein_100g",
+    "carbs_100g",
+    "fat_100g",
+    "fiber_100g",
+    "sodium_100g",
+    "sugar_100g",
+    "saturated_fat_100g",
+    "countries",
+    "source",
 ]
 
 LOG_EVERY = 50_000
@@ -131,24 +142,28 @@ def extract(file_path: Path, output_path: Path, limit: int) -> None:
                 countries_tags = [t.strip() for t in countries_tags.split(",")]
             countries = "; ".join(countries_tags[:3])
 
-            writer.writerow({
-                "name": name[:200],
-                "name_pt": name_pt[:200],
-                "name_en": name_en[:200],
-                "barcode": str(product.get("code") or "").strip(),
-                "brands": (product.get("brands") or "").strip()[:200],
-                "categories": categories[:500],
-                "calories_100g": calories,
-                "protein_100g": _safe_float(nutriments.get("proteins_100g")),
-                "carbs_100g": _safe_float(nutriments.get("carbohydrates_100g")),
-                "fat_100g": _safe_float(nutriments.get("fat_100g")),
-                "fiber_100g": _safe_float(nutriments.get("fiber_100g")),
-                "sodium_100g": _safe_float(nutriments.get("sodium_100g")),
-                "sugar_100g": _safe_float(nutriments.get("sugars_100g")),
-                "saturated_fat_100g": _safe_float(nutriments.get("saturated-fat_100g")),
-                "countries": countries,
-                "source": "openfoodfacts",
-            })
+            writer.writerow(
+                {
+                    "name": name[:200],
+                    "name_pt": name_pt[:200],
+                    "name_en": name_en[:200],
+                    "barcode": str(product.get("code") or "").strip(),
+                    "brands": (product.get("brands") or "").strip()[:200],
+                    "categories": categories[:500],
+                    "calories_100g": calories,
+                    "protein_100g": _safe_float(nutriments.get("proteins_100g")),
+                    "carbs_100g": _safe_float(nutriments.get("carbohydrates_100g")),
+                    "fat_100g": _safe_float(nutriments.get("fat_100g")),
+                    "fiber_100g": _safe_float(nutriments.get("fiber_100g")),
+                    "sodium_100g": _safe_float(nutriments.get("sodium_100g")),
+                    "sugar_100g": _safe_float(nutriments.get("sugars_100g")),
+                    "saturated_fat_100g": _safe_float(
+                        nutriments.get("saturated-fat_100g")
+                    ),
+                    "countries": countries,
+                    "source": "openfoodfacts",
+                }
+            )
 
             total_extracted += 1
             if limit and total_extracted >= limit:
@@ -167,7 +182,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--file", required=True, help="Caminho para o .jsonl.gz do OFF")
     ap.add_argument("--output", required=True, help="Arquivo CSV de saída")
-    ap.add_argument("--limit", type=int, default=0, help="Limite de registros (0 = sem limite)")
+    ap.add_argument(
+        "--limit", type=int, default=0, help="Limite de registros (0 = sem limite)"
+    )
     args = ap.parse_args()
 
     file_path = Path(args.file)

@@ -12,7 +12,7 @@ from app.schemas.dashboard import WeeklyMacroPoint
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
 
 
-class MealItemNotFound(Exception):
+class MealItemNotFoundError(Exception):
     pass
 
 
@@ -92,10 +92,10 @@ class MealService:
         """Remove um MealItem verificando que pertence ao usuário."""
         meal = await self.get_meal(user_id, meal_id)
         if not meal:
-            raise MealItemNotFound
+            raise MealItemNotFoundError
         item = next((it for it in meal.items if it.id == item_id), None)
         if not item:
-            raise MealItemNotFound
+            raise MealItemNotFoundError
         await self.db.delete(item)
         await self.db.commit()
 
