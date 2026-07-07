@@ -4,6 +4,7 @@ lote: bugs-incidentais-v1
 origem: bugs-incidentais-v1.txt
 criado: 2026-07-07
 atualizado: 2026-07-07
+verificado: 2026-07-07
 ---
 
 # Lote de bugs: bugs-incidentais-v1
@@ -20,10 +21,10 @@ Legenda da coluna `verificação`: preenchida pelo `/double-check` (`✓` sanado
 ## Bugs
 | id | título | status | repro/teste | fix (arquivo:linha) | decision | verificação |
 |----|--------|--------|-------------|---------------------|----------|-------------|
-| BI1 | manifest.webmanifest com erro de sintaxe | corrigido | repro manual: abrir qualquer página → console sem `Manifest: Line 1 col 1 Syntax error`; `GET /manifest.webmanifest` retorna JSON (200), não HTML de /login | frontend/middleware.ts:11 (add `manifest\.webmanifest` ao negative lookahead) | 2026-07-07-lote-bugs-incidentais-v1.md | — |
-| BI2 | Testes de frontend pré-existentes quebrados (3 testes) | corrigido | `cd frontend && npx jest __tests__/components/dashboard/` (9/9 ✓; suíte completa 90/90 ✓) | frontend/components/dashboard/MacroCards.tsx:122 + frontend/__tests__/components/dashboard/MacroPieChart.test.tsx:32,37 | 2026-07-07-lote-bugs-incidentais-v1.md | — |
-| BI3 | Backend mapeia falha de auth do Groq p/ 500 (esperado 503) | corrigido | tests/unit/test_ai_endpoint_errors.py (não coleta sem Postgres — validado via driver standalone: analyze_meal/analyze_photo → 503) | backend/app/api/v1/ai.py:47,74,95 (except `groq.APIError` → 503) | 2026-07-07-lote-bugs-incidentais-v1.md | — |
-| BI4 | Recuperação de senha inacessível p/ deslogado (regressão B15/D.3) | corrigido | repro manual: deslogado → "Esqueci minha senha" → carrega /forgot-password (sem 307 → /login). Regex validado por node (forgot/reset-password = skip auth) | frontend/middleware.ts:11 (add `forgot-password\|reset-password` ao negative lookahead) | 2026-07-07-lote-bugs-incidentais-v1.md | — |
+| BI1 | manifest.webmanifest com erro de sintaxe | corrigido | repro manual: abrir qualquer página → console sem `Manifest: Line 1 col 1 Syntax error`; `GET /manifest.webmanifest` retorna JSON (200), não HTML de /login | frontend/middleware.ts:11 (add `manifest\.webmanifest` ao negative lookahead) | 2026-07-07-lote-bugs-incidentais-v1.md | ✓ (2026-07-07) |
+| BI2 | Testes de frontend pré-existentes quebrados (3 testes) | corrigido | `cd frontend && npx jest __tests__/components/dashboard/` (9/9 ✓; suíte completa 90/90 ✓) | frontend/components/dashboard/MacroCards.tsx:122 + frontend/__tests__/components/dashboard/MacroPieChart.test.tsx:32,37 | 2026-07-07-lote-bugs-incidentais-v1.md | ✓ (2026-07-07) |
+| BI3 | Backend mapeia falha de auth do Groq p/ 500 (esperado 503) | corrigido | tests/unit/test_ai_endpoint_errors.py (não coleta sem Postgres — validado via driver standalone: analyze_meal/analyze_photo → 503) | backend/app/api/v1/ai.py:47,74,95 (except `groq.APIError` → 503) | 2026-07-07-lote-bugs-incidentais-v1.md | ✓ (2026-07-07) |
+| BI4 | Recuperação de senha inacessível p/ deslogado (regressão B15/D.3) | corrigido | repro manual: deslogado → "Esqueci minha senha" → carrega /forgot-password (sem 307 → /login). Regex validado por node (forgot/reset-password = skip auth) | frontend/middleware.ts:11 (add `forgot-password\|reset-password` ao negative lookahead) | 2026-07-07-lote-bugs-incidentais-v1.md | ✓ (2026-07-07) |
 
 ## Notas de correção (2026-07-07)
 
@@ -63,3 +64,43 @@ Legenda da coluna `verificação`: preenchida pelo `/double-check` (`✓` sanado
 - **BI1/BI4 runtime:** regex do matcher validado por node — `/manifest.webmanifest`,
   `/forgot-password`, `/reset-password`, `/login` = liberados; `/dashboard`,
   `/refeicoes` = ainda protegidos. Repro no navegador fica para o `/double-check`.
+
+## Verificação — /double-check (2026-07-07)
+
+Placar: **4 sanados (✓) · 0 regrediram (✗) · 0 inconclusivos (⚠)**. Nenhum código
+de produção tocado (apenas a coluna `verificação` deste ledger).
+
+- **BI1 — ✓ sanado (runtime).** `next dev` no ar (deslogado), `GET
+  /manifest.webmanifest` → **200**, `content-type: application/manifest+json`,
+  corpo **JSON válido** (`name: "CalorIA — Diário Alimentar"`). Não mais 307 →
+  `/login` (HTML). A causa do `Manifest: Line 1 col 1 Syntax error` desapareceu.
+- **BI4 — ✓ sanado (runtime).** Deslogado, `GET /forgot-password` → **200** (sem
+  redirect); `GET /reset-password` → **200** (sem redirect). Controle: `GET
+  /dashboard` → **307 → /login?callbackUrl=/dashboard** (proteção intacta).
+- **BI2 — ✓ sanado.** Suíte jest completa **90/90** (16 suites); os 3 testes antes
+  quebrados (`MacroCards` ×2, `MacroPieChart` ×1) passam.
+- **BI3 — ✓ sanado.** Com Postgres de teste no ar, `pytest
+  tests/unit/test_ai_endpoint_errors.py` → **2/2 passando**: `analyze_meal` e
+  `analyze_photo` mapeiam `groq.AuthenticationError` → **HTTP 503**.
+
+### Suíte completa do projeto (Passo 4)
+- **Backend pytest:** 143 passando / 2 falhando. As 2 falhas são
+  `tests/smoke_test.py::test_groq_texto` e `::test_ai_client` — smoke tests que
+  batem no Groq real (`AuthenticationError`/`APIConnectionError`, sem chave/rede
+  válidas); **env-gated e sem relação com o lote**. Nenhuma regressão colateral.
+- **Backend ruff check + format:** limpo (`--no-cache`; 104 arquivos formatados).
+- **Backend mypy (strict):** `Success: no issues found in 70 source files`.
+- **Frontend `next lint`:** limpo (1 warning pré-existente em `Plasma.tsx`,
+  não-bloqueante, fora do escopo do lote).
+- **Frontend `tsc --noEmit`:** limpo.
+- **Gate security:** `[—]` — não há gate configurado no CI/Makefile (manifest).
+
+### Notas de ambiente
+- Subi `postgres`/`redis` via `docker-compose.dev.yml` para coletar o backend e
+  parei-os ao final (estavam desligados antes). O `conftest` usa o banco
+  `caloria_test` (já existente).
+- `aiosmtplib` (dependência declarada em `pyproject.toml`) faltava no `.venv` e
+  bloqueava a coleta de `test_email_service.py`; instalada para rodar a suíte
+  completa. Não é mudança de código de produção.
+- `next dev` não escreve no `.next` (root-owned, resíduo de build Docker); renomeei
+  o diretório de lado para o dev subir e restaurei o original ao terminar.
