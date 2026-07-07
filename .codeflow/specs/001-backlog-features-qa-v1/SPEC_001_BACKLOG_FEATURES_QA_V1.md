@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [perfil-nutricao, hidratacao, ai-persistencia, auth]
 created_at: 2026-07-02
-updated_at: 2026-07-02
+updated_at: 2026-07-06
 last_execution: 2026-07-02
 owner: Gabriel
 linked_adr: [ADR-001, ADR-002, ADR-005, ADR-007]
@@ -60,6 +60,21 @@ quality_gate:
 > uniforme + validação explícita de `type=reset`/expiração; (7) **C.2** — case do enum
 > confirmado **UPPERCASE** (`'WEB'`) e formato de `messages` `{role,content,timestamp}`;
 > (8) refs de linha e determinismo de teste (AC-A1).
+
+> **Re-verificação em runtime (2026-07-06, Playwright no front real):** double-check
+> pós-execução dirigindo o frontend logado (`localhost:3001`). Estado observado:
+> - **Track A (B11+B12) — implementado.** Perfil exibe **campo Data de nascimento**
+>   (não idade) e um card com **TMB 1823 kcal/dia** e **TDEE 2380 kcal/dia**
+>   (Mifflin-St Jeor). AC-A4 confirmado visualmente.
+> - **Track D (B15) — backend + telas presentes, com 1 defeito de acesso.**
+>   `/forgot-password` e `/reset-password` existem e o link "Esqueci minha senha"
+>   está no login, **mas o `matcher` do `frontend/middleware.ts:11` não libera essas
+>   rotas** → o usuário deslogado é redirecionado (307) para `/login`, tornando a
+>   feature inacessível. **Viola FR-D4/AC-D3.** Fix: incluir
+>   `forgot-password|reset-password` na negative-lookahead do `matcher` (D.3).
+>   Registrado como incidental #4 no ledger `bugs-teste-v1.md`.
+> - **Track B (B8) — não implementado:** hidratação segue só-adição (sem remover/editar).
+> - **Track C (B16+B20) — não re-verificado** nesta rodada.
 
 ## Resumo executivo (TL;DR)
 

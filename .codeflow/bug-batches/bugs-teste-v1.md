@@ -1,9 +1,9 @@
 ---
-versão: 1.1
+versão: 1.2
 lote: bugs-teste-v1
 origem: bugs-teste-v1.txt
 criado: 2026-07-02
-atualizado: 2026-07-02
+atualizado: 2026-07-06
 ---
 
 # Lote de bugs: bugs-teste-v1
@@ -93,7 +93,51 @@ integração de reset **flaky** (`TRUNCATE ... RESTART IDENTITY` fixa `user_id=1
 + Redis compartilhado entre testes). **Fix:** `jti` uuid4 no token de reset +
 teste de regressão (`TestCreateResetToken`). Commit `c31bc38`.
 
+## Re-verificação no front (2026-07-06, Playwright/MCP)
+Double-check dos fixes dirigindo o **frontend real** (`localhost:3001`, stack
+`docker-compose.dev.yml` com override de portas p/ não colidir com outros
+containers), logado como `devteste@gmail.com` (usuário com 112 refeições/15
+pesos seedados). Dados de teste criados foram revertidos ao final.
+
+**Confirmados end-to-end pelo navegador (10):**
+- **B4** — tela de login renderiza o Plasma (WebGL) e o mouse percorre a tela
+  sem nenhum `pageerror` (só warnings de GPU inofensivos). `✓`
+- **B6** — lixeira do modal apenas encena a remoção (4→3 no modal);
+  **Cancelar** mantém os 4 itens no banco, **Salvar** persiste a remoção (3).
+  Validado contra o banco (`meal_items` da meal 112). `✓`
+- **B7** — 2 registros de peso no mesmo dia ⇒ **1 única linha** (overwrite). `✓`
+- **B9** — 2 registros de humor no mesmo dia ⇒ mesma linha atualizada (2/2 → 5/5),
+  nunca duplica. `✓`
+- **B10** — enum `notificationtype` no PG real contém `reminder`. `✓`
+- **B13** — Selects do Perfil (sexo/atividade/objetivo) mantêm valor ao navegar
+  para outro módulo e voltar (SPA). `✓`
+- **B14** — objetivo "Emagrecer": peso ≤ meta ⇒ **"Meta atingida!"**;
+  peso > meta ⇒ **"Faltam X kg"** (respeita `goal_type`). `✓`
+- **B17** — 3× "Nova sugestão" ⇒ 3 nomes distintos (Groq real). `✓`
+- **B18** — a IA emite markdown cru (`**bold**`/listas), mas o DOM renderiza
+  `<strong>`/`<li>` com **0** asteriscos/bullets literais visíveis. `✓`
+- **B19** — Alertas curtíssimo, Ajuste de metas ~3 frases, Relatório mensal
+  ~6 linhas; todos curtos e objetivos. `✓`
+
+**B5** — não re-dirigido no navegador (forçar um 503 exigiria quebrar a
+`GROQ_API_KEY` e reiniciar o backend compartilhado). Segue coberto por jest
+(`aiErrors.test.ts`) + observação de 500 já registrada. `⚠ (tests-only)`
+
+**Achado sobre os "bloqueados" (spec 001):** ao inspecionar o runtime, os tracks
+da `SPEC_001_BACKLOG_FEATURES_QA_V1` já foram (parcialmente) implementados:
+- **B11** (Track A) — Perfil tem **campo Data de nascimento** (não idade fixa). ✅
+- **B12** (Track A) — Perfil exibe **TMB e TDEE** ("2380 kcal/dia (TDEE)",
+  "TMB 1823 kcal/dia", fórmula Mifflin-St Jeor). ✅
+- **B15** (Track D) — endpoints `/forgot-password` e `/reset-password` e as
+  telas existem. ⚠️ **Mas há defeito de acesso — ver incidental #4.**
+- **B8** (Track B) — hidratação **continua só-adição** (sem remover/editar). ❌ não impl.
+- **B16/B20** (Track C) — não aprofundado nesta rodada.
+
 ## Backlog de specs — bugs bloqueados (features / mudança quebradora)
+> **Status (2026-07-06):** B11, B12 e B15 já foram implementados via
+> `SPEC_001_BACKLOG_FEATURES_QA_V1` (B15 com o defeito do incidental #4). B8,
+> B16 e B20 seguem pendentes. Ver "Re-verificação no front (2026-07-06)".
+
 Cada item abaixo saiu do loop de bugfix por exigir design/escopo maior. Pegar
 para `/create-spec`:
 
@@ -139,3 +183,12 @@ Achados durante a execução — **não** estavam no `.txt`, registrados para tr
    com chave inválida devolve **500** (genérico) em vez de **503** (IA
    indisponível). O fix de B5 no front já trata ambos, mas o ideal seria o
    backend retornar 503 para "IA fora" de forma consistente. Ref: `api/v1/ai.py`.
+4. **Recuperação de senha inacessível para deslogado (regressão de B15/D.3)** —
+   descoberto na re-verificação de 2026-07-06. As telas `/forgot-password` e
+   `/reset-password` foram criadas (spec 001, Track D), mas o `matcher` do
+   `frontend/middleware.ts:11` só libera `login|register|api/auth|_next/...` e
+   **não** inclui essas duas rotas. Resultado: o usuário deslogado clica em
+   "Esqueci minha senha" e sofre **redirect 307 → /login** — a feature fica
+   inacessível justamente para quem esqueceu a senha (viola **FR-D4/AC-D3** da
+   spec 001). **Fix:** adicionar `forgot-password|reset-password` à negative
+   lookahead do `matcher`. Ref: `frontend/middleware.ts:10-12`.
