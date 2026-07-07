@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
+import groq
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,6 +65,11 @@ async def analyze_meal(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
+    except groq.APIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de IA temporariamente indisponível. Tente novamente.",
+        ) from exc
 
 
 @router.post("/analyze-photo", response_model=MealAnalysisResponse)
@@ -86,6 +92,11 @@ async def analyze_photo(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    except groq.APIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de IA temporariamente indisponível. Tente novamente.",
         ) from exc
 
 

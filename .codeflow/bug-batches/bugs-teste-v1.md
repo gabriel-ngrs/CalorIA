@@ -3,7 +3,7 @@ versão: 1.2
 lote: bugs-teste-v1
 origem: bugs-teste-v1.txt
 criado: 2026-07-02
-atualizado: 2026-07-06
+atualizado: 2026-07-07
 ---
 
 # Lote de bugs: bugs-teste-v1
@@ -172,18 +172,24 @@ para `/create-spec`:
 ## Observações / bugs incidentais encontrados (fora da lista original)
 Achados durante a execução — **não** estavam no `.txt`, registrados para triagem:
 
-1. **`manifest.webmanifest` com erro de sintaxe** — o console do navegador
+> **Status (2026-07-07): MIGRADOS E CORRIGIDOS.** Os itens #1–#4 abaixo foram
+> movidos para o lote próprio **`bugs-incidentais-v1`** e corrigidos (BI1–BI4).
+> Ver ledger `.codeflow/bug-batches/bugs-incidentais-v1.md` e decision
+> `.codeflow/decisions/2026-07-07-lote-bugs-incidentais-v1.md`. Texto original
+> preservado abaixo para rastreabilidade.
+
+1. **[→ BI1 · corrigido em bugs-incidentais-v1]** **`manifest.webmanifest` com erro de sintaxe** — o console do navegador
    acusa `Manifest: Line: 1, column: 1, Syntax error` em **todas** as páginas.
    O manifest do PWA não está sendo servido como JSON válido. Baixo impacto
    (PWA/instalação), mas real. Ref: `frontend/app/manifest.ts`.
-2. **Testes de frontend pré-existentes quebrados** — `MacroCards.test.tsx` e
+2. **[→ BI2 · corrigido em bugs-incidentais-v1]** **Testes de frontend pré-existentes quebrados** — `MacroCards.test.tsx` e
    `MacroPieChart.test.tsx` (3 testes) já falhavam **antes** deste lote (não
    tocados por mim). O `make check`/CI não está verde por causa deles.
-3. **Backend mapeia falha de auth do Groq para HTTP 500** — `POST /ai/analyze-meal`
+3. **[→ BI3 · corrigido em bugs-incidentais-v1]** **Backend mapeia falha de auth do Groq para HTTP 500** — `POST /ai/analyze-meal`
    com chave inválida devolve **500** (genérico) em vez de **503** (IA
    indisponível). O fix de B5 no front já trata ambos, mas o ideal seria o
    backend retornar 503 para "IA fora" de forma consistente. Ref: `api/v1/ai.py`.
-4. **Recuperação de senha inacessível para deslogado (regressão de B15/D.3)** —
+4. **[→ BI4 · corrigido em bugs-incidentais-v1]** **Recuperação de senha inacessível para deslogado (regressão de B15/D.3)** —
    descoberto na re-verificação de 2026-07-06. As telas `/forgot-password` e
    `/reset-password` foram criadas (spec 001, Track D), mas o `matcher` do
    `frontend/middleware.ts:11` só libera `login|register|api/auth|_next/...` e
