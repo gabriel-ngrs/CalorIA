@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
-  AlertTriangle,
   Bot,
   CalendarIcon,
   Camera,
@@ -68,6 +67,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AnalysisReview } from "@/components/refeicoes/AnalysisReview";
 import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -764,62 +764,15 @@ export default function RefeicoesPage() {
                 </Button>
               )}
 
-              {/* Resultado da análise */}
+              {/* Resultado da análise — mostra a origem de cada número */}
               {parsedItems && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Itens identificados
-                    </p>
-                    <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      ✨ Analisado por IA
-                    </span>
-                  </div>
-
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    {parsedItems.map((item, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "flex items-center justify-between px-3 py-2.5 text-sm",
-                          i > 0 && "border-t border-border/50"
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {item.confidence < 0.6 && (
-                            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <span className="font-medium truncate block">{item.food_name}</span>
-                            <span className="text-xs text-muted-foreground">{item.quantity}{item.unit}</span>
-                          </div>
-                        </div>
-                        <span className="text-orange-400 font-semibold shrink-0 ml-2">
-                          {item.calories.toFixed(0)} kcal
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex justify-between text-sm font-semibold px-1">
-                    <span className="text-muted-foreground">Total estimado</span>
-                    <span className="text-orange-400">
-                      {parsedItems.reduce((s, it) => s + it.calories, 0).toFixed(0)} kcal
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <Button variant="outline" onClick={() => setParsedItems(null)} className="flex-1">
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      Reanalisar
-                    </Button>
-                    <Button onClick={handleSave} disabled={createMeal.isPending} className="flex-1">
-                      {!createMeal.isPending && <Check className="h-3.5 w-3.5 mr-1.5" />}
-                      {createMeal.isPending ? "Salvando..." : "Salvar"}
-                    </Button>
-                  </div>
-                </div>
+                <AnalysisReview
+                  items={parsedItems}
+                  onChange={setParsedItems}
+                  onReanalyze={() => setParsedItems(null)}
+                  onSave={handleSave}
+                  saving={createMeal.isPending}
+                />
               )}
             </div>
           </DialogContent>

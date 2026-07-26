@@ -258,6 +258,16 @@ export interface ParsedFoodItem {
   sodium: number | null;
   sugar: number | null;
   saturated_fat: number | null;
+  /** Porção como o usuário descreveu, ex.: "8 fatia". */
+  portion_text?: string | null;
+  /** Como a massa foi obtida: "direta" | "volume" | "tabela" | "sem_ancora". */
+  portion_source?: string | null;
+  /** Nome do alimento casado no banco nutricional, quando houve match. */
+  matched_food_name?: string | null;
+  /** Porção sem âncora determinística — exige confirmação do usuário. */
+  needs_review?: boolean;
+  /** Motivo legível da baixa confiança. */
+  review_reason?: string | null;
 }
 
 export interface MealAnalysisResponse {

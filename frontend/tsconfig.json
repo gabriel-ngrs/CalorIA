@@ -17,6 +17,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.tsbuildinfo",
     "plugins": [
       {
         "name": "next"
@@ -38,6 +39,7 @@
   "exclude": [
     "node_modules",
     "e2e",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.prod.config.ts"
   ]
 }
