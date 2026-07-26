@@ -23,6 +23,23 @@ class ParsedFoodItem(BaseModel):
     sugar: float | None = None
     saturated_fat: float | None = None
 
+    # ── Transparência da porção (bug 001) ─────────────────────────────────
+    # `quantity` é sempre a massa normalizada em gramas usada no cálculo.
+    # Os campos abaixo dizem ao usuário DE ONDE esse número veio, para que o
+    # erro de porção deixe de ser silencioso.
+    #: Porção como o usuário a descreveu, ex.: "8 fatia".
+    portion_text: str | None = None
+    #: Como a massa foi obtida: "direta" (já em g) | "volume" (densidade)
+    #: | "tabela" (tabela de porções) | "sem_ancora" (a IA que estimou).
+    portion_source: str | None = None
+    #: Nome do alimento casado no banco, quando houve match.
+    matched_food_name: str | None = None
+    #: True quando a porção não teve âncora determinística ou ficou fora da
+    #: faixa plausível — o front deve pedir confirmação.
+    needs_review: bool = False
+    #: Motivo legível da baixa confiança, quando houver.
+    review_reason: str | None = None
+
 
 class MealAnalysisRequest(BaseModel):
     description: str = Field(min_length=3, max_length=2000)
