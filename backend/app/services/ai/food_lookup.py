@@ -149,10 +149,17 @@ def _extract_candidates(text_: str, min_n: int = 1) -> list[str]:
 
 
 class IdentifiedFood(BaseModel):
-    """Alimento identificado pela IA — nome, quantidade, preparo e estimativa calórica."""
+    """Alimento identificado pela IA — nome, quantidade, preparo e estimativa calórica.
+
+    `quantity` aceita texto de propósito. Tipada como `float` estrito, uma
+    resposta como `"dois"` ou `"1/2"` levantava `ValidationError` fora do
+    `except json.JSONDecodeError` do parser e a análise inteira virava HTTP 500.
+    Quem interpreta o valor é `PortionNormalizer`, que já trata número, fração e
+    extenso — e marca o item quando não consegue interpretar.
+    """
 
     food_name: str
-    quantity: float
+    quantity: float | str
     unit: str = "g"
     preparation: str | None = None
     confidence: float = 0.8

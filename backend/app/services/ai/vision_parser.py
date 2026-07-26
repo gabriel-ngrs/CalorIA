@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING
 
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.ai_client import AIClient
-from app.services.ai.food_lookup import IdentifiedFood, lookup_food
+from app.services.ai.food_lookup import IdentifiedFood, lookup_food, preparo_relevante
 from app.services.ai.utils import correct_calories, extract_json_from_ai_response
+from app.services.nutrition.portions import PortionNormalizer
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,21 +129,26 @@ class VisionParser:
         result: list[ParsedFoodItem | None] = [None] * len(items)
         to_estimate_idx: list[int] = []
 
+        normalizer = PortionNormalizer(db)
+
         for i, item in enumerate(items):
-            # Só faz lookup quando a unidade é gramas
-            if item.unit.lower() not in ("g", "gramas", "gr"):
+            # A porção é convertida para gramas pela tabela, como no texto.
+            # Antes, unidade diferente de "g" pulava o banco direto para a
+            # estimativa da IA — a foto perdia o banco por detalhe de unidade.
+            porcao = await normalizer.normalizar(
+                item.food_name, item.quantity, item.unit
+            )
+            if not porcao.ancorada:
                 to_estimate_idx.append(i)
                 continue
 
-            query = (
-                f"{item.food_name} {item.preparation}"
-                if item.preparation
-                else item.food_name
-            )
+            # `preparation` só entra na consulta quando informa algo real.
+            preparo = preparo_relevante(item.preparation)
+            query = f"{item.food_name} {preparo}" if preparo else item.food_name
             match = await lookup_food(query, db)
             if match:
                 food = match.food
-                factor = item.quantity / 100.0
+                factor = porcao.gramas / 100.0
                 db_kcal = food.calories_100g * factor
 
                 # Sanity check: compara calorias do banco com estimativa da IA
@@ -163,8 +169,13 @@ class VisionParser:
 
                 result[i] = ParsedFoodItem(
                     food_name=item.food_name,
-                    quantity=item.quantity,
-                    unit=item.unit,
+                    quantity=round(porcao.gramas, 2),
+                    unit="g",
+                    portion_text=(
+                        f"{porcao.quantidade_original:g} {porcao.unidade_original}"
+                    ),
+                    portion_source=porcao.origem,
+                    matched_food_name=food.name,
                     calories=round(db_kcal, 1),
                     protein=round(food.protein_100g * factor, 2),
                     carbs=round(food.carbs_100g * factor, 2),

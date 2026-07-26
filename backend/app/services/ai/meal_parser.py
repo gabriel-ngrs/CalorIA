@@ -44,7 +44,11 @@ from app.services.ai.food_lookup import (
     preparo_relevante,
 )
 from app.services.ai.utils import correct_calories, extract_json_from_ai_response
-from app.services.nutrition.portions import PorcaoNormalizada, PortionNormalizer
+from app.services.nutrition.portions import (
+    PorcaoNormalizada,
+    PortionNormalizer,
+    interpretar_quantidade,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -321,10 +325,14 @@ class MealParser:
         """
         if porcoes is None:
             porcoes = []
-        gramas = [
-            (porcoes[i].gramas if i < len(porcoes) else items[i].quantity)
-            for i in range(len(items))
-        ]
+        gramas: list[float] = []
+        for i, it in enumerate(items):
+            if i < len(porcoes):
+                gramas.append(porcoes[i].gramas)
+            else:
+                # Sem porção normalizada (caminho sem banco): interpreta o valor
+                # cru, que pode vir como texto ("dois", "1/2").
+                gramas.append(interpretar_quantidade(it.quantity) or 0.0)
 
         payload = [
             {

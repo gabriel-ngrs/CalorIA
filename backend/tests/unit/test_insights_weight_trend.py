@@ -39,10 +39,14 @@ async def _prompt_gerado(
     )
 
     monkeypatch.setattr(
-        ig, "DashboardService", lambda db: SimpleNamespace(get_weekly=AsyncMock(return_value=resumo))
+        ig,
+        "DashboardService",
+        lambda db: SimpleNamespace(get_weekly=AsyncMock(return_value=resumo)),
     )
     monkeypatch.setattr(
-        ig, "WeightService", lambda db: SimpleNamespace(list=AsyncMock(return_value=pesagens))
+        ig,
+        "WeightService",
+        lambda db: SimpleNamespace(list=AsyncMock(return_value=pesagens)),
     )
 
     client = MagicMock()

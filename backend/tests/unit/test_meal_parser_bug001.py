@@ -191,7 +191,9 @@ class TestEquivalenciaPizza:
                 }
             ]
         )
-        r = await mp.MealParser(client).parse("8 fatias pizza calabresa", db=MagicMock())
+        r = await mp.MealParser(client).parse(
+            "8 fatias pizza calabresa", db=MagicMock()
+        )
         item = r.items[0]
         assert item.data_source == "taco"
         assert item.matched_food_name == "Pizza calabresa"
@@ -218,7 +220,8 @@ class TestDeterminismo:
             )
             resultados.append(
                 tuple(
-                    (i.food_name, i.quantity, i.calories, i.data_source) for i in r.items
+                    (i.food_name, i.quantity, i.calories, i.data_source)
+                    for i in r.items
                 )
             )
         assert len(set(resultados)) == 1, f"resultados divergentes: {resultados}"
@@ -310,10 +313,24 @@ class TestPreparoNaoPoluiAConsulta:
                 ),
                 json.dumps(
                     [
-                        {"food_name": "azeite", "calories": 99, "protein": 0,
-                         "carbs": 0, "fat": 11, "fiber": 0, "confidence": 0.5},
-                        {"food_name": "frango", "calories": 248, "protein": 46,
-                         "carbs": 0, "fat": 5.4, "fiber": 0, "confidence": 0.5},
+                        {
+                            "food_name": "azeite",
+                            "calories": 99,
+                            "protein": 0,
+                            "carbs": 0,
+                            "fat": 11,
+                            "fiber": 0,
+                            "confidence": 0.5,
+                        },
+                        {
+                            "food_name": "frango",
+                            "calories": 248,
+                            "protein": 46,
+                            "carbs": 0,
+                            "fat": 5.4,
+                            "fiber": 0,
+                            "confidence": 0.5,
+                        },
                     ]
                 ),
             ]
@@ -341,18 +358,37 @@ class TestFallbackNaoPerdeItens:
             side_effect=[
                 json.dumps(
                     [
-                        {"food_name": "tacacá", "quantity": 1, "unit": "porcao",
-                         "preparation": None, "confidence": 0.6, "kcal_estimate": 300},
-                        {"food_name": "jambu", "quantity": 1, "unit": "porcao",
-                         "preparation": None, "confidence": 0.6, "kcal_estimate": 10},
+                        {
+                            "food_name": "tacacá",
+                            "quantity": 1,
+                            "unit": "porcao",
+                            "preparation": None,
+                            "confidence": 0.6,
+                            "kcal_estimate": 300,
+                        },
+                        {
+                            "food_name": "jambu",
+                            "quantity": 1,
+                            "unit": "porcao",
+                            "preparation": None,
+                            "confidence": 0.6,
+                            "kcal_estimate": 10,
+                        },
                     ],
                     ensure_ascii=False,
                 ),
                 # A IA devolve só UM objeto para DOIS alimentos.
                 json.dumps(
                     [
-                        {"food_name": "tacacá", "calories": 300, "protein": 20,
-                         "carbs": 40, "fat": 6, "fiber": 1, "confidence": 0.5}
+                        {
+                            "food_name": "tacacá",
+                            "calories": 300,
+                            "protein": 20,
+                            "carbs": 40,
+                            "fat": 6,
+                            "fiber": 1,
+                            "confidence": 0.5,
+                        }
                     ]
                 ),
             ]
