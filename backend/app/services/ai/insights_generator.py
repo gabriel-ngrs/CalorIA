@@ -76,8 +76,12 @@ Feedback deve:
 
         weight_trend = ""
         if len(weight_logs) >= 2:
+            # `list` ordena por data DESC: [0] é a pesagem mais recente e [-1] a
+            # mais antiga. Logo `diff > 0` significa que o peso SUBIU.
+            # O ternário estava invertido e a IA recebia a tendência ao contrário,
+            # gerando conselho nutricional na direção errada.
             diff = weight_logs[0].weight_kg - weight_logs[-1].weight_kg
-            direction = "perdeu" if diff > 0 else "ganhou"
+            direction = "ganhou" if diff > 0 else "perdeu"
             weight_trend = (
                 f"Tendência de peso: {direction} {abs(diff):.1f}kg recentemente"
             )
