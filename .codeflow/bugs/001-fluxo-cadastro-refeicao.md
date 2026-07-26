@@ -251,5 +251,7 @@ vira erro de contexto, que vira erro de porção.
 ## Rastreabilidade
 
 - Melhoria derivada: [`melhorias/004-contexto-de-refeicao.md`](../melhorias/004-contexto-de-refeicao.md)
-- Lote de correção: [](../bug-batches/bugs-saneamento-v1.md)
-- Decision: [](../decisions/2026-07-26-limiares-lookup-nutricional.md)
+- Lote de correção: [bug-batches/bugs-saneamento-v1.md](../bug-batches/bugs-saneamento-v1.md)
+- Decision: [decisions/2026-07-26-limiares-lookup-nutricional.md](../decisions/2026-07-26-limiares-lookup-nutricional.md)
+- Correção: commits 128fff4 (porções), 8d7e216 (lookup), 74567d8 (pipeline), 50ab6de (foto)
+- Testes de regressão: backend/tests/unit/test_meal_parser_bug001.py e test_portions.py
