@@ -129,3 +129,8 @@ data/raw/*.gz
 data/raw/*.zip
 data/raw/*.jsonl
 .codeflow/checkpoints/
+
+# Artefatos de instrumentação gerados dentro do container (bind mount backend/ -> /app)
+backend/artefatos/
+# Build de sondagem criado durante QA
+frontend/.next-probe/

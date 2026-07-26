@@ -120,6 +120,106 @@ Existe `Food.preparation` (`backend/app/models/food.py:23`) e
 (`meal_parser.py:138-142`) — cobre "grelhado ≠ frito", não cobre o resto.
 Tratado em [`melhorias/004`](../melhorias/004-contexto-de-refeicao.md).
 
+## Instrumentação (data) — 2026-07-26
+
+Rodado `backend/scripts/instrument_meal_pipeline.py` contra o pipeline real (Groq
+real + banco real), capturando por item a identificação do Estágio 1, o ranking
+completo do lookup, o motivo de rejeição e o item final. Dump bruto versionado em
+[`bug-batches/artefatos/baseline-antes.json`](../bug-batches/artefatos/baseline-antes.json).
+
+### Resultado dos pares
+
+| # | par | A (kcal) | B (kcal) | divergência | % itens do banco |
+|---|-----|---------:|---------:|------------:|------------------|
+| 1 | pizza calabresa (repro oficial) | 3386 | 2094 | **38,2%** | 1/5 vs 1/8 |
+| 2 | ovos mexidos (2 vs "dois") | 171 | 171 | 0,0% | 1/1 (taco) |
+| 3 | prato feito (vago vs gramas) | 572 | 527 | 8,0% | 2/3 |
+| 4 | pão francês + manteiga | 209 | 211 | 1,0% | 0/2 |
+| 5 | leite (copo vs ml) | 133 | 133 | 0,0% | 1/1 |
+| 6 | strogonoff (marmita vs gramas) | 800 | 680 | 15,1% | 1/3 vs 1/4 |
+| 7 | tacacá (ausente do banco) | 364 | 491 | 35,0% | 2/9 vs 0/1 |
+| 8 | **determinismo — mesma string 3×** | 572,3 / 572,3 / 572,3 | — | **0,0%** | — |
+
+### Veredito por achado
+
+**Achado A — CONFIRMADO, e é o mecanismo dominante da divergência.**
+A divergência não vem de aleatoriedade do modelo: o caso 8 provou determinismo
+perfeito (3 execuções idênticas → 572,3 kcal). Ela vem de a IA **decompor a mesma
+refeição em massas de ingrediente diferentes** conforme a frase muda:
+
+    1a "1 pizza grande 8 fatias" → massa 800g + calabresa 200g + queijo 200g + molho 100g + azeite 20g = 1320g
+    1b "8 fatias pizza calabresa" → massa 400g + molho 160g + queijo 120g + calabresa 160g + cebola 40g + orégano 10g + azeite 20g + sal 5g = 915g
+
+Massa de pizza de 800g contra 400g para a mesma pizza. Nenhuma âncora determinística
+converte "8 fatias" em gramas.
+
+**Achado B — REFUTADO na hipótese, CONFIRMADO no sintoma.**
+A hipótese registrada era "pizza de calabresa é prato composto e não existe em
+`foods`". **Existe**: `Pizza calabresa`, fonte `taco`, 270 kcal/100g. A fonte `taco`
+deste projeto não é a TACO crua — são 228 linhas curadas que já incluem pratos
+montados (`Feijoada completa`, `Lasanha de carne ao forno`, `Strogonoff de carne`,
+`Bife à parmegiana`, `Escondidinho de carne seca`, `Hot dog completo`, 3 pizzas,
+fast food). O alimento certo estava no banco o tempo todo.
+
+O motivo real de o banco nunca ser consultado para ele é a **regra 2 do prompt do
+Estágio 1** (`meal_parser.py:50`): *"Liste CADA ingrediente separadamente, mesmo em
+pratos compostos"*. A IA nunca emite `food_name="pizza calabresa"`, então o lookup
+nunca tem chance de casar. **O prompt proíbe o uso do banco.**
+
+**Achado NOVO F — a query do lookup é poluída pelo `preparation` cru.**
+`meal_parser.py:138-142` concatena `preparation` ao nome sem filtro. A IA devolve
+coisas como `preparation="não aplicável"`, e a query vira `"azeite não aplicável"`
+→ score 0,6364, abaixo do limiar 0,65, rejeitada. `"azeite"` sozinho casa a 1,00.
+O mesmo derrubou `"sal não aplicável"` (0,30) e `"orégano não aplicável"` (0,33).
+
+**Achado NOVO G — `lookup_food` casa por FRAGMENTO, não pelo nome inteiro.**
+`lookup_food` (busca de **um** alimento) delega a `find_foods_in_text`, que é uma
+busca de **texto livre** e fatia a query em n-gramas de 2 a 4 palavras
+(`food_lookup.py:40-53`). Consequência medida: a query `"manteiga derivado do leite"`
+gerou o fragmento `"do leite"`, que casa com o alimento `Leite` (26,8 kcal/100g,
+`openfoodfacts`) a `similarity=0,6667 ≥ 0,65` → **aceito**. Manteiga (720 kcal/100g)
+foi resolvida como leite — erro de 27×. Só o sanity check evitou a gravação.
+Outros casos observados: `"calabresa cozido"` → `Nabo cozido` (taco); `"sal não
+aplicável"` → `Salsa 100% Natural` (222 kcal/100g).
+
+**Achado NOVO H — 55% do banco é estimativa da própria IA, e ela vence a fonte curada.**
+`foods` tem 42.103 linhas: `ai_estimated` 23.398, `openfoodfacts` 18.195, `usda` 247,
+`taco` 228, `fatsecret` 35. As linhas `ai_estimated` são geradas por
+`backend/scripts/enrich_foods.py:147,174` — chute da IA gravado como se fosse banco.
+Como `similarity()` premia nomes curtos e o `_SOURCE_BOOST` só privilegia `taco`
+(1,40×), linhas `ai_estimated` de nome curto vencem a curada:
+
+    query "pizza calabresa" → 'Calabresa Pizza' [ai_estimated] score 1,00  ✗ vence
+                              'Pizza calabresa' [taco, 270] score 0,571×1,40 = 0,80
+    query "pão francês assado" → 'Pao Frances' [ai_estimated, 278] score 1,00
+    query "frango grelhado" → 'Sopa de frango grelhado' [openfoodfacts, 19,2 kcal/100g]
+
+O último é o pior caso: peito de frango grelhado resolvido como **sopa**, 8× menos
+calórico. Isto também torna `data_source` enganoso — um item resolvido pelo banco
+volta marcado `ai_estimated`, indistinguível do fallback.
+
+**Achado C — CONFIRMADO nas duas direções, com casos concretos.**
+Salvou o pipeline em `manteiga → Leite` (divergência 96%) e em
+`frango → Frango Pipoca Cozido` (53%). Mas foi cego exatamente onde importava: no
+caso 1a, `massa de pizza` 800g passou sem alarme, porque `db_kcal` e `kcal_estimate`
+erram juntos quando a `quantity` está errada.
+
+**Achado D — CONFIRMADO.** `correct_calories` rodou só no fallback (visível no log:
+`Divergência calórica em 'frango' … Usando calculado`). Itens do banco não passam.
+
+**Achado E — sem alteração**, permanece em `melhorias/004`.
+
+### Conclusão
+
+O erro é dominado por **A + B**, nesta ordem causal: o prompt proíbe consultar o
+banco para o prato composto (B) → a IA decompõe em ingredientes → a massa de cada
+ingrediente é inventada sem âncora e varia com a frase (A) → o lookup dos
+ingredientes ainda é sabotado por query poluída (F), casamento por fragmento (G) e
+por 23k linhas de chute da IA competindo com a fonte curada (H).
+
+Determinismo do modelo **não** é o problema (caso 8: 0,0%). Corrigir o pipeline não
+exige `seed`/`temperature=0` como prioridade — exige tirar o número das mãos da IA.
+
 ## Impacto
 
 Registro calórico incorreto é falha na **função central do produto**. Pior: o erro
