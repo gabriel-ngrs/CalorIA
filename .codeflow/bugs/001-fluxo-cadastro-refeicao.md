@@ -5,11 +5,11 @@ slug: 001-fluxo-cadastro-refeicao
 título: Cadastro de refeição não-determinístico e impreciso; banco nutricional subutilizado
 severidade: alto
 área: backend/ai
-status: aberto
+status: corrigido
 criado: 2026-07-09
-atualizado: 2026-07-09
+atualizado: 2026-07-26
 reportado_por: owner (QA manual)
-lote: —
+lote: bugs-saneamento-v1
 melhoria_relacionada: 004-contexto-de-refeicao
 ---
 
@@ -251,5 +251,5 @@ vira erro de contexto, que vira erro de porção.
 ## Rastreabilidade
 
 - Melhoria derivada: [`melhorias/004-contexto-de-refeicao.md`](../melhorias/004-contexto-de-refeicao.md)
-- Lote de correção: — (ainda não aberto)
-- Decision: — (ainda não gerada)
+- Lote de correção: [](../bug-batches/bugs-saneamento-v1.md)
+- Decision: [](../decisions/2026-07-26-limiares-lookup-nutricional.md)

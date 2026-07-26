@@ -1,8 +1,8 @@
 ---
 versão: 1.0
 status: estável
-atualizado: 2026-07-09
-proximo_numero: 002
+atualizado: 2026-07-26
+proximo_numero: 003
 ---
 
 # Registro de bugs (ordem cronológica)
@@ -13,7 +13,8 @@ prefixo do arquivo e como campo `id` no frontmatter.
 
 | # | arquivo | título | severidade | área | status | criado |
 |---|---------|--------|------------|------|--------|--------|
-| 001 | [001-fluxo-cadastro-refeicao.md](001-fluxo-cadastro-refeicao.md) | Cadastro de refeição não-determinístico e impreciso; banco nutricional subutilizado | alto | backend/ai | aberto | 2026-07-09 |
+| 001 | [001-fluxo-cadastro-refeicao.md](001-fluxo-cadastro-refeicao.md) | Cadastro de refeição não-determinístico e impreciso; banco nutricional subutilizado | alto | backend/ai | corrigido | 2026-07-09 |
+| 002 | [002-varredura-saneamento.md](002-varredura-saneamento.md) | Varredura de saneamento: 81 achados de QA manual + auditoria de código | alto | transversal | em-lote | 2026-07-26 |
 
 ## Convenção de enumeração (LER ANTES DE REGISTRAR UM BUG)
 
