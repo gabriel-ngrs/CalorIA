@@ -125,10 +125,28 @@ _PREPARO_VAZIO = frozenset(
 )
 
 
+#: Tamanho máximo de um nome de alimento aceito na consulta. Nomes vêm do
+#: modelo, que pode devolver texto arbitrariamente longo sob injeção de prompt.
+_MAX_QUERY_CHARS = 200
+
+
 def _normalize(text_: str) -> str:
-    """Remove acentos e converte para minúsculas."""
-    nfkd = unicodedata.normalize("NFKD", text_)
-    return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
+    """Remove acentos, caracteres de controle e converte para minúsculas.
+
+    Os caracteres de controle importam: o nome do alimento vem do JSON que o
+    modelo devolve, e um `U+0000` sobrevive ao `json.loads`, passa pelo Pydantic
+    e chega ao array de termos da consulta, onde o PostgreSQL o rejeita com
+    `invalid byte sequence for encoding "UTF8": 0x00`. A `DBAPIError` escapa dos
+    `except` do endpoint e vira HTTP 500 — alcançável por injeção de prompt na
+    descrição da refeição.
+    """
+    nfkd = unicodedata.normalize("NFKD", text_[:_MAX_QUERY_CHARS])
+    limpo = "".join(
+        c
+        for c in nfkd
+        if not unicodedata.combining(c) and unicodedata.category(c) not in ("Cc", "Cf")
+    )
+    return limpo.lower().strip()
 
 
 def preparo_relevante(preparation: str | None) -> str | None:

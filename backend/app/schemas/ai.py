@@ -51,10 +51,26 @@ class MealAnalysisResponse(BaseModel):
     low_confidence: bool  # True se algum item tiver confidence < 0.6
 
 
+#: Teto do payload de foto, em caracteres de base64.
+#
+# ~8 MB de base64 ≈ 6 MB de imagem, folgado para foto de celular comprimida.
+# Sem teto, o campo era `str` livre: o corpo da requisição, a string base64 e os
+# bytes decodificados coexistem em memória, e um payload grande multiplica o
+# consumo por requisição — barato de enviar, caro de absorver.
+MAX_IMAGE_BASE64_CHARS = 8 * 1024 * 1024
+
+#: Tipos de imagem aceitos pela análise por foto.
+ImageMimeType = Literal["image/jpeg", "image/jpg", "image/png", "image/webp"]
+
+
 class PhotoAnalysisRequest(BaseModel):
-    image_base64: str = Field(description="Imagem em base64 (JPEG ou PNG)")
-    mime_type: str = Field(default="image/jpeg")
-    meal_type: str | None = None
+    image_base64: str = Field(
+        min_length=1,
+        max_length=MAX_IMAGE_BASE64_CHARS,
+        description="Imagem em base64 (JPEG, PNG ou WebP)",
+    )
+    mime_type: ImageMimeType = Field(default="image/jpeg")
+    meal_type: str | None = Field(default=None, max_length=50)
 
 
 class InsightRequest(BaseModel):

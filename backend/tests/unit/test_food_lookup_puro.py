@@ -128,3 +128,33 @@ class TestExtractCandidates:
         c = _extract_candidates(texto, min_n=2)
         # 250 palavras × 3 tamanhos de janela ≈ 750 no pior caso.
         assert len(c) < 1000
+
+
+class TestSaneamentoDeEntradaHostil:
+    """O nome do alimento vem do JSON do modelo — pode conter qualquer coisa.
+
+    Um `U+0000` sobrevive ao `json.loads`, passa pelo Pydantic e chega ao array
+    de termos da consulta, onde o PostgreSQL o rejeita com
+    `invalid byte sequence for encoding "UTF8": 0x00`. A `DBAPIError` escapa dos
+    `except` do endpoint e vira HTTP 500 — alcançável por injeção de prompt na
+    descrição da refeição.
+    """
+
+    def test_byte_nul_e_removido(self) -> None:
+        assert "\x00" not in _normalize("arroz\x00branco")
+
+    @pytest.mark.parametrize("ctrl", ["\x01", "\x1f", "\x7f", "​", "﻿"])
+    def test_caracteres_de_controle_sao_removidos(self, ctrl: str) -> None:
+        resultado = _normalize(f"frango{ctrl}grelhado")
+        assert ctrl not in resultado
+
+    def test_texto_normal_sobrevive_intacto(self) -> None:
+        assert _normalize("Feijão Carioca") == "feijao carioca"
+
+    def test_nome_absurdamente_longo_e_truncado(self) -> None:
+        """Sem teto, o termo ia inteiro para a consulta SQL."""
+        assert len(_normalize("a" * 5000)) <= 200
+
+    def test_candidatos_de_nome_hostil_nao_contem_controle(self) -> None:
+        c = _extract_candidates(_normalize("arroz\x00branco\x01cozido"), min_n=1)
+        assert all("\x00" not in frag and "\x01" not in frag for frag in c)
