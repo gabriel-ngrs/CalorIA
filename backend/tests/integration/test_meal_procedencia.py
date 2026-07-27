@@ -150,3 +150,96 @@ class TestAgregadosUsamAQuantidadeNormalizada:
         )
         assert pizza["quantity"] == 800
         assert pizza["calories"] == 2160
+
+
+class TestValidacaoDosCamposDeRastreabilidade:
+    """`food_id`, `data_source` e `raw_input` vêm do cliente e vão para colunas
+    tipadas — sem validação, erro de entrada virava erro de servidor."""
+
+    async def test_food_id_inexistente_responde_422(
+        self, client: AsyncClient, test_user: User
+    ) -> None:
+        payload = {
+            "meal_type": "lunch",
+            "date": str(date.today()),
+            "items": [
+                {
+                    "food_name": "arroz",
+                    "quantity": 100,
+                    "unit": "g",
+                    "calories": 130,
+                    "protein": 2.5,
+                    "carbs": 28,
+                    "fat": 0.2,
+                    "food_id": 99_999_999,
+                }
+            ],
+        }
+        resp = await client.post("/api/v1/meals", json=payload)
+        assert resp.status_code == 422, (
+            "id inexistente deve ser erro de entrada, não IntegrityError não tratada"
+        )
+
+    async def test_food_id_negativo_e_recusado(
+        self, client: AsyncClient, test_user: User
+    ) -> None:
+        payload = {
+            "meal_type": "lunch",
+            "date": str(date.today()),
+            "items": [
+                {
+                    "food_name": "arroz",
+                    "quantity": 100,
+                    "unit": "g",
+                    "calories": 130,
+                    "protein": 2.5,
+                    "carbs": 28,
+                    "fat": 0.2,
+                    "food_id": -1,
+                }
+            ],
+        }
+        assert (await client.post("/api/v1/meals", json=payload)).status_code == 422
+
+    async def test_data_source_fora_do_vocabulario_e_recusado(
+        self, client: AsyncClient, test_user: User
+    ) -> None:
+        """String livre estourava a coluna varchar(20) e devolvia 500."""
+        payload = {
+            "meal_type": "lunch",
+            "date": str(date.today()),
+            "items": [
+                {
+                    "food_name": "arroz",
+                    "quantity": 100,
+                    "unit": "g",
+                    "calories": 130,
+                    "protein": 2.5,
+                    "carbs": 28,
+                    "fat": 0.2,
+                    "data_source": "x" * 200,
+                }
+            ],
+        }
+        assert (await client.post("/api/v1/meals", json=payload)).status_code == 422
+
+    async def test_raw_input_longo_demais_e_recusado(
+        self, client: AsyncClient, test_user: User
+    ) -> None:
+        payload = {
+            "meal_type": "lunch",
+            "date": str(date.today()),
+            "items": [
+                {
+                    "food_name": "arroz",
+                    "quantity": 100,
+                    "unit": "g",
+                    "calories": 130,
+                    "protein": 2.5,
+                    "carbs": 28,
+                    "fat": 0.2,
+                    "raw_input": "a" * 5000,
+                }
+            ],
+        }
+        assert (await client.post("/api/v1/meals", json=payload)).status_code == 422

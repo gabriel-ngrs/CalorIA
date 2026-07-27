@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user_id, get_db
 from app.models.meal import MealType
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
-from app.services.meal_service import MealItemNotFoundError, MealService
+from app.services.meal_service import (
+    FoodNotFoundError,
+    MealItemNotFoundError,
+    MealService,
+)
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 
@@ -41,7 +45,13 @@ async def create_meal(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> MealResponse:
-    meal = await MealService(db).create_meal(user_id, data)
+    try:
+        meal = await MealService(db).create_meal(user_id, data)
+    except FoodNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Alimento não encontrado no banco nutricional: {sorted(exc.food_ids)}",
+        ) from exc
     return MealResponse.model_validate(meal)
 
 

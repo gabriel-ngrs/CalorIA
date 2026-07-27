@@ -1,9 +1,15 @@
 from datetime import date as _date
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app.models.meal import MealSource, MealType
+
+#: Fontes válidas para o valor nutricional de um item.
+#: Recusar um valor livre aqui evita que o cliente grave qualquer string na
+#: coluna `varchar(20)` e mantém o campo utilizável como métrica de precisão.
+FoodDataSource = Literal["taco", "openfoodfacts", "usda", "fatsecret", "ai_estimated"]
 
 
 class MealItemCreate(BaseModel):
@@ -15,12 +21,16 @@ class MealItemCreate(BaseModel):
     carbs: float = Field(default=0.0, ge=0)
     fat: float = Field(default=0.0, ge=0)
     fiber: float = Field(default=0.0, ge=0)
-    raw_input: str | None = None
-    food_id: int | None = None
-    data_source: str | None = None
-    sodium: float | None = None
-    sugar: float | None = None
-    saturated_fat: float | None = None
+    # Campos de rastreabilidade — chegam do cliente e vão direto para colunas
+    # tipadas do banco, então o limite precisa bater com o schema. Sem isso,
+    # `data_source` maior que 20 caracteres estoura o varchar e devolve 500,
+    # e `raw_input` (Text) aceita escrita ilimitada por requisição.
+    raw_input: str | None = Field(default=None, max_length=200)
+    food_id: int | None = Field(default=None, gt=0)
+    data_source: FoodDataSource | None = None
+    sodium: float | None = Field(default=None, ge=0)
+    sugar: float | None = Field(default=None, ge=0)
+    saturated_fat: float | None = Field(default=None, ge=0)
 
 
 class MealItemResponse(BaseModel):

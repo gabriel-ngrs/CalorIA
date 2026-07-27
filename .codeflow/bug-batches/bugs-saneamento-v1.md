@@ -116,6 +116,23 @@ Legenda da coluna `verificação`: preenchida pelo `/double-check` (`✓` sanado
 | S80 | Textos com pluralização e capitalização incorretas em Hidratação, Lembretes e Humor | baixo | frontend/ui| `frontend/app/(dashboard)/hidratacao/page.tsx:358-361 ('dias' fixo); frontend/app/(dashboard)/lembretes/page.tsx:159-165 ('pausados' fixo); frontend/app/(dashboard)/humor/page.tsx:273-275 (className 'capitalize' sobre toLocaleDateString)` | aberto | — | — |
 | S81 | `make hooks` falha porque pre-commit não é verificado por `check-deps` | baixo | infra/makefile| `Makefile:289` | aberto | — | — |
 
+## S10 — adiado deliberadamente
+
+**Reset de senha não invalida as sessões existentes.** Confirmado pela verificação
+adversarial: depois de trocar a senha, o access token e o refresh token anteriores
+continuam válidos até expirar. É o único achado **alto** que fica em aberto.
+
+Foi adiado por escolha, não por esquecimento. A correção correta exige marcar o
+instante da troca de senha por usuário (coluna nova + migration) e passar a
+rejeitar, em `core/deps.py`, todo token emitido antes dessa marca. Isso toca
+`core/security.py` e o fluxo de auth — a área que a constitution do projeto
+classifica como de **alto risco**, onde um erro derruba o login de todo mundo.
+
+Fazer essa mudança no fim de uma sessão longa, sem margem para exercitar
+exaustivamente os caminhos de login, refresh, blacklist e expiração, troca um
+risco conhecido e registrado por um risco desconhecido. Merece lote próprio,
+junto com os demais achados de autorização.
+
 ## Adiados — e por quê
 
 A correção desta sessão foi deliberadamente estreita: o pedido central era tornar
