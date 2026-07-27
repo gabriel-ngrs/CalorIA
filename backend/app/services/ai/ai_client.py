@@ -7,7 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Any, cast
 
 import redis.asyncio as aioredis
-from groq import AsyncGroq
+from groq import AsyncGroq, BadRequestError, NotFoundError
 
 from app.core.config import settings
 
@@ -19,8 +19,12 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL = 7 * 24 * 3600  # 7 dias
 _CACHE_PREFIX = "ai:"
 
-_TEXT_MODEL = "llama-3.3-70b-versatile"
-_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+#: Modelos vêm da configuração, não de constantes de módulo. O modelo de visão
+#: anterior (`meta-llama/llama-4-scout-17b-16e-instruct`) foi descontinuado pela
+#: Groq: a API passou a responder 404 `model_not_found` e o registro por foto
+#: ficou 100% quebrado, sem forma de trocar o modelo sem novo deploy.
+_TEXT_MODEL = settings.GROQ_TEXT_MODEL
+_VISION_MODEL = settings.GROQ_VISION_MODEL
 
 
 class AIClient:
@@ -81,14 +85,48 @@ class AIClient:
             }
         )
 
+        # Modelos com raciocínio exposto gastam o orçamento de tokens escrevendo
+        # o `<think>` e a resposta trunca ANTES do JSON — a análise por foto
+        # falhava com "não conseguiu identificar os alimentos". Desligar o
+        # raciocínio devolve o JSON direto.
+        extras: dict[str, Any] = {}
+        if settings.GROQ_VISION_REASONING:
+            extras["reasoning_effort"] = settings.GROQ_VISION_REASONING
+
         for attempt in range(4):
             try:
                 response = await self._groq.chat.completions.create(
                     model=_VISION_MODEL,
                     messages=cast("list[ChatCompletionMessageParam]", messages),
                     temperature=0.1,
+                    **extras,
                 )
                 return response.choices[0].message.content or ""
+            except BadRequestError:
+                # O modelo pode não aceitar `reasoning_effort`. Repetir sem ele
+                # é melhor que falhar por um parâmetro opcional.
+                if extras:
+                    logger.warning(
+                        "Modelo de visão %r rejeitou reasoning_effort=%r — "
+                        "repetindo sem o parâmetro.",
+                        _VISION_MODEL,
+                        extras.get("reasoning_effort"),
+                    )
+                    extras = {}
+                    continue
+                raise
+            except NotFoundError as exc:
+                # Modelo removido do catálogo — repetir não ajuda, e o erro
+                # genérico não dizia o que estava errado.
+                logger.error(
+                    "Modelo de visão %r indisponível na Groq. "
+                    "Ajuste GROQ_VISION_MODEL para um modelo multimodal ativo.",
+                    _VISION_MODEL,
+                )
+                raise RuntimeError(
+                    f"Modelo de visão '{_VISION_MODEL}' não está disponível. "
+                    "Configure GROQ_VISION_MODEL."
+                ) from exc
             except Exception as exc:
                 if "429" in str(exc) and attempt < 3:
                     wait = 15 * (2**attempt)

@@ -68,7 +68,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AnalysisReview } from "@/components/refeicoes/AnalysisReview";
-import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
+import type {Meal, MealType, ParsedFoodItem} from "@/types";
+import { toMealItemCreate } from "@/lib/mealItems";
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: "Café da manhã",
@@ -559,29 +560,7 @@ export default function RefeicoesPage() {
     await createMeal.mutateAsync({
       meal_type: mealType,
       date: filterDate,
-      items: parsedItems.map(
-        (it): MealItemCreate => ({
-          food_name: it.food_name,
-          quantity: it.quantity,
-          unit: it.unit,
-          calories: it.calories,
-          protein: it.protein,
-          carbs: it.carbs,
-          fat: it.fat,
-          fiber: it.fiber,
-          // Rastreabilidade: sem estes campos a origem do valor nutricional
-          // morria no salvamento — a tela de revisão mostrava "veio da TACO"
-          // e a refeição gravada não sabia mais de onde o número tinha vindo.
-          food_id: it.food_id,
-          data_source: it.data_source,
-          sodium: it.sodium,
-          sugar: it.sugar,
-          saturated_fat: it.saturated_fat,
-          // Guarda a porção como a pessoa descreveu ("8 fatia"), para que a
-          // refeição gravada consiga explicar de onde saíram os gramas.
-          raw_input: it.portion_text ?? undefined,
-        })
-      ),
+      items: parsedItems.map(toMealItemCreate),
     });
     setOpen(false);
     setParsedItems(null);

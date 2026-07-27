@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     # IA — Groq (texto e visão, 100% gratuito)
     # --------------------------------------------------------------------------
     GROQ_API_KEY: str = ""
+    # Modelos Groq, configuráveis por ambiente.
+    #
+    # Ficavam fixos como constantes de módulo em `services/ai/ai_client.py`, e
+    # quando o modelo de visão foi descontinuado pela Groq a análise por foto
+    # passou a responder 404 model_not_found — sem forma de trocar sem deploy.
+    GROQ_TEXT_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_VISION_MODEL: str = "qwen/qwen3.6-27b"
+    # `reasoning_effort` da chamada de visão. Vazio = não envia o parâmetro.
+    # Modelos com raciocínio exposto gastam o orçamento de tokens no bloco
+    # `<think>` e truncam antes do JSON; "none" devolve a resposta direta.
+    GROQ_VISION_REASONING: str = "none"
 
     # --------------------------------------------------------------------------
     # Web Push (VAPID)

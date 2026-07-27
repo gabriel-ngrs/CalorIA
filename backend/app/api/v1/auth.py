@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +25,8 @@ from app.schemas.user import (
 from app.services.auth_service import blacklist_token, is_token_blacklisted
 from app.services.user_service import UserService
 from app.workers.tasks.emails import send_password_reset_email
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -116,7 +120,20 @@ async def forgot_password(
         reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
         # Fire-and-forget via Celery: o handler retorna imediatamente nos dois
         # casos (e-mail existente ou não), sem esperar o envio SMTP.
-        send_password_reset_email.delay(user.email, reset_link)
+        #
+        # A falha do enfileiramento NÃO pode escapar: como este ramo só executa
+        # quando o e-mail existe, uma exceção aqui transforma o endpoint num
+        # oráculo de enumeração — e-mail cadastrado devolve 500, não cadastrado
+        # devolve 200. É exatamente a distinção que a resposta uniforme existe
+        # para impedir.
+        try:
+            send_password_reset_email.delay(user.email, reset_link)
+        except Exception:
+            logger.exception(
+                "Falha ao enfileirar o e-mail de recuperação de senha "
+                "(user_id=%s). A resposta segue uniforme.",
+                user.id,
+            )
     return {"message": _FORGOT_PASSWORD_MESSAGE}
 
 

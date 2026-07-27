@@ -287,5 +287,15 @@ class VisionParser:
             logger.error("IA retornou JSON inválido na estimativa de macros: %s", exc)
             raise ValueError("A IA não conseguiu calcular os macronutrientes.") from exc
 
-        low_confidence = any(it.confidence < _CONFIDENCE_THRESHOLD for it in items)
+        if not items:
+            # Sem itens não há refeição. Devolver uma análise vazia deixava o
+            # usuário salvar uma refeição fantasma de 0 kcal, que entrava nos
+            # agregados do dia como se fosse um registro legítimo.
+            raise ValueError(
+                "Nenhum alimento foi identificado nesta imagem. Revise e tente de novo."
+            )
+
+        low_confidence = any(
+            it.confidence < _CONFIDENCE_THRESHOLD or it.needs_review for it in items
+        )
         return MealAnalysisResponse(items=items, low_confidence=low_confidence)

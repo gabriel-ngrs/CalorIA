@@ -401,3 +401,40 @@ class TestFallbackNaoPerdeItens:
         assert faltante.food_name == "jambu"
         assert faltante.needs_review is True
         assert r.low_confidence is True
+
+
+class TestAnaliseVaziaNaoViraRefeicao:
+    """Uma análise sem itens não pode virar refeição salvável (achado S20).
+
+    Descrições sem comida ("asdfgh") produziam uma análise de zero itens que o
+    front deixava salvar: entrava uma refeição de 0 kcal no banco e nos
+    agregados do dia como se fosse um registro legítimo.
+    """
+
+    async def test_descricao_sem_comida_levanta_erro_legivel(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        async def _sem_match(query: str, db: object, min_score: float = 0.65) -> None:
+            return None
+
+        monkeypatch.setattr(mp, "lookup_food", _sem_match)
+
+        client = MagicMock()
+        client.generate_text = AsyncMock(return_value="[]")
+
+        with pytest.raises(ValueError, match="Nenhum alimento foi identificado"):
+            await mp.MealParser(client).parse("asdfgh", db=MagicMock())
+
+    async def test_erro_menciona_a_descricao(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        async def _sem_match(query: str, db: object, min_score: float = 0.65) -> None:
+            return None
+
+        monkeypatch.setattr(mp, "lookup_food", _sem_match)
+        client = MagicMock()
+        client.generate_text = AsyncMock(return_value="[]")
+
+        with pytest.raises(ValueError) as exc:
+            await mp.MealParser(client).parse("qwerty", db=MagicMock())
+        assert "descrição" in str(exc.value)

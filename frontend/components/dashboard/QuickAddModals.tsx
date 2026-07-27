@@ -30,7 +30,8 @@ import { cn } from "@/lib/utils";
 import { describeAnalyzeError } from "@/lib/aiErrors";
 import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal } from "@/lib/hooks/useMeals";
 import { useLogHydration, useLogMood, useLogWeight } from "@/lib/hooks/useLogs";
-import type { MealItemCreate, MealType, ParsedFoodItem } from "@/types";
+import type {MealType, ParsedFoodItem} from "@/types";
+import { toMealItemCreate } from "@/lib/mealItems";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -224,16 +225,7 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
     await createMeal.mutateAsync({
       meal_type: mealType,
       date: today,
-      items: parsedItems.map((it): MealItemCreate => ({
-        food_name: it.food_name,
-        quantity: it.quantity,
-        unit: it.unit,
-        calories: it.calories,
-        protein: it.protein,
-        carbs: it.carbs,
-        fat: it.fat,
-        fiber: it.fiber,
-      })),
+      items: parsedItems.map(toMealItemCreate),
     });
     onOpenChange(false);
     reset();

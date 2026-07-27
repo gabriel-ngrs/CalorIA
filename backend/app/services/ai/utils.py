@@ -8,11 +8,38 @@ logger = logging.getLogger(__name__)
 
 
 def extract_json_from_ai_response(text: str) -> list[dict[str, object]]:
-    """Extrai lista JSON da resposta da IA, tolerante a blocos de markdown."""
+    """Extrai a lista JSON da resposta da IA.
+
+    Tolera três coisas que os modelos costumam acrescentar em volta do JSON:
+
+    1. **Cercas de markdown** (` ```json `).
+    2. **Blocos de raciocínio** `<think>…</think>` — modelos com reasoning
+       exposto (o caso do `qwen`, adotado depois de a Groq descontinuar o modelo
+       de visão anterior) escrevem o raciocínio antes da resposta, e o
+       `json.loads` estourava na primeira letra.
+    3. **Texto solto antes ou depois do array**, do tipo "Aqui está o JSON:".
+
+    Levanta `json.JSONDecodeError` quando não há array algum — os parsers
+    dependem desse tipo para transformar a falha em erro 422 legível.
+    """
     text = text.strip()
+    # Remove blocos de raciocínio, inclusive um `<think>` sem fechamento
+    # (resposta truncada no limite de tokens).
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<think>.*", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"```(?:json)?\s*", "", text)
     text = re.sub(r"```\s*", "", text)
-    return json.loads(text.strip())  # type: ignore[no-any-return]
+    text = text.strip()
+
+    try:
+        return json.loads(text)  # type: ignore[no-any-return]
+    except json.JSONDecodeError:
+        # Último recurso: recorta do primeiro '[' ao último ']'. Resolve o
+        # "Aqui está o JSON:" sem mascarar uma resposta sem JSON nenhum.
+        inicio, fim = text.find("["), text.rfind("]")
+        if inicio == -1 or fim <= inicio:
+            raise
+        return json.loads(text[inicio : fim + 1])  # type: ignore[no-any-return]
 
 
 #: Tolerância de divergência entre calorias declaradas e calculadas por Atwater.
