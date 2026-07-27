@@ -151,6 +151,45 @@ function MacroPill({ icon, value, unit, color }: {
   );
 }
 
+// ── Indicador de origem do valor nutricional ──────────────────────────────────
+
+/** Rótulo curto da fonte do dado, por `data_source` do MealItem. */
+const SOURCE_DOT: Record<string, { label: string; className: string }> = {
+  taco:          { label: "Tabela",  className: "text-emerald-500 bg-emerald-500/10 border-emerald-500/25" },
+  usda:          { label: "USDA",    className: "text-emerald-500 bg-emerald-500/10 border-emerald-500/25" },
+  fatsecret:     { label: "FS",      className: "text-sky-500 bg-sky-500/10 border-sky-500/25" },
+  openfoodfacts: { label: "OFF",     className: "text-sky-500 bg-sky-500/10 border-sky-500/25" },
+  ai_estimated:  { label: "IA",      className: "text-amber-500 bg-amber-500/10 border-amber-500/25" },
+};
+
+/**
+ * Mostra de onde veio o número nutricional do item já gravado.
+ *
+ * Sem isto, uma refeição salva não sabe dizer se as calorias vieram da tabela
+ * nutricional ou de uma estimativa do modelo — e o usuário não tem como
+ * calibrar a confiança no próprio diário.
+ */
+function SourceDot({ source }: { source: string | null }) {
+  if (!source) return null;
+  const meta = SOURCE_DOT[source];
+  if (!meta) return null;
+  return (
+    <span
+      title={
+        source === "ai_estimated"
+          ? "Estimado pela IA — sem correspondência no banco nutricional"
+          : "Valor do banco nutricional"
+      }
+      className={cn(
+        "px-1 py-px rounded text-[9px] font-medium border shrink-0",
+        meta.className
+      )}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
 // ── Day stats sidebar ─────────────────────────────────────────────────────────
 
 function DayStats({ meals }: { meals: Meal[] }) {
@@ -324,8 +363,14 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
           {meal.items.map((item) => (
             <div key={item.id} className="flex items-center justify-between py-1.5 gap-2">
               <div className="min-w-0">
-                <span className="text-sm text-foreground/90 truncate block">{item.food_name}</span>
-                <span className="text-xs text-muted-foreground">{item.quantity}{item.unit}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-sm text-foreground/90 truncate">{item.food_name}</span>
+                  <SourceDot source={item.data_source} />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {item.quantity}{item.unit}
+                  {item.raw_input && ` · você disse "${item.raw_input}"`}
+                </span>
               </div>
               <div className="text-right shrink-0">
                 <span className="text-xs font-medium text-foreground/80">{item.calories.toFixed(0)} kcal</span>
@@ -524,6 +569,17 @@ export default function RefeicoesPage() {
           carbs: it.carbs,
           fat: it.fat,
           fiber: it.fiber,
+          // Rastreabilidade: sem estes campos a origem do valor nutricional
+          // morria no salvamento — a tela de revisão mostrava "veio da TACO"
+          // e a refeição gravada não sabia mais de onde o número tinha vindo.
+          food_id: it.food_id,
+          data_source: it.data_source,
+          sodium: it.sodium,
+          sugar: it.sugar,
+          saturated_fat: it.saturated_fat,
+          // Guarda a porção como a pessoa descreveu ("8 fatia"), para que a
+          // refeição gravada consiga explicar de onde saíram os gramas.
+          raw_input: it.portion_text ?? undefined,
         })
       ),
     });

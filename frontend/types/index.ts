@@ -66,6 +66,8 @@ export interface MealItem {
   carbs: number;
   fat: number;
   fiber: number | null;
+  /** Porção como o usuário descreveu, ex.: "8 fatia". */
+  raw_input: string | null;
   food_id: number | null;
   data_source: string | null; // "taco" | "openfoodfacts" | "usda" | "ai_estimated" | null
   sodium: number | null;
@@ -91,6 +93,8 @@ export interface MealItemCreate {
   carbs: number;
   fat: number;
   fiber?: number;
+  /** Porção como o usuário descreveu, ex.: "8 fatia". */
+  raw_input?: string;
   food_id?: number | null;
   data_source?: string | null;
   sodium?: number | null;
