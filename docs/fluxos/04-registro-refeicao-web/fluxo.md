@@ -14,31 +14,69 @@ O frontend permite registrar refeicoes de duas formas: analisando texto ou foto 
 4. Backend autentica JWT, busca usuario, monta contexto
 5. Chama `MealParser.parse(descricao, contexto, db)`
 6. Retorna `MealAnalysisResponse` com itens e `low_confidence`
-7. Frontend exibe itens identificados e totais de macros
-8. Se `low_confidence=true`: exibe aviso
+7. Frontend exibe a **revisao** (`components/refeicoes/AnalysisReview.tsx`) — ver secao 2
+8. Usuario ajusta quantidades e confirma itens incertos
 9. Usuario clica "Salvar" → `useCreateMeal().mutate(mealData)`
-10. Frontend chama `POST /api/v1/meals {meal_type, date, items}`
-11. Backend insere `Meal` + `MealItem` no banco
+10. Frontend chama `POST /api/v1/meals {meal_type, date, items}`, convertendo cada
+    item com `lib/mealItems.ts::toMealItemCreate`
+11. Backend insere `Meal` + `MealItem` no banco, **com a procedencia**
 12. React Query invalida caches `["meals"]` e `["dashboard"]`
 13. Dashboard atualiza automaticamente
 
+Se a analise nao identificar alimento algum, o backend responde 422 com mensagem
+legivel em vez de devolver uma lista vazia — antes, uma descricao sem comida
+("asdfgh") virava uma refeicao fantasma de 0 kcal salvavel, que entrava nos
+agregados do dia.
+
 ---
 
-## 2. Analise de Foto
+## 2. Revisao da analise — a origem de cada numero
+
+A tela de revisao existe porque **o erro de porcao era silencioso**: tudo era
+rotulado "analisado por IA", inclusive os itens vindos da tabela nutricional
+curada, e nao havia como perceber uma conversao errada.
+
+Por item, a revisao mostra:
+
+| elemento | de onde vem |
+|---|---|
+| selo de fonte (Tabela nutricional / Open Food Facts / Estimado pela IA) | `data_source` |
+| massa normalizada em gramas, editavel | `quantity` |
+| a porcao como a pessoa escreveu ("voce disse 8 fatia") | `portion_text` |
+| alimento casado no banco, quando o nome difere | `matched_food_name` |
+| destaque ambar + botao "Esta certo" | `needs_review` / `review_reason` |
+
+Regras da tela:
+
+- **Itens com `needs_review` bloqueiam o salvamento** ate confirmacao explicita.
+- **Editar a quantidade reescala os macros por proporcao**, no cliente. Isso e
+  exatamente o calculo do banco (`valor_100g x gramas/100`), entao nao ha nova
+  chamada de IA — e a edicao manual passa a valer como ancora de porcao.
+- O rodape informa quantos itens vieram do banco (`2 de 3 vieram do banco
+  nutricional`).
+
+A lista de refeicoes ja gravadas repete o selo de fonte por item, para que o
+historico continue explicando de onde saiu cada numero.
+
+---
+
+## 3. Analise de Foto
 
 1. Usuario seleciona imagem via file input
 2. Frontend le arquivo com `FileReader.readAsDataURL()`
 3. Extrai base64 e mime_type
 4. Chama `POST /api/v1/ai/analyze-photo {image_base64, mime_type}`
 5. Backend chama `VisionParser.parse_base64()`
-6. Mesmo fluxo de exibicao e salvamento que texto
+6. Mesmo fluxo de revisao e salvamento que o texto, com a mesma normalizacao de
+   porcao e a mesma transparencia de origem
 
 ---
 
-## 3. Quick Add (Modal Rapido)
+## 4. Quick Add (Modal Rapido)
 
 O dashboard tem 4 modais rapidos:
-- **Refeicao**: digita descricao → analisa com IA → salva
+- **Refeicao**: digita descricao → analisa com IA → revisa → salva
+  (usa o mesmo `toMealItemCreate`, para que a procedencia nao se perca por aqui)
 - **Agua**: informa ml → `POST /api/v1/hydration`
 - **Peso**: informa kg → `POST /api/v1/weight`
 - **Humor**: seleciona energia + humor (1-5) → `POST /api/v1/mood`
@@ -47,7 +85,7 @@ Ao salvar qualquer modal, React Query invalida caches e o dashboard atualiza.
 
 ---
 
-## 4. Gerenciamento de Token
+## 5. Gerenciamento de Token
 
 1. Cada request passa pelo interceptor do `api.ts`
 2. Interceptor verifica cache de token em memoria
@@ -63,6 +101,8 @@ Ao salvar qualquer modal, React Query invalida caches e o dashboard atualiza.
 |---------|------------------|
 | `frontend/lib/hooks/useMeals.ts` | `useAnalyzeMeal()`, `useAnalyzePhoto()`, `useCreateMeal()` |
 | `frontend/lib/hooks/useDashboard.ts` | `useDashboardToday()`, `useMacrosChart()` |
+| `frontend/components/refeicoes/AnalysisReview.tsx` | Revisao da analise com origem, confianca e edicao de quantidade |
+| `frontend/lib/mealItems.ts` | `toMealItemCreate()` — conversao unica que preserva a procedencia |
 | `frontend/components/dashboard/QuickAddModals.tsx` | Modais de adicao rapida |
 | `frontend/lib/api.ts` | Axios com interceptors e refresh |
 | `backend/app/api/v1/ai.py` | Endpoints `/analyze-meal` e `/analyze-photo` |

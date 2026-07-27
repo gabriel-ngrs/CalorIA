@@ -428,6 +428,44 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ---
 
+## Fase 10 — Precisão do Registro de Refeição
+
+Trabalho derivado do [bug 001](.codeflow/bugs/001-fluxo-cadastro-refeicao.md):
+tornar o registro determinístico e caloricamente preciso, com o banco nutricional
+como fonte de verdade e a IA restrita a identificar e normalizar.
+
+### 10.1 Medição antes de corrigir
+- [x] Instrumentar o pipeline capturando os estágios intermediários (`scripts/instrument_meal_pipeline.py`)
+- [x] Conjunto rotulado para medir estratégias e limiares de busca (`scripts/eval_food_lookup.py`)
+- [x] Conjunto dourado de 30 refeições brasileiras (`scripts/eval_golden_set.py`)
+- [x] Registrar as decisões de parâmetro com o número que as justifica
+
+### 10.2 Normalização determinística de porção
+- [x] Tabela `portions` com faixa plausível e procedência declarada por linha
+- [x] Conversor de unidade caseira, fração e número por extenso
+- [x] Substituir a constante `_PORTIONS_REF` embutida no prompt
+- [ ] Ampliar a cobertura de porções para além dos ~110 termos atuais
+
+### 10.3 Banco como fonte de verdade
+- [x] Prompt deixa de forçar decomposição: prato composto resolve pela fonte curada
+- [x] Busca insensível a acento nos dois lados (F1 0,776 → 0,857)
+- [x] Uma query em vez de N; predicado indexável (238 ms → 44 ms)
+- [x] Excluir do lookup as estimativas da IA gravadas em `foods` (erro 16,7% → 4,1%)
+- [ ] Higienizar ou reimportar as 23.398 linhas `ai_estimated` da tabela `foods`
+
+### 10.4 Transparência
+- [x] Origem do valor, porção original e confiança por item na revisão
+- [x] Persistir a procedência ao salvar e exibi-la no histórico
+- [x] Itens sem âncora de porção bloqueiam o salvamento até confirmação
+
+### 10.5 Saneamento geral
+- [x] Varredura de QA e auditoria: 81 achados inventariados ([lote](.codeflow/bug-batches/bugs-saneamento-v1.md))
+- [x] Verificação adversarial dos críticos e altos
+- [x] 19 corrigidos com teste de regressão
+- [ ] Lotes próprios para os temas em aberto (segurança/autorização, validação de entrada, infra/build)
+
+---
+
 ## Resumo das Fases
 
 | Fase | Nome | Status |
@@ -442,3 +480,4 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 7 | Insights Avançados de IA | `[x]` |
 | 8 | Qualidade e Testes | `[x]` |
 | 9 | Deploy e Escala | `[~]` |
+| 10 | Precisão do Registro de Refeição | `[~]` |
