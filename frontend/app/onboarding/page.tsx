@@ -436,8 +436,17 @@ export default function OnboardingPage() {
         toast.success("Dados físicos salvos!");
         setStep(2);
       } else if (step === 2) {
+        // O dashboard redireciona para cá sempre que `calorie_goal` for falsy.
+        // Com o campo vazio, `?? undefined` omitia a chave do PATCH: a UI dizia
+        // "Metas salvas!", o valor continuava nulo e o usuário voltava para o
+        // onboarding a cada visita ao dashboard. O mesmo fallback do "Pular
+        // esta etapa" resolve, preferindo o TDEE já calculado ao default fixo.
         await updateMe.mutateAsync({
-          calorie_goal: parseNum(step2.calorieGoal) ?? undefined,
+          calorie_goal:
+            parseNum(step2.calorieGoal) ??
+            (profile?.tdee_calculated != null
+              ? Math.round(profile.tdee_calculated)
+              : 2000),
           water_goal_ml: parseNum(step2.waterGoal) ?? undefined,
           weight_goal: parseNum(step2.weightGoal) ?? undefined,
           goal_type: step2.goalType || undefined,
@@ -456,7 +465,12 @@ export default function OnboardingPage() {
     if (step === 2) {
       // Salva meta calórica padrão para evitar loop no redirect do dashboard
       try {
-        await updateMe.mutateAsync({ calorie_goal: 2000 } as Parameters<typeof updateMe.mutateAsync>[0]);
+        await updateMe.mutateAsync({
+          calorie_goal:
+            profile?.tdee_calculated != null
+              ? Math.round(profile.tdee_calculated)
+              : 2000,
+        } as Parameters<typeof updateMe.mutateAsync>[0]);
       } catch { /* silencia — usuário pode configurar depois */ }
       setStep(3);
     } else if (step < 3) {

@@ -26,6 +26,12 @@ CYAN   := \033[0;36m
 BOLD   := \033[1m
 NC     := \033[0m
 
+# Portas publicadas no host — espelham os defaults do docker-compose.dev.yml.
+# O commit 49d0b7c deslocou as portas do dev mas não propagou para cá, e o
+# health check do `dev-d` batia em :8000 enquanto o backend subia em :8010.
+BACKEND_HOST_PORT  ?= 8010
+FRONTEND_HOST_PORT ?= 3010
+
 COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose
 
@@ -127,9 +133,9 @@ init: check-deps
 	@echo ""
 	@echo "$(BOLD)$(GREEN)Setup concluído!$(NC)"
 	@echo ""
-	@echo "  Dashboard:   http://localhost:3000"
-	@echo "  API:         http://localhost:8000"
-	@echo "  Swagger:     http://localhost:8000/docs"
+	@echo "  Dashboard:   http://localhost:$(FRONTEND_HOST_PORT)"
+	@echo "  API:         http://localhost:$(BACKEND_HOST_PORT)"
+	@echo "  Swagger:     http://localhost:$(BACKEND_HOST_PORT)/docs"
 	@echo "  Evol. API:   http://localhost:8080"
 	@echo ""
 	@echo "  Próximo passo: $(CYAN)make seed$(NC) para popular com dados de dev"
@@ -147,7 +153,7 @@ dev-d:
 	@echo "$(BLUE)Subindo serviços em background...$(NC)"
 	@$(COMPOSE_DEV) up -d
 	@$(MAKE) --no-print-directory _wait-for-backend
-	@echo "$(GREEN)Serviços rodando!$(NC)  Backend: http://localhost:8000 | Frontend: http://localhost:3000"
+	@echo "$(GREEN)Serviços rodando!$(NC)  Backend: http://localhost:$(BACKEND_HOST_PORT) | Frontend: http://localhost:$(FRONTEND_HOST_PORT)"
 
 infra:
 	@echo "$(BLUE)Subindo infra (postgres, redis)...$(NC)"
@@ -188,7 +194,7 @@ status:
 	@$(COMPOSE_DEV) ps -a
 	@echo ""
 	@printf "$(CYAN)Health check:$(NC) "
-	@curl -sf http://localhost:8000/health 2>/dev/null && echo "" || echo "$(RED)Backend indisponível$(NC)"
+	@curl -sf http://localhost:$(BACKEND_HOST_PORT)/health 2>/dev/null && echo "" || echo "$(RED)Backend indisponível$(NC)"
 
 ps:
 	@$(COMPOSE_DEV) ps
@@ -318,7 +324,7 @@ shell-frontend:
 _wait-for-backend:
 	@printf "  Aguardando backend"
 	@timeout=90; while [ $$timeout -gt 0 ]; do \
-		curl -sf http://localhost:8000/health >/dev/null 2>&1 && break; \
+		curl -sf http://localhost:$(BACKEND_HOST_PORT)/health >/dev/null 2>&1 && break; \
 		printf "."; sleep 2; timeout=$$((timeout - 2)); \
 	done; echo ""; \
 	if [ $$timeout -le 0 ]; then echo "$(RED)Backend não respondeu em 90s. Verifique: make logs-backend$(NC)"; exit 1; fi

@@ -7,8 +7,12 @@ export function useMeals(date?: string) {
   return useQuery<Meal[]>({
     queryKey: ["meals", date],
     queryFn: async () => {
-      const params = date ? `?date=${date}` : "";
-      const { data } = await api.get(`/api/v1/meals${params}`);
+      // O endpoint tem limit=20 por padrão. Sem pedir mais, a página de
+      // refeições somava um dia truncado e divergia do total do dashboard
+      // (2000 kcal contra 2246 para o mesmo dia).
+      const params = new URLSearchParams({ limit: "100" });
+      if (date) params.set("date", date);
+      const { data } = await api.get(`/api/v1/meals?${params}`);
       return data;
     },
     // Usa os defaults globais (staleTime: 3min, refetchOnWindowFocus: false)

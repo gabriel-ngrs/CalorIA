@@ -110,8 +110,13 @@ def downgrade() -> None:
         "telegram",
         "whatsapp",
         name="reminderchannel",
-        create_type=True,
+        create_type=False,
     )
+    # `create_type=True` só dispara o CREATE TYPE pelos hooks de criação de
+    # TABELA do SQLAlchemy. `op.add_column` emite apenas o ALTER TABLE, então o
+    # downgrade quebrava com `type "reminderchannel" does not exist` — o tipo
+    # havia sido derrubado pelo upgrade. Criar explicitamente resolve.
+    reminder_channel_enum.create(op.get_bind(), checkfirst=True)
     op.add_column(
         "reminders",
         sa.Column("channel", reminder_channel_enum, nullable=True),

@@ -45,10 +45,20 @@ export default function PesoPage() {
     setWeight("");
   }
 
-  const formatted = (chartData ?? []).map((d) => ({
-    ...d,
-    date: new Date(d.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-  }));
+  // A API devolve as pesagens em ordem decrescente de data e o Recharts plota
+  // na ordem do array — sem ordenar, o ponto mais recente ficava à esquerda e o
+  // gráfico mostrava ganho para quem tinha perdido peso.
+  // O sufixo "T12:00" evita que a string date-only seja lida como meia-noite
+  // UTC e formatada como o dia anterior em fusos negativos.
+  const formatted = [...(chartData ?? [])]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((d) => ({
+      ...d,
+      date: new Date(d.date + "T12:00").toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+      }),
+    }));
 
   const latest = logs?.[0];
   const prev = logs?.[1];

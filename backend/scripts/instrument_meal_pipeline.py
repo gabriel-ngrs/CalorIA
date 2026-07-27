@@ -186,6 +186,17 @@ async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, help="caminho do JSON de saída")
     ap.add_argument("--label", default="antes", help="rótulo da rodada")
+    ap.add_argument(
+        "--pares",
+        default="",
+        help="ids dos pares a rodar, separados por vírgula (vazio = todos)",
+    )
+    ap.add_argument(
+        "--pausa",
+        type=float,
+        default=2.0,
+        help="segundos entre chamadas — suba em free tier com cota apertada",
+    )
     args = ap.parse_args()
 
     if not settings.GROQ_API_KEY:
@@ -200,8 +211,14 @@ async def main() -> None:
 
     resultados: list[dict[str, Any]] = []
 
+    selecionados = (
+        [p for p in PARES if str(p["id"]) in args.pares.split(",")]
+        if args.pares
+        else PARES
+    )
+
     async with maker() as db:
-        for par in PARES:
+        for par in selecionados:
             print(f"[{par['id']}] {par['nome']}", flush=True)
             entrada: dict[str, Any] = {
                 "id": par["id"],
@@ -214,7 +231,7 @@ async def main() -> None:
                     entrada[lado] = await analisar(parser, par[lado], db)
                 except Exception as exc:  # noqa: BLE001 - queremos registrar a falha
                     entrada[lado] = {"erro": f"{type(exc).__name__}: {exc}"}
-                await asyncio.sleep(2)  # respeita rate limit do free tier
+                await asyncio.sleep(args.pausa)  # respeita rate limit do free tier
 
             ka = entrada.get("a", {}).get("total_kcal")
             kb = entrada.get("b", {}).get("total_kcal")
@@ -233,7 +250,7 @@ async def main() -> None:
                 )
             except Exception as exc:  # noqa: BLE001
                 rodadas.append({"erro": f"{type(exc).__name__}: {exc}"})
-            await asyncio.sleep(2)
+            await asyncio.sleep(args.pausa)
 
         kcals = [r.get("total_kcal") for r in rodadas if "total_kcal" in r]
         resultados.append(

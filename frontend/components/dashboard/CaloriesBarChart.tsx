@@ -45,9 +45,15 @@ function BarTooltip({ active, payload, label }: TooltipProps<number, string>) {
 }
 
 export function CaloriesBarChart({ data, calorieGoal, period }: Props) {
+  // "2026-07-26" sem hora é lido como meia-noite UTC; em fuso negativo o
+  // toLocaleDateString devolvia o dia ANTERIOR e todas as barras apareciam
+  // rotuladas com a data errada. "T12:00" é a convenção já usada no resto do app.
   const formatted = data.map((d) => ({
     ...d,
-    date: new Date(d.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+    date: new Date(d.date + "T12:00").toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+    }),
   }));
 
   return (
