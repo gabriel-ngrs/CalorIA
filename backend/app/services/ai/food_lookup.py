@@ -55,6 +55,23 @@ _LOOKUP_MIN_SCORE = 0.65
 # Mantido em 1.40 por medição: prioridade dura de fonte mede pior (F1 0,746).
 _SOURCE_BOOST: dict[str, float] = {"taco": 1.40}
 
+#: Fontes que NÃO podem responder pelo banco nutricional.
+#
+# As 23.398 linhas `source='ai_estimated'` são estimativas da própria IA gravadas
+# em `foods` por `scripts/enrich_foods.py`. Usá-las viola o princípio do
+# pipeline — o banco é a âncora justamente por não ser palpite do modelo — e o
+# conjunto dourado mostra o custo em número: mantê-las dá erro calórico médio de
+# 16,7% (máx 174,8%); excluí-las dá **4,3%** (máx 72,5%).
+#
+# O caso extremo é 'arroz': casava com a linha `Arroz` [ai_estimated] de
+# 349 kcal/100g (arroz CRU) em vez de `Arroz parboilizado cozido` (127), erro de
+# 175% no alimento mais registrado do país.
+#
+# Custo aceito: 4 dos 29 itens do conjunto dourado deixam de ter match e caem no
+# fallback da IA. Lá eles chegam ao usuário **marcados como estimados**, em vez
+# de entrarem silenciosamente com um número errado que parece vir do banco.
+_FONTES_EXCLUIDAS: frozenset[str] = frozenset({"ai_estimated"})
+
 #: Palavras que não podem iniciar nem terminar um n-grama candidato — um
 #: fragmento que começa em preposição não denota um alimento.
 _STOPWORDS_BORDA = frozenset(
@@ -185,8 +202,9 @@ WITH candidatos AS (
         SELECT f.id AS fid,
                similarity(caloria_unaccent(f.search_text), q.termo) AS score
         FROM foods f
-        WHERE caloria_unaccent(f.search_text) %>> q.termo
-           OR caloria_unaccent(f.search_text) %  q.termo
+        WHERE f.source <> ALL(CAST(:fontes_excluidas AS text[]))
+          AND (caloria_unaccent(f.search_text) %>> q.termo
+            OR caloria_unaccent(f.search_text) %  q.termo)
         ORDER BY similarity(caloria_unaccent(f.search_text), q.termo) DESC
         LIMIT 20
     ) m
@@ -228,6 +246,7 @@ async def find_foods_in_text(text_: str, db: AsyncSession) -> list[FoodMatch]:
         text(_SQL_LOOKUP),
         {
             "termos": candidates,
+            "fontes_excluidas": sorted(_FONTES_EXCLUIDAS),
             "boost_taco": _SOURCE_BOOST.get("taco", 1.0),
             "limite": _MAX_RESULTS,
         },

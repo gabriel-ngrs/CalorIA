@@ -93,20 +93,51 @@ Registro metodológico: **o F1 agregado é enganoso aqui**. Ele premia trocar
 lugar de 146 kcal é pior que um item ausente, que ao menos cai no fallback
 marcado. A escolha foi feita olhando a distribuição dos erros, não só o agregado.
 
-**3. NÃO excluir nem penalizar as linhas `source='ai_estimated'` no lookup.**
+**3. EXCLUIR as linhas `source='ai_estimated'` do lookup.**
 
-Também contraria a intuição. Excluí-las (H) derruba o F1 para 0,769 — o recall cai
-porque `taco`+`openfoodfacts` não cobrem itens comuns (`whey protein`, `aveia em
-flocos`, `azeite` ficam sem match). Penalizá-las em 0,75× (I) não muda nada no
-limiar 0,65 (F1 idêntico ao de B), porque uma linha que satura em 1,00 continua
-acima de 0,65 depois da penalidade.
+> **Esta decisão foi revertida depois de medir melhor.** A primeira versão dizia
+> "não excluir", baseada no conjunto rotulado de `eval_food_lookup.py`. O conjunto
+> dourado — mais próximo do produto — mostrou o contrário. O registro da reversão
+> fica aqui de propósito: o erro foi de método, não de execução.
 
-Registro do risco aceito: as 23.398 linhas `ai_estimated` (55% da tabela, geradas
-por `backend/scripts/enrich_foods.py`) permanecem competindo com a fonte curada.
-Casos ruins conhecidos que sobrevivem: `'banana'` → `'Banana'` [ai_estimated]
-420 kcal/100g; `'pizza calabresa'` → `'Calabresa Pizza'` 358 em vez da `taco` 270.
-**Higienizar esse conjunto é trabalho de dados, não de limiar** — registrado como
-melhoria própria em vez de resolvido por parâmetro.
+**Por que a primeira medição enganou.** `eval_food_lookup.py` usa consultas
+*limpas* (`"arroz branco cozido"`) e mede F1 de "o alimento casado cai na faixa
+calórica esperada". Duas distorções:
+
+1. Usuário não escreve "arroz branco cozido", escreve **"arroz"**. Com a consulta
+   curta, `'arroz'` casa com a linha `Arroz` [ai_estimated] de **349 kcal/100g**
+   — arroz **cru** — em vez de `Arroz parboilizado cozido` (127). Erro de **175%**
+   no alimento mais registrado do país. O conjunto limpo nunca expôs isso.
+2. F1 conta acerto/erro binário. Não distingue errar por 5% de errar por 175%.
+
+**O que o conjunto dourado mediu** (`eval_golden_set.py`, 30 refeições brasileiras
+em unidades caseiras, erro calórico contra a fonte curada):
+
+| tratamento de `ai_estimated` | resolvidos | alimento ok | **erro médio** | ≤10% | erro máx |
+|---|---:|---:|---:|---:|---:|
+| nenhum | 26/29 | 14/29 | **16,7%** | 18/26 | 174,8% |
+| penalidade 0,85× | 26/29 | 16/29 | 15,9% | 19/26 | 174,8% |
+| penalidade 0,75× | 26/29 | 17/29 | 14,6% | 20/26 | 174,8% |
+| **excluir** | 23/29 | **19/29** | **4,1%** | **21/23** | 72,5% |
+
+Erro médio cai de 16,7% para **4,1%**; itens dentro de ±10% sobem de 69% para 91%;
+o erro máximo cai pela metade. No conjunto antigo o F1 cai de 0,829 para 0,788,
+mas a precisão sobe (85,3% → 86,7%) e os falsos-positivos vão a **zero**.
+
+**Custo aceito:** 6 dos 29 itens deixam de ter match e caem no fallback da IA
+(`'arroz'`, `'alface'`, `'tapioca'`, `'cuscuz de milho'`, `'açaí na tigela'`,
+`'coxinha'`). Lá eles chegam ao usuário **marcados como estimados**. É a troca
+certa: um item marcado como incerto é melhor que um item errado que se apresenta
+como dado de banco.
+
+**Por que exclusão e não penalidade.** Com limiar 0,65, qualquer penalidade
+≤ 0,65 já é exclusão na prática (o score bruto máximo de `similarity` é 1,00).
+Entre uma penalidade que exclui disfarçadamente e uma exclusão declarada, a
+segunda é legível. Implementada em `food_lookup._FONTES_EXCLUIDAS`.
+
+As 23.398 linhas continuam na tabela — removê-las é migração de dados destrutiva
+e fora do escopo deste trabalho. Higienizá-las (ou reimportá-las de fonte real)
+fica registrado como melhoria própria.
 
 **4. NÃO adotar score composto (`strict_word_similarity × similarity`).**
 

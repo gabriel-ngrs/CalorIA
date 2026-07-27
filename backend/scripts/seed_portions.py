@@ -141,9 +141,27 @@ PORCOES: list[tuple[str, str, float, float, float, int, str]] = [
     ("salada", "prato", 100.0, 60.0, 150.0, 30, _USUAL),
     ("sopa", "prato", 300.0, 250.0, 400.0, 30, _USUAL),
     ("sopa", "concha", 130.0, 100.0, 160.0, 30, _USUAL),
+    # --- PRATOS COMPOSTOS DA FONTE CURADA ---------------------------------
+    # A fonte `taco` tem estes pratos montados; sem porção caseira eles caem
+    # na regra genérica e a massa fica larga demais para sustentar o kcal.
+    ("hot dog", "unidade", 180.0, 140.0, 250.0, 40, _USUAL),
+    ("cachorro quente", "unidade", 180.0, 140.0, 250.0, 40, _USUAL),
+    ("acai", "prato", 300.0, 200.0, 500.0, 40, _USUAL),
+    ("acai", "tigela", 300.0, 200.0, 500.0, 40, _USUAL),
+    ("feijoada", "prato", 350.0, 250.0, 500.0, 40, _USUAL),
+    ("lasanha", "prato", 250.0, 180.0, 350.0, 40, _USUAL),
+    ("strogonoff", "prato", 250.0, 180.0, 350.0, 40, _USUAL),
+    ("escondidinho", "prato", 250.0, 180.0, 350.0, 40, _USUAL),
+    ("moqueca", "prato", 250.0, 180.0, 400.0, 40, _USUAL),
+    ("yakissoba", "prato", 300.0, 200.0, 400.0, 40, _USUAL),
+    ("parmegiana", "prato", 300.0, 200.0, 400.0, 40, _USUAL),
+    ("alface", "prato", 60.0, 30.0, 100.0, 40, _USUAL),
     # --- GENÉRICOS DE ÚLTIMO RECURSO -------------------------------------
     # Existem para que uma unidade conhecida nunca caia no vazio, mas com faixa
     # larga: o item resultante é marcado como baixa confiança pelo normalizador.
+    # Sem esta, um item em "unidade" sem regra específica ficava com a
+    # quantidade CRUA como gramas: "1 hot dog" virava 1 g.
+    ("", "unidade", 100.0, 30.0, 300.0, 0, _USUAL),
     ("", "colher_sopa", 15.0, 5.0, 30.0, 0, _USUAL),
     ("", "colher_cha", 5.0, 2.0, 8.0, 0, _USUAL),
     ("", "concha", 100.0, 80.0, 160.0, 0, _USUAL),

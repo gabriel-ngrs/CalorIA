@@ -27,6 +27,7 @@ _REGRAS = [
     RegraPorcao("pao frances", "unidade", 50.0, 45.0, 60.0, 40, "teste"),
     RegraPorcao("pao de forma", "fatia", 25.0, 22.0, 30.0, 40, "teste"),
     RegraPorcao("pao", "fatia", 40.0, 30.0, 55.0, 10, "teste"),
+    RegraPorcao("mussarela", "fatia", 17.0, 15.0, 20.0, 40, "teste"),
     RegraPorcao("manteiga", "colher_sopa", 10.0, 8.0, 14.0, 40, "teste"),
     RegraPorcao("banana", "unidade", 100.0, 80.0, 130.0, 40, "teste"),
     RegraPorcao("", "copo", 200.0, 150.0, 300.0, 0, "teste"),
@@ -86,7 +87,8 @@ class TestCanonizarUnidade:
 
     def test_unidade_desconhecida_devolve_none(self) -> None:
         # Devolver None em vez de um palpite é o ponto: o chamador marca o item.
-        assert canonizar_unidade("tigela") is None
+        assert canonizar_unidade("travessa") is None
+        assert canonizar_unidade("punhado") is None
         assert canonizar_unidade("") is None
 
     def test_tolera_sufixo(self) -> None:
@@ -154,6 +156,17 @@ class TestNormalizarPorcao:
         r = await normalizer.normalizar("pao de forma integral", 2, "fatia")
         assert r.gramas == 50.0
 
+    async def test_nucleo_do_nome_vence_o_modificador(
+        self, normalizer: PortionNormalizer
+    ) -> None:
+        """Em português o núcleo vem primeiro: "pizza mussarela" é uma pizza.
+
+        Desempatar por prioridade antes de posição fazia a regra `mussarela/fatia`
+        (17g) vencer `pizza/fatia` (100g) e 2 fatias de pizza viravam 34g.
+        """
+        r = await normalizer.normalizar("pizza mussarela", 2, "fatia")
+        assert r.gramas == 200.0
+
     async def test_numero_por_extenso(self, normalizer: PortionNormalizer) -> None:
         r = await normalizer.normalizar("ovo", "dois", "unidades")
         assert r.gramas == 100.0
@@ -176,10 +189,10 @@ class TestNormalizarPorcao:
     async def test_unidade_sem_regra_e_marcada(
         self, normalizer: PortionNormalizer
     ) -> None:
-        r = await normalizer.normalizar("tacacá", 1, "tigela")
+        r = await normalizer.normalizar("tacacá", 1, "travessa")
         assert r.origem == "sem_ancora"
         assert r.confiavel is False
-        assert "tigela" in r.detalhe
+        assert "travessa" in r.detalhe
 
     async def test_quantidade_invalida_nao_levanta(
         self, normalizer: PortionNormalizer

@@ -80,6 +80,7 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     "lata": ("lata", "latas", "latinha", "latinhas"),
     "garrafa": ("garrafa", "garrafas", "garrafinha"),
     "pote": ("pote", "potes", "potinho"),
+    "tigela": ("tigela", "tigelas", "cumbuca", "bowl"),
     "scoop": ("scoop", "scoops", "medida", "medidas", "cacamba"),
     "file": ("file", "files", "filezinho"),
     "bife": ("bife", "bifes"),
@@ -346,20 +347,34 @@ class PortionNormalizer:
         )
 
     async def _melhor_regra(self, food_name: str, unidade: str) -> RegraPorcao | None:
-        """Regra de maior prioridade cujo `term` aparece no nome do alimento.
+        """Escolhe a regra de porção para (alimento, unidade).
 
-        Empate de prioridade é resolvido pelo `term` mais longo — assim
-        "pao de forma" vence "pao" para a unidade "fatia".
+        O desempate segue a ordem das palavras em português: **o núcleo do nome
+        vem primeiro** e o modificador depois. Em "pizza mussarela", o alimento é
+        uma pizza — não um queijo. Ordenar por prioridade antes de posição fazia
+        `mussarela/fatia` (17 g) vencer `pizza/fatia` (100 g) e 2 fatias de pizza
+        viravam 34 g.
+
+        Critérios, nesta ordem:
+        1. termo que aparece mais à esquerda no nome (o núcleo);
+        2. entre os que começam na mesma posição, maior prioridade;
+        3. persistindo o empate, termo mais longo — assim "pao de forma" vence
+           "pao" para a unidade "fatia".
+
+        A regra genérica (`term == ""`) só é usada quando nenhuma específica casa.
         """
         nome = normalizar_texto(food_name)
-        candidatas = [
-            r
-            for r in await self._regras()
-            if r.unit == unidade and (not r.term or r.term in nome)
-        ]
-        if not candidatas:
-            return None
-        return max(candidatas, key=lambda r: (r.priority, len(r.term)))
+        regras = [r for r in await self._regras() if r.unit == unidade]
+
+        especificas = [r for r in regras if r.term and r.term in nome]
+        if especificas:
+            return min(
+                especificas,
+                key=lambda r: (nome.index(r.term), -r.priority, -len(r.term)),
+            )
+
+        genericas = [r for r in regras if not r.term]
+        return genericas[0] if genericas else None
 
     async def checar_plausibilidade(
         self, food_name: str, gramas: float, unidade_canonica: str | None
