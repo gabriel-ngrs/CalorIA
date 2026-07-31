@@ -3,7 +3,7 @@ id: 002
 slug: 002-vitrine-eval-e-saneamento
 title: "Vitrine técnica: eval do pipeline de IA, esteira de qualidade reativada, saneamento do histórico e replanejamento do deploy"
 type: infra
-status: draft
+status: active
 priority: P0
 size: XL
 risk_level: RED
@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-07-29
+updated_at: 2026-07-30
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001]
