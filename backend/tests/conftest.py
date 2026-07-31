@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 from collections.abc import AsyncGenerator
 
@@ -52,32 +51,34 @@ _TRUNCATE_TABLES = (
 
 
 async def _reset_schema() -> None:
-    engine = create_async_engine(TEST_DATABASE_URL)
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-    finally:
-        await engine.dispose()
-
-
-# Recria o schema no import do conftest, num event loop próprio e descartável.
-# Fazê-lo aqui (e não numa fixture async session-scoped) garante que as tabelas
-# existam antes de qualquer coleta, independentemente da ordem dos testes — do
-# contrário uma seleção só-unit (ex.: `make test-unit`) rodaria sem o schema e o
-# TRUNCATE de `clean_db` falharia no teardown (engine async é loop-bound).
-asyncio.run(_reset_schema())
+    async with _engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_test_database() -> AsyncGenerator[None, None]:
-    """Schema já criado no import (ver _reset_schema); remove ao final da sessão."""
-    yield
+    """Recria o schema no início da sessão e o remove ao final.
+
+    Autouse + session-scoped garante que as tabelas existam antes do primeiro
+    teste deste diretório, independentemente da ordem de coleta — assim o
+    TRUNCATE de `clean_db` nunca encontra o schema ausente no teardown.
+
+    O engine async é loop-bound, por isso setup, TRUNCATE e teardown usam o
+    mesmo `_engine` dentro do event loop de sessão configurado em
+    `asyncio_default_fixture_loop_scope`/`asyncio_default_test_loop_scope`.
+    Nada de I/O acontece no import do módulo: uma seleção só-unit sobrepõe
+    esta fixture (e `clean_db`) em `tests/unit/conftest.py` e roda sem banco.
+    """
+    await _reset_schema()
     try:
-        async with _engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+        yield
     finally:
-        await _engine.dispose()
+        try:
+            async with _engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+        finally:
+            await _engine.dispose()
 
 
 # ---------------------------------------------------------------------------
