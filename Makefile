@@ -287,9 +287,12 @@ typecheck:
 	@echo "$(BLUE)Type check frontend (tsc)...$(NC)"
 	@cd frontend && npx tsc --noEmit
 
-check: lint-check typecheck test-unit test-frontend
+check: lint-check typecheck test-unit test-integration test-frontend
 	@echo ""
-	@echo "$(BOLD)$(GREEN)Tudo OK — igual ao CI.$(NC)"
+	@echo "$(BOLD)$(GREEN)Tudo OK.$(NC)"
+	@echo "$(BLUE)Cobre os gates do CI (ruff, mypy, pytest completo, eslint, jest)$(NC)"
+	@echo "$(BLUE)e ainda roda tsc e ruff format --check, que o CI nao roda.$(NC)"
+	@echo "$(BLUE)Nao cobre: 'npm run build' de producao, que so o CI executa.$(NC)"
 
 hooks:
 	@pre-commit install

@@ -1,7 +1,9 @@
 name: CD — Deploy em Produção
 
-# CD temporariamente desabilitado — esteira de CI/CD em correcao.
-# Reativar restaurando o gatilho abaixo:
+# Deploy manual por decisão explícita, não por pendência de conserto: a topologia de
+# produção ainda não foi decidida (spec 002, Fase E.2). A reativação do gatilho
+# automático abaixo é responsabilidade da Fase E.4, junto com a troca do `sleep 10`
+# por espera baseada em healthcheck.
 #   push:
 #     branches: [main]
 on:
