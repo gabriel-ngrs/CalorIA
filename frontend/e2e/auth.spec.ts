@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-const BASE_URL = process.env.BASE_URL ?? "https://frontend-nine-mu-59.vercel.app";
+// Default local: rodar a suíte sem BASE_URL definido nunca pode tocar produção.
+const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const TEST_EMAIL = `playwright_test_${Date.now()}@gmail.com`;
 const TEST_PASSWORD = "Playwright@123";
 const TEST_NAME = "Teste Playwright";
