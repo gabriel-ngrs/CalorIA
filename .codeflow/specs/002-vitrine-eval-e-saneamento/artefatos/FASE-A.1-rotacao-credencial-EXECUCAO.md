@@ -66,9 +66,9 @@ $ gh repo view gabriel-ngrs/CalorIA --json visibility
 {"visibility":"PRIVATE"}
 
 # grep de segredo/PII no working tree (passo 4) — esperado 0
-$ grep -rn "gabrielnegreirossaraiva38" frontend/ backend/ *.md *.yml Makefile .github/
+$ grep -rn "<e-mail-pessoal>" frontend/ backend/ *.md *.yml Makefile .github/
 0 ocorrencias
-$ grep -rn "082405" frontend/ backend/          # fragmento da senha
+$ grep -rn "<fragmento-da-senha>" frontend/ backend/          # fragmento da senha
 0 ocorrencias
 $ grep -rn "vercel.app" frontend/e2e/
 0 ocorrencias
