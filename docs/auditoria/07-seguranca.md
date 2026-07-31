@@ -4,21 +4,21 @@
 
 ## Achados desta frente
 
-- AUD-038 (🔴 crítica) — credenciais reais (`email-redigido@example.com` / `SENHA-REDIGIDA`) hardcoded em `frontend/e2e/auth.spec.ts` e no histórico git público
+- AUD-038 (🔴 crítica) — credenciais reais (`<e-mail pessoal do mantenedor>` / `[REDIGIDO]`) hardcoded em `frontend/e2e/auth.spec.ts` e no histórico git público
 - AUD-039 (🟠 alta) — `SECRET_KEY` tem default `"insecure-default-key-change-in-production"` sem fail-fast; deploy esquecendo a env var dá origem a forge de JWTs trivial
 - AUD-040 (🟠 alta) — ausência total de rate limit no backend (sem `slowapi`, sem diretiva no Caddy); `/auth/*` exposto a credential stuffing, `/ai/*` exposto a abuso de tokens Groq
 - AUD-041 (🟡 média) — headers HTTP de segurança ausentes (X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy, Permissions-Policy); apenas HSTS é injetado automaticamente pelo Caddy
 
 ## G.6 Credenciais expostas no código
 
-Comando: `rg -n "SENHA-REDIGIDA|gabrielnegreirossaraiva38@gmail" .` + `git log --all --full-history -p -- frontend/e2e/auth.spec.ts | grep 082405`. Artefato: `artefatos/G1-creds.txt`.
+Método: varredura do working tree e do histórico de `frontend/e2e/auth.spec.ts` pelo par de credenciais. Comandos literais omitidos (spec 002, Fase A.2). Artefato: `artefatos/G1-creds.txt`.
 
 ### O que foi exposto
 
 | Campo | Valor | Onde |
 |---|---|---|
-| Email | `email-redigido@example.com` | `frontend/e2e/auth.spec.ts:37`, também (neutro) em `docs/legacy/analise.md:90` |
-| Senha | `SENHA-REDIGIDA` | `frontend/e2e/auth.spec.ts:38` |
+| Email | `<e-mail pessoal do mantenedor>` | `frontend/e2e/auth.spec.ts:37`, também (neutro) em `docs/legacy/analise.md:90` |
+| Senha | `[REDIGIDO]` | `frontend/e2e/auth.spec.ts:38` |
 
 Commit de origem: **`4737257`** (2026-04-29 15:59 -03), `test(e2e): adiciona testes Playwright para fluxo de autenticação`. Autor confirma que é o mantenedor (mesmo email).
 
@@ -33,7 +33,7 @@ Commit de origem: **`4737257`** (2026-04-29 15:59 -03), `test(e2e): adiciona tes
 
 > Estas ações **não** são entregáveis desta auditoria, mas precisam acontecer com urgência. Documentadas aqui para registro.
 
-1. **AGORA** — trocar `SENHA-REDIGIDA` em todos os lugares onde ela esteja em uso (no app CalorIA + qualquer outro serviço onde tenha sido reusada).
+1. **AGORA** — trocar `[REDIGIDO]` em todos os lugares onde ela esteja em uso (no app CalorIA + qualquer outro serviço onde tenha sido reusada).
 2. **Imediato** — substituir `auth.spec.ts:37-38` por leitura de `process.env.E2E_LOGIN_*`; configurar como GitHub Actions secret. Padrão recomendado: deixar o teste de "login com user existente" depender da fixture criada pelo teste de `register` no mesmo arquivo (já usa `TEST_EMAIL`/`TEST_PASSWORD` em `:27-29`).
 3. **Importante** — `git filter-repo --replace-text expressions.txt` para remover do histórico + force-push. Mesmo se "ninguém viu", a defesa em profundidade pede a remoção.
 4. **CI scan** — `gitleaks-action` no `.github/workflows/ci.yml` para falhar PRs futuros com qualquer string que pareça segredo. Pre-commit hook `gitleaks protect --staged` para pegar antes do push.
@@ -207,7 +207,7 @@ Comando: `git log --all --full-history -p | grep -iE "(api_key|secret_key|passwo
 
 ### Limitação do regex
 
-A regex `[a-zA-Z0-9]{16}` exige 16+ caracteres consecutivos. **Não pega senhas curtas com caracteres especiais** — é exatamente por isso que `SENHA-REDIGIDA` (8 chars + especiais) do **AUD-038** passou despercebido por esse scan e só foi encontrado pela busca específica do PASSO 8.1. Para cobertura mais ampla, usar `gitleaks` (instalar via `brew/apt` ou rodar via `gitleaks-action` em CI).
+A regex `[a-zA-Z0-9]{16}` exige 16+ caracteres consecutivos. **Não pega senhas curtas com caracteres especiais** — é exatamente por isso que `[REDIGIDO]` (8 chars + especiais) do **AUD-038** passou despercebido por esse scan e só foi encontrado pela busca específica do PASSO 8.1. Para cobertura mais ampla, usar `gitleaks` (instalar via `brew/apt` ou rodar via `gitleaks-action` em CI).
 
 ### Conclusão
 

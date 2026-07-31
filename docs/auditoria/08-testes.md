@@ -165,7 +165,7 @@ Consequência operacional: rodar `npx playwright test` sem env vars dispara, na 
 
 **Hardcode de credenciais (cobertura cruzada com AUD-038/PASSO 8.1):**
 
-- `auth.spec.ts:37-38` — par real `email-redigido@example.com` / `SENHA-REDIGIDA`.
+- `auth.spec.ts:37-38` — par real `<e-mail pessoal do mantenedor>` / `[REDIGIDO]`.
 - `auth.spec.ts:4-5` — `TEST_EMAIL`/`TEST_PASSWORD` derivados de `Date.now()` (✅ rotação automática, bom padrão).
 - Mocks em `dashboard.spec.ts:32` e `meals.spec.ts:16` usam `accessToken: "fake-token"` — não vaza, apenas alimenta o mock de `next-auth`.
 

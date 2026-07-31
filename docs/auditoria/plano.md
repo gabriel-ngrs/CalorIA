@@ -420,7 +420,7 @@ def _run(coro):
 ### G.6 Segredos
 
 - [ ] `.env` no `.gitignore` ✅.
-- [ ] **CRÍTICO 🔴**: `frontend/e2e/auth.spec.ts:40` contém senha real `SENHA-REDIGIDA` e email `email-redigido@example.com`. **Trocar a senha no app + remover do código + reescrever histórico** (ou ao menos remover do HEAD e trocar a senha).
+- [ ] **CRÍTICO 🔴**: `frontend/e2e/auth.spec.ts:40` contém senha real `[REDIGIDO]` e email `<e-mail pessoal do mantenedor>`. **Trocar a senha no app + remover do código + reescrever histórico** (ou ao menos remover do HEAD e trocar a senha).
 - [ ] Pesquisar histórico do git por outros segredos (`git log -p | grep -iE "api_key|secret|password"`).
 
 ### G.7 CORS

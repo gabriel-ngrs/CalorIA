@@ -65,7 +65,7 @@
 Critério: severidade primeiro, depois raio de impacto operacional, depois esforço de fix vs. valor.
 
 1. **AUD-016 🔴 (Frente C)** — `food_lookup` faz Seq Scan; medido 585ms isolado → ~14.6s por refeição com N+1 do AUD-006; **2 usuários concorrentes derrubam o backend**. Fix curto: trocar `OR similarity()` por `SET LOCAL pg_trgm.similarity_threshold` (esforço S, ganho 70×).
-2. **AUD-038 🔴 (Frente G)** — credenciais reais (`email-redigido@example.com` + senha) commitadas em `frontend/e2e/auth.spec.ts:37-38` em repo público. Plano em 4 etapas obrigatórias (rotar agora, remover do código, reescrever histórico, secret scan em CI).
+2. **AUD-038 🔴 (Frente G)** — credenciais reais (`<e-mail pessoal do mantenedor>` + senha) commitadas em `frontend/e2e/auth.spec.ts:37-38` em repo público. Plano em 4 etapas obrigatórias (rotar agora, remover do código, reescrever histórico, secret scan em CI).
 3. **AUD-006 🟠 (Frente B)** — N+1 em `food_lookup` (caminho síncrono, ~25 queries por refeição). Amplifica AUD-016. Esforço M; fix de batch único reduz para 1 query.
 4. **AUD-026 🟠 (Frente E)** — `dispatch_due_reminders` usa `datetime.now()` naive. Bug latente: hoje funciona por acidente (containers em SP), quebra silenciosamente em migração para UTC ou usuários fora de SP.
 5. **AUD-039 🟠 (Frente G)** — `SECRET_KEY` default `"insecure-default-key-change-in-production"` sem fail-fast. Se a env de prod não tiver `SECRET_KEY`, JWTs ficam forjáveis com string no source. Padrão também em `NEXTAUTH_SECRET` (frontend).

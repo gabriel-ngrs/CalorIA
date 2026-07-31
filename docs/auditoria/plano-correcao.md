@@ -76,7 +76,7 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
 
 **O que fazer**:
 
-1. Trocar a senha em `email-redigido@example.com` (Gmail / Google account).
+1. Trocar a senha em `<e-mail pessoal do mantenedor>` (Gmail / Google account).
 2. Trocar a mesma senha em **qualquer outro serviço** onde ela tenha sido reusada (banco, redes sociais, outros logins). Use um password manager para a nova senha — sem reuso.
 3. Trocar a senha do usuário correspondente no app CalorIA (se já estiver em produção).
 4. Habilitar 2FA na conta Google se ainda não estiver.
@@ -110,7 +110,7 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
    - Adicionar `E2E_LOGIN_*` em `.env.example` documentando que são opcionais (criação via API é o caminho preferido).
 2. **AUD-038 etapa 3 — rewrite do histórico**:
    - Instalar `git-filter-repo` (não usar BFG, está mais bugado).
-   - Rodar `git filter-repo --replace-text <replacements.txt>` com regras `<senha-real>==>SENHA-REDIGIDA` (consultar `achados.md` AUD-038 para a string exata).
+   - Rodar `git filter-repo --replace-text <replacements.txt>` com regras `<senha-real>==>[REDIGIDO]` (consultar `achados.md` AUD-038 para a string exata).
    - **AVISO**: reescreve histórico — todos os clones do repo ficam órfãos. Avisar colaboradores ANTES (no caso, projeto solo, então tranquilo).
    - Force-push: `git push --force origin --all && git push --force origin --tags`.
 3. **AUD-039 — fail-fast para SECRET_KEY e NEXTAUTH_SECRET**:

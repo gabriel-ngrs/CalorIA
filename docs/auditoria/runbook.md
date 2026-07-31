@@ -1181,15 +1181,11 @@ docs(auditoria): analisa estrategia de backup
 ### PASSO 8.1 — 🔴 CRÍTICO: credenciais em e2e
 
 **Método:**
-```bash
-rg -n "SENHA-REDIGIDA|gabrielnegreirossaraiva38@gmail" \
-  /home/gabriel/projetos/CalorIA/ 2>/dev/null \
-  | tee /home/gabriel/projetos/CalorIA/docs/auditoria/artefatos/G1-creds.txt
-git log --all --full-history -p -- frontend/e2e/auth.spec.ts 2>&1 \
-  | grep -E "082405|gabrielnegreiros" \
-  | head -20 \
-  | tee -a /home/gabriel/projetos/CalorIA/docs/auditoria/artefatos/G1-creds.txt
-```
+Varredura do working tree pelo par de credenciais, e varredura do histórico do
+arquivo `frontend/e2e/auth.spec.ts` pelos mesmos valores, com a saída registrada em
+`artefatos/G1-creds.txt`. **Os comandos literais foram removidos deste runbook**
+(spec 002, Fase A.2): reproduzi-los aqui equivale a publicar o caminho de extração da
+credencial.
 
 **Atualizar `07-seguranca.md` § G.6** com:
 - Caminho do arquivo afetado.

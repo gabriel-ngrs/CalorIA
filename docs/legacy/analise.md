@@ -1,7 +1,7 @@
 # Análise de UI/UX — CalorIA
 
-> Análise realizada em 07/04/2026 via navegação automatizada com Playwright.  
-> Atualizada com deep pass (stress test completo) em 07/04/2026.  
+> Análise realizada em 07/04/2026 via navegação automatizada com Playwright.
+> Atualizada com deep pass (stress test completo) em 07/04/2026.
 > Prints disponíveis em `/prints/` (deep_01 a deep_46 para varredura profunda).
 
 ---
@@ -83,11 +83,11 @@
 ### 1. Popup de "Ativar notificações" é invasivo e recorrente
 - **Problema:** O popup aparece em TODAS as páginas visitadas, sem persistir o estado de rejeição. O usuário clica "Agora não" e ele retorna ao navegar para outra rota.
 - **Impacto:** Alto — é o padrão anti-UX mais documentado em apps modernos. Interrompe a navegação em loop.
-- **Padrão de mercado:** Notion, Linear, Vercel pedem notificação UMA vez por sessão e só voltam ao assunto se o usuário tocar em configurações. 
+- **Padrão de mercado:** Notion, Linear, Vercel pedem notificação UMA vez por sessão e só voltam ao assunto se o usuário tocar em configurações.
 - **Sugestão:** Persistir o estado no `localStorage`/cookie. Se rejeitado, não reexibir por pelo menos 7 dias. Mover para Settings/Perfil como opção passiva.
 
 ### 2. Header exibe o e-mail completo como identificação do usuário
-- **Problema:** `email-redigido@example.com` ocupa ~280px no header, empurrando os botões de Notificação e Sair para a borda direita.
+- **Problema:** `<e-mail pessoal do mantenedor>` ocupa ~280px no header, empurrando os botões de Notificação e Sair para a borda direita.
 - **Impacto:** Médio — visual poluído, sem espaço para crescer (futuro badge de notificação, etc.), e o e-mail é uma informação sensível exposta permanentemente.
 - **Padrão de mercado:** Apps como Strava, MyFitnessPal, Notion exibem nome do usuário ou avatar com inicial, nunca o e-mail cru.
 - **Sugestão:** Exibir o `name` do usuário (ex: "Gabriel") com um avatar circular com inicial. E-mail fica acessível apenas no perfil ou tooltip.
