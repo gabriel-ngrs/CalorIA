@@ -45,14 +45,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Bloqueante por desenho. --redact impede que o segredo apareça no log do CI,
-      # que é tão público quanto o repositório.
+      # Bloqueante por desenho, e varre o histórico completo (daí o fetch-depth: 0).
+      # --redact impede que o segredo apareça no log do CI, que é tão acessível
+      # quanto o repositório. --config explícito para não depender de auto-detecção.
       - name: Varredura de segredos — gitleaks
         working-directory: .
         run: |
           curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
             | tar -xz -C /tmp gitleaks
-          /tmp/gitleaks detect --source . --redact --no-banner --exit-code 1
+          /tmp/gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --redact --no-banner --exit-code 1
         env:
           GITLEAKS_VERSION: 8.21.2
 
