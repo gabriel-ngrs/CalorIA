@@ -70,6 +70,30 @@ class Settings(BaseSettings):
     # `<think>` e truncam antes do JSON; "none" devolve a resposta direta.
     GROQ_VISION_REASONING: str = "none"
 
+    # --- Parâmetros de amostragem, explícitos para o eval ser reprodutível ---
+    # Antes viviam implícitos no corpo do `AIClient`, e uma comparação A/B de
+    # prompt não tinha como declarar sob quais parâmetros foi medida.
+    #
+    # Temperatura das chamadas com system prompt (todo o pipeline de parsing).
+    GROQ_TEMPERATURE: float = 0.1
+    # Temperatura das chamadas sem system prompt (os sete prompts do
+    # InsightsGenerator). O valor difere por herança, não por decisão — está
+    # preservado de propósito: mudá-lo agora contaminaria a linha de base do eval.
+    GROQ_TEMPERATURE_SEM_SYSTEM: float = 0.3
+    # Teto de tokens de saída. Generoso o bastante para os arrays JSON do
+    # pipeline; existe para limitar custo, não para moldar a resposta.
+    GROQ_MAX_TOKENS: int = 8192
+    # Semente de amostragem. `-1` = não enviar o parâmetro (comportamento atual).
+    GROQ_SEED: int = -1
+    # Timeout de uma requisição ao provedor.
+    GROQ_TIMEOUT_SECONDS: float = 60.0
+    # Retentativas internas do SDK (o default da lib é 2). O backoff próprio do
+    # AIClient soma sobre isto.
+    GROQ_SDK_MAX_RETRIES: int = 2
+    # Teto de tempo TOTAL gasto no backoff próprio por rate limit. Sem teto, a
+    # rodada de eval de 2026-07-26 poderia ficar horas em espera.
+    GROQ_RETRY_MAX_SECONDS: float = 120.0
+
     # --------------------------------------------------------------------------
     # Web Push (VAPID)
     # --------------------------------------------------------------------------

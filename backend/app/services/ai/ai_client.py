@@ -7,7 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Any, cast
 
 import redis.asyncio as aioredis
-from groq import AsyncGroq, BadRequestError, NotFoundError
+from groq import AsyncGroq, BadRequestError, NotFoundError, RateLimitError
 
 from app.core.config import settings
 from app.prompts import PromptVersion
@@ -27,12 +27,30 @@ _CACHE_PREFIX = "ai:"
 _TEXT_MODEL = settings.GROQ_TEXT_MODEL
 _VISION_MODEL = settings.GROQ_VISION_MODEL
 
+#: Valor de `GROQ_SEED` que significa "não enviar o parâmetro".
+_SEM_SEED = -1
+
+
+def _sampling_params() -> dict[str, Any]:
+    """Parâmetros de amostragem enviados em toda chamada, vindos de settings."""
+    params: dict[str, Any] = {"max_tokens": settings.GROQ_MAX_TOKENS}
+    if settings.GROQ_SEED != _SEM_SEED:
+        params["seed"] = settings.GROQ_SEED
+    return params
+
 
 class AIClient:
     """Cliente Groq — texto e visão 100% gratuito."""
 
     def __init__(self) -> None:
-        self._groq = AsyncGroq(api_key=settings.GROQ_API_KEY)
+        self._groq = AsyncGroq(
+            api_key=settings.GROQ_API_KEY,
+            # Sem timeout explícito, o default da lib (60s) ficava implícito e
+            # não configurável por ambiente — a rodada de eval não tinha como
+            # declarar sob qual teto foi medida.
+            timeout=settings.GROQ_TIMEOUT_SECONDS,
+            max_retries=settings.GROQ_SDK_MAX_RETRIES,
+        )
 
     # ------------------------------------------------------------------
     # API pública
@@ -45,27 +63,53 @@ class AIClient:
         use_cache: bool = True,
         system: str | None = None,
         prompt_ref: PromptVersion | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Gera texto via Groq com cache Redis opcional.
 
         `prompt_ref` só identifica a origem do texto para o log estruturado —
-        não altera o que é enviado ao provedor.
+        não altera o que é enviado ao provedor. `temperature` explícita vence a
+        regra herdada resolvida por `_resolver_temperatura`.
         """
+        temp = self._resolver_temperatura(temperature, system)
         cache_input = f"[SYS]{system}\n[USR]{prompt}" if system else prompt
+        cache_key = self._cache_key(cache_input, model=_TEXT_MODEL, temperature=temp)
         if use_cache:
-            cache_key = self._cache_key(cache_input)
             if cached := await self._get_cached(cache_key):
                 logger.debug("Cache hit AI")
                 return cached
 
         result = await self._call(
-            prompt, system=system, model=_TEXT_MODEL, prompt_ref=prompt_ref
+            prompt,
+            system=system,
+            model=_TEXT_MODEL,
+            prompt_ref=prompt_ref,
+            temperature=temp,
         )
 
         if use_cache:
-            await self._set_cached(self._cache_key(cache_input), result)
+            await self._set_cached(cache_key, result)
 
         return result
+
+    @staticmethod
+    def _resolver_temperatura(temperature: float | None, system: str | None) -> float:
+        """Resolve a temperatura da chamada.
+
+        Quando o chamador não declara, cai na regra herdada — 0.1 com system
+        prompt, 0.3 sem. A regra é preservada de propósito: os sete prompts do
+        `InsightsGenerator` rodam hoje a 0.3 por não passarem `system=`, e
+        uniformizar agora mudaria comportamento observável e contaminaria a
+        linha de base do eval. Os dois valores viraram settings nomeadas para
+        que a escolha ao menos fique declarada.
+        """
+        if temperature is not None:
+            return temperature
+        return (
+            settings.GROQ_TEMPERATURE
+            if system
+            else settings.GROQ_TEMPERATURE_SEM_SYSTEM
+        )
 
     async def generate_with_image(
         self,
@@ -102,12 +146,14 @@ class AIClient:
         if settings.GROQ_VISION_REASONING:
             extras["reasoning_effort"] = settings.GROQ_VISION_REASONING
 
+        gasto_no_backoff = 0.0
         for attempt in range(4):
             try:
                 response = await self._groq.chat.completions.create(
                     model=_VISION_MODEL,
                     messages=cast("list[ChatCompletionMessageParam]", messages),
-                    temperature=0.1,
+                    temperature=settings.GROQ_TEMPERATURE,
+                    **_sampling_params(),
                     **extras,
                 )
                 prompt_name, prompt_version, prompt_sha = self._prompt_log_fields(
@@ -149,18 +195,35 @@ class AIClient:
                     f"Modelo de visão '{_VISION_MODEL}' não está disponível. "
                     "Configure GROQ_VISION_MODEL."
                 ) from exc
-            except Exception as exc:
-                if "429" in str(exc) and attempt < 3:
-                    wait = 15 * (2**attempt)
-                    logger.warning("Rate limit Groq Vision — aguardando %ds", wait)
-                    await asyncio.sleep(wait)
-                else:
+            except RateLimitError:
+                espera = self._espera_do_backoff(attempt, gasto_no_backoff)
+                if espera is None or attempt == 3:
                     raise
+                logger.warning(
+                    "Rate limit Groq Vision — aguardando %.0fs (tentativa %d/4)",
+                    espera,
+                    attempt + 1,
+                )
+                await asyncio.sleep(espera)
+                gasto_no_backoff += espera
         raise RuntimeError("Groq Vision falhou após 4 tentativas")
 
     # ------------------------------------------------------------------
     # Interno
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _espera_do_backoff(attempt: int, gasto: float) -> float | None:
+        """Espera da próxima tentativa, ou `None` quando o teto de tempo estourou.
+
+        O backoff exponencial de 15s dobrando somava 105s sem teto declarado, e
+        somava *sobre* as retentativas internas do SDK. Com o teto, uma rodada
+        de eval não pode ficar presa indefinidamente em espera.
+        """
+        restante = settings.GROQ_RETRY_MAX_SECONDS - gasto
+        if restante <= 0:
+            return None
+        return float(min(15.0 * (2**attempt), restante))
 
     @staticmethod
     def _prompt_log_fields(prompt_ref: PromptVersion | None) -> tuple[str, str, str]:
@@ -176,18 +239,21 @@ class AIClient:
         system: str | None,
         model: str,
         prompt_ref: PromptVersion | None = None,
+        temperature: float,
     ) -> str:
         messages: list[dict[str, Any]] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        gasto_no_backoff = 0.0
         for attempt in range(4):
             try:
                 response = await self._groq.chat.completions.create(
                     model=model,
                     messages=cast("list[ChatCompletionMessageParam]", messages),
-                    temperature=0.1 if system else 0.3,
+                    temperature=temperature,
+                    **_sampling_params(),
                 )
                 content = response.choices[0].message.content or ""
                 prompt_name, prompt_version, prompt_sha = self._prompt_log_fields(
@@ -204,25 +270,43 @@ class AIClient:
                     response.usage.completion_tokens if response.usage else 0,
                 )
                 return content
-            except Exception as exc:
-                if "429" in str(exc) and attempt < 3:
-                    wait = 15 * (2**attempt)
-                    logger.warning(
-                        "Rate limit Groq — aguardando %ds (tentativa %d/4)",
-                        wait,
-                        attempt + 1,
-                    )
-                    await asyncio.sleep(wait)
-                else:
+            except RateLimitError:
+                espera = self._espera_do_backoff(attempt, gasto_no_backoff)
+                if espera is None or attempt == 3:
                     raise
+                logger.warning(
+                    "Rate limit Groq — aguardando %.0fs (tentativa %d/4, "
+                    "%.0fs de %.0fs do teto já gastos)",
+                    espera,
+                    attempt + 1,
+                    gasto_no_backoff,
+                    settings.GROQ_RETRY_MAX_SECONDS,
+                )
+                await asyncio.sleep(espera)
+                gasto_no_backoff += espera
         raise RuntimeError("Groq falhou após 4 tentativas")
 
     # ------------------------------------------------------------------
     # Cache Redis
     # ------------------------------------------------------------------
 
-    def _cache_key(self, text: str) -> str:
-        digest = hashlib.sha256(text.lower().strip().encode()).hexdigest()[:24]
+    @staticmethod
+    def _cache_key(text: str, *, model: str, temperature: float) -> str:
+        """Chave de cache que inclui tudo que muda a resposta.
+
+        A chave anterior era o `sha256` só de system + prompt. Trocar
+        `GROQ_TEXT_MODEL` servia até 7 dias de respostas do modelo antigo, o que
+        corromperia silenciosamente qualquer comparação A/B do eval.
+        """
+        seed = "" if settings.GROQ_SEED == _SEM_SEED else str(settings.GROQ_SEED)
+        assinatura = (
+            f"[MODEL]{model}"
+            f"[TEMP]{temperature}"
+            f"[MAXTOK]{settings.GROQ_MAX_TOKENS}"
+            f"[SEED]{seed}"
+            f"[TEXT]{text.lower().strip()}"
+        )
+        digest = hashlib.sha256(assinatura.encode()).hexdigest()[:24]
         return f"{_CACHE_PREFIX}{digest}"
 
     async def _get_cached(self, key: str) -> str | None:
