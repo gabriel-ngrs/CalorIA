@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -10,9 +10,35 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.database import Base
 from app.core.deps import get_db
+from app.core.rate_limit import limiter
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models import User  # noqa: F401 — registra todos os modelos no metadata
+
+
+@pytest.fixture(autouse=True)
+def rate_limiter_desligado() -> Iterator[None]:
+    """Desliga o rate limiting por padrão e zera a contagem entre testes.
+
+    O limitador conta por IP e o cliente ASGI de teste é sempre o mesmo IP, de
+    modo que uma suíte com vários logins estouraria o limite por acúmulo entre
+    testes independentes. Quem exercita o 429 religa o limitador explicitamente
+    (`rate_limiter_ligado`).
+    """
+    limiter.reset()
+    limiter.enabled = False
+    yield
+    limiter.enabled = False
+    limiter.reset()
+
+
+@pytest.fixture()
+def rate_limiter_ligado(rate_limiter_desligado: None) -> Iterator[None]:
+    """Religa o rate limiting para o teste que precisa observar o 429."""
+    limiter.enabled = True
+    yield
+    limiter.enabled = False
+
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",

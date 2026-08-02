@@ -4,11 +4,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
 
 # ─── Logging config ────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -38,6 +41,20 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+
+
+async def rate_limit_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Traduz o estouro de limite do slowapi em 429 com mensagem em pt-BR."""
+    detail = exc.detail if isinstance(exc, RateLimitExceeded) else "Limite excedido"
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": f"Muitas requisições. Limite: {detail}."},
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 app.add_middleware(
     CORSMiddleware,

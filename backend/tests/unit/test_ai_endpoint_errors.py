@@ -15,9 +15,15 @@ import groq
 import httpx
 import pytest
 from fastapi import HTTPException, status
+from starlette.requests import Request
 
 from app.api.v1 import ai as ai_module
 from app.schemas.ai import MealAnalysisRequest, PhotoAnalysisRequest
+
+
+def _request(path: str) -> Request:
+    """Request mínimo — o decorator de rate limiting da B.3 exige um."""
+    return Request({"type": "http", "method": "POST", "path": path, "headers": []})
 
 
 def _groq_auth_error() -> groq.AuthenticationError:
@@ -40,6 +46,7 @@ def _mock_ai_raising(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_analyze_meal_groq_auth_vira_503(_mock_ai_raising: None) -> None:
     with pytest.raises(HTTPException) as exc_info:
         await ai_module.analyze_meal(
+            request=_request("/api/v1/ai/analyze-meal"),
             data=MealAnalysisRequest(description="arroz e feijão"),
             user_id=1,
             db=MagicMock(),
@@ -50,6 +57,7 @@ async def test_analyze_meal_groq_auth_vira_503(_mock_ai_raising: None) -> None:
 async def test_analyze_photo_groq_auth_vira_503(_mock_ai_raising: None) -> None:
     with pytest.raises(HTTPException) as exc_info:
         await ai_module.analyze_photo(
+            request=_request("/api/v1/ai/analyze-photo"),
             data=PhotoAnalysisRequest(image_base64="aGVsbG8=", mime_type="image/jpeg"),
             user_id=1,
             db=MagicMock(),

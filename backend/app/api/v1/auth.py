@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import get_current_user_id, get_db
+from app.core.rate_limit import limiter
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -40,8 +41,9 @@ _FORGOT_PASSWORD_MESSAGE = (
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
+@limiter.limit(settings.RATE_LIMIT_REGISTER)
 async def register(
-    data: UserCreate, db: AsyncSession = Depends(get_db)
+    request: Request, data: UserCreate, db: AsyncSession = Depends(get_db)
 ) -> UserResponse:
     svc = UserService(db)
     if await svc.email_exists(data.email):
@@ -54,7 +56,10 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def login(
+    request: Request, data: UserLogin, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
     svc = UserService(db)
     user = await svc.authenticate(data.email, data.password)
     if not user:
@@ -110,8 +115,9 @@ async def logout(
 
 
 @router.post("/forgot-password")
+@limiter.limit(settings.RATE_LIMIT_FORGOT_PASSWORD)
 async def forgot_password(
-    data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+    request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ) -> dict[str, str]:
     svc = UserService(db)
     user = await svc.get_by_email(data.email)

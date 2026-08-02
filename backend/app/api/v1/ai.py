@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import date
 
 import groq
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import get_current_user_id, get_db
+from app.core.rate_limit import limiter
 from app.models.ai_conversation import ConversationChannel
 from app.schemas.ai import (
     ChatMessage,
@@ -44,7 +45,9 @@ def _require_ai() -> None:
 
 
 @router.post("/analyze-meal", response_model=MealAnalysisResponse)
+@limiter.limit(settings.RATE_LIMIT_AI)
 async def analyze_meal(
+    request: Request,
     data: MealAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -73,7 +76,9 @@ async def analyze_meal(
 
 
 @router.post("/analyze-photo", response_model=MealAnalysisResponse)
+@limiter.limit(settings.RATE_LIMIT_AI)
 async def analyze_photo(
+    request: Request,
     data: PhotoAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -101,7 +106,9 @@ async def analyze_photo(
 
 
 @router.post("/insights", response_model=InsightResponse)
+@limiter.limit(settings.RATE_LIMIT_AI)
 async def generate_insight(
+    request: Request,
     data: InsightRequest,
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),

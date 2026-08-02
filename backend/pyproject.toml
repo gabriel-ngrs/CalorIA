@@ -37,6 +37,8 @@ dependencies = [
     "pillow>=11.0.0",
     # Busca fuzzy para lookup TACO
     "rapidfuzz>=3.0.0",
+    # Rate limiting dos endpoints públicos e de IA
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
