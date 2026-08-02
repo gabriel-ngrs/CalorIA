@@ -153,12 +153,12 @@ def ic95_bootstrap(
         for _ in range(reamostragens)
     )
     return IntervaloConfianca(
-        inferior=_percentil(amostras, 2.5),
-        superior=_percentil(amostras, 97.5),
+        inferior=percentil(amostras, 2.5),
+        superior=percentil(amostras, 97.5),
     )
 
 
-def _percentil(ordenados: Sequence[float], pct: float) -> float:
+def percentil(ordenados: Sequence[float], pct: float) -> float:
     """Percentil por interpolação linear sobre uma sequência já ordenada."""
     if len(ordenados) == 1:
         return float(ordenados[0])
