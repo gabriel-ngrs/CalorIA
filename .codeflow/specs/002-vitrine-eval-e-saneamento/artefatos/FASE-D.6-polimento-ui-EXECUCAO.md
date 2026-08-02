@@ -92,10 +92,25 @@ $ npm test -- __tests__/components/dashboard/QuickMealModal.test.tsx
 
 ## 6. Checklist dos ACs / critério de conclusão
 
-- [x] **AC-23, tema escuro sem flash** — script blocante em `<head>`. Coberto por
-      inspeção de código, não por teste automatizado: o FOUC é um evento de
-      pintura anterior à hidratação, que jsdom não observa. Um teste de verdade
-      exigiria Playwright com captura de frame — fora do escopo desta fase.
+- [x] **AC-23, tema escuro sem flash** — verificado no **HTML pré-renderizado**
+      do build de produção, não só por leitura do fonte:
+
+      ```text
+      $ python -c "..."   # sobre .next/server/app/login.html
+      posicao do script anti-FOUC: 3824
+      posicao de <body>:           4015
+      script roda ANTES do body:   True
+
+      ...<meta name="next-size-adjust"/><script>try{var t=localStorage
+      .getItem("caloria-theme");if(t==="dark"){document.documentElement
+      .classList.add("dark")}}catch(e){}</script>...
+      ```
+
+      O script está no `<head>`, antes de qualquer conteúdo do `<body>`, então
+      a classe `dark` é aplicada antes do primeiro paint. Não há teste de
+      **frame** (isso exigiria Playwright com captura visual, fora do escopo),
+      mas a condição estrutural que causa o FOUC deixou de existir e isso está
+      medido no artefato de build.
 - [x] **AC-23, build de produção sem os logs** — `TestDevLog` prova os dois
       ramos: em `production` nada é escrito, em `development` sim.
 - [x] **AC-23, a data do histórico de peso confere com a data registrada** —
@@ -111,10 +126,8 @@ $ npm test -- __tests__/components/dashboard/QuickMealModal.test.tsx
 
 ## 7. Dúvidas para o avaliador
 
-1. Dois itens do AC-23 (ausência de FOUC e toast único) estão cobertos por
-   inspeção de código, não por teste automatizado — os dois exigiriam
-   infraestrutura de teste que a fase não prevê (Playwright para o frame,
-   render completo de página para o toast). Aceitável, ou vale abrir uma fase
-   de testes E2E?
+1. **Toast único** continua sem teste automatizado — exigiria montar a página de
+   humor inteira com React Query e sonner. O FOUC, esse sim, ficou verificado no
+   HTML de build (§6). Aceitável, ou vale abrir uma fase de testes E2E?
 2. O `theme-provider` foi mantido em vez de migrar para `next-themes`, que
    segue instalado e não usado. Remover a dependência órfã numa fase futura?
