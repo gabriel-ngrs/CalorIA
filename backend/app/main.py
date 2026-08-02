@@ -13,6 +13,11 @@ from sqlalchemy import text
 from app.core.config import settings
 from app.core.rate_limit import limiter
 
+#: Versão única da aplicação. Espelha `CHANGELOG.md`, `backend/pyproject.toml` e
+#: `frontend/package.json` — o Swagger público anunciava 0.1.0 enquanto o
+#: CHANGELOG estava em 0.7.0.
+APP_VERSION = "0.7.0"
+
 # ─── Logging config ────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CalorIA",
     description="API do diário alimentar inteligente CalorIA",
-    version="0.1.0",
+    version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -88,4 +93,4 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": APP_VERSION}

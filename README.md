@@ -209,4 +209,4 @@ O projeto implementa cache Redis (7 dias, SHA-256) para reduzir chamadas redunda
 
 ## Licença
 
-Projeto pessoal. Todos os direitos reservados.
+[MIT](LICENSE) — uso livre, com atribuição.

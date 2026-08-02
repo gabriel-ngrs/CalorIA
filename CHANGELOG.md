@@ -9,6 +9,10 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+
+- **LICENSE MIT** e versão sincronizada entre `CHANGELOG.md`, `backend/pyproject.toml`, `backend/app/main.py` e `frontend/package.json` — o Swagger público anunciava `0.1.0` enquanto o CHANGELOG estava em `0.7.0`.
+
 ### Corrigido
 
 - **Cadastro de refeição não-determinístico e impreciso** ([bug 001](.codeflow/bugs/001-fluxo-cadastro-refeicao.md)) — `1 pizza grande 8 fatias de calabresa` e `8 fatias pizza calabresa` produziam 3386 e 2094 kcal (38,2% de divergência) e ambos errados. A instrumentação do pipeline mostrou que a causa **não** era aleatoriedade do modelo (3 execuções da mesma frase davam resultado idêntico), mas o pipeline aceitar a quantidade em gramas inventada pela IA, que variava conforme a frase. Correção em quatro frentes:
