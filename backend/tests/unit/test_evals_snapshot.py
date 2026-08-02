@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.core.config import settings
 from app.prompts import get_prompt
 from evals.cassettes import (
+    AIClientComCassette,
     CassetteAusenteError,
     chave_do_payload,
     gravar,
@@ -140,6 +142,69 @@ class TestCassettes:
             conteudo = arquivo.read_text(encoding="utf-8").lower()
             for termo in proibidos:
                 assert termo not in conteudo, f"{arquivo.name} contém {termo!r}"
+
+
+class TestAIClientComCassette:
+    """O envelope que liga o cassette ao runner — sem ele, o módulo é código morto."""
+
+    @staticmethod
+    def _cliente_real() -> MagicMock:
+        cliente = MagicMock()
+        cliente.generate_text = AsyncMock(return_value="[resposta do provedor]")
+        return cliente
+
+    async def test_gravando_chama_o_provedor_e_grava(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVAL_RECORD_CASSETTES", "1")
+        real = self._cliente_real()
+        envelope = AIClientComCassette(real, diretorio=tmp_path)
+
+        assert (
+            await envelope.generate_text("oi", system="s") == "[resposta do provedor]"
+        )
+        real.generate_text.assert_awaited_once()
+        assert envelope.gravou == 1
+        assert list(tmp_path.glob("*.json"))
+
+    async def test_replicando_nao_chama_o_provedor(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A garantia central: com gravação desligada, a rede não é tocada."""
+        monkeypatch.setenv("EVAL_RECORD_CASSETTES", "1")
+        await AIClientComCassette(
+            self._cliente_real(), diretorio=tmp_path
+        ).generate_text("oi", system="s")
+
+        monkeypatch.delenv("EVAL_RECORD_CASSETTES")
+        real = self._cliente_real()
+        envelope = AIClientComCassette(real, diretorio=tmp_path)
+
+        assert (
+            await envelope.generate_text("oi", system="s") == "[resposta do provedor]"
+        )
+        real.generate_text.assert_not_awaited()
+        assert envelope.reproduziu == 1
+
+    async def test_prompt_alterado_sem_regravar_estoura(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A regressão de prompt que o cassette existe para pegar."""
+        monkeypatch.setenv("EVAL_RECORD_CASSETTES", "1")
+        await AIClientComCassette(
+            self._cliente_real(), diretorio=tmp_path
+        ).generate_text("oi", system="prompt antigo")
+
+        monkeypatch.delenv("EVAL_RECORD_CASSETTES")
+        envelope = AIClientComCassette(self._cliente_real(), diretorio=tmp_path)
+        with pytest.raises(CassetteAusenteError, match="payload enviado ao provedor"):
+            await envelope.generate_text("oi", system="prompt novo")
+
+    def test_metodos_nao_envolvidos_vao_ao_cliente_real(self, tmp_path: Path) -> None:
+        real = MagicMock()
+        real.generate_with_image = "sentinela"
+        envelope = AIClientComCassette(real, diretorio=tmp_path)
+        assert envelope.generate_with_image == "sentinela"
 
 
 class TestCamadaRapidaNaoTocaARede:

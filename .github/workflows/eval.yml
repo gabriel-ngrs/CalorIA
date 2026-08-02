@@ -85,8 +85,9 @@ jobs:
           python scripts/seed_taco.py
           python scripts/seed_portions.py
 
-      # O cache em disco reduz o consumo de quota entre execuções: um caso que
-      # não mudou de payload reaproveita a resposta anterior.
+      # Os cassettes versionados absorvem o que não mudou de payload; o cache
+      # entre execuções cobre o que foi gravado desde o último commit. Juntos,
+      # reduzem o consumo de quota que derrubou a rodada de 2026-07-26.
       - name: Restaurar cache de respostas do provedor
         uses: actions/cache@v4
         with:
@@ -104,7 +105,10 @@ jobs:
           # Semente fixa: duas execuções no mesmo commit têm de dar o mesmo
           # relatório (NFR-5).
           GROQ_SEED: "20260802"
-        run: python -m evals.runner --json > evals/runs/ultimo-relatorio.json
+          # `EVAL_RECORD_CASSETTES=1`: a execução agendada é a que fala com o
+          # provedor real e (re)grava. A camada rápida do PR replica do disco.
+          EVAL_RECORD_CASSETTES: "1"
+        run: python -m evals.runner --cassettes --json > evals/runs/ultimo-relatorio.json
 
       - name: Bateria de invariância
         env:

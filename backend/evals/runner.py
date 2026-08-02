@@ -31,6 +31,7 @@ from app.services.ai import food_lookup as food_lookup_mod
 from app.services.ai.ai_client import AIClient
 from app.services.ai.meal_parser import MealParser
 from evals import metrics
+from evals.cassettes import AIClientComCassette
 from evals.schema import (
     CasoEval,
     Estrato,
@@ -347,8 +348,14 @@ def _linha_de_estrato(nome: str, resumo: dict[str, Any]) -> str:
     )
 
 
-async def executar(estrato: str | None = None) -> dict[str, Any]:
-    """Executa o dataset (ou um estrato) contra o pipeline real."""
+async def executar(
+    estrato: str | None = None, *, usar_cassettes: bool = False
+) -> dict[str, Any]:
+    """Executa o dataset (ou um estrato) contra o pipeline real.
+
+    Com `usar_cassettes`, as respostas do provedor vêm do disco em vez da rede —
+    é o que torna uma reexecução reprodutível e barata (NFR-5).
+    """
     casos = [
         c
         for c in carregar_casos()
@@ -363,7 +370,10 @@ async def executar(estrato: str | None = None) -> dict[str, Any]:
     coletor = ColetorDeEstagios()
     lookup_original = instrumentar_lookup(coletor)
     try:
-        parser = MealParser(AIClient())
+        cliente: Any = AIClient()
+        if usar_cassettes:
+            cliente = AIClientComCassette(cliente)
+        parser = MealParser(cliente)
         resultados = []
         async with sessao() as db:
             for indice, caso in enumerate(casos, start=1):
@@ -381,9 +391,17 @@ def main() -> None:
     parser.add_argument(
         "--json", action="store_true", help="emite JSON em vez de texto"
     )
+    parser.add_argument(
+        "--cassettes",
+        action="store_true",
+        help=(
+            "resolve as respostas do provedor por gravação em disco; "
+            "grava (e chama a rede) apenas com EVAL_RECORD_CASSETTES=1"
+        ),
+    )
     args = parser.parse_args()
 
-    relatorio = asyncio.run(executar(args.estrato))
+    relatorio = asyncio.run(executar(args.estrato, usar_cassettes=args.cassettes))
     if args.json:
         print(json.dumps(relatorio, ensure_ascii=False, indent=2))
     else:

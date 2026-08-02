@@ -34,6 +34,76 @@ def gravacao_ligada() -> bool:
     return os.getenv(VAR_GRAVACAO, "").lower() in {"1", "true", "yes"}
 
 
+class AIClientComCassette:
+    """Envolve o `AIClient` roteando `generate_text` por um cassette.
+
+    Com `EVAL_RECORD_CASSETTES` ligado, chama o provedor e grava a resposta.
+    Desligado, **replica do disco e nunca toca a rede** — e um payload sem
+    gravação estoura, em vez de sair chamando a API em silêncio.
+
+    Fica aqui, e não no `AIClient`, de propósito: o cliente de produção não
+    pode carregar caminho de teste, e o eval não pode reimplementar o cliente.
+    """
+
+    def __init__(self, cliente: Any, *, diretorio: Path | None = None) -> None:
+        self._cliente = cliente
+        self._diretorio = diretorio
+        self.gravou = 0
+        self.reproduziu = 0
+
+    def _payload(
+        self,
+        prompt: str,
+        system: str | None,
+        prompt_ref: Any,
+        temperature: float | None,
+    ) -> dict[str, Any]:
+        """Tudo que muda a resposta entra na chave — nada mais."""
+        from app.core.config import settings
+
+        return {
+            "model": settings.GROQ_TEXT_MODEL,
+            "temperature": temperature,
+            "max_tokens": settings.GROQ_MAX_TOKENS,
+            "seed": settings.GROQ_SEED,
+            "prompt_ref": getattr(prompt_ref, "ref", None),
+            "prompt_sha": getattr(prompt_ref, "sha256", None),
+            "messages": [
+                *([{"role": "system", "content": system}] if system else []),
+                {"role": "user", "content": prompt},
+            ],
+        }
+
+    async def generate_text(
+        self,
+        prompt: str,
+        *,
+        use_cache: bool = True,
+        system: str | None = None,
+        prompt_ref: Any = None,
+        temperature: float | None = None,
+    ) -> str:
+        payload = self._payload(prompt, system, prompt_ref, temperature)
+        if not gravacao_ligada():
+            self.reproduziu += 1
+            return reproduzir(payload, diretorio=self._diretorio)
+
+        resposta: str = await self._cliente.generate_text(
+            prompt,
+            use_cache=use_cache,
+            system=system,
+            prompt_ref=prompt_ref,
+            temperature=temperature,
+        )
+        gravar(payload, resposta, diretorio=self._diretorio)
+        self.gravou += 1
+        return resposta
+
+    def __getattr__(self, nome: str) -> Any:
+        """Qualquer outro método vai direto ao cliente real."""
+        return getattr(self._cliente, nome)
+
+
 def chave_do_payload(payload: dict[str, Any]) -> str:
     """`sha256` da forma canônica do que seria enviado ao provedor.
 
