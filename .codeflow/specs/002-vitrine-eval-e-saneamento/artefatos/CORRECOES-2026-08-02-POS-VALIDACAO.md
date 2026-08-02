@@ -182,6 +182,40 @@ fase B.4 pedia originalmente. O histórico de medições ficou registrado no pr�
 `TEST_DATABASE_URL` passou a ser declarada explicitamente no `ci.yml`: com o
 schema vindo de migrations, depender do default do conftest era frágil.
 
+## Remedição da bateria de invariância — PENDENTE por quota
+
+A bateria não pôde ser reexecutada depois das correções. As execuções de eval do
+dia esgotaram a quota do free tier da Groq, e a bateria passou a bater em
+`RateLimitError`:
+
+```text
+Rate limit Groq — aguardando 15s (tentativa 1/4, 0s de 120s do teto já gastos)
+Rate limit Groq — aguardando 30s (tentativa 2/4, 15s de 120s do teto já gastos)
+Rate limit Groq — aguardando 60s (tentativa 3/4, 45s de 120s do teto já gastos)
+```
+
+A execução foi **interrompida de propósito**, para não continuar queimando quota
+sem necessidade.
+
+Três leituras honestas disso:
+
+1. **O retry tipado da C.2 está funcionando exatamente como projetado** — backoff
+   de 15s → 30s → 60s, com o teto de 120s sendo contabilizado e reportado. Este
+   log é a primeira evidência real da fase C.2 em condição de rate limit.
+2. **O risco R5 da spec se materializou de novo** ("o rate limit do free tier
+   impede execuções completas do eval — já aconteceu em 2026-07-26"). Isso
+   **confirma** a escolha de periodicidade semanal no `eval.yml`, que era palpite
+   fundamentado e agora tem medição por trás.
+3. **A remedição da invariância é a única verificação desta rodada que ficou por
+   fazer.** As duas correções que ela mediria (§1 e §2) têm evidência por outros
+   caminhos: o runner mediu a melhora do sanity check com cassettes (sem rede), e
+   as regras de porção têm 20 testes unitários. Mas o número novo de
+   `taxa_de_aprovacao` só sai quando a quota voltar.
+
+**Ação para o owner:** rodar `python -m evals.invariance` no dia seguinte, ou
+disparar o `eval.yml` por `workflow_dispatch`, e comparar contra a linha de base
+de 2026-08-02 (aprovação 0,417 · spread mediano 1,2115 · p95 3,5126).
+
 ## O que NÃO foi feito, e por quê
 
 - **JSON mode (C.2, passo 2)** continua desligado. É pergunta em aberto do owner,
