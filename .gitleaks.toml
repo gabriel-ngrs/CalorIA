@@ -27,7 +27,14 @@ id = "caloria-senha-hardcoded"
 description = "Senha em texto claro atribuída a variável ou constante"
 # Sem \b inicial e com sufixo opcional: casa `SENHA_ADMIN`, `admin_password`,
 # `db_pwd` — não só a palavra-chave colada no `=`.
-regex = '''(?i)(?:password|passwd|pwd|senha)[a-z0-9_]*\s*[:=]\s*["'][^"'\s${}<>\[\]]{8,}["']'''
+# A exclusão de `$ { } < > [ ]` vale só para o PRIMEIRO caractere do valor, não para
+# o valor inteiro. A intenção sempre foi descartar interpolação e placeholder
+# (`"${DB_PASS}"`, `"<senha>"`, `"{{x}}"`, `"[REDIGIDO]"`, `"%(pass)s"`) — mas excluir
+# esses caracteres em qualquer posição abria um buraco grande: uma senha real como
+# `Pa$$w0rd123` escapava do gate. Corrigido após achado da avaliação da Fase A.3.
+# Nota: o gitleaks usa RE2 (Go), que não tem lookahead — daí a classe negada na
+# primeira posição em vez de `(?!...)`.
+regex = '''(?i)(?:password|passwd|pwd|senha)[a-z0-9_]*\s*[:=]\s*["'][^"'\s$<{\[%][^"'\n]{7,}["']'''
 keywords = ["password", "passwd", "pwd", "senha"]
 
   [rules.allowlist]
@@ -48,7 +55,8 @@ keywords = ["password", "passwd", "pwd", "senha"]
 [[rules]]
 id = "caloria-senha-preenchida-em-teste"
 description = "Senha em texto claro preenchida num teste de UI — o padrão exato do AUD-038"
-regex = '''(?i)(?:senha|password|pwd)[^\n]{0,40}?\.fill\(\s*["'][^"'\s${}]{6,}["']'''
+# Mesma correção da regra anterior: placeholder só é descartado pela primeira posição.
+regex = '''(?i)(?:senha|password|pwd)[^\n]{0,40}?\.fill\(\s*["'][^"'\s$<{\[%][^"'\n]{5,}["']'''
 keywords = ["fill("]
 
   [rules.allowlist]

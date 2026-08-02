@@ -1,6 +1,12 @@
 repos:
+  # Mantenha esta rev alinhada com o ruff que o projeto resolve de fato
+  # (`backend/pyproject.toml` pede `ruff>=0.8.0`, hoje 0.15.2) — que é também o que
+  # roda no CI. Com a rev antiga o hook e o CI discordavam: `UP038` foi removida
+  # depois da 0.8.0, e o `ruff-format` da 0.8.0 reformatava 4 arquivos que a 0.15
+  # considera já formatados. Um hook que reprova o que o CI aprova treina o
+  # desenvolvedor a ignorá-lo.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+    rev: v0.15.2
     hooks:
       - id: ruff
         args: [--fix]
