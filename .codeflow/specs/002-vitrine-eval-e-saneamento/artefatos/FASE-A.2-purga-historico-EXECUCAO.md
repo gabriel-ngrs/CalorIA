@@ -2,12 +2,12 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: A.2
 slug_fase: purga-historico
-status: executado
-tentativa: 1
-reprovacoes: 0
-sha_inicial: cb2e4ca7bd7323123ab4196d5f5906ff06dda7be
-sha_final: 7bb06aab4ba590b46b9018e40d0bfab173b23f1b
-range: cb2e4ca7bd7323123ab4196d5f5906ff06dda7be..7bb06aab4ba590b46b9018e40d0bfab173b23f1b
+status: rework
+tentativa: 2
+reprovacoes: 1
+sha_inicial: 240d70887daf0cf8ac86061b6f4d0574eb6620e3
+sha_final: 721f0f0892b3298964b04b917e3f1b0cb5a1cc69
+range: 240d70887daf0cf8ac86061b6f4d0574eb6620e3..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
 ---
 
 # FASE A.2 — Relatório de execução
@@ -426,7 +426,43 @@ da execução; o efeito colateral — clone local desalinhado — foi resolvido 
 
 ## 8. (Em rework) O que mudou nesta tentativa
 
-N/A — primeira execução.
+Rework da tentativa 1, que recebeu **RESSALVAS** (score 9.2): 3 IMPORTANTES, todos de
+**registro**, nenhum de execução. Os três foram aceitos e fechados.
+
+### IMPORTANTE 4.1 — "Extensão de escopo de 2 para 10 arquivos nunca chegou à spec nem a uma decision"
+
+**Aceito.** O processo estava certo — parei, reportei, obtive autorização —, mas o
+registro morreu no relatório. Um avaliador lendo só a spec veria 8 arquivos alterados
+fora do escopo declarado e leria isso como violação BLOQUEANTE.
+
+Fechado em dois lugares:
+- **Spec §5, Fase A.2:** a lista de "Arquivos alterados" passou de 2 para os 10 reais,
+  nominalmente, com a nota de por que o escopo cresceu. O passo 1 e o bullet "Testes"
+  foram alinhados à lista nova, que de outro modo se contradiriam.
+- **Spec §8:** novo item **OQ7**, RESOLVIDO em 2026-08-02.
+- **Decision:** `.codeflow/decisions/2026-08-02-extensao-escopo-redacao-pii-auditoria.md`.
+
+### IMPORTANTE 4.2 — "O passo 3 (ticket ao GitHub Support) foi omitido por decisão verbal"
+
+**Aceito.** A omissão foi consciente e fundamentada, mas fundamentação falada não
+sobrevive à sessão.
+
+Fechado em: **OQ10** na §8 da spec, nota inline no passo 3 da §5, e a decision
+`.codeflow/decisions/2026-08-02-omissao-ticket-github-support.md`, que registra os
+fatos verificados no momento (`forks: 0`, `network: 0`, `visibility: private`, senha já
+rotacionada), o risco residual e a mitigação combinada — não reabrir o repositório na
+Fase D.2 imediatamente após a purga.
+
+### IMPORTANTE 4.3 — "O `range` do frontmatter não é reconstruível"
+
+**Aceito e corrigido.** Detalhe do remapeamento na §8 do relatório da A.1 — os cinco
+`sha_inicial` do Track A foram remapeados por assunto de commit e todos resolvem
+(`git cat-file -e`). O da A.2 passou a ser `240d708`.
+
+### Nada de código mudou nesta tentativa
+
+O trabalho da A.2 — redação dos 10 documentos e a purga — está intacto e continua
+verificado pelas medições da §5.7. O rework foi inteiramente de registro.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 

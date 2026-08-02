@@ -2,12 +2,12 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: A.3
 slug_fase: gitleaks
-status: executado
-tentativa: 1
-reprovacoes: 0
-sha_inicial: 5769f238590027c4036776edddc679e5e0dafa4a
-sha_final: 7bb06aab4ba590b46b9018e40d0bfab173b23f1b
-range: 5769f238590027c4036776edddc679e5e0dafa4a..7bb06aab4ba590b46b9018e40d0bfab173b23f1b
+status: rework
+tentativa: 2
+reprovacoes: 1
+sha_inicial: b9cb561e6c4dd3f0c63fd1f171dfe15496d3d88d
+sha_final: 721f0f0892b3298964b04b917e3f1b0cb5a1cc69
+range: b9cb561e6c4dd3f0c63fd1f171dfe15496d3d88d..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
 ---
 
 # FASE A.3 — Relatório de execução
@@ -296,22 +296,16 @@ $ pytest tests/unit/ -q   → 199 passed
       instância"** — satisfeito só depois do `.gitleaks.toml`. Com as regras default a
       classe do incidente ficava aberta; a §5.5 mede a diferença.
 - [x] **`pre-commit run gitleaks --all-files` verde no repositório limpo** — §5.1.
-- [ ] **`pre-commit run --all-files` (todos os hooks) verde** — **NÃO satisfeito, por
-      duas causas pré-existentes e independentes do gitleaks.** Deixo aberto de
-      propósito: fechá-lo exigiria trabalho fora dos arquivos que esta fase declara.
-      1. **Dívida de whitespace/EOF em 25 arquivos** (`docs/auditoria/artefatos/*.txt`,
-         CSVs de `data/`, uma migration, 4 testes, uma página do frontend). Os hooks
-         `trailing-whitespace` e `end-of-file-fixer` **já existiam** antes da A.3 e
-         nunca haviam rodado sobre a árvore inteira. Boa parte desses arquivos é
-         candidata à poda da Fase D.4 — sugiro resolver lá.
-      2. **`backend/.ruff_cache/` com subpastas de `root`**, criadas pelo container
-         Docker, que fazem o hook do `ruff` abortar com
-         `Failed to create temporary file … Permission denied`. Não é código: com
-         `RUFF_CACHE_DIR` apontando para outro diretório, `ruff` e `ruff-format`
-         passam. Some com `sudo rm -rf backend/.ruff_cache`.
-      Nenhuma das duas afeta o CI, que faz checkout limpo — a run
-      [#30751992281](https://github.com/gabriel-ngrs/CalorIA/actions/runs/30751992281)
-      está verde em `ruff`, `ruff-format` e no step do gitleaks.
+- [x] **`pre-commit run --all-files` (todos os hooks) verde** — **SATISFEITO na
+      tentativa 2**, `EXIT=0` e árvore intocada (§8, BLOQUEANTE 3.1). Exigiu duas
+      correções: o commit `style:` de higiene (15 arquivos, diff puramente mecânico) e
+      o alinhamento da `rev` do `ruff` de `v0.8.0` para `v0.15.2`, a versão que o
+      projeto resolve e o CI usa.
+      Nota de ambiente, não de código: `backend/.ruff_cache/` tem subpastas de `root`
+      criadas pelo container Docker, que fazem o hook abortar com
+      `Failed to create temporary file … Permission denied`. Contornável com
+      `RUFF_CACHE_DIR`; some com `sudo rm -rf backend/.ruff_cache`. Não afeta o CI,
+      que faz checkout limpo.
 - [x] **"CI verde"** — **SATISFEITO em 2026-08-02.** O step
       `Varredura de segredos — gitleaks` passou na run
       [#30751992281](https://github.com/gabriel-ngrs/CalorIA/actions/runs/30751992281),
@@ -333,7 +327,103 @@ $ pytest tests/unit/ -q   → 199 passed
 
 ## 8. (Em rework) O que mudou nesta tentativa
 
-N/A — primeira execução.
+Rework da tentativa 1, que recebeu **REPROVADO** (score 8.3, threshold 8.5): 1
+BLOQUEANTE e 4 IMPORTANTES. **Todos fechados.**
+
+### BLOQUEANTE 3.1 — "`pre-commit run --all-files` verde não está satisfeito"
+
+**Aceito sem ressalva.** É gate nominal da fase (§5 e DoD §9), e deixá-lo `[ ]` com a
+nota "sugiro resolver na D.4" é o override conversacional que a constitution proíbe.
+
+O owner escolheu o caminho que **resolve** em vez do que adia. Foram necessárias duas
+correções, porque a primeira revelou a segunda:
+
+1. **Commit `style:` de higiene** (`style: aplica hooks de higiene de whitespace e fim
+   de arquivo`), 15 arquivos. Confirmei antes de commitar que a mudança é puramente
+   mecânica: `git diff --ignore-all-space --ignore-blank-lines --stat` retorna **vazio**
+   — nenhuma linha de lógica alterada.
+
+2. **Alinhamento da `rev` do `ruff`** no `.pre-commit-config.yaml`, de `v0.8.0` para
+   `v0.15.2`. Com a higiene aplicada, o gate ainda falhava: o `ruff-format` da v0.8.0
+   reformatava 4 arquivos que o ruff 0.15.2 do projeto e do CI consideram já
+   formatados. Um hook que reprova o que o CI aprova treina o desenvolvedor a
+   ignorá-lo. `.pre-commit-config.yaml` é arquivo declarado desta fase, então a
+   correção é **dentro** do escopo.
+
+**Resultado — o gate agora fecha, e sem tocar na árvore:**
+
+```text
+$ pre-commit run --all-files
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+Detect hardcoded secrets.................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for merge conflicts................................................Passed
+check for added large files..............................................Passed
+don't commit to branch...................................................Passed
+>>> EXIT=0
+
+$ git status --short
+        (vazio — nenhum arquivo modificado pelos hooks)
+```
+
+### IMPORTANTE 4.1 — "`.gitleaks.toml` criado fora do escopo, §5 nunca atualizada"
+
+**Aceito e fechado.** Spec §5 da A.3 ganhou o bullet `- **Arquivos novos:**
+.gitleaks.toml` com a medição que justifica (`no leaks found` → 30 achados); §8 ganhou
+o item **OQ8**; e existe agora a decision
+`.codeflow/decisions/2026-08-02-regras-proprias-gitleaks.md`.
+
+### IMPORTANTE 4.2 — "O AC-2, reconhecidamente falso, continua escrito assim na spec"
+
+**Aceito e fechado.** Eu havia diagnosticado o problema e deixado a correção como
+recomendação — que é meio caminho. O AC-2 da §3 foi reescrito para exigir **duas**
+verificações conjuntas: a varredura com `--config .gitleaks.toml` **e** a verificação
+direta `git log --all -S'<valor>' | wc -l == 0`, que não depende de heurística nenhuma.
+A cláusula do HEAD das branches remotas migrou do AC-1 para cá, onde é satisfazível.
+
+### IMPORTANTE 4.3 — "`caloria-senha-hardcoded` não detecta senha contendo `$ { } < > [ ]`"
+
+**Aceito — e este é o achado mais valioso da avaliação.** A regra escrita para "fechar
+a classe" deixava aberta uma sub-classe grande: `Pa$$w0rd123` escapava do gate.
+
+A causa foi confundir dois objetivos. Eu queria descartar *interpolação e placeholder*
+(`"${DB_PASS}"`, `"<senha>"`, `"[REDIGIDO]"`) e implementei isso excluindo esses
+caracteres **em qualquer posição** do valor. O correto é excluí-los só na **primeira**
+posição — um placeholder começa com o marcador; uma senha real só o contém no meio.
+
+Restrição técnica que moldou a solução: o gitleaks usa **RE2** (Go), que **não tem
+lookahead** — `(?!\$)` não é opção. A correção usa classe negada na primeira posição:
+
+```diff
+-["'][^"'\s${}<>\[\]]{8,}["']
++["'][^"'\s$<{\[%][^"'\n]{7,}["']
+```
+
+A mesma correção foi aplicada à regra `caloria-senha-preenchida-em-teste`.
+
+**Verificado com sonda de 12 casos, 12/12 corretos:**
+
+```text
+DEVE detectar:                          NAO deve detectar:
+  OK  senha com $$                        OK  ${DB_PASS}
+  OK  senha normal                        OK  <placeholder>
+  OK  senha com { }                       OK  {{SENHA}}
+  OK  senha com [ ]                       OK  [REDIGIDO]
+  OK  fill com $$                         OK  %(pass)s
+                                          OK  senhaerrada (allowlist)
+                                          OK  fill ${SENHA}
+```
+
+Sem regressão no repositório real: `gitleaks detect --config .gitleaks.toml` sobre o
+histórico → `no leaks found`, exit 0; sobre os arquivos rastreados → 0 achados.
+
+### IMPORTANTE 4.4 — "O `range` do frontmatter não é reconstruível"
+
+**Aceito e corrigido.** `sha_inicial` remapeado de `5769f23` (pré-purga) para
+`b9cb561`. Detalhe dos cinco na §8 do relatório da A.1.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 

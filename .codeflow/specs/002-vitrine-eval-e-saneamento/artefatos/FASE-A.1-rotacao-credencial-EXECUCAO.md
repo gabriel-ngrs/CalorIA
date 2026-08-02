@@ -2,12 +2,12 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: A.1
 slug_fase: rotacao-credencial
-status: executado
-tentativa: 1
-reprovacoes: 0
-sha_inicial: 56069b9d51d63b2ebcd34313584f9e0dc9af4204
-sha_final: 7bb06aab4ba590b46b9018e40d0bfab173b23f1b
-range: 56069b9d51d63b2ebcd34313584f9e0dc9af4204..7bb06aab4ba590b46b9018e40d0bfab173b23f1b
+status: rework
+tentativa: 2
+reprovacoes: 1
+sha_inicial: 461ee3805bf5f8848d4da6ebd23779ff8817c315
+sha_final: 721f0f0892b3298964b04b917e3f1b0cb5a1cc69
+range: 461ee3805bf5f8848d4da6ebd23779ff8817c315..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
 ---
 
 # FASE A.1 — Relatório de execução
@@ -108,16 +108,22 @@ Time:        4.693 s
 - [x] **AC-4** (FR-A4) — *dado* `frontend/e2e/auth.spec.ts`, sem variável de
       ambiente, `BASE_URL` resolve para `http://localhost:3000`.
       Evidência: diff do arquivo; `grep -rn "vercel.app" frontend/e2e/` → 0.
-- [x] **AC-1** (FR-A1) — **SATISFEITO.**
-      - Repositório privado: `gh repo view --json visibility` → `{"visibility":"PRIVATE"}`.
-      - Working tree sem a credencial: greps acima, 0 ocorrências.
-      - **Rotação confirmada por escrito pelo owner** nesta sessão: Google/Gmail
-        primeiro (conta de recuperação), depois os demais serviços com reuso da
-        senha. Ressalva honesta: a conta do próprio CalorIA em produção ainda não
-        foi trocada — ver §9, item 1.
-      - *"O HEAD de toda branch remota está livre dela"*: **satisfeito após a
-        Fase A.2.** Medido em 2026-08-02, depois do `git filter-repo` e do
-        force-push:
+- [ ] **AC-1** (FR-A1) — **PARCIAL.** Marco `[ ]` deliberadamente: o avaliador tem
+      razão de que a rotação está incompleta, e marcar `[x]` seria exatamente o
+      autoengano que este relatório existe para evitar.
+      - [x] Repositório privado: `gh repo view --json visibility` → `{"visibility":"PRIVATE"}`.
+      - [x] Working tree sem a credencial: greps acima, 0 ocorrências.
+      - [x] **Rotação confirmada por escrito pelo owner** nos serviços de reuso:
+            Google/Gmail primeiro (conta de recuperação), depois os demais. Era o vetor
+            grave — *credential stuffing* em contas de alto valor —, e está fechado.
+      - [ ] **A conta do próprio CalorIA em produção não foi trocada.** Sem caminho
+            técnico no momento: a app não tem troca de senha autenticada, o envio de
+            e-mail não está configurado, e a URL do backend não é descobrível pelo
+            repositório. Registrado como decision, não como nota — §8 e
+            `.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`.
+      - **Cláusula do HEAD remoto:** movida para o AC-2 na revisão da spec desta
+        tentativa, por ser insatisfazível pela A.1 isoladamente (era o item 2 da §9).
+        De todo modo, hoje está satisfeita — medido após o `filter-repo`:
         ```
         $ git show origin/main:frontend/e2e/auth.spec.ts | grep -c <e-mail>
         0                                        # era 1
@@ -137,7 +143,62 @@ Time:        4.693 s
 
 ## 8. (Em rework) O que mudou nesta tentativa
 
-N/A — primeira execução.
+Rework da tentativa 1, que recebeu **REPROVADO** (score 8.3, threshold 8.5): 1
+BLOQUEANTE e 1 IMPORTANTE.
+
+### BLOQUEANTE 3.1 — "A credencial exposta continua válida no serviço que ela abre"
+
+**Aceito integralmente. O defeito é real e o diagnóstico do avaliador está certo:** o
+Objetivo da fase é "interromper o dano ativo", e uma conta que ainda aceita a senha
+vazada não teve o dano interrompido.
+
+**O que mudou:** a pendência deixou de ser uma nota de relatório e virou uma decision
+do framework — `.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`.
+
+O avaliador ofereceu dois caminhos. Nenhum dos dois foi possível fechar, e o motivo
+está registrado em vez de contornado:
+
+- **Caminho 1 (trocar a senha no banco de produção)** — é o único que fecha o FR-A1
+  integralmente, e continua sendo o caminho certo. Não executado por falta de acesso
+  ao servidor no momento. O utilitário já está pronto (`~/trocar-senha-caloria.py`).
+- **Caminho 2 (registrar que o backend está fora do ar, com evidência de requisição)**
+  — o owner declarou nesta sessão que o backend está fora do ar, mas **não consegui
+  verificar de forma independente**: `Caddyfile.backend` usa `{$APP_DOMAIN}`, variável
+  de ambiente que não vive no repositório, de modo que a URL do backend **não é
+  descobrível pelo código**. Sondá-la exigiria fazer o levantamento que é escopo
+  declarado da **Fase E.1** — ampliar a A.1 para dentro do Track E seria a violação de
+  escopo que a constitution proíbe.
+
+**Sou explícito quanto ao alcance desta correção:** ela transforma um override
+conversacional numa decision registrada, que é o que a constitution exige
+("Override genuíno exige uma decision arquitetural registrada"). Ela **não** faz o
+FR-A1 passar a estar satisfeito. Se o avaliador entender que só a troca efetiva fecha
+a fase, a reprovação se mantém — e estará correta. O que mudou é que a lacuna agora
+está nomeada, com risco residual quantificado e com uma dependência explícita
+registrada: **a Fase D.2 não deve tornar o repositório público antes disto ser
+resolvido.**
+
+### IMPORTANTE 4.1 — "O `range` do frontmatter não é reconstruível"
+
+**Aceito e corrigido.** O `git filter-repo` da Fase A.2 reescreveu todos os SHAs, e o
+frontmatter apontava para commits pré-purga que deixaram de existir — o avaliador teve
+de reconstruir o range por mensagem de commit, quando o protocolo manda parar.
+
+Remapeei por assunto de commit e verifiquei que **todos os cinco `sha_inicial` do
+Track A agora resolvem**:
+
+```text
+$ git cat-file -e <sha_inicial> && git log --format='%h %s' -1 <sha_inicial>
+A.1  461ee38  docs(specs): registra spec 002 de vitrine, eval e saneamento
+A.2  240d708  fix(seguranca): aponta BASE_URL do e2e para ambiente local por padrao
+A.3  b9cb561  ci(github): restaura gatilhos automaticos e corrige o alvo check
+B.1  fd923d6  docs(seguranca): remove pii e caminho de extracao dos docs de auditoria
+B.2  9b3ff80  test(backend): cria schema em fixture e libera testes unit de infra
+```
+
+O `sha_inicial` da A.1 passou a ser o commit da própria spec (`461ee38`), que é o
+início original da fase, em vez do commit de código — corrigindo também a inconsistência
+que o avaliador apontou entre `sha_final` declarado e o commit real da fase.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 

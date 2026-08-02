@@ -2,12 +2,12 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: B.1
 slug_fase: testes-unit-sem-infra
-status: executado
-tentativa: 1
-reprovacoes: 0
-sha_inicial: 4b58f76f31931aa47a5281ff0ac0bc88dec795a6
-sha_final: 425830930d64a876cf1997db54d681a4f44a64fc
-range: 4b58f76f31931aa47a5281ff0ac0bc88dec795a6..425830930d64a876cf1997db54d681a4f44a64fc
+status: rework
+tentativa: 2
+reprovacoes: 1
+sha_inicial: fd923d69f1a751b91d10535e1e5a0306204d8441
+sha_final: 721f0f0892b3298964b04b917e3f1b0cb5a1cc69
+range: fd923d69f1a751b91d10535e1e5a0306204d8441..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
 ---
 
 # FASE B.1 — Relatório de execução
@@ -22,11 +22,11 @@ a sobrepor **duas** fixtures autouse do pai — `setup_test_database` **e** `cle
 banco. Resultado: `pytest tests/unit/` roda em 2,83 s sem Postgres e sem Redis, e a
 contagem de testes fica inalterada.
 
-> **Nota de execução paralela:** esta fase foi executada concorrentemente com a A.2
-> (arquivos disjuntos: `backend/tests/` vs `docs/auditoria/`). O `sha_inicial` acima
-> é o HEAD no momento do commit desta fase; o HEAD no momento em que o trabalho
-> começou era `cb2e4ca` (o mesmo da A.2). O `range` cobre exclusivamente o commit
-> desta fase.
+> **Nota de execução paralela:** esta fase foi executada concorrentemente com a A.2,
+> sobre conjuntos de arquivos disjuntos (`backend/tests/` vs `docs/auditoria/`). O
+> `sha_inicial` é o commit da A.2 porque a ordem de *commit* foi sequencial, ainda que
+> a de *execução* tenha sido paralela. Ver §8 — os SHAs deste frontmatter foram
+> remapeados na tentativa 2, depois de o `filter-repo` da A.2 reescrever o histórico.
 
 ## 2. Arquivos CRIADOS
 
@@ -161,7 +161,30 @@ hostname interno do Docker, irresolvível a partir do host. Com
 
 ## 8. (Em rework) O que mudou nesta tentativa
 
-N/A — primeira execução.
+Rework da tentativa 1, que recebeu **RESSALVAS** (score 9.8 — o mais alto do Track A):
+1 IMPORTANTE, de artefato, nenhum de execução.
+
+### IMPORTANTE 4.1 — "O `range` do frontmatter aponta para commits inexistentes na branch"
+
+**Aceito e corrigido.** O `git filter-repo` da Fase A.2 reescreveu todos os SHAs, e o
+frontmatter guardava os pré-purga. `sha_inicial` passou de `4b58f76` (inalcançável)
+para `fd923d6` — o mesmo commit, "docs(seguranca): remove pii e caminho de extracao
+dos docs de auditoria", no histórico reescrito. Verificado com `git cat-file -e`.
+
+Removi também a "Nota de execução paralela" que citava `cb2e4ca` como o HEAD de início
+real: aquele SHA também não existe mais, e a informação que ela carregava — esta fase
+rodou concorrentemente com a A.2, em arquivos disjuntos — está preservada abaixo sem
+depender de um SHA morto.
+
+> Esta fase foi executada concorrentemente com a A.2, sobre conjuntos de arquivos
+> disjuntos (`backend/tests/` vs `docs/auditoria/`). O `sha_inicial` é o commit da A.2
+> porque a ordem de *commit* foi sequencial, ainda que a de *execução* tenha sido
+> paralela. O `range` cobre exclusivamente o commit desta fase mais o rework.
+
+### Nada de código mudou nesta tentativa
+
+A correção dos dois `conftest.py` está intacta e continua verificada: 199 testes
+unitários passando sem Postgres nem Redis, contagem total inalterada em 298.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 
