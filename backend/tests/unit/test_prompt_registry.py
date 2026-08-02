@@ -21,13 +21,16 @@ from app.prompts import (
 )
 from app.services.ai.ai_client import AIClient
 
-#: `sha256` das versões ativas, medido em 2026-08-02 na extração da fase C.1.
-#: Atualizar SOMENTE junto de um bump de versão.
+#: `sha256` das versões ativas. Atualizar SOMENTE junto de um bump de versão —
+#: a lista existe justamente para que editar um prompt no lugar quebre a suíte.
+#: Medido em 2026-08-02: as quatro na extração da C.1; `vision_identify` movida
+#: para v2 na fase B.5, que removeu do prompt de visão as duas regras que foram
+#: a causa raiz do bug 001.
 SHA_TRAVADO = {
     "meal_fallback": "713ea1c529306cc18bc2a40b17e935209489af9c7edb2b8cd8650d0cf85b5fc0",
     "meal_identify": "f1334ef6072f8ef9aa6973346f21bb94650292128e96fe53bbbc261a133b632e",
     "vision_fallback": "7c206344f4f87a7ac01ea3a0cfae610a1923a56e92923ad63b713f87e1d01b78",
-    "vision_identify": "570e5fc7179932bfda20e2b8f008db1bbf6305a321a9b9a600db021d55bde200",
+    "vision_identify": "0362121d603603b7d662fbd9b6118d06b66ba6658c5d8f817e9e55e7cd7ac3ae",
 }
 
 
@@ -145,8 +148,29 @@ class TestPromptsDeProducao:
         assert "ctx" in renderizado
         assert "{" not in renderizado
 
-    def test_versao_ativa_e_a_v1(self) -> None:
-        assert all(get_prompt(nome).version == 1 for nome in SHA_TRAVADO)
+    @pytest.mark.parametrize(
+        ("nome", "versao"),
+        [
+            ("meal_identify", 1),
+            ("meal_fallback", 1),
+            ("vision_fallback", 1),
+            ("vision_identify", 2),
+        ],
+    )
+    def test_versao_ativa_esperada(self, nome: str, versao: int) -> None:
+        assert get_prompt(nome).version == versao
+
+    def test_v1_de_vision_identify_continua_intacta(self) -> None:
+        """Imutabilidade: a v2 nasceu ao lado da v1, não por cima dela."""
+        assert PromptRegistry().get("vision_identify", 1).sha256 == (
+            "570e5fc7179932bfda20e2b8f008db1bbf6305a321a9b9a600db021d55bde200"
+        )
+
+    def test_a_v2_de_visao_removeu_as_regras_do_bug_001(self) -> None:
+        v2 = PromptRegistry().get("vision_identify", 2).system
+        assert "Liste cada alimento separadamente" not in v2
+        assert "Estime porções sempre em gramas" not in v2
+        assert "PRATO CONHECIDO VEM INTEIRO" in v2
 
     def test_prompt_version_e_imutavel(self) -> None:
         prompt = get_prompt("meal_identify")

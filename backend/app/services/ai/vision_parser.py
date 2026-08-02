@@ -9,6 +9,7 @@ from app.prompts import get_prompt
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.ai_client import AIClient
 from app.services.ai.food_lookup import IdentifiedFood, lookup_food, preparo_relevante
+from app.services.ai.meal_parser import _num
 from app.services.ai.utils import correct_calories, extract_json_from_ai_response
 from app.services.nutrition.portions import PortionNormalizer
 
@@ -21,10 +22,13 @@ logger = logging.getLogger(__name__)
 # Prompts versionados — mesmo contrato do MealParser: o texto vive em
 # `app/prompts/<nome>/v<N>.txt` e o `sha256` está travado por teste.
 # ---------------------------------------------------------------------------
-_IDENTIFY_PROMPT = get_prompt("vision_identify")
+_IDENTIFY_PROMPT = get_prompt("vision_identify")  # versão ativa: v2 (bug 001)
 _FALLBACK_PROMPT = get_prompt("vision_fallback")
 
 _CONFIDENCE_THRESHOLD = 0.6
+#: Divergência tolerada entre as calorias do banco e a estimativa da IA.
+#: Mesmo valor e mesmo papel de `_SANITY_DIVERGENCE` no MealParser.
+_SANITY_DIVERGENCE = 0.35
 
 
 class VisionParser:
@@ -83,7 +87,7 @@ class VisionParser:
                 # Sanity check: compara calorias do banco com estimativa da IA
                 if item.kcal_estimate and item.kcal_estimate > 0 and db_kcal > 0:
                     divergence = abs(db_kcal - item.kcal_estimate) / item.kcal_estimate
-                    if divergence > 0.35:
+                    if divergence > _SANITY_DIVERGENCE:
                         logger.warning(
                             "Vision sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
                             "(divergência=%.0f%%, source=%s) — descartando banco, usando estimativa IA",
@@ -142,7 +146,10 @@ class VisionParser:
         if to_estimate_idx:
             to_estimate = [items[i] for i in to_estimate_idx]
             estimated = await self._estimate_macros_batch(to_estimate)
-            for idx, parsed in zip(to_estimate_idx, estimated, strict=False):
+            # `_estimate_macros_batch` garante uma saída por entrada, então os
+            # comprimentos casam e `strict=True` é seguro. Com `strict=False`,
+            # um descasamento futuro descartaria itens em silêncio.
+            for idx, parsed in zip(to_estimate_idx, estimated, strict=True):
                 result[idx] = parsed
 
         return [item for item in result if item is not None]
@@ -166,21 +173,45 @@ class VisionParser:
         )
         data = extract_json_from_ai_response(raw)
 
+        # A IA às vezes devolve um array de tamanho diferente da entrada.
+        # Casar por posição com `strict=False` descartava itens em silêncio — a
+        # foto perdia alimentos sem que ninguém soubesse. Aqui cada entrada tem
+        # saída garantida; o que faltar vira item marcado para revisão. Mesma
+        # correção já aplicada ao MealParser pelo bug 001.
         parsed: list[ParsedFoodItem] = []
-        for d, original in zip(data, items, strict=False):
+        for i, original in enumerate(items):
+            d = data[i] if i < len(data) and isinstance(data[i], dict) else {}
+            faltando = not d
+            if faltando:
+                logger.warning(
+                    "IA não devolveu macros para '%s' (posição %d de %d) — "
+                    "item preservado com zeros e marcado para revisão",
+                    original.food_name,
+                    i,
+                    len(items),
+                )
             parsed.append(
                 ParsedFoodItem(
                     food_name=original.food_name,
-                    quantity=original.quantity,
+                    # A quantidade crua da IA pode vir por extenso ("dois"), e
+                    # `ParsedFoodItem` a rejeitava com ValidationError FORA dos
+                    # blocos `except` — virava HTTP 500.
+                    quantity=_num(original.quantity),
                     unit=original.unit,
-                    calories=float(d.get("calories", 0)),  # type: ignore[arg-type]
-                    protein=float(d.get("protein", 0)),  # type: ignore[arg-type]
-                    carbs=float(d.get("carbs", 0)),  # type: ignore[arg-type]
-                    fat=float(d.get("fat", 0)),  # type: ignore[arg-type]
-                    fiber=float(d.get("fiber", 0)),  # type: ignore[arg-type]
-                    confidence=float(d.get("confidence", 0.5)),  # type: ignore[arg-type]
+                    calories=_num(d.get("calories")),
+                    protein=_num(d.get("protein")),
+                    carbs=_num(d.get("carbs")),
+                    fat=_num(d.get("fat")),
+                    fiber=_num(d.get("fiber")),
+                    confidence=min(_num(d.get("confidence"), 0.5), 1.0),
                     data_source="ai_estimated",
                     food_id=None,
+                    needs_review=faltando,
+                    review_reason=(
+                        "a IA não devolveu macros para este item"
+                        if faltando
+                        else "valores estimados pela IA (sem correspondência no banco)"
+                    ),
                 )
             )
 
