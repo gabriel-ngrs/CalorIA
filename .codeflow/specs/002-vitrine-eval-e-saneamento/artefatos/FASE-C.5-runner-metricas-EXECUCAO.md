@@ -121,8 +121,22 @@ inteira, não os 100 g pedidos. O banco tem a linha certa e ela é jogada fora.
 
 Isso é exatamente o tipo de defeito que o eval existe para tornar visível, e é a
 primeira vez que o projeto consegue nomeá-lo com números. **Não foi corrigido
-aqui** — está fora do escopo da C.5, que constrói o instrumento e não redesenha
-o pipeline. Registrado em §7 para o owner.
+nesta fase** — está fora do escopo da C.5, que constrói o instrumento e não
+redesenha o pipeline.
+
+**Corrigido em 2026-08-02, por decisão do owner**, e medido com este mesmo
+runner: o sanity check deixou de descartar match de fonte curada. Resultado:
+
+| métrica | antes | depois |
+|---|---|---|
+| `composto` — MdAPE | 23,81% | **6,86%** |
+| `composto` — dentro de ±10% | 25% | **75%** |
+| agregado — dentro de ±10% | 70% | **90%** |
+| agregado — SSPB | +1,25% | **0,00%** |
+| MAE carboidrato | 1,34 g | **0,49 g** |
+
+Ver `CORRECOES-2026-08-02-POS-VALIDACAO.md` §1 e
+`.codeflow/decisions/2026-08-02-sanity-check-nao-descarta-fonte-curada.md`.
 
 **Reprodutibilidade verificada (NFR-5).** Com os cassettes da C.7, o mesmo
 relatório é reproduzido **byte a byte** com `GROQ_API_KEY` inválida — mesma
@@ -148,12 +162,12 @@ MdAPE, mesmo SSPB, mesmos MAE de macros.
 
 ## 7. Dúvidas para o avaliador
 
-1. **Achado do estrato composto (§5).** Em 3 de 4 pratos compostos o sanity
-   check de 35% descarta o match correto do banco, porque a IA estima a porção
-   inteira em vez dos 100 g pedidos. Isso derruba o MdAPE do estrato de ~1% para
-   23,81%. É defeito de pipeline, não do harness. Abrir bug próprio, ou fase de
-   correção? (O escopo travado da C.5 proíbe corrigir aqui.)
-2. `TOLERANCIA_MACRO_G = 5.0` era valor de partida. Medido: MAE de 0,81 a 1,34 g,
-   com 86–100% dentro de ±5 g. A tolerância parece folgada — apertar para ±3 g?
-3. Os casos-semente descrevem "100 g de X", o que é pouco natural e pode estar
-   induzindo o erro do item 1. Vale a C.4 usar porções caseiras?
+1. ~~Achado do estrato composto~~ — **CORRIGIDO** em 2026-08-02 (§5).
+2. `TOLERANCIA_MACRO_G = 5.0` era valor de partida. Depois da correção: MAE de
+   0,49 a 0,99 g, com **100% dentro de ±5 g nos três macros**. A tolerância
+   ficou claramente folgada — apertar para ±3 g na C.4, junto do dataset real?
+3. Os casos-semente descrevem "100 g de X", o que é pouco natural. Vale a C.4
+   usar porções caseiras ("1 concha de feijão"), que é como o usuário escreve?
+4. `--repeticoes` foi acrescentado ao runner (mediana + coeficiente de variação)
+   por causa do achado `inv-08`. A execução agendada deve usar 3? Triplica o
+   consumo de quota.

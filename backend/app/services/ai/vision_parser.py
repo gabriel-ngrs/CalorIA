@@ -9,7 +9,7 @@ from app.prompts import get_prompt
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.ai_client import AIClient
 from app.services.ai.food_lookup import IdentifiedFood, lookup_food, preparo_relevante
-from app.services.ai.meal_parser import _num
+from app.services.ai.meal_parser import _FONTES_CURADAS, _num
 from app.services.ai.utils import correct_calories, extract_json_from_ai_response
 from app.services.nutrition.portions import PortionNormalizer
 
@@ -27,7 +27,8 @@ _FALLBACK_PROMPT = get_prompt("vision_fallback")
 
 _CONFIDENCE_THRESHOLD = 0.6
 #: Divergência tolerada entre as calorias do banco e a estimativa da IA.
-#: Mesmo valor e mesmo papel de `_SANITY_DIVERGENCE` no MealParser.
+#: Mesmo valor e mesmo papel de `_SANITY_DIVERGENCE` no MealParser — inclusive
+#: a isenção das fontes curadas, importada de lá para não divergir.
 _SANITY_DIVERGENCE = 0.35
 
 
@@ -84,10 +85,14 @@ class VisionParser:
                 factor = porcao.gramas / 100.0
                 db_kcal = food.calories_100g * factor
 
-                # Sanity check: compara calorias do banco com estimativa da IA
+                # Sanity check: compara calorias do banco com estimativa da IA.
+                # Fonte curada não é descartada — ver `_FONTES_CURADAS`.
                 if item.kcal_estimate and item.kcal_estimate > 0 and db_kcal > 0:
                     divergence = abs(db_kcal - item.kcal_estimate) / item.kcal_estimate
-                    if divergence > _SANITY_DIVERGENCE:
+                    if (
+                        divergence > _SANITY_DIVERGENCE
+                        and food.source not in _FONTES_CURADAS
+                    ):
                         logger.warning(
                             "Vision sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
                             "(divergência=%.0f%%, source=%s) — descartando banco, usando estimativa IA",

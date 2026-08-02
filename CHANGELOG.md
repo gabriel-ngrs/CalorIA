@@ -9,6 +9,13 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Corrigido
+
+- **Sanity check calórico descartava o dado bom em prato composto** — a IA estima a porção inteira do prato (~350 kcal) para uma descrição de 100 g, o check de 35% descartava o match correto da fonte curada `taco` (110 kcal) e adotava a estimativa. Medido pelo harness de eval: estrato `composto` com **MdAPE 23,81% → 6,86%** e itens dentro de ±10% de **25% → 75%**; no agregado, dentro de ±10% de **70% → 90%** e SSPB de 1,25% → 0,00%. Fonte curada agora vence a estimativa e a divergência vira `needs_review` em vez de descarte. Fontes de importação automática (Open Food Facts, FatSecret, USDA) mantêm o comportamento do ADR-006.
+- **Gordura de passar caía na regra genérica de porção de 100 g** — a bateria de invariância mediu "1 pão francês com manteiga" = 880 kcal contra "50g pão + 10g manteiga" = 212,6 kcal (spread 4,14, o pior do conjunto). `manteiga`, `margarina`, `requeijão`, `geleia`, `cream cheese`, `azeite` e `óleo` ganharam regras próprias para `porcao`/`unidade`.
+- **Schema dos testes de integração vinha de `Base.metadata.create_all()`** e não incluía extensões, função `caloria_unaccent` nem índices GIN — o que fazia os cinco testes do conjunto dourado **pularem sempre**, inclusive no CI. Passa a vir de `alembic upgrade head`, e o gate da NFR-6 voltou a ser executado.
+- **`scripts/seed_all.py` não importava** (`ReminderChannel`, removido junto dos bots na v0.7.0) e **`scripts/seed_dev_user.py` falhava** por driver `psycopg2` ausente e pela coluna `age`, substituída por `birth_date`. A cadeia de seed documentada em `docs/setup.md` voltou a funcionar.
+
 ### Adicionado
 
 - **LICENSE MIT** e versão sincronizada entre `CHANGELOG.md`, `backend/pyproject.toml`, `backend/app/main.py` e `frontend/package.json` — o Swagger público anunciava `0.1.0` enquanto o CHANGELOG estava em `0.7.0`.

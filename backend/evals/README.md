@@ -65,8 +65,20 @@ existem para exercitar o runner e nascem todos com `verificada: false`: os
 valores vieram da TACO 4ª edição mas **não** foram conferidos linha a linha
 contra a publicação.
 
-A fase **C.4** está bloqueada pela **OQ2** (origem do ground truth), que o owner
-decidiu resolver durante o desenvolvimento. Até lá:
+**OQ2 resolvida em 2026-08-02:** o ground truth é **IBGE POF 2011** (*Tabela de
+Medidas Referidas para os Alimentos Consumidos no Brasil*, medida caseira →
+gramas) combinado com **TACO 4ª edição** (gramas → kcal e macros). Duas fontes
+independentes entre si e independentes do projeto, ambas citáveis por terceiro e
+nenhuma derivada da tabela `portions` daqui.
+
+**Limitação a declarar em qualquer número que saia deste harness:** a TACO mede
+alimentos preparados em condição padronizada de laboratório e a POF reporta
+medidas *referidas* por entrevistados. Nenhuma das duas descreve a refeição
+específica de um usuário — a métrica compara o pipeline contra uma referência
+**populacional**, não contra a verdade de um prato individual. Esse é o teto de
+precisão do eval.
+
+A fase **C.4** está **desbloqueada**. Enquanto ela não roda:
 
 - nenhum número deste harness sustenta afirmação pública de qualidade;
 - o estrato `foto` está vazio — depende da OQ2 e de imagens com licença

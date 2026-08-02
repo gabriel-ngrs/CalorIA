@@ -96,6 +96,31 @@ class TestRateLimitIA:
         assert "Muitas requisições" in excedente.json()["detail"]
 
 
+class TestRateLimitLeituraDeIA:
+    """Os GET de IA também gastam token do provedor e também têm teto."""
+
+    async def test_endpoint_de_leitura_excedente_recebe_429(
+        self, client: AsyncClient, rate_limiter_ligado: None, ia_stubada: None
+    ) -> None:
+        limite = _limite(settings.RATE_LIMIT_AI_LEITURA)
+        for _ in range(limite):
+            resp = await client.get("/api/v1/ai/patterns")
+            assert resp.status_code != 429
+
+        assert (await client.get("/api/v1/ai/patterns")).status_code == 429
+
+    async def test_o_teto_de_leitura_e_mais_folgado_que_o_de_escrita(self) -> None:
+        """O dashboard dispara vários GET por carga; POST é ação do usuário."""
+        assert _limite(settings.RATE_LIMIT_AI_LEITURA) > _limite(settings.RATE_LIMIT_AI)
+
+    async def test_conversations_nao_tem_teto_de_ia(
+        self, client: AsyncClient, rate_limiter_ligado: None
+    ) -> None:
+        """É leitura pura de banco: não gasta token, não entra no limite."""
+        for _ in range(_limite(settings.RATE_LIMIT_AI_LEITURA) + 5):
+            assert (await client.get("/api/v1/ai/conversations")).status_code == 200
+
+
 class TestRateLimitDesligado:
     async def test_sem_o_limitador_nao_ha_429(
         self, anon_client: AsyncClient, test_user: User

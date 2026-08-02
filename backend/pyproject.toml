@@ -50,6 +50,10 @@ dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "types-passlib>=1.7.7",
+    # Driver SÍNCRONO, usado só por `scripts/seed_dev_user.py`. O runtime da
+    # aplicação é 100% asyncpg; sem esta linha o script — que `make seed-user` e
+    # `docs/setup.md` mandam rodar — falhava com ModuleNotFoundError.
+    "psycopg2-binary>=2.9.9",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -104,13 +108,19 @@ source = ["app"]
 omit = ["*/tests/*", "*/alembic/*"]
 
 [tool.coverage.report]
-# PISO, não meta. Medido em 2026-08-02 sobre a suíte completa (unit +
-# integration): 72%. O piso fica em 70% para absorver a variação entre
-# ambientes — os testes que dependem do banco nutricional semeado pulam onde
-# ele não existe — sem virar um número a perseguir.
+# PISO, não meta.
 #
-# Subir o piso é decisão consciente, acompanhada da medição que a justifica.
-fail_under = 70
+# Histórico das medições, para que subir o piso seja sempre decisão com número:
+#   2026-05-10  62%  auditoria
+#   2026-08-02  72%  fase B.4 (testes de push/reminders), piso posto em 70%
+#   2026-08-02  ..%  após o schema de teste vir das migrations, que destravou
+#                    os 5 testes do golden set — ver o valor atual abaixo
+#
+# A margem entre medido e piso existia para absorver os testes que pulavam sem
+# o banco nutricional semeado. Esses testes **não pulam mais** (o seed entrou em
+# `tests/integration/conftest.py`), então a variação entre ambientes caiu e o
+# piso pôde subir e encostar no medido.
+fail_under = 72
 show_missing = true
 
 [dependency-groups]

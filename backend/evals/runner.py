@@ -48,6 +48,13 @@ CONTEXTO_NEUTRO = "usuário sem histórico"
 TOLERANCIA_MACRO_G = 5.0
 #: Espelha o limiar já travado em `tests/integration/test_golden_set.py`.
 TOLERANCIA_KCAL_PCT = 10.0
+#: Repetições por caso. A bateria de invariância mediu não-determinismo real do
+#: modelo (`inv-08`: 859,2 / 859,2 / 695,4 kcal para a MESMA string), então uma
+#: execução única por caso mistura erro do pipeline com ruído de amostragem.
+#: Com repetição, o valor do caso é a MEDIANA — resistente ao caso em que uma
+#: das execuções destoa. Default 1 para a execução manual ser barata; a
+#: execução agendada usa 3.
+REPETICOES_PADRAO = 1
 
 
 @dataclass
@@ -60,6 +67,11 @@ class ResultadoCaso:
     referencia_kcal: float
     previsto_kcal: float
     ape: float
+    #: kcal de cada repetição, na ordem. Com uma repetição, tem um elemento.
+    kcal_por_repeticao: list[float] = field(default_factory=list)
+    #: Coeficiente de variação entre as repetições. `None` com menos de duas.
+    #: É o ruído do modelo, separado do erro contra a referência.
+    coeficiente_variacao: float | None = None
     #: Macros da porção inteira, em gramas. `None` quando o caso não declara
     #: referência de macros — o agregado ignora esses casos em vez de supor zero.
     referencia_macros: dict[str, float] | None = None
@@ -139,12 +151,25 @@ async def executar_caso(
     parser: MealParser,
     db: AsyncSession,
     coletor: ColetorDeEstagios,
+    repeticoes: int = REPETICOES_PADRAO,
 ) -> ResultadoCaso:
-    """Roda o pipeline real para um caso e mede o erro calórico."""
+    """Roda o pipeline real para um caso e mede o erro calórico.
+
+    Com `repeticoes > 1`, o valor do caso é a **mediana** das execuções, e o
+    coeficiente de variação entre elas é reportado — separando o erro do
+    pipeline do ruído de amostragem do modelo.
+    """
     coletor.limpar()
     try:
-        identificados = await parser._identify_foods(caso.descricao, CONTEXTO_NEUTRO)
-        itens = await parser._lookup_and_fill(identificados, db)
+        medidas: list[float] = []
+        itens = []
+        identificados = []
+        for _ in range(max(1, repeticoes)):
+            identificados = await parser._identify_foods(
+                caso.descricao, CONTEXTO_NEUTRO
+            )
+            itens = await parser._lookup_and_fill(identificados, db)
+            medidas.append(sum(item.calories for item in itens))
     except Exception as exc:  # a execução do conjunto não pode morrer num caso
         return ResultadoCaso(
             id=caso.id,
@@ -156,7 +181,12 @@ async def executar_caso(
             erro=f"{type(exc).__name__}: {exc}",
         )
 
-    previsto = sum(item.calories for item in itens)
+    previsto = statistics.median(medidas)
+    cv = (
+        statistics.stdev(medidas) / statistics.fmean(medidas)
+        if len(medidas) > 1 and statistics.fmean(medidas) > 0
+        else None
+    )
     return ResultadoCaso(
         id=caso.id,
         estrato=caso.estrato.value,
@@ -164,6 +194,8 @@ async def executar_caso(
         referencia_kcal=caso.referencia_kcal,
         previsto_kcal=round(previsto, 1),
         ape=metrics.ape(previsto, caso.referencia_kcal) if previsto > 0 else 100.0,
+        kcal_por_repeticao=[round(m, 1) for m in medidas],
+        coeficiente_variacao=round(cv, 4) if cv is not None else None,
         referencia_macros=(
             {
                 nome: float(getattr(caso.referencia_macros, nome))
@@ -265,7 +297,10 @@ def _acuracia_macros(resultados: Sequence[ResultadoCaso]) -> dict[str, float]:
 
 
 def montar_relatorio(
-    casos: Sequence[CasoEval], resultados: Sequence[ResultadoCaso]
+    casos: Sequence[CasoEval],
+    resultados: Sequence[ResultadoCaso],
+    *,
+    repeticoes: int = REPETICOES_PADRAO,
 ) -> dict[str, Any]:
     """Relatório estruturado: por estrato e no agregado, com procedência."""
     por_estrato = {
@@ -286,7 +321,9 @@ def montar_relatorio(
             "temperature": settings.GROQ_TEMPERATURE,
             "max_tokens": settings.GROQ_MAX_TOKENS,
             "seed": settings.GROQ_SEED,
+            "repeticoes": repeticoes,
         },
+        "ruido_do_modelo": _resumo_do_ruido(resultados),
         "prompts": {
             nome: {"versao": p.version, "sha": p.sha256}
             for nome, p in (
@@ -297,6 +334,20 @@ def montar_relatorio(
         "agregado": asdict(resumir("agregado", resultados)),
         "por_estrato": {k: asdict(v) for k, v in por_estrato.items()},
         "falhas": [{"id": r.id, "erro": r.erro} for r in resultados if not r.executou],
+    }
+
+
+def _resumo_do_ruido(resultados: Sequence[ResultadoCaso]) -> dict[str, Any]:
+    """Coeficiente de variação entre repetições — o ruído puro do modelo."""
+    cvs = [
+        r.coeficiente_variacao for r in resultados if r.coeficiente_variacao is not None
+    ]
+    if not cvs:
+        return {"n": 0, "cv_mediano": None, "cv_maximo": None}
+    return {
+        "n": len(cvs),
+        "cv_mediano": round(statistics.median(cvs), 4),
+        "cv_maximo": round(max(cvs), 4),
     }
 
 
@@ -349,7 +400,10 @@ def _linha_de_estrato(nome: str, resumo: dict[str, Any]) -> str:
 
 
 async def executar(
-    estrato: str | None = None, *, usar_cassettes: bool = False
+    estrato: str | None = None,
+    *,
+    usar_cassettes: bool = False,
+    repeticoes: int = REPETICOES_PADRAO,
 ) -> dict[str, Any]:
     """Executa o dataset (ou um estrato) contra o pipeline real.
 
@@ -378,8 +432,10 @@ async def executar(
         async with sessao() as db:
             for indice, caso in enumerate(casos, start=1):
                 print(f"[{indice}/{len(casos)}] {caso.id}", file=sys.stderr)
-                resultados.append(await executar_caso(caso, parser, db, coletor))
-        return montar_relatorio(casos, resultados)
+                resultados.append(
+                    await executar_caso(caso, parser, db, coletor, repeticoes)
+                )
+        return montar_relatorio(casos, resultados, repeticoes=repeticoes)
     finally:
         food_lookup_mod.lookup_food = lookup_original
         await engine.dispose()
@@ -392,6 +448,15 @@ def main() -> None:
         "--json", action="store_true", help="emite JSON em vez de texto"
     )
     parser.add_argument(
+        "--repeticoes",
+        type=int,
+        default=REPETICOES_PADRAO,
+        help=(
+            "execuções por caso; o valor do caso é a mediana. Acima de 1, "
+            "reporta o coeficiente de variação — o ruído do modelo"
+        ),
+    )
+    parser.add_argument(
         "--cassettes",
         action="store_true",
         help=(
@@ -401,7 +466,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    relatorio = asyncio.run(executar(args.estrato, usar_cassettes=args.cassettes))
+    relatorio = asyncio.run(
+        executar(
+            args.estrato,
+            usar_cassettes=args.cassettes,
+            repeticoes=args.repeticoes,
+        )
+    )
     if args.json:
         print(json.dumps(relatorio, ensure_ascii=False, indent=2))
     else:

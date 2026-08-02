@@ -161,7 +161,9 @@ async def get_conversations(
 
 
 @router.get("/suggest-meal", response_model=MealSuggestion)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def suggest_meal(
+    request: Request,
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -182,7 +184,9 @@ async def suggest_meal(
 
 
 @router.get("/patterns", response_model=EatingPattern)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def eating_patterns(
+    request: Request,
     days: int = Query(default=30, ge=7, le=90),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -200,7 +204,9 @@ async def eating_patterns(
 
 
 @router.get("/nutritional-alerts", response_model=NutritionalAlertsResponse)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def nutritional_alerts(
+    request: Request,
     days: int = Query(default=14, ge=7, le=30),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -218,7 +224,9 @@ async def nutritional_alerts(
 
 
 @router.get("/goal-adjustment", response_model=GoalAdjustmentSuggestion)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def goal_adjustment(
+    request: Request,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
@@ -235,7 +243,9 @@ async def goal_adjustment(
 
 
 @router.get("/monthly-report", response_model=MonthlyReport)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def monthly_report(
+    request: Request,
     month: int = Query(default=None, ge=1, le=12),
     year: int = Query(default=None, ge=2020),
     user_id: int = Depends(get_current_user_id),

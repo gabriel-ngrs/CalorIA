@@ -1059,7 +1059,7 @@ def update_user_profile(session: Session, user_id: int) -> None:
         session.execute(
             text("""
                 UPDATE user_profiles
-                SET height_cm=178, current_weight=84.5, age=28,
+                SET height_cm=178, current_weight=84.5, birth_date=DATE '1997-06-01',
                     sex='MALE', activity_level='MODERATELY_ACTIVE', tdee_calculated=2380
                 WHERE user_id=:uid
             """),
@@ -1068,8 +1068,8 @@ def update_user_profile(session: Session, user_id: int) -> None:
     else:
         session.execute(
             text("""
-                INSERT INTO user_profiles (user_id, height_cm, current_weight, age, sex, activity_level, tdee_calculated)
-                VALUES (:uid, 178, 84.5, 28, 'MALE', 'MODERATELY_ACTIVE', 2380)
+                INSERT INTO user_profiles (user_id, height_cm, current_weight, birth_date, sex, activity_level, tdee_calculated)
+                VALUES (:uid, 178, 84.5, DATE '1997-06-01', 'MALE', 'MODERATELY_ACTIVE', 2380)
             """),
             {"uid": user_id},
         )

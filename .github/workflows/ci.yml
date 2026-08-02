@@ -86,12 +86,16 @@ jobs:
       - name: Testes
         env:
           DATABASE_URL: postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_test
+          # O conftest monta o schema de teste aplicando as migrations neste
+          # banco (ver decision de 2026-08-02). Explícito para não depender do
+          # default do conftest.
+          TEST_DATABASE_URL: postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-test-secret-key-com-minimo-32-caracteres
           GROQ_API_KEY: fake-key-for-tests
         # `--cov-fail-under` aplica o piso LOCALMENTE, no próprio job: o
         # upload ao Codecov tem `continue-on-error` e não serve de gate.
-        run: pytest --cov=app --cov-report=xml --cov-fail-under=70 -q
+        run: pytest --cov=app --cov-report=xml --cov-fail-under=72 -q
 
       - name: Upload cobertura
         uses: codecov/codecov-action@v4

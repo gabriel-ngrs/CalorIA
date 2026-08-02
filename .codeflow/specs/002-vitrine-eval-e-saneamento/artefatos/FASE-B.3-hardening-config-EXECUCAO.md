@@ -105,8 +105,11 @@ Três buracos fechados, todos em código de produção do backend:
    fase proíbe rate limiting em "endpoints autenticados de leitura", e os cinco GET
    de `ai.py` (`suggest-meal`, `patterns`, `nutritional-alerts`, `goal-adjustment`,
    `monthly-report`) são leituras — embora também consumam tokens do provedor. A
-   restrição bloqueante venceu. **Lacuna residual declarada** para o avaliador e para
-   o owner: esses cinco endpoints seguem sem teto de consumo.
+   restrição bloqueante venceu. **Lacuna FECHADA em 2026-08-02**, por decisão do
+   owner: os cinco GET ganharam `RATE_LIMIT_AI_LEITURA` (40/minute), mais folgado
+   que o dos POST porque o dashboard dispara vários por carga.
+   `GET /ai/conversations` ficou de fora por desenho — é leitura pura de banco e
+   não gasta token. Ver `CORRECOES-2026-08-02-POS-VALIDACAO.md` §4.
 6. **`.env.example` NÃO foi alterado — pendência de owner.** O arquivo está fora do
    alcance de leitura e escrita desta sessão (bloqueado por política de permissão).
    As entradas a acrescentar, logo abaixo de `SECRET_KEY` (`:29`):
@@ -194,15 +197,14 @@ código, não silenciadas.
 - [x] O CI continua subindo a app com a `SECRET_KEY` de teste: `ci.yml:83` define
       uma chave de 43 caracteres e não define `APP_ENV`, que fica em `development` —
       o validador não dispara. Nenhuma mudança foi necessária em `ci.yml`.
-- [ ] **`.env.example` documentado** — pendente de owner (desvio 6).
+- [x] **`.env.example` documentado** — feito em 2026-08-02, na rodada de
+      validação com Docker, quando o arquivo passou a estar ao alcance da sessão.
+      As 13 variáveis novas estão lá.
 
 ## 7. Dúvidas para o avaliador
 
-1. **Cinco GET de `ai.py` seguem sem teto** (desvio 5). O escopo travado proíbe
-   limitar endpoints autenticados de leitura, mas eles gastam tokens do provedor.
-   Vale abrir uma fase própria, ou trocar por um teto por usuário em vez de por IP?
+1. ~~Cinco GET de `ai.py` seguem sem teto~~ — **RESOLVIDO** em 2026-08-02.
 2. **Chave de contagem por IP, não por usuário.** Para os endpoints autenticados de
    IA, `user_id` seria a chave natural. Ficou por IP para manter uma única
    `key_func`. Aceitável?
-3. **`.env.example`** não pôde ser tocado nesta sessão. O bloco está transcrito no
-   desvio 6 para aplicação manual.
+3. ~~`.env.example` não pôde ser tocado~~ — **RESOLVIDO** em 2026-08-02.

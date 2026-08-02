@@ -105,7 +105,7 @@ All checks passed! / 141 files already formatted / Success: no issues found
       `542 passed, 5 skipped`. A execução no GitHub Actions em si depende de um
       push (ação do owner).
 
-### Achado fora do escopo: o gate da NFR-6 está morto no CI
+### Achado: o gate da NFR-6 estava morto no CI — CORRIGIDO em 2026-08-02
 
 Durante a validação com Docker, os 5 testes de
 `tests/integration/test_golden_set.py` **pularam**, com
@@ -136,14 +136,25 @@ Erro máximo:                      0.0%             limiar ≤ 100%  OK
 ```
 
 **Os quatro limiares da NFR-6 passam com folga** — nada regrediu com C.1, C.2 ou
-B.5. Mas o gate automático continua inerte, e isso merece fase própria.
+B.5.
+
+**Correção aplicada em 2026-08-02**, por decisão do owner: `_reset_schema` passou
+a aplicar `alembic upgrade head` em vez de `create_all`, o que trouxe as
+extensões e a função `caloria_unaccent`; com isso o seed do banco nutricional
+passou a funcionar na sessão de teste. **`test_golden_set.py`: 5 passed, 0
+skipped.** O gate voltou a existir. Ver
+`CORRECOES-2026-08-02-POS-VALIDACAO.md` §7 e
+`.codeflow/decisions/2026-08-02-schema-de-teste-por-migrations.md`.
+
+**Piso de cobertura subiu de 70% para 72%** na mesma rodada: a margem existia
+para absorver justamente os testes que pulavam, e eles não pulam mais.
 
 ## 7. Dúvidas para o avaliador
 
-1. **Piso em 70% com 72% medido** — a margem de 2 pontos é justificada em §4.
-   Aceitável, ou o piso deve ser exatamente 72?
+1. ~~Piso em 70% com 72% medido~~ — **RESOLVIDO**: piso subiu para 72% em
+   2026-08-02, junto com a correção que eliminou a variação que justificava a
+   margem.
 2. O `continue-on-error: true` do upload ao Codecov foi **mantido**, com o gate
    aplicado localmente. É a leitura correta do passo 4 da fase?
 3. Confirmação de que o CI de fato reprova precisa de um push — é do owner.
-4. **O gate da NFR-6 está morto** (ver §6). Corrigi-lo exige o schema de teste
-   vir de `alembic upgrade head` em vez de `create_all`. Abrir fase própria?
+4. ~~O gate da NFR-6 está morto~~ — **RESOLVIDO** em 2026-08-02.

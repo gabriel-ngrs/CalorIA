@@ -61,11 +61,10 @@ quality_gate:
 > o eval vai medir o impacto, a limpeza é outra spec. Substituição da suíte de
 > testes existente: o eval **soma** ao `test_golden_set.py`, não o troca.
 >
-> **Uma Open Question permanece deliberadamente aberta** (OQ2, §8): a origem do
-> ground truth do eval. Por decisão do owner, será resolvida durante o
-> desenvolvimento. Mitigação de desenho: o schema do dataset carrega
-> `referencia_kcal` + `fonte_referencia` + `fonte_url`, tornando todo o harness
-> agnóstico à fonte. Apenas a Fase C.4 (popular o dataset) fica bloqueada.
+> **OQ2 resolvida em 2026-08-02:** o ground truth do eval é **IBGE POF 2011**
+> (medida caseira → gramas) combinado com **TACO 4ª edição** (gramas → kcal e
+> macros). Duas fontes independentes entre si e independentes do projeto,
+> citáveis por terceiro. A Fase C.4 está **desbloqueada**. Ver §8.
 
 ## Resumo executivo (TL;DR)
 
@@ -75,7 +74,7 @@ quality_gate:
 | **Por quê** | O projeto tem engenharia acima da média que ninguém vê e que nada impõe. A pergunta de entrevista "como você sabe que uma mudança de prompt melhorou?" hoje não tem resposta. E há uma credencial pessoal pública. |
 | **Backend/Infra** | `gitleaks`; conftest que não exige Postgres; CI/CD reativados com gates; fail-fast de `SECRET_KEY`; rate limiting; registry de prompts; determinismo do `AIClient`; harness de eval (`backend/evals/`); correção do `VisionParser`. |
 | **Frontend** | `metadataBase` + OpenGraph + favicon; FOUC do dark mode; `console.log` atrás de `NODE_ENV`; três bugs de UI. |
-| **Decisão** | Uma spec, `wave: multi`, 5 tracks, 26 fases. Track A tem gate manual do owner (operação destrutiva de histórico). OQ2 aberta. |
+| **Decisão** | Uma spec, `wave: multi`, 5 tracks, 26 fases. Track A tem gate manual do owner (operação destrutiva de histórico). OQ2 resolvida (IBGE POF + TACO). |
 | **Tamanho** | XL — 5 tracks independentes com acoplamento cruzado declarado por `id`. |
 
 ## Sumário
@@ -895,17 +894,18 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **Critério de conclusão (gate):** AC-12 satisfeito; schema validado; README com a
   análise de poder escrita.
 
-### Fase C.4 — Popular o dataset com ground truth externo *(L)* — BLOQUEADA POR OQ2
+### Fase C.4 — Popular o dataset com ground truth externo *(L)*
 
 - **id:** `C.4`
 - **slug:** `dataset-ground-truth`
 - **Objetivo:** preencher os três estratos com referências de fonte externa citável.
-- **Depende de:** `C.3`, **e da resolução de OQ2 pelo owner**.
+- **Depende de:** `C.3`. (OQ2 resolvida em 2026-08-02: IBGE POF + TACO.)
 - **Arquivos alterados:** `backend/evals/dataset/casos.jsonl`,
   `backend/evals/README.md`.
 - **Passos:**
-  1. Confirmar com o owner a fonte decidida em OQ2 antes de qualquer coleta. **Se
-     OQ2 continuar aberta, PARAR e reportar** no formato PARADO — não escolher.
+  1. Usar a fonte decidida em OQ2: **IBGE POF 2011** para medida caseira →
+     gramas e **TACO 4ª edição** para gramas → kcal/macros. Conferir os 10
+     casos-semente da C.3 contra a publicação e virar `verificada: true`.
   2. Popular os três estratos conforme a decisão, registrando em cada caso a
      `fonte_referencia` e a `fonte_url` que permitem a um terceiro auditar o número.
   3. Documentar no README do harness as limitações da fonte escolhida, no padrão de
@@ -1347,7 +1347,7 @@ que é telemetria de execução, fica o que é registro de engenharia.
 | R1 | Force-push do `filter-repo` quebra clones locais, os 12 PRs do Dependabot e qualquer fork | Alta | Médio | Plano de reabertura documentado na A.2; janela combinada com o owner; execução manual, não pelo agente |
 | R2 | A credencial permanece acessível por SHA em commits órfãos mesmo após force-push | Alta | Alto | A rotação da senha (A.1) é o controle primário e vem antes; solicitação de invalidação de cache ao GitHub Support na A.2 |
 | R3 | Reativar o CI expõe falhas latentes e trava o fluxo | Baixa | Médio | `ruff` e `mypy` passam limpos hoje e a suíte é verde; qualquer falha é regressão real e deve ser corrigida, não silenciada |
-| R4 | OQ2 não é resolvida e o Track C fica pela metade | Média | Alto | Só a C.4 depende dela; C.1, C.2, C.3, C.5, C.6, C.7 e C.8 entregam o harness completo com dataset-semente |
+| R4 | ~~OQ2 não é resolvida e o Track C fica pela metade~~ **MITIGADO** — OQ2 resolvida em 2026-08-02 (IBGE POF + TACO) | — | — | Risco encerrado; a C.4 está desbloqueada |
 | R5 | O rate limit do free tier da Groq impede execuções completas do eval — já aconteceu em 2026-07-26 | Alta | Médio | Cache em disco, concorrência limitada, retry por classe com teto (C.2), e periodicidade ajustável na C.7 |
 | R6 | Extrair prompts para arquivo altera comportamento sem querer | Média | Alto | A C.1 é extração pura com texto imutável; os testes existentes dos parsers devem passar **sem modificação**, e isso é o gate |
 | R7 | Ativar JSON mode muda a forma da saída de algum prompt | Média | Médio | Escopo travado da C.2 manda **parar e reportar** em vez de ajustar o prompt, o que contaminaria a comparação do eval |
@@ -1391,33 +1391,43 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   `bugs/001-fluxo-cadastro-refeicao.md` são as melhores evidências de método do
   projeto. Restrição do owner: não mexer no que é essencial ao desenvolvimento.
 
-- **OQ2 — Origem do ground truth do eval.** **ABERTA.** Decisão adiada pelo owner
-  para o curso do desenvolvimento. Bloqueia exclusivamente a Fase C.4.
+- **OQ2 — Origem do ground truth do eval.** **RESOLVIDO (2026-08-02).**
+  **Opção 2: IBGE POF + TACO**, duas fontes independentes entre si e
+  independentes do projeto.
 
-  Mitigação de desenho: o schema de caso (C.3) carrega `referencia_kcal`,
-  `fonte_referencia` e `fonte_url`, tornando runner, métricas, invariância,
-  cassettes e histórico agnósticos à fonte.
+  - **Medida caseira → gramas:** IBGE, *Tabela de Medidas Referidas para os
+    Alimentos Consumidos no Brasil* (POF 2008-2009, publicada em 2011).
+  - **Gramas → kcal e macros:** TACO 4ª edição (NEPA/UNICAMP).
 
-  Restrição que qualquer opção deve respeitar: a referência **não pode derivar da
-  tabela `portions` do próprio projeto**, sob pena de a métrica medir a tabela contra
-  si mesma — circularidade que o docstring de
-  `backend/scripts/eval_golden_set.py:20-27` corretamente identificou.
+  Justificativa da escolha, contra as demais candidatas:
 
-  Candidatas levantadas na sondagem, para a decisão futura:
-  1. Pesagem em balança pelo owner (proposta original). Observação técnica: a balança
-     dá massa, não caloria, de modo que para prato composto ainda seria preciso uma
-     tabela de composição — resolve bem o estrato simples, não o composto.
-  2. IBGE POF, "Tabela de Medidas Referidas para os Alimentos Consumidos no Brasil"
-     (2011), para medida caseira → gramas, combinada com TACO para kcal/100g. Duas
-     fontes independentes entre si e independentes do projeto.
-  3. Tabelas nutricionais oficiais de redes e rótulos de industrializados, para o
-     estrato de prato composto — referência autoritativa para receita padronizada.
-  4. Datasets públicos anotados para o estrato de foto.
-  5. Um benchmark público como baseline externo comparável, com a ressalva de que os
-     disponíveis não cobrem o Brasil.
+  1. **Pesagem em balança pelo owner** resolveria bem o estrato `simples` e
+     **não** o `composto` — a balança dá massa, não composição, e um prato
+     composto ainda exigiria tabela. Além disso não escala: cada caso novo
+     custa uma refeição pesada.
+  2. **IBGE POF + TACO** (escolhida) cobre os dois estratos, é citável por
+     terceiro, é gratuita, é brasileira e **separa as duas fontes de erro**:
+     a conversão de porção (IBGE) e a composição (TACO) podem ser auditadas
+     de forma independente. Nenhuma das duas deriva da tabela `portions` do
+     projeto, o que satisfaz a restrição de circularidade.
+  3. **Rótulos de redes** ficam como fonte **complementar** para prato
+     composto de receita padronizada, quando IBGE+TACO não cobrir o item.
+  4. **Datasets públicos anotados** para o estrato `foto` seguem pendentes de
+     verificação de licença — a C.4 decide caso a caso.
+  5. **Benchmark público** foi descartado: os disponíveis não cobrem o Brasil,
+     que é o domínio inteiro deste projeto.
 
-  Seja qual for a escolha, a C.4 exige registrar as limitações da fonte no README do
-  harness, no padrão de honestidade já estabelecido pelo projeto.
+  **Limitação que a C.4 deve documentar no README do harness:** a TACO mede
+  alimentos preparados em condição padronizada de laboratório, e a POF reporta
+  medidas *referidas* por entrevistados — nenhuma das duas descreve a refeição
+  específica de um usuário. A métrica mede o pipeline contra uma referência
+  populacional, não contra a verdade de um prato individual. Isso é o teto de
+  precisão do eval e precisa ficar dito.
+
+  **Consequência para a C.4:** desbloqueada. Os 10 casos-semente da C.3
+  (`verificada: false`) devem ser conferidos contra a publicação da TACO e ter
+  a porção reancorada na POF, virando `verificada: true`; os demais casos são
+  adicionados até `n ≈ 40`, distribuídos entre `simples` e `composto`.
 
 - **OQ3 — Stack do harness.** **RESOLVIDO (2026-07-29).** `pytest` com scripts
   próprios, estendendo `eval_golden_set.py` e `instrument_meal_pipeline.py`.

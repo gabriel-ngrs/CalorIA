@@ -91,6 +91,25 @@ PORCOES: list[tuple[str, str, float, float, float, int, str]] = [
     ("requeijao", "colher_sopa", 15.0, 12.0, 20.0, 40, _USUAL),
     ("manteiga", "colher_sopa", 10.0, 8.0, 14.0, 40, _USUAL),
     ("manteiga", "ponta_faca", 5.0, 3.0, 8.0, 40, _USUAL),
+    # Gordura de passar em "porcao"/"unidade" caía na regra genérica de 100 g,
+    # que para um item de passar é absurdo: 100 g de manteiga são ~720 kcal.
+    # Medido em 2026-08-02 pela bateria de invariância: "1 pão francês com
+    # manteiga" dava 880 kcal contra 212,6 kcal de "50g pão + 10g manteiga"
+    # (spread 4,14 — o pior do conjunto). Ninguém come uma porção de 100 g de
+    # manteiga, e a IA emite "porção" com frequência.
+    ("manteiga", "porcao", 10.0, 5.0, 20.0, 40, _USUAL),
+    ("manteiga", "unidade", 10.0, 5.0, 20.0, 40, _USUAL),
+    ("margarina", "ponta_faca", 5.0, 3.0, 8.0, 40, _USUAL),
+    ("margarina", "porcao", 10.0, 5.0, 20.0, 40, _USUAL),
+    ("margarina", "unidade", 10.0, 5.0, 20.0, 40, _USUAL),
+    ("requeijao", "porcao", 15.0, 10.0, 30.0, 40, _USUAL),
+    ("requeijao", "unidade", 15.0, 10.0, 30.0, 40, _USUAL),
+    ("geleia", "colher_sopa", 20.0, 15.0, 25.0, 40, _USUAL),
+    ("geleia", "porcao", 20.0, 10.0, 35.0, 40, _USUAL),
+    ("cream cheese", "colher_sopa", 15.0, 12.0, 20.0, 40, _USUAL),
+    ("cream cheese", "porcao", 15.0, 10.0, 30.0, 40, _USUAL),
+    ("azeite", "porcao", 11.0, 5.0, 20.0, 40, _USUAL),
+    ("oleo", "porcao", 11.0, 5.0, 20.0, 40, _USUAL),
     ("margarina", "colher_sopa", 10.0, 8.0, 14.0, 40, _USUAL),
     ("azeite", "colher_sopa", 11.0, 9.0, 13.0, 40, _USUAL),
     ("oleo", "colher_sopa", 11.0, 9.0, 13.0, 40, _USUAL),

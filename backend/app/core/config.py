@@ -126,6 +126,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_FORGOT_PASSWORD: str = "5/minute"
     # Endpoints de IA: o custo é em tokens do provedor, não em CPU local.
     RATE_LIMIT_AI: str = "20/minute"
+    # Endpoints de IA que são leitura autenticada (insights, padrões, relatório).
+    # Também gastam tokens do provedor, então também precisam de teto — mais
+    # folgado que o dos POST, porque são consultas que o dashboard dispara.
+    RATE_LIMIT_AI_LEITURA: str = "40/minute"
     # Backend de contagem. Vazio = memória do processo (dev e testes). Em
     # produção com mais de um worker, apontar para o Redis com o prefixo
     # `async+` exigido pelo `limits` em contexto assíncrono:

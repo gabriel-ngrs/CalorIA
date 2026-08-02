@@ -1,4 +1,11 @@
-"""Script de seed para popular o banco com dados de teste realistas."""
+"""Script de seed para popular o banco com dados de teste realistas.
+
+Pré-condição: o usuário `USER_ID` já existe — rode `scripts/seed_dev_user.py`
+antes. Este script enriquece o usuário, não o cria.
+
+Não é idempotente: rodar duas vezes duplica refeições e viola a unicidade de
+`user_profiles`. Para repetir, resete o banco (`make reset`).
+"""
 
 import asyncio
 import random
@@ -13,7 +20,7 @@ from app.models.meal import Meal, MealSource, MealType
 from app.models.meal_item import MealItem
 from app.models.mood_log import MoodLog
 from app.models.profile import ActivityLevel, Sex, UserProfile
-from app.models.reminder import Reminder, ReminderChannel, ReminderType
+from app.models.reminder import Reminder, ReminderType
 from app.models.user import GoalType, User
 from app.models.weight_log import WeightLog
 
@@ -690,6 +697,14 @@ async def seed():
     async with AsyncSessionLocal() as session:
         # ---- Atualizar perfil do usuário ----
         user = await session.get(User, USER_ID)
+        if user is None:
+            # Antes o script estourava aqui com um AttributeError em
+            # `NoneType`, que não dizia o que fazer. A pré-condição é real: este
+            # seed enriquece um usuário existente, ele não o cria.
+            raise SystemExit(
+                f"Usuário id={USER_ID} não existe. Rode `python "
+                "scripts/seed_dev_user.py` antes deste script (ou `make seed-user`)."
+            )
         user.calorie_goal = 2200
         user.weight_goal = 78.0
         user.water_goal_ml = 2500
@@ -864,7 +879,6 @@ async def seed():
                 time=time(7, 0),
                 days_of_week=[0, 1, 2, 3, 4, 5, 6],
                 active=True,
-                channel=ReminderChannel.TELEGRAM,
                 message="Hora do café da manhã! Não pule a primeira refeição do dia. 🥗",
             )
         )
@@ -875,7 +889,6 @@ async def seed():
                 time=time(8, 30),
                 days_of_week=[0, 1, 2, 3, 4, 5, 6],
                 active=True,
-                channel=ReminderChannel.TELEGRAM,
                 message="Lembrete de hidratação! Beba um copo d'água. 💧",
             )
         )
@@ -886,7 +899,6 @@ async def seed():
                 time=time(7, 15),
                 days_of_week=[1, 4],  # segunda e quinta
                 active=True,
-                channel=ReminderChannel.TELEGRAM,
                 message="Hora de se pesar! Registre seu peso em jejum. ⚖️",
             )
         )
@@ -897,7 +909,6 @@ async def seed():
                 time=time(21, 0),
                 days_of_week=[0, 1, 2, 3, 4, 5, 6],
                 active=True,
-                channel=ReminderChannel.TELEGRAM,
                 message="Resumo do dia: como foi sua alimentação hoje?",
             )
         )

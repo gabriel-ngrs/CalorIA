@@ -67,6 +67,20 @@ _FALLBACK_PROMPT = get_prompt("meal_fallback")
 _CONFIDENCE_THRESHOLD = 0.6
 #: Divergência tolerada entre as calorias do banco e a estimativa da IA.
 _SANITY_DIVERGENCE = 0.35
+#: Fontes cujas linhas foram curadas à mão. Para elas, uma divergência alta é
+#: evidência de que a IA errou, não de que o banco está errado — e descartar o
+#: banco em favor da estimativa piorava o resultado.
+#:
+#: Medido em 2026-08-02 com o harness de eval: em 3 dos 4 pratos compostos do
+#: dataset, a IA estimava a porção INTEIRA (350 kcal) para uma descrição de
+#: 100 g, o check descartava o match correto da `taco` (110 kcal) e o estrato
+#: `composto` ficava com MdAPE de 23,81% contra 1,26% do `simples`.
+#:
+#: O ADR-006 criou o check para barrar registro incorreto do Open Food Facts,
+#: que é importação automática — não para desconfiar da fonte curada. Aqui o
+#: escopo volta a ser o declarado; a divergência continua sendo registrada e
+#: agora marca o item para revisão, em vez de trocar o dado bom pelo ruim.
+_FONTES_CURADAS = frozenset({"taco"})
 
 
 class MealParser:
@@ -138,9 +152,11 @@ class MealParser:
             # Sanity check 1 — divergência entre banco e estimativa da IA.
             # Protege contra lixo de importação, mas é cego a erro de porção:
             # quando a quantidade está errada, os dois lados erram junto.
+            divergencia_alta = False
             if item.kcal_estimate and item.kcal_estimate > 0:
                 divergence = abs(db_kcal - item.kcal_estimate) / item.kcal_estimate
-                if divergence > _SANITY_DIVERGENCE:
+                divergencia_alta = divergence > _SANITY_DIVERGENCE
+                if divergencia_alta and food.source not in _FONTES_CURADAS:
                     logger.warning(
                         "Sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
                         "(divergência=%.0f%%, source=%s) — usando estimativa IA",
@@ -152,6 +168,16 @@ class MealParser:
                     )
                     to_estimate_idx.append(i)
                     continue
+                if divergencia_alta:
+                    logger.info(
+                        "Divergência alta para '%s' (banco=%.0f vs IA=%.0f, %.0f%%), "
+                        "mas source=%s é curada — mantendo o banco e marcando revisão",
+                        item.food_name,
+                        db_kcal,
+                        item.kcal_estimate,
+                        divergence * 100,
+                        food.source,
+                    )
 
             # Sanity check 2 — plausibilidade da PORÇÃO (achado C).
             # É o que o check anterior não vê: massa fora da faixa da porção
@@ -160,7 +186,7 @@ class MealParser:
                 item.food_name, porcao.gramas, porcao.unidade_canonica
             )
 
-            revisar = not porcao.confiavel or not porcao_ok
+            revisar = not porcao.confiavel or not porcao_ok or divergencia_alta
             motivo = None
             if not porcao.ancorada:
                 motivo = f"porção não ancorada ({porcao.detalhe})"
@@ -168,6 +194,11 @@ class MealParser:
                 motivo = f"{porcao.gramas:.0f}g fora da faixa plausível"
             elif not porcao.plausivel:
                 motivo = porcao.detalhe
+            elif divergencia_alta:
+                motivo = (
+                    "a estimativa da IA divergiu do banco; o valor exibido é o da "
+                    "fonte curada"
+                )
 
             result[i] = self._montar_item(
                 item,
