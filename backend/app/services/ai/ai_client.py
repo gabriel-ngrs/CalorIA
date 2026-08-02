@@ -10,6 +10,7 @@ import redis.asyncio as aioredis
 from groq import AsyncGroq, BadRequestError, NotFoundError
 
 from app.core.config import settings
+from app.prompts import PromptVersion
 
 if TYPE_CHECKING:
     from groq.types.chat import ChatCompletionMessageParam
@@ -43,8 +44,13 @@ class AIClient:
         *,
         use_cache: bool = True,
         system: str | None = None,
+        prompt_ref: PromptVersion | None = None,
     ) -> str:
-        """Gera texto via Groq com cache Redis opcional."""
+        """Gera texto via Groq com cache Redis opcional.
+
+        `prompt_ref` só identifica a origem do texto para o log estruturado —
+        não altera o que é enviado ao provedor.
+        """
         cache_input = f"[SYS]{system}\n[USR]{prompt}" if system else prompt
         if use_cache:
             cache_key = self._cache_key(cache_input)
@@ -52,7 +58,9 @@ class AIClient:
                 logger.debug("Cache hit AI")
                 return cached
 
-        result = await self._call(prompt, system=system, model=_TEXT_MODEL)
+        result = await self._call(
+            prompt, system=system, model=_TEXT_MODEL, prompt_ref=prompt_ref
+        )
 
         if use_cache:
             await self._set_cached(self._cache_key(cache_input), result)
@@ -66,6 +74,7 @@ class AIClient:
         mime_type: str = "image/jpeg",
         *,
         system: str | None = None,
+        prompt_ref: PromptVersion | None = None,
     ) -> str:
         """Gera texto a partir de imagem via Groq Vision (sem cache)."""
         b64 = base64.b64encode(image_bytes).decode()
@@ -100,6 +109,19 @@ class AIClient:
                     messages=cast("list[ChatCompletionMessageParam]", messages),
                     temperature=0.1,
                     **extras,
+                )
+                prompt_name, prompt_version, prompt_sha = self._prompt_log_fields(
+                    prompt_ref
+                )
+                logger.info(
+                    "Groq vision call — model=%s prompt_name=%s prompt_version=%s "
+                    "prompt_sha=%s tokens_in=%d tokens_out=%d",
+                    _VISION_MODEL,
+                    prompt_name,
+                    prompt_version,
+                    prompt_sha,
+                    response.usage.prompt_tokens if response.usage else 0,
+                    response.usage.completion_tokens if response.usage else 0,
                 )
                 return response.choices[0].message.content or ""
             except BadRequestError:
@@ -140,7 +162,21 @@ class AIClient:
     # Interno
     # ------------------------------------------------------------------
 
-    async def _call(self, prompt: str, *, system: str | None, model: str) -> str:
+    @staticmethod
+    def _prompt_log_fields(prompt_ref: PromptVersion | None) -> tuple[str, str, str]:
+        """Trio (name, version, sha) para o log estruturado — nunca vazio."""
+        if prompt_ref is None:
+            return ("-", "-", "-")
+        return (prompt_ref.name, f"v{prompt_ref.version}", prompt_ref.sha256[:16])
+
+    async def _call(
+        self,
+        prompt: str,
+        *,
+        system: str | None,
+        model: str,
+        prompt_ref: PromptVersion | None = None,
+    ) -> str:
         messages: list[dict[str, Any]] = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -154,8 +190,16 @@ class AIClient:
                     temperature=0.1 if system else 0.3,
                 )
                 content = response.choices[0].message.content or ""
+                prompt_name, prompt_version, prompt_sha = self._prompt_log_fields(
+                    prompt_ref
+                )
                 logger.info(
-                    "Groq tokens — entrada: %d, saída: %d",
+                    "Groq call — model=%s prompt_name=%s prompt_version=%s "
+                    "prompt_sha=%s tokens_in=%d tokens_out=%d",
+                    model,
+                    prompt_name,
+                    prompt_version,
+                    prompt_sha,
                     response.usage.prompt_tokens if response.usage else 0,
                     response.usage.completion_tokens if response.usage else 0,
                 )

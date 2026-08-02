@@ -36,6 +36,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from app.prompts import get_prompt
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.ai_client import AIClient
 from app.services.ai.food_lookup import (
@@ -56,81 +57,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Estágio 1 — Identificação (a IA só identifica; não inventa número)
+# Prompts versionados — o texto vive em `app/prompts/<nome>/v<N>.txt` e a
+# resolução da versão ativa é do registry. Editar o texto sem criar versão nova
+# quebra `tests/unit/test_prompt_registry.py`, que trava o `sha256`.
 # ---------------------------------------------------------------------------
-_IDENTIFY_SYSTEM_PROMPT = """Você é especialista em alimentação brasileira.
-Sua ÚNICA tarefa é IDENTIFICAR o que foi comido e em que quantidade o usuário disse.
-Você NÃO calcula valores nutricionais finais — um banco nutricional faz isso depois.
-
-REGRAS ABSOLUTAS — nunca viole:
-1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. PRATO CONHECIDO VEM INTEIRO. Se a descrição nomeia um prato brasileiro
-   reconhecível (pizza de calabresa, feijoada, lasanha, strogonoff, escondidinho,
-   moqueca, baião de dois, yakissoba, hot dog, açaí na tigela, parmegiana,
-   coxinha, pastel, sanduíche de rede), devolva UM item com o nome do prato.
-   NÃO o decomponha em ingredientes — o banco tem o prato montado.
-   Só decomponha quando a descrição for uma combinação livre de alimentos
-   ("arroz com feijão e um bife") ou quando o prato não tiver nome próprio.
-3. QUANTIDADE NA UNIDADE DO USUÁRIO. Devolva o número e a unidade exatamente
-   como a pessoa se expressou: "8 fatias" → quantity=8, unit="fatia";
-   "um prato de arroz" → quantity=1, unit="prato"; "150g de frango" →
-   quantity=150, unit="g"; "2 colheres de azeite" → quantity=2, unit="colher de sopa".
-   NÃO converta para gramas. NÃO estime gramas. A conversão é feita fora daqui.
-   Se a descrição citar a mesma porção de dois jeitos ("1 pizza grande de 8 fatias"),
-   use a forma mais específica — aqui, 8 fatias.
-4. Se a pessoa não disser quantidade, use quantity=1 e a unidade caseira mais
-   natural para o alimento ("prato" para arroz, "unidade" para ovo, "fatia" para pizza).
-5. preparation: só quando for informação real de preparo (grelhado, frito, cozido,
-   assado, refogado, empanado, cru). Se não houver preparo relevante, use null.
-   NUNCA escreva "não aplicável", "natural", "nenhum" — use null.
-6. kcal_estimate: sua estimativa de calorias totais da porção. É um SINAL AUXILIAR
-   de checagem, não o valor final. Quando houver o alimento no banco, o banco vence.
-
-FORMATO OBRIGATÓRIO (array JSON):
-[
-  {
-    "food_name": "pizza de calabresa",
-    "quantity": 8,
-    "unit": "fatia",
-    "preparation": null,
-    "confidence": 0.85,
-    "kcal_estimate": 2160
-  }
-]
-
-confidence: 0.9 = porção exata informada pelo usuário; 0.8 = porção caseira clara;
-0.6 = muito incerta."""
-
-_IDENTIFY_TEMPLATE = """CONTEXTO DO USUÁRIO (use para calibrar porções):
-{user_context}
-
-DESCRIÇÃO DA REFEIÇÃO:
-{description}
-
-Retorne SOMENTE o array JSON com a identificação dos alimentos."""
-
-# ---------------------------------------------------------------------------
-# Estágio 3 — Estimativa de macros (fallback quando não há match no banco)
-# ---------------------------------------------------------------------------
-_FALLBACK_SYSTEM_PROMPT = """Você é um nutricionista especializado em alimentação brasileira.
-Calcule os macronutrientes para os alimentos listados abaixo.
-As quantidades já estão em gramas — calcule os macros para a porção total.
-
-REGRAS ABSOLUTAS:
-1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. Calcule calorias TOTAIS para a porção (não por 100g): calories = protein×4 + carbs×4 + fat×9 (±2%).
-3. Diferencie método de preparo: grelhado ≠ frito ≠ cozido ≠ assado.
-4. confidence ≤ 0.5 (estimativa sem banco nutricional).
-5. Devolva EXATAMENTE um objeto por alimento de entrada, na MESMA ORDEM.
-
-FORMATO (array JSON — mesma ordem de entrada):
-[
-  {
-    "food_name": "...", "quantity": 200, "unit": "g", "preparation": "cozido",
-    "calories": 256, "protein": 5.0, "carbs": 56.2, "fat": 0.4, "fiber": 3.2,
-    "confidence": 0.5
-  }
-]"""
+_IDENTIFY_PROMPT = get_prompt("meal_identify")
+_FALLBACK_PROMPT = get_prompt("meal_fallback")
 
 _CONFIDENCE_THRESHOLD = 0.6
 #: Divergência tolerada entre as calorias do banco e a estimativa da IA.
@@ -151,14 +83,15 @@ class MealParser:
         user_context: str,
     ) -> list[IdentifiedFood]:
         """Estágio 1: IA identifica alimentos e porções, sem calcular nutrição."""
-        user_msg = _IDENTIFY_TEMPLATE.format(
+        user_msg = _IDENTIFY_PROMPT.render(
             user_context=user_context,
             description=description,
         )
         raw = await self._client.generate_text(
             user_msg,
             use_cache=False,
-            system=_IDENTIFY_SYSTEM_PROMPT,
+            system=_IDENTIFY_PROMPT.system,
+            prompt_ref=_IDENTIFY_PROMPT,
         )
         data = extract_json_from_ai_response(raw)
         return [IdentifiedFood(**item) for item in data if isinstance(item, dict)]
@@ -351,7 +284,8 @@ class MealParser:
         raw = await self._client.generate_text(
             user_msg,
             use_cache=False,
-            system=_FALLBACK_SYSTEM_PROMPT,
+            system=_FALLBACK_PROMPT.system,
+            prompt_ref=_FALLBACK_PROMPT,
         )
         data = extract_json_from_ai_response(raw)
 

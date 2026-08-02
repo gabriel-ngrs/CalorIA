@@ -22,8 +22,14 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # `backend/app/prompts/` guarda o texto bruto dos prompts de produção, com
+      # `sha256` travado por teste. Espaço em branco ali é conteúdo: aparar o fim
+      # de linha ou acrescentar newline final reescreve o prompt e quebra o sha
+      # sem que ninguém tenha editado o prompt.
       - id: trailing-whitespace
+        exclude: ^backend/app/prompts/
       - id: end-of-file-fixer
+        exclude: ^backend/app/prompts/
       - id: check-yaml
       - id: check-merge-conflict
       - id: check-added-large-files

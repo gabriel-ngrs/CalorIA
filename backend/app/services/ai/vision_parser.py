@@ -5,6 +5,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from app.prompts import get_prompt
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
 from app.services.ai.ai_client import AIClient
 from app.services.ai.food_lookup import IdentifiedFood, lookup_food, preparo_relevante
@@ -17,84 +18,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Estágio 1 — Identificação visual (sem macros)
+# Prompts versionados — mesmo contrato do MealParser: o texto vive em
+# `app/prompts/<nome>/v<N>.txt` e o `sha256` está travado por teste.
 # ---------------------------------------------------------------------------
-_IDENTIFY_SYSTEM_PROMPT = """Você é um nutricionista analisando fotos de refeições brasileiras.
-Identifique todos os alimentos visíveis, estime as porções e as calorias totais de cada item.
-
-REGRAS ABSOLUTAS — nunca viole:
-1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. Baseie porções no que é VISÍVEL: tamanho relativo ao prato/utensílio, espessura, contexto.
-3. Diferencie método de preparo pelo aspecto: dourado/crocante = frito; marcas de grelha = grelhado; pálido/úmido = cozido.
-4. Liste cada alimento separadamente, mesmo em pratos compostos.
-5. Estime porções sempre em gramas (unit="g").
-6. NÃO calcule macros detalhados — apenas calorias totais da porção (kcal_estimate).
-7. confidence: 0.9 = claramente identificado + porção bem visível; 0.7 = identificado mas porção incerta; 0.5 = difícil de identificar.
-8. kcal_estimate: calorias totais da porção com base no seu conhecimento nutricional.
-
-FORMATO OBRIGATÓRIO (array JSON):
-[
-  {
-    "food_name": "nome do alimento em português",
-    "quantity": 150,
-    "unit": "g",
-    "preparation": "grelhado",
-    "confidence": 0.75,
-    "kcal_estimate": 245
-  }
-]
-
-=== CALIBRAÇÃO VISUAL DE PORÇÕES — REFERÊNCIA PARA FOTOS ===
-Prato raso brasileiro (26-28cm):
-  Arroz cobrindo ¼ do prato           → ~150g
-  Arroz cobrindo ⅓ do prato           → ~200g
-  Proteína cobrindo ¼ do prato        → ~130-160g
-  Feijão/caldo cobrindo ¼ do prato    → ~80-100g
-  Salada crua cobrindo metade do prato → ~80-120g
-
-Espessura de proteínas:
-  Bife/frango fino  (~1cm)     → 80-100g
-  Bife/frango médio (~1.5-2cm) → 130-160g
-  Bife/frango grosso (~2.5-3cm)→ 180-220g
-
-Recipientes comuns:
-  Tigela 300ml: sopa ~250g | cereal/granola ~60g
-  Copo americano 200ml: leite/suco = 200ml
-  Xícara de café 50ml: café + leite
-  Pão francês (1 unidade visível) = ~50g
-  Ovo inteiro médio = ~50g
-  Fatia de pão de forma = ~25g
-"""
-
-_IDENTIFY_TEMPLATE = (
-    "CONTEXTO DO USUÁRIO (use para calibrar porções):\n{user_context}\n\n"
-    "Analise a foto e identifique todos os alimentos visíveis. "
-    "Pense internamente: 1) Identifique alimentos e método de preparo pelo aspecto visual. "
-    "2) Estime a porção em gramas usando as referências visuais. "
-    "Retorne SOMENTE o array JSON com a identificação."
-)
-
-# ---------------------------------------------------------------------------
-# Estágio 2 — Estimativa de macros (fallback quando sem match no banco)
-# ---------------------------------------------------------------------------
-_FALLBACK_SYSTEM_PROMPT = """Você é um nutricionista especializado em alimentação brasileira.
-Calcule os macronutrientes para os alimentos listados abaixo.
-As quantidades já estão em gramas — calcule os macros para a porção total.
-
-REGRAS ABSOLUTAS:
-1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. Calcule calorias TOTAIS para a porção (não por 100g): calories = protein×4 + carbs×4 + fat×9 (±2%).
-3. Diferencie método de preparo: grelhado ≠ frito ≠ cozido ≠ assado.
-4. confidence ≤ 0.5 (estimativa sem banco nutricional).
-
-FORMATO (array JSON — mesma ordem de entrada):
-[
-  {
-    "food_name": "...", "quantity": 150, "unit": "g", "preparation": "grelhado",
-    "calories": 245, "protein": 28.0, "carbs": 0.0, "fat": 14.0, "fiber": 0.0,
-    "confidence": 0.5
-  }
-]"""
+_IDENTIFY_PROMPT = get_prompt("vision_identify")
+_FALLBACK_PROMPT = get_prompt("vision_fallback")
 
 _CONFIDENCE_THRESHOLD = 0.6
 
@@ -110,12 +38,13 @@ class VisionParser:
         user_context: str,
     ) -> list[IdentifiedFood]:
         """Estágio 1: IA identifica alimentos na foto sem estimar macros."""
-        user_msg = _IDENTIFY_TEMPLATE.format(user_context=user_context)
+        user_msg = _IDENTIFY_PROMPT.render(user_context=user_context)
         raw = await self._client.generate_with_image(
             user_msg,
             image_bytes,
             mime_type,
-            system=_IDENTIFY_SYSTEM_PROMPT,
+            system=_IDENTIFY_PROMPT.system,
+            prompt_ref=_IDENTIFY_PROMPT,
         )
         data = extract_json_from_ai_response(raw)
         return [IdentifiedFood(**item) for item in data]
@@ -232,7 +161,8 @@ class VisionParser:
         raw = await self._client.generate_text(
             user_msg,
             use_cache=False,
-            system=_FALLBACK_SYSTEM_PROMPT,
+            system=_FALLBACK_PROMPT.system,
+            prompt_ref=_FALLBACK_PROMPT,
         )
         data = extract_json_from_ai_response(raw)
 
