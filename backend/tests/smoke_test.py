@@ -1,4 +1,11 @@
-"""Smoke tests — valida Groq (texto e visão) e banco de alimentos em dev."""
+"""Smoke tests — valida Groq (texto e visão) e banco de alimentos em dev.
+
+Este módulo é uma **sonda de ambiente**, não um teste de unidade: ele fala com a
+API real da Groq e com o banco de desenvolvimento `caloria_db`. Roda em dev, com
+`.env` preenchido. Fora desse ambiente as pré-condições não existem, e o módulo se
+declara `skipped` em vez de falhar — o gate continua duro para todo o resto da
+suíte, que não depende de credencial nem de serviço externo.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +15,7 @@ import os
 from pathlib import Path
 
 import asyncpg
+import pytest
 
 
 # --------------------------------------------------------------------------
@@ -27,6 +35,20 @@ _load_env()
 
 GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
 DB_URL = "postgresql://caloria:caloria@localhost:5432/caloria_db"
+
+# Pré-condição do módulo: uma chave real da Groq. O CI define
+# `GROQ_API_KEY: fake-key-for-tests` justamente para NÃO gastar cota do provedor —
+# tratar isso como falha seria confundir "ambiente sem credencial" com "código
+# quebrado". Chaves da Groq começam com `gsk_`.
+_CHAVE_REAL = bool(GROQ_KEY) and GROQ_KEY.startswith("gsk_")
+
+pytestmark = pytest.mark.skipif(
+    not _CHAVE_REAL,
+    reason=(
+        "smoke test exige GROQ_API_KEY real e o banco de dev caloria_db; "
+        "rode em desenvolvimento com o .env preenchido"
+    ),
+)
 
 PASS = "\033[92m✓\033[0m"
 FAIL = "\033[91m✗\033[0m"
@@ -79,7 +101,7 @@ async def test_groq_texto() -> None:
     data = json.loads(body)
     check(
         "JSON estruturado retornado",
-        isinstance(data, (dict, list)),
+        isinstance(data, dict | list),
         f"{len(str(data))} chars",
     )
     tokens_in = resp2.usage.prompt_tokens if resp2.usage else 0
@@ -153,7 +175,13 @@ async def test_groq_visao() -> None:
 # --------------------------------------------------------------------------
 async def test_banco_foods() -> None:
     print("\n[3] Banco de Alimentos (PostgreSQL)")
-    conn = await asyncpg.connect(DB_URL)
+    # `caloria_db` é o banco de desenvolvimento, populado por seed; o banco de teste
+    # (`caloria_test`) não tem a tabela `foods` carregada. Ausência do catálogo é
+    # ambiente indisponível, não defeito — daí skip em vez de falha.
+    try:
+        conn = await asyncpg.connect(DB_URL)
+    except (asyncpg.InvalidCatalogNameError, OSError) as exc:
+        pytest.skip(f"banco de desenvolvimento indisponível: {exc}")
 
     # Contagem total
     total = await conn.fetchval("SELECT COUNT(*) FROM foods")
