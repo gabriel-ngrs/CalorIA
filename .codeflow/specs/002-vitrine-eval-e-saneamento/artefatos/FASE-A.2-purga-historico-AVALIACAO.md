@@ -2,46 +2,52 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: A.2
 slug_fase: purga-historico
-tentativa: 1
-veredito: RESSALVAS
-score: 9.2
+tentativa: 2
+veredito: APROVADO
+score: 9.8
 threshold: 8.5
-range_avaliado: 240d708..c69fbfb (reconstruído — ver §8)
+range_avaliado: 240d70887daf0cf8ac86061b6f4d0574eb6620e3..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
 ---
 
 # FASE A.2 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.2 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.8 / threshold 8.5
 
-Zero BLOQUEANTES: a purga funcionou e eu a verifiquei de forma independente, sem
-depender das saídas do relatório. As ressalvas são de **rastreabilidade**, não de
-segurança — duas decisões que alteraram materialmente o escopo e os passos da fase
-vivem apenas no relatório de execução, quando a DoD global da spec exige que
-estejam na §8 ou numa decision do framework.
+Os três IMPORTANTES da tentativa 1 eram todos de **registro**, e os três foram
+fechados no lugar que a spec designa — não com uma nota de relatório, que é
+exatamente o defeito que se apontou:
 
-Registro o que mais me impressionou, porque conta para a nota: o relatório encontrou
-e denunciou que o **AC-2, como escrito na spec, era um gate falso** — `gitleaks` com
-regras default retornava `no leaks found` sobre um histórico contaminado. Achar que
-o próprio critério de aceite não media nada é exatamente o que um executor cético
-deveria fazer, e é raro.
+- **4.1** (escopo de 2 → 10 arquivos): a §5 da spec agora lista os 10 nominalmente,
+  com nota de por que cresceu; §8 ganhou a **OQ7**; e existe
+  `decisions/2026-08-02-extensao-escopo-redacao-pii-auditoria.md`.
+- **4.2** (ticket ao GitHub Support omitido): **OQ10** na §8, nota inline no passo 3
+  da §5, e `decisions/2026-08-02-omissao-ticket-github-support.md`, com o risco
+  residual e a mitigação amarrados à Fase D.2.
+- **4.3** (`range` não reconstruível): remapeado para `240d708..721f0f0`, ambos
+  ancestrais de HEAD — verificado.
+
+Nada de código mudou nesta tentativa, e não precisava mudar. Reverifiquei a purga
+de forma independente, sem depender do relatório: `gitleaks` com as regras do
+projeto sobre 422 commits retorna `no leaks found`, e não há e-mail pessoal do owner
+em lugar algum da árvore. O achado AUD-038 continua íntegro, sem os dados.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4 | AC-2 ✓ nas duas partes (§6); escopo travado respeitado — `filter-repo` e force-push **não** executados pelo agente, nenhum achado apagado, nenhuma migration ou código de produção tocado (`git diff --stat` da fase: só `.md`/`.txt`). Desconto: escopo estendido de 2 → 10 arquivos sem atualizar a §5 da spec (§4.1) |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | Fase documental. O plano da §5.4 é bem construído: backup espelho antes, clone fresco, `replacements.txt` fora de qualquer repo e destruído depois |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 4 | Purga verificada por mim: 0 ocorrências em `dev`/`main`/`test` e em `--all` (§6). Descontos: ticket ao GitHub Support omitido (§4.2) e `07-seguranca.md:210` ainda revela comprimento e classe de caracteres da senha (§5) |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | `--replace-text` em vez de `--path --invert-paths` — decisão certa e justificada: preserva os arquivos no histórico, remove só o valor (`EXECUCAO.md:80-84`) |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | Redação por placeholder consistente (`<e-mail pessoal do mantenedor>`, `[REDIGIDO]`) em todos os 10 arquivos |
-| 6 | Local e nomes dos arquivos | 2 | 5 | Todos os arquivos tocados são de `docs/auditoria/` + `docs/legacy/analise.md`; nada fora de `docs/` |
-| 7 | Qualidade de código | 2 | 5 | Diff cirúrgico: `git diff --numstat` → 7/7 e 3/3 nos dois arquivos originais; nenhuma seção apagada; AUD-038 íntegro com os três vetores de risco |
-| 8 | Testes e cobertura | 2 | 4 | Não há teste aplicável a markdown; a verificação é por `git log -S` + `gitleaks`, e ambas foram reproduzidas por mim. Desconto: a suíte não foi re-rodada após a reescrita, como os "Testes" da §5 pediam |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | AC-2 ✓ nas duas partes exigidas pelo texto novo (§6). Escopo travado ✓: `filter-repo`/force-push não executados pelo agente, nenhum achado apagado, nenhuma migration ou código de produção tocado. O desconto da tentativa 1 (escopo estendido sem registro) some: spec §5 com os 10 arquivos, OQ7, OQ10 e duas decisions |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | Fase documental; o plano da §5.4 (backup espelho, clone fresco, `replacements.txt` fora de qualquer repo e destruído) continua bem construído |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Purga reverificada por mim: `gitleaks --config .gitleaks.toml` sobre 422 commits → `no leaks found`, exit 0; grep próprio por e-mail de provedor de consumo fora de `data/` → só as duas contas sintéticas declaradas. A omissão do ticket ao Support deixou de ser acordo verbal: OQ10 + decision, com a mitigação escrita |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | `--replace-text` em vez de `--path --invert-paths` — preserva os arquivos no histórico e remove só o valor |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | Redação por placeholder consistente (`<e-mail pessoal do mantenedor>`, `[REDIGIDO]`) nos 10 arquivos |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Tudo em `docs/auditoria/` + `docs/legacy/analise.md`; nada fora de `docs/` |
+| 7 | Qualidade de código | 2 | 5 | Diff cirúrgico; nenhuma seção apagada; `achados.md:27` mantém AUD-038 com severidade, os três vetores de risco e o plano de remediação |
+| 8 | Testes e cobertura | 2 | 4 | Não há teste aplicável a markdown; a verificação é `gitleaks` + grep, e reproduzi ambos. Desconto mantido: o bullet "Testes" da §5 pede "suíte completa verde após a reescrita" e o relatório continua sem colar essa saída — rodei por conta própria e está verde (§6) |
 | 9 | Migration safety | 2 | [—] | Nenhuma migration tocada (NFR-7) |
 
-Score = (3·4 + 3·5 + 3·4 + 3·5 + 2·5 + 2·5 + 2·5 + 2·4) / 20 · 2 = **9.2**
+Score = (3·5 + 3·5 + 3·5 + 3·5 + 2·5 + 2·5 + 2·5 + 2·4) / 20 · 2 = **9.8**
 
 ## 3. Achados BLOQUEANTES
 
@@ -49,154 +55,105 @@ Nenhum.
 
 ## 4. Achados IMPORTANTES
 
-### 4.1 — Extensão de escopo de 2 para 10 arquivos nunca chegou à spec nem a uma decision
-
-**Onde:** `FASE-A.2-purga-historico-EXECUCAO.md:45-68` (§3.1) vs. spec §5, Fase A.2
-("**Arquivos alterados:** `docs/auditoria/achados.md`, `docs/auditoria/log.md`") e
-spec §9, item global "Toda decisão de escopo tomada durante a execução está
-registrada aqui em §8 ou numa decision do framework".
-
-**O que aconteceu.** A credencial vivia em mais 8 arquivos, dois deles publicando o
-comando de extração. O executor **parou e reportou antes de agir**, como a
-constitution manda, e o owner autorizou. O processo foi correto. O que faltou é o
-registro no lugar que a spec designa:
-
-```text
-$ git log --oneline 461ee38..HEAD -- .codeflow/specs/.../SPEC_002_*.md
-9dfeef9 docs(specs): registra execucao das fases a.1, a.2 e b.1 da spec 002
-$ git show 9dfeef9 -- .../SPEC_002_*.md | grep -c '^[+-].*achados.md'
-0            # o commit só trocou `status: draft`→`active` e `updated_at`
-$ ls .codeflow/decisions/
-2026-07-02-lote-bugs-teste-v1.md   2026-07-03-baseline-lint-mypy.md
-2026-07-07-lote-bugs-incidentais-v1.md   2026-07-26-limiares-lookup-nutricional.md
-             # nenhuma decision sobre esta spec
-```
-
-**Cenário de falha concreto.** Um avaliador (ou um rework) que leia a §5 da spec e o
-diff da fase encontra 8 arquivos alterados fora da lista declarada e, sem o relatório
-em mãos, lê isso como violação de escopo BLOQUEANTE. O próprio executor previu
-exatamente isso (`EXECUCAO.md:464-465`: *"Sugiro atualizar a §5 da spec … senão o
-avaliador vai ler o diff como violação de escopo"*) — e a sugestão não foi aplicada.
-
-**Correção sugerida:** atualizar a lista "Arquivos alterados" da Fase A.2 na §5 da
-spec para os 10 arquivos reais, e registrar a extensão como item da §8. Alternativa
-equivalente: uma decision em `.codeflow/decisions/`.
-
-### 4.2 — O passo 3 da fase (ticket ao GitHub Support) foi omitido por decisão verbal
-
-**Onde:** spec §5, Fase A.2, passo 3 ("*solicitar ao GitHub Support a invalidação do
-cache de commits órfãos*") vs. `FASE-A.2-purga-historico-EXECUCAO.md:433-450` (§9,
-item 1).
-
-**O defeito.** A fundamentação do owner é sólida e eu a verifiquei
-(`forkCount: 0`, `visibility: PRIVATE`, senha rotacionada nos serviços de reuso), e
-o passo não consta do "Critério de conclusão" da fase — por isso é IMPORTANTE e não
-BLOQUEANTE. Mas continua sendo um passo declarado da §5 que não aconteceu, e o
-risco residual **é reconhecido no próprio relatório**: na Fase D.2 o repositório
-volta a ser público, e objetos órfãos podem voltar a ser alcançáveis por SHA se o GC
-do GitHub não tiver rodado. A mitigação combinada ("deixar passar alguns dias") é um
-acordo verbal, sem prazo verificável nem gate na D.2.
-
-**Correção sugerida:** registrar a omissão e a mitigação como item da §8 da spec, com
-uma pré-condição explícita na Fase D.2 — por exemplo, verificar que os SHAs
-pré-purga listados em `EXECUCAO.md:257` retornam 404 **antes** de tornar o
-repositório público.
-
-### 4.3 — O `range` do frontmatter não é reconstruível
-
-**Onde:** `FASE-A.2-purga-historico-EXECUCAO.md:8-10`.
-
-```text
-$ git merge-base --is-ancestor cb2e4ca7bd7323123ab4196d5f5906ff06dda7be HEAD
-   → NÃO-ancestral   (sha pré-purga)
-```
-
-E o `sha_final` `7bb06aab`, atualizado no commit `95c6c8c`, é o commit da **Fase
-B.2**, não desta fase. Os commits reais da A.2 são `fd923d6` (redação dos dois
-documentos) e `c69fbfb` (extensão aos outros 8). O Passo 2 do protocolo de avaliação
-manda PARAR quando o range não é ancestral de HEAD; segui apenas porque a causa é
-conhecida e documentada — a própria fase reescreveu o histórico.
-
-**Correção sugerida:** `range: 240d708..c69fbfb`.
+Nenhum.
 
 ## 5. Sugestões
 
-- **`docs/auditoria/07-seguranca.md:210` ainda descreve a senha.** O texto
-  preservado diz que `[REDIGIDO]` tem "8 chars + especiais". O valor saiu, mas o
-  comprimento e a classe de caracteres ficaram — é metadado de senha rotacionada,
-  risco hoje nulo, mas o padrão de redação da fase seria mais consistente sem isso.
-- **`docs/auditoria/artefatos/G1-creds.txt`** continua sendo um dump cujo propósito
-  era listar segredos, agora redigido. Concordo com o executor: podar na Fase D.4 é
-  melhor que mantê-lo redigido para sempre. Efeito colateral bônus: some junto com
-  a dívida de whitespace que hoje trava o gate da A.3 (ver a avaliação daquela fase).
-- **Placeholder aninhado em `G1-creds.txt:9-14`** produz `Author: Gabriel
-  <<e-mail pessoal do mantenedor>>` (chevron duplo). Cosmético; some com a poda.
-- **`--replace-text` não toca metadados de commit.** O e-mail do owner segue como
-  `author.email` de todos os commits — confirmado por mim (`git log --all
-  --format='%ae' | sort -u` → 1 endereço). É decisão consciente do owner, registrada
-  em `EXECUCAO.md:472-480`, e e-mail de autor é público por padrão no GitHub. Sem
-  ação recomendada, só registro para que ninguém "descubra" isso depois como surpresa.
+- **`docs/auditoria/07-seguranca.md:210` ainda descreve a senha** ("`[REDIGIDO]`
+  tem 8 chars + especiais"). O valor saiu; comprimento e classe de caracteres
+  ficaram. Risco hoje nulo (senha rotacionada nos serviços de reuso), mas é o único
+  ponto onde a redação da fase ficou incompleta. Mantido da avaliação anterior,
+  ainda não endereçado.
+- **Restam menções genéricas a `git log -p` em `docs/auditoria/`** — `07-seguranca.md:27`
+  ("`git log -p` permite extração trivial"), `plano.md:424`
+  (`git log -p | grep -iE "api_key|secret|password"`) e as referências a
+  `git filter-repo` em `plano-correcao.md:112-113`. Não classifico como violação do
+  AC-2: nenhuma delas é o caminho de extração *daquela* credencial (que não existe
+  mais no histórico), e as de `filter-repo` são instruções de **remediação**, não de
+  extração. Registro para que uma releitura futura não as confunda com o que a fase
+  removeu.
+- **`docs/auditoria/artefatos/G1-creds.txt`** segue sendo um dump cujo propósito era
+  listar segredos, agora redigido. Concordo com o executor e com a avaliação
+  anterior: podar na Fase D.4 é melhor que mantê-lo redigido para sempre.
+- **O `range` resolve mas não isola.** `240d708..721f0f0` cobre as cinco fases do
+  lote. É o que o schema manda (§2.9.3: "sempre do início original ao HEAD"), mas os
+  commits de código desta fase são `fd923d6` e `c69fbfb`; vale nomeá-los no corpo do
+  relatório para quem for auditar o diff da fase isoladamente.
+- **A dependência `A.1` não está concluída.** A A.2 declara `Depende de: A.1`, e a
+  A.1 permanece reprovada nesta rodada (pendência de rotação da conta de produção).
+  Não bloqueia esta avaliação — a A.2 já executou e o trabalho está verificado —, mas
+  significa que o **Track A não está fechado** mesmo com A.2 e A.3 aprovadas.
 
 ## 6. Comandos rodados + saídas reais
 
 ```text
-# --- AC-2, parte 1: varredura de segredos sobre o histórico, comando exato do CI ---
+# --- branch e ancestralidade (Passo 2) ---
+$ git rev-parse --short HEAD
+da08121
+$ git merge-base --is-ancestor 240d70887daf0cf8ac86061b6f4d0574eb6620e3 HEAD  → ANCESTRAL
+$ git merge-base --is-ancestor 721f0f0892b3298964b04b917e3f1b0cb5a1cc69 HEAD  → ANCESTRAL
+
+# --- AC-2, parte (a): varredura de segredos com as regras do projeto ---
 $ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
-INF 416 commits scanned.
-INF scan completed in 17.3s
+INF 422 commits scanned.
+INF scan completed in 14.3s
 INF no leaks found
 >>> EXIT=0                                                                 ✓
 
-# --- verificação direta, que não depende de heurística (valores redigidos) ---
-$ git log dev main test --oneline -S'<e-mail-do-owner>' | wc -l
-0                                            # era 12 antes da purga         ✓
-$ git log --all --oneline -S'<e-mail-do-owner>' | wc -l
-0                                                                            ✓
-$ grep -rIl '<e-mail-do-owner>' --exclude-dir=.git --exclude-dir=node_modules \
-    --exclude-dir=.next --exclude-dir=.venv . | wc -l
-0                                                                            ✓
+# --- AC-2, parte (b): verificação independente de heurística ---
+# Não executo `git log --all -S'<valor da credencial>'` porque não tenho — nem devo
+# ter — o valor. A verificação equivalente que posso fazer sem ele é a busca literal
+# pelo e-mail pessoal, que era o outro lado do par:
+$ grep -rInE '[A-Za-z0-9._%+-]+@(gmail|hotmail|outlook|yahoo|icloud|proton|live|bol|uol|terra)\.' \
+    --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next \
+    --exclude-dir=.venv --exclude-dir=data .
+   → só `devteste@gmail.com` (seed de dev) e `auditcaloria@gmail.com` (auditoria de
+     março), ambas declaradas nas allowlists de `.gitleaks.toml:88-104`.
+     Zero ocorrências do e-mail pessoal do owner.                          ✓
 
-# --- AC-2, parte 2: achados.md sem PII e sem comando de extração ---
-$ git diff 461ee38..HEAD -- docs/auditoria/achados.md | grep -c '^+.*git log -p'
-0
-# e o achado sobrevive: AUD-038 íntegro com severidade, arquivo:linha, commit de
-# origem `4737257`, os três vetores de risco e o plano de remediação em 4 etapas.
+# --- AC-2: docs de auditoria sem PII, com o achado preservado ---
+$ grep -n "AUD-038" docs/auditoria/achados.md | head -2
+27:### AUD-038 — 🔴 Credenciais reais hardcoded em `frontend/e2e/auth.spec.ts` …
+221:… Combina com AUD-038 (vazamento da senha do mantenedor) …
+   # o achado, a severidade e a análise sobrevivem; os dados não.
 
-# --- diff cirúrgico, nenhuma seção apagada ---
-$ git diff --stat 461ee38..HEAD -- docs/
- docs/auditoria/07-seguranca.md          | 12 +++---
- docs/auditoria/08-testes.md             |  2 +-
- docs/auditoria/achados.md               | 14 +++----
- docs/auditoria/artefatos/G1-creds.txt   | 24 +++++++-------
- docs/auditoria/log.md                   |  6 ++---
- docs/auditoria/plano-correcao.md        |  4 +--
- docs/auditoria/plano.md                 |  2 +-
- docs/auditoria/relatorio-preliminar.md  |  2 +-
- docs/auditoria/runbook.md               | 14 +++----
- docs/legacy/analise.md                  |  8 ++---
-              # 10 arquivos — os 2 declarados + os 8 da extensão da §3.1
+# --- registro do escopo, que era o objeto dos três IMPORTANTES ---
+$ ls .codeflow/decisions/ | grep 2026-08-02
+2026-08-02-extensao-escopo-redacao-pii-auditoria.md      ← IMPORTANTE 4.1
+2026-08-02-omissao-ticket-github-support.md              ← IMPORTANTE 4.2
+2026-08-02-regras-proprias-gitleaks.md
+2026-08-02-senha-conta-caloria-producao.md
+2026-08-02-smoke-test-como-sonda-de-ambiente.md
+$ grep -n "OQ7\|OQ10" .codeflow/specs/002-*/SPEC_002_*.md | head -4
+1440:- **OQ7 — Extensão da redação de PII … RESOLVIDO (2026-08-02).**
+1478:- **OQ10 — Ticket ao GitHub Support … RESOLVIDO (2026-08-02).**
+$ sed -n '524,534p' .codeflow/specs/002-*/SPEC_002_*.md
+- **Arquivos alterados:** `docs/auditoria/achados.md`, `docs/auditoria/log.md`,
+  `docs/auditoria/runbook.md`, `docs/auditoria/07-seguranca.md`,
+  `docs/auditoria/artefatos/G1-creds.txt`, `docs/auditoria/plano.md`,
+  `docs/auditoria/plano-correcao.md`, `docs/auditoria/relatorio-preliminar.md`,
+  `docs/auditoria/08-testes.md`, `docs/legacy/analise.md`.
+   # os 10 reais, com a nota de escopo corrigido logo abaixo                ✓
 
-# --- escopo travado: nada de código, nada de migration ---
-$ git diff --name-only 240d708..c69fbfb -- backend/app backend/alembic frontend/ | wc -l
-0                                                                            ✓
+# --- estrutura da §5 da spec continua válida (gate determinístico do Passo 1) ---
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh \
+    .codeflow/specs/002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md
+✓ §5 estruturalmente válida
+>>> EXIT=0
 
-# --- Dependabot: branches órfãs removidas ---
-$ git ls-remote --heads origin | awk '{print $2}'
-refs/heads/dev
-refs/heads/main
-refs/heads/test                              # nenhuma dependabot/*          ✓
-
-# --- fundamentação da omissão do ticket ao Support, reverificada ---
-$ gh repo view gabriel-ngrs/CalorIA --json visibility,isPrivate,forkCount
-{"forkCount":0,"isPrivate":true,"visibility":"PRIVATE"}
-
-# --- gates do projeto na ponta da branch (a fase é documental; [—] justificado,
-#     rodados mesmo assim para provar que a reescrita não quebrou nada) ---
+# --- "suíte completa verde após a reescrita" (o bullet Testes da §5) ---
 $ backend/.venv/bin/python -m ruff check .          → All checks passed!
 $ backend/.venv/bin/python -m ruff format --check . → 119 files already formatted
 $ backend/.venv/bin/python -m mypy app/             → Success: no issues found in 72 source files
-$ backend/.venv/bin/python -m pytest tests/unit/ -q → 199 passed in 3.03s
+$ backend/.venv/bin/python -m pytest tests/unit/ -q → 199 passed in 2.73s
 $ cd frontend && npm test                           → 17 suites, 100 passed
+$ cd frontend && npm run lint                       → 1 Warning pré-existente; exit 0
+$ cd frontend && npx tsc --noEmit                   → exit 0
+
+# --- make test-integration: [—] NÃO RODADO ---
+$ docker ps
+The command 'docker' could not be found in this WSL 2 distro.
+   # gate ausente do ambiente → `[—]` (SPEC §3.10)
 
 # --- árvore limpa ao final ---
 $ git status --porcelain | wc -l
@@ -207,30 +164,26 @@ $ git status --porcelain | wc -l
 
 | Item (§5 / §9 da spec) | Estado |
 |---|---|
-| Passo 1 — reescrever `achados.md` e `log.md` | Atendido |
-| Passo 2 — preparar e documentar o comando de `filter-repo` + plano de force-push + plano do Dependabot | Atendido (§5.4 e §5.5 do EXECUCAO) |
-| Passo 3 — owner executa `filter-repo` + force-push | Atendido (§5.7) |
-| Passo 3 — solicitar invalidação de cache ao GitHub Support | **NÃO ATENDIDO** — omissão deliberada (§4.2) |
-| Passo 4 — varredura sobre todo o histórico sem achados | Atendido, verificado por mim |
-| Testes — "suíte completa verde após a reescrita" | **PARCIAL** — não consta do relatório; rodei por conta própria e está verde (§6) |
-| Gate — documentos reescritos, PRs do Dependabot tratados | Atendido (9 PRs fechados, 9 branches removidas) |
-| DoD global — decisão de escopo registrada em §8 ou decision | **NÃO ATENDIDO** (§4.1, §4.2) |
+| Passo 1 — reescrever os 10 documentos declarados | Atendido |
+| Passo 2 — preparar/documentar `filter-repo` + force-push + plano do Dependabot | Atendido |
+| Passo 3 — owner executa `filter-repo` + force-push | Atendido |
+| Passo 3 — solicitar invalidação de cache ao GitHub Support | **Omitido por decisão registrada** — OQ10 + decision; deixou de ser pendência silenciosa |
+| Passo 4 — varredura sobre todo o histórico sem achados | Atendido, reverificado por mim |
+| Testes — "suíte completa verde após a reescrita" | Verde (rodado por mim); o relatório continua sem colar a saída |
+| Gate — documentos reescritos, PRs do Dependabot tratados | Atendido |
+| DoD global — decisão de escopo registrada em §8 ou decision | **Atendido nesta tentativa** (OQ7, OQ10, duas decisions) |
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **Nenhuma divergência substantiva.** Reproduzi as três medições centrais do
-   relatório (gitleaks sobre o histórico, `git log -S` nas três refs, grep do working
-   tree) e todas batem. O relatório é conservador: declara `[—]` onde não rodou gate
-   e marca como "linha de base, não aprovação" a verificação feita antes do passo do
-   owner.
+1. **Nenhuma divergência.** Reproduzi as medições centrais (gitleaks sobre o
+   histórico com as regras do projeto, ausência de e-mail pessoal na árvore,
+   integridade do AUD-038) e todas conferem. O relatório continua conservador:
+   declara `[—]` onde não rodou gate.
 
-2. **`range` inconsistente** (§4.3) — `sha_inicial` pré-purga inalcançável e
-   `sha_final` apontando para o commit da Fase B.2.
+2. **O `range` foi corrigido e agora resolve** — os dois SHAs são ancestrais de
+   HEAD. Fecha o IMPORTANTE 4.3 da tentativa 1.
 
-3. **Um 11º arquivo foi redigido, mas não pela fase.** §5.7 registra que o
-   `filter-repo` alcançou uma ocorrência da senha em `docs/auditoria/09-qualidade.md`
-   que as duas rodadas manuais de redação não tinham pego. Confirmei que esse arquivo
-   **não** aparece no diff dos commits da fase (`git diff --stat 240d708..c69fbfb --
-   docs/` não o lista): a redação veio da reescrita de histórico, não de um commit da
-   A.2. Registrado com honestidade no relatório; anoto aqui só para que a lista de
-   "10 arquivos" da §3.1 não seja lida como cobertura completa da redação manual.
+3. **Registro herdado, ainda válido:** o `--replace-text` não toca metadados de
+   commit, então o e-mail do owner segue como `author.email` do histórico. É decisão
+   consciente registrada no relatório; e-mail de autor é público por padrão no
+   GitHub. Sem ação recomendada.

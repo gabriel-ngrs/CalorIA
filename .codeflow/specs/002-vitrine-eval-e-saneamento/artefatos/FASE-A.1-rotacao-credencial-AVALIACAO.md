@@ -2,161 +2,175 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: A.1
 slug_fase: rotacao-credencial
-tentativa: 1
+tentativa: 2
 veredito: REPROVADO
-score: 8.3
+score: 8.6
 threshold: 8.5
-range_avaliado: 240d7089..240d7089 (reconstruído — ver §8)
+range_avaliado: 461ee3805bf5f8848d4da6ebd23779ff8817c315..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
 ---
 
 # FASE A.1 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** REPROVADO · **Score:** 8.3 / threshold 8.5
+**Veredito:** REPROVADO · **Score:** 8.6 / threshold 8.5
 
-Reprovado por dois caminhos independentes da cascata (§2.10.3): há **1 BLOQUEANTE**
-e o score ficou abaixo do threshold. A parte de código da fase é irrepreensível —
-uma linha, com o valor reusado do `playwright.config.ts`. O que reprova é o passo 1,
-que é a razão de existir da fase: a rotação da credencial **não foi concluída no
-serviço que a credencial abria**.
+O score subiu acima do threshold, mas **há 1 BLOQUEANTE**, e BLOQUEANTE reprova
+qualquer que seja o score (§2.10.3). O rework fechou o IMPORTANTE 4.1 (range) e
+transformou o override conversacional numa decision registrada — que é exatamente
+o que a constitution exige de um override genuíno. O que **não** mudou é o fato do
+mundo: a conta do CalorIA em produção continua aceitando a senha vazada. Uma
+decision registra *por que* um critério não foi cumprido; ela não o cumpre.
+
+O próprio relatório é honesto quanto a isso — marca o AC-1 como `[ ]` e escreve:
+*"Se o avaliador entender que só a troca efetiva fecha a fase, a reprovação se
+mantém — e estará correta."* Está correta.
+
+**Consequência de processo, e é o ponto principal desta avaliação:** com este
+veredito `reprovacoes` da A.1 passa a **2**. Pela ARTIFACTS_SPEC §2.11.4, ao
+selecionar o próximo rework o executor deve **parar e escalar ao owner** — o que é
+o desfecho certo, porque o item pendente não é trabalho de agente: exige acesso ao
+servidor de produção. A A.1 não deve voltar ao ciclo executor↔avaliador; deve ir
+para a mesa do owner.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 3 | AC-4 ✓ (`frontend/e2e/auth.spec.ts:4`); AC-1 parcial — rotação incompleta (§3.1). Escopo travado respeitado: histórico não reescrito nesta fase, credencial não escrita em nenhum artefato, rotação não executada pelo agente |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | Mudança de 1 linha em arquivo de teste e2e; nenhuma dependência de produção tocada (`git show 240d708 --stat` → 1 arquivo) |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 2 | Working tree e refs limpos (§6); mas a conta de produção do CalorIA segue aceitando a senha vazada e o frontend responde (`HTTP 307`) |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | `http://localhost:3000` é literalmente o `baseURL`/`webServer.url` de `frontend/playwright.config.ts` — nenhuma porta nova inventada |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 3 | AC-4 ✓ (`frontend/e2e/auth.spec.ts:4`, lido por mim). AC-1 **não atendido** (§3.1) e assim marcado pelo próprio relatório (`EXECUCAO.md:111`). Escopo travado respeitado: histórico não reescrito nesta fase, credencial não escrita em nenhum artefato, rotação não executada pelo agente |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | Diff de 1 linha em arquivo de e2e; nada de produção tocado (`git diff --stat 461ee38..721f0f0 -- frontend/e2e/` → 3 linhas num arquivo) |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 3 | Working tree e histórico limpos, verificados por mim (`gitleaks` sobre 422 commits → `no leaks found`, §6). Desconto: a exposição residual é idêntica à da tentativa 1 — o que mudou foi só a documentação dela. Ganho real: a dependência "D.2 não abre o repositório antes disto" está agora escrita (`decisions/2026-08-02-senha-conta-caloria-producao.md:85-87`) |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | `http://localhost:3000` é o `baseURL`/`webServer.url` de `frontend/playwright.config.ts` — nenhuma porta inventada |
 | 5 | Padrões de domínio/aplicação | 2 | 5 | `process.env.BASE_URL ?? <local>` mantém o padrão já usado no arquivo |
 | 6 | Local e nomes dos arquivos | 2 | 5 | Exatamente o arquivo declarado na §5 da spec |
-| 7 | Qualidade de código | 2 | 5 | Comentário registra o *porquê* ("nunca pode tocar produção"), não o *o quê* — conforme a constitution |
-| 8 | Testes e cobertura | 2 | 4 | `npm test` → 17 suites, 100/100 (rodado por mim); `playwright test --list` mantém 8 testes. Sem teste novo — nem cabia |
+| 7 | Qualidade de código | 2 | 5 | O comentário de `auth.spec.ts:3` registra o *porquê*, não o *o quê* |
+| 8 | Testes e cobertura | 2 | 4 | `npm test` → 17 suites, 100/100 (rodado por mim, §6). Sem teste novo — não cabia |
 | 9 | Migration safety | 2 | [—] | Nenhuma migration tocada (NFR-7 preservado) |
 
-Score = (3·3 + 3·5 + 3·2 + 3·5 + 2·5 + 2·5 + 2·5 + 2·4) / 20 · 2 = **8.3**
+Score = (3·3 + 3·5 + 3·3 + 3·5 + 2·5 + 2·5 + 2·5 + 2·4) / 20 · 2 = **8.6**
 
 ## 3. Achados BLOQUEANTES
 
-### 3.1 — A credencial exposta continua válida no serviço que ela abre
+### 3.1 — A credencial exposta continua válida na conta do CalorIA (mantido da tentativa 1)
 
-**Onde:** `FASE-A.1-rotacao-credencial-EXECUCAO.md:144-154` (§9, item 1) vs.
-FR-A1 / AC-1 / Critério de conclusão da Fase A.1.
+**Onde:** `FASE-A.1-rotacao-credencial-EXECUCAO.md:119-123` (§6, AC-1) e
+`.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md:44-53` vs. FR-A1,
+AC-1 e o Critério de conclusão da Fase A.1 (spec §5) e o gate A.1 da DoD (§9).
 
-**O defeito.** FR-A1 exige rotação "em todos os serviços onde tenha sido reusada" e
-AC-1 exige confirmação escrita "nos serviços afetados". O relatório confirma a
-rotação em Google/Gmail e nos demais serviços com reuso, e declara aberta
-justamente **a conta do próprio CalorIA** — que é o serviço para o qual o par
-e-mail+senha era o login, e cujo dado é diário alimentar, peso e conversas de IA
-(dado de saúde de pessoa real).
+**O defeito.** FR-A1 exige rotação "em todos os serviços onde tenha sido reusada";
+AC-1 exige confirmação escrita "nos serviços afetados". A conta do CalorIA — o
+serviço para o qual o par e-mail+senha *era* o login, e cujos dados são diário
+alimentar, peso e conversas de IA de pessoa real — segue com a senha vazada.
 
-**Cenário de falha concreto.** Qualquer pessoa que tenha clonado
-`gabriel-ngrs/CalorIA` enquanto o repositório era público (até 2026-07-30) tem o par
-em `frontend/e2e/auth.spec.ts:37-38` do histórico local — a purga da A.2 reescreveu
-o remoto, não os clones de terceiros. O frontend de produção responde hoje:
+**Cenário de falha concreto.** Quem clonou `gabriel-ngrs/CalorIA` enquanto era
+público (até 2026-07-30) tem o par no histórico do clone local; a purga da A.2
+reescreveu o remoto, não clones de terceiros. Se o backend de produção estiver no
+ar, o caminho de login existe. E a Fase D.2 torna o repositório público de novo.
 
-```text
-$ curl -s -o /dev/null -w "%{http_code}" https://frontend-nine-mu-59.vercel.app/
-307
-```
+**Por que continua BLOQUEANTE apesar da decision.** A constitution admite override
+de gate duro por decision registrada — e essa parte agora está correta: a decision
+existe, está commitada, é anterior a esta avaliação, tem alternativas avaliadas e
+risco residual quantificado. Mas o que a decision pode fazer é registrar um desvio
+de **escopo**; ela não converte um **fato** ausente em fato presente. O gate da
+fase é factual ("owner confirmou por escrito a rotação"), e o próprio executor o
+marca `[ ]`. Aprovar aqui gravaria no pipeline que o FR-A1 está satisfeito e
+liberaria a máquina de estados para fases que dependem disso — inclusive a D.2,
+que reabre o repositório. Esse é o modo de falha concreto de um "APROVADO" leniente.
 
-Logo o caminho de login existe. A defesa restante é apenas o repositório estar
-privado, o que não retroage sobre clones já feitos — exatamente o raciocínio que a
-própria §4 da spec usa para justificar a ordem "rotação antes da purga".
+**Correção — nenhuma delas é trabalho de agente:**
+1. Executar `~/trocar-senha-caloria.py` contra o banco de produção e registrar a
+   confirmação escrita. Único caminho que fecha o FR-A1.
+2. Ou levantar a URL do backend (é a Fase E.1), comprovar com evidência de
+   requisição que ele está fora do ar, e registrar isso — o que fecharia o AC-1 por
+   inalcançabilidade.
+3. Ou o owner reordenar a spec: mover a A.1 para depois da E.1/E.4, ou aceitar
+   formalmente o adiamento com uma alteração da §3/§5 da spec — não por decision
+   isolada, porque é o texto do AC que está sendo relaxado.
 
-**Por que é BLOQUEANTE e não IMPORTANTE.** O Objetivo declarado da fase é
-"interromper o dano ativo da credencial exposta". Enquanto a conta aceita a senha
-vazada, o dano ativo não foi interrompido — a fase não cumpriu seu objetivo, e o
-gate "owner confirmou por escrito a rotação" está satisfeito só em parte. A
-constitution universal ("Gates duros não admitem override conversacional") impede
-fechar isso por aceitação verbal de risco residual.
-
-**Correção sugerida (barata, o executor já a preparou):**
-1. Rodar o utilitário já entregue ao owner (`~/trocar-senha-caloria.py`), que aplica
-   `hash_password` direto no banco, e registrar a confirmação escrita no relatório; **ou**
-2. Verificar e registrar, com evidência de requisição, que o backend de produção
-   está indisponível — o que tornaria a conta inalcançável até a Fase E.4 — e
-   converter o item numa decision do framework, não numa nota de relatório.
-
-Qualquer um dos dois fecha o AC-1. O caminho (1) é o único que fecha o FR-A1.
+Enquanto (1), (2) ou (3) não acontecer, a fase não fecha. Ver a consequência de
+`reprovacoes >= 2` na §1.
 
 ## 4. Achados IMPORTANTES
 
-### 4.1 — O `range` do frontmatter não é reconstruível
-
-**Onde:** `FASE-A.1-rotacao-credencial-EXECUCAO.md:8-10`.
-
-`range: 56069b9d..7bb06aab`. Verificado:
+Nenhum. O IMPORTANTE 4.1 da tentativa 1 (`range` não reconstruível) foi corrigido e
+verificado:
 
 ```text
-$ git merge-base --is-ancestor 56069b9d51d63b2ebcd34313584f9e0dc9af4204 HEAD
-   → NÃO-ancestral   (sha pré-purga, inalcançável desde o filter-repo da A.2)
+$ git merge-base --is-ancestor 461ee380 HEAD   → ANCESTRAL  (docs(specs): registra spec 002…)
+$ git merge-base --is-ancestor 721f0f08 HEAD   → ANCESTRAL  (docs(specs): corrige escopo…)
 ```
-
-Pior: o `sha_final` `7bb06aab` foi atualizado no commit `95c6c8c` para a **ponta da
-branch da época**, que é o commit da Fase B.2 (`test(backend): declara pre-condicoes
-do smoke test`). O range declarado, portanto, engloba A.1 + A.2 + B.1 + B.2 + A.3 e
-começa num commit que não existe mais. Tive de reconstruir o diff da fase por
-mensagem de commit para poder avaliá-la — o Passo 2 do protocolo manda **PARAR**
-nesse caso.
-
-O commit real desta fase é `240d708 fix(seguranca): aponta BASE_URL do e2e para
-ambiente local por padrao`.
-
-**Correção sugerida:** atualizar `sha_inicial`/`sha_final`/`range` para
-`461ee38..240d708` (shas pós-purga). Duas linhas.
 
 ## 5. Sugestões
 
-- **Passo 2 executado pelo agente, não pelo owner.** A §5 da spec classifica "tornar
-  o repositório privado" como ação do owner; o relatório registra a autorização
-  explícita e o desvio (`EXECUCAO.md:58-61`). Transparência correta; ficaria melhor
-  como decision do framework do que como parágrafo de relatório.
-- **AC-1 é mal fatiado na spec.** A cláusula "o HEAD de todas as branches remotas
-  deve estar livre dela" é insatisfazível pela A.1 isoladamente — depende do
-  force-push da A.2. O próprio relatório aponta isso (§9, item 2). Sugestão do
-  executor procede: mover a cláusula para o AC-2.
+- **O `range` agora resolve, mas descreve cinco fases, não uma.**
+  `461ee38..721f0f0` engloba A.1, A.2, A.3, B.1 e B.2. É conforme ao schema
+  (§2.9.3 manda "sempre do início original ao HEAD"), e a causa é real (as fases
+  foram commitadas de forma intercalada), mas o efeito prático é que o range
+  deixou de isolar o diff da fase. O commit de código desta fase é `240d708`, e só
+  ele. Vale registrar isso no corpo do relatório para quem reavaliar depois.
+- **A pendência da A.1 e o risco residual da OQ10 apontam para o mesmo gate.**
+  A decision desta fase diz "a D.2 não deve ser executada antes desta pendência ser
+  fechada"; a OQ10 diz que reabrir o repositório reexpõe commits órfãos em cache.
+  São duas pré-condições da D.2 vivendo em dois lugares diferentes e em nenhum
+  deles na §5 da spec. Um bullet "Depende de: fechamento da pendência A.1 + prazo
+  da OQ10" no bloco da Fase D.2 evitaria que a próxima sessão as perdesse.
 
 ## 6. Comandos rodados + saídas reais
 
 ```text
-# --- estado do repositório (verificado por mim, não pelo relatório) ---
-$ gh repo view gabriel-ngrs/CalorIA --json visibility,isPrivate,forkCount
-{"forkCount":0,"isPrivate":true,"visibility":"PRIVATE"}                    ← AC-1 (privado) ✓
+# --- branch e ancestralidade do range (Passo 2) ---
+$ git rev-parse --short HEAD
+da08121
+$ git status --porcelain | wc -l
+0
+$ git merge-base --is-ancestor 461ee3805bf5f8848d4da6ebd23779ff8817c315 HEAD  → ANCESTRAL
+$ git merge-base --is-ancestor 721f0f0892b3298964b04b917e3f1b0cb5a1cc69 HEAD  → ANCESTRAL
 
-# --- credencial no working tree e nas refs (valores redigidos) ---
-$ grep -rIl '<e-mail-do-owner>' --exclude-dir=.git --exclude-dir=node_modules \
-    --exclude-dir=.next --exclude-dir=.venv . | wc -l
-0                                                                          ✓
-$ git log dev main test --oneline -S'<e-mail-do-owner>' | wc -l
-0                                                                          ✓
-$ git log --all --oneline -S'<e-mail-do-owner>' | wc -l
-0                                                                          ✓
-
-# --- o arquivo da fase ---
+# --- AC-4, lido do arquivo (não do relatório) ---
 $ sed -n '3,4p' frontend/e2e/auth.spec.ts
 // Default local: rodar a suíte sem BASE_URL definido nunca pode tocar produção.
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";          ← AC-4 ✓
-$ grep -rn "vercel.app" frontend/e2e/ | wc -l
-0                                                                          ✓
 
-# --- make test-frontend (alvo = cd frontend && npm test) ---
+# --- credencial no working tree e no histórico, com as regras do projeto ---
+$ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+INF 422 commits scanned.
+INF no leaks found
+>>> EXIT=0                                                                 ✓
+
+# --- e-mail de provedor de consumo fora de data/ (regex própria, não a do projeto) ---
+$ grep -rInE '[A-Za-z0-9._%+-]+@(gmail|hotmail|outlook|yahoo|icloud|proton|live|bol|uol|terra)\.' \
+    --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next \
+    --exclude-dir=.venv --exclude-dir=data .
+   → só `devteste@gmail.com` e `auditcaloria@gmail.com` (contas sintéticas declaradas
+     nas allowlists de `.gitleaks.toml:88-104`) e as citações a elas em docs/artefatos.
+     Nenhuma ocorrência do e-mail pessoal do owner.                        ✓
+
+# --- make test-frontend (o alvo é `cd frontend && npm test`) ---
 $ cd frontend && npm test
 Test Suites: 17 passed, 17 total
 Tests:       100 passed, 100 total
-Time:        6.171 s                                                       ← gate ✓
+Time:        3.676 s                                                       ← gate ✓
 
-# --- produção responde (contradiz "risco residual baixo" do §9.1) ---
-$ curl -s -o /dev/null -w "%{http_code}" https://frontend-nine-mu-59.vercel.app/
-307
+# --- gates de frontend, além do pedido pela fase ---
+$ cd frontend && npm run lint     → 1 Warning pré-existente (Plasma.tsx:156, exhaustive-deps); exit 0
+$ cd frontend && npx tsc --noEmit → exit 0
 
-# --- gates de backend: [—] justificado ---
-# A fase não toca `backend/`. Rodei mesmo assim, na ponta da branch, e estão limpos:
-$ backend/.venv/bin/python -m ruff check .   → All checks passed!
-$ backend/.venv/bin/python -m mypy app/      → Success: no issues found in 72 source files
+# --- gates de backend: [—] justificado (a fase não toca backend); rodados assim mesmo ---
+$ backend/.venv/bin/python -m ruff check .          → All checks passed!
+$ backend/.venv/bin/python -m ruff format --check . → 119 files already formatted
+$ backend/.venv/bin/python -m mypy app/             → Success: no issues found in 72 source files
 
-# --- árvore limpa ao final da avaliação ---
+# --- make test-integration: [—] NÃO RODADO ---
+$ docker ps
+The command 'docker' could not be found in this WSL 2 distro.
+   # gate ausente do ambiente → `[—]`, não falha (SPEC §3.10)
+
+# --- o BLOQUEANTE: não verificável por mim, e é essa a questão ---
+# A URL do backend de produção não é descobrível pelo repositório
+# (`Caddyfile.backend` usa `{$APP_DOMAIN}`), então não há como eu confirmar nem
+# refutar que a conta esteja alcançável. Sondá-la é escopo da Fase E.1.
+
+# --- árvore limpa ao final ---
 $ git status --porcelain | wc -l
 0
 ```
@@ -166,25 +180,24 @@ $ git status --porcelain | wc -l
 | Item (§5 / §9 da spec) | Estado |
 |---|---|
 | Passo 1 — rotação em todos os serviços afetados | **NÃO ATENDIDO** — conta do CalorIA pendente (§3.1) |
-| Passo 2 — repositório privado | Atendido (executado pelo agente, com autorização) |
+| Passo 2 — repositório privado | Atendido (executado pelo agente, com autorização registrada) |
 | Passo 3 — `BASE_URL` local por default | Atendido |
-| Passo 4 — working tree sem a credencial | Atendido |
+| Passo 4 — working tree sem a credencial | Atendido, verificado por mim |
 | Gate — `make test-frontend` verde | Atendido (100/100) |
-| Gate — owner confirmou por escrito a rotação | **PARCIAL** — confirmação cobre os serviços de reuso, não o CalorIA |
-| DoD global — decisão de escopo registrada em §8 ou decision | **NÃO ATENDIDO** — o desvio do passo 2 vive só no relatório |
+| Gate — owner confirmou por escrito a rotação | **PARCIAL** — cobre os serviços de reuso, não o CalorIA |
+| DoD global — decisão de escopo registrada em §8 ou decision | **Atendido nesta tentativa** — `decisions/2026-08-02-senha-conta-caloria-producao.md` |
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **Nenhuma divergência de código.** O diff de `frontend/e2e/auth.spec.ts` é
-   exatamente o que o relatório descreve, e o valor foi de fato reusado do
-   `playwright.config.ts`. O relatório é honesto inclusive contra si mesmo — ele
-   próprio declara a pendência que aqui vira BLOQUEANTE.
+1. **Nenhuma divergência.** O diff de `frontend/e2e/auth.spec.ts` é exatamente o que
+   o relatório descreve, o valor veio mesmo do `playwright.config.ts`, e o relatório
+   continua sendo honesto contra si próprio: declara a pendência que aqui reprova e
+   antecipa que a reprovação seria correta.
 
-2. **`range` inconsistente** (§4.1): o `sha_final` declarado não é o commit desta
-   fase, e o `sha_inicial` não é alcançável a partir de HEAD.
+2. **`range` resolve, mas não isola** (§5, primeira sugestão) — os cinco SHAs
+   remapeados são todos ancestrais de HEAD, o que fecha o achado da tentativa 1; o
+   intervalo, porém, cobre as cinco fases do lote.
 
-3. **"Risco residual baixo" é otimista.** `EXECUCAO.md:147-150` fundamenta o risco
-   baixo em três mitigações. Duas se confirmam (repositório privado, credencial fora
-   do histórico). A terceira — "o ambiente de produção será reconstruído na Fase E.4
-   de qualquer forma" — é um plano futuro, e enquanto ele não acontece o frontend de
-   produção está no ar e respondendo.
+3. **A cláusula do HEAD remoto migrou do AC-1 para o AC-2 na spec** (§3, nota de
+   2026-08-02) — confirmei a alteração no texto da spec. A leitura do relatório
+   (`EXECUCAO.md:124-132`) confere com a spec commitada.
