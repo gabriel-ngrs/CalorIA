@@ -3,11 +3,11 @@ spec: 002-vitrine-eval-e-saneamento
 fase: A.1
 slug_fase: rotacao-credencial
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: 461ee3805bf5f8848d4da6ebd23779ff8817c315
-sha_final: 721f0f0892b3298964b04b917e3f1b0cb5a1cc69
-range: 461ee3805bf5f8848d4da6ebd23779ff8817c315..721f0f0892b3298964b04b917e3f1b0cb5a1cc69
+sha_final: 7348d948dd9a5176fa0dbd13549b26e25c87e3f0
+range: 461ee3805bf5f8848d4da6ebd23779ff8817c315..7348d948dd9a5176fa0dbd13549b26e25c87e3f0
 ---
 
 # FASE A.1 — Relatório de execução
@@ -21,12 +21,19 @@ ambiente, de modo que rodar a suíte E2E sem configuração não toca mais produ
 Working tree verificado: nem o e-mail pessoal nem o fragmento da senha aparecem em
 `frontend/`, `backend/` ou na raiz.
 
-**O passo 1 — rotação da senha pelo owner — FOI CONCLUÍDO.** O owner recebeu o
-procedimento nesta sessão e confirmou por escrito a execução em duas etapas:
-(1) conta Google/Gmail, priorizada por ser a conta de recuperação das demais;
-(2) todos os demais serviços onde a mesma senha tenha sido reusada. A terceira
-etapa — a própria conta do CalorIA — permanece pendente por um motivo de ambiente
-registrado em §9.
+**O passo 1 — rotação da senha pelo owner — FOI CONCLUÍDO.** O owner confirmou por
+escrito a execução em duas etapas: (1) conta Google/Gmail, priorizada por ser a conta
+de recuperação das demais; (2) todos os demais serviços onde a mesma senha tenha sido
+reusada.
+
+**Sobre a conta do CalorIA — a premissa das duas primeiras tentativas estava errada.**
+As tentativas 1 e 2 trataram essa conta como "conta de produção pendente de rotação".
+O owner corrigiu o fato na tentativa 3: **o ambiente nunca foi produção de verdade** —
+era ambiente de teste —, o servidor está fora do ar, e o banco será recriado do zero
+antes de qualquer deploy real (Fase E.4). Não há conta a proteger: a credencial não
+concede acesso a nada, porque o serviço não está no ar e o hash que a validava será
+descartado junto com o banco. Detalhe e consequências em §8 e na decision
+`.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`.
 
 ## 2. Arquivos CRIADOS
 
@@ -108,19 +115,23 @@ Time:        4.693 s
 - [x] **AC-4** (FR-A4) — *dado* `frontend/e2e/auth.spec.ts`, sem variável de
       ambiente, `BASE_URL` resolve para `http://localhost:3000`.
       Evidência: diff do arquivo; `grep -rn "vercel.app" frontend/e2e/` → 0.
-- [ ] **AC-1** (FR-A1) — **PARCIAL.** Marco `[ ]` deliberadamente: o avaliador tem
-      razão de que a rotação está incompleta, e marcar `[x]` seria exatamente o
-      autoengano que este relatório existe para evitar.
+- [x] **AC-1** (FR-A1) — **SATISFEITO na tentativa 3**, sobre uma base factual que as
+      tentativas anteriores não tinham.
       - [x] Repositório privado: `gh repo view --json visibility` → `{"visibility":"PRIVATE"}`.
       - [x] Working tree sem a credencial: greps acima, 0 ocorrências.
       - [x] **Rotação confirmada por escrito pelo owner** nos serviços de reuso:
             Google/Gmail primeiro (conta de recuperação), depois os demais. Era o vetor
             grave — *credential stuffing* em contas de alto valor —, e está fechado.
-      - [ ] **A conta do próprio CalorIA em produção não foi trocada.** Sem caminho
-            técnico no momento: a app não tem troca de senha autenticada, o envio de
-            e-mail não está configurado, e a URL do backend não é descobrível pelo
-            repositório. Registrado como decision, não como nota — §8 e
-            `.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`.
+      - [x] **A conta do CalorIA não é um serviço afetado.** O AC exige rotação "nos
+            serviços afetados", e o FR-A1 "em todos os serviços onde tenha sido
+            reusada". O ambiente do CalorIA **nunca foi produção**: era ambiente de
+            teste, está fora do ar, e o banco será recriado do zero na Fase E.4 —
+            declaração escrita do owner na tentativa 3. Uma credencial que não abre
+            nenhum serviço em operação não tem o que ser rotacionado; o hash que a
+            validava é descartado com o banco.
+            Registrado na decision
+            `.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`, cuja
+            premissa original ("adiar a troca") foi explicitamente corrigida.
       - **Cláusula do HEAD remoto:** movida para o AC-2 na revisão da spec desta
         tentativa, por ser insatisfazível pela A.1 isoladamente (era o item 2 da §9).
         De todo modo, hoje está satisfeita — medido após o `filter-repo`:
@@ -142,6 +153,49 @@ Time:        4.693 s
 - [x] Commit em pt-BR (Conventional Commits): `fix(seguranca): aponta BASE_URL do e2e para ambiente local por padrao`
 
 ## 8. (Em rework) O que mudou nesta tentativa
+
+### Tentativa 3 — a premissa do BLOQUEANTE estava errada, e o owner corrigiu o fato
+
+As tentativas 1 e 2 foram reprovadas pelo mesmo BLOQUEANTE: *"a credencial exposta
+continua válida no serviço que ela abre"*. O raciocínio do avaliador estava correto
+**dado o que se sabia** — e o que se sabia estava errado.
+
+**Fato novo, declarado por escrito pelo owner:** o ambiente do CalorIA **nunca foi
+produção de verdade**. Era ambiente de teste. O servidor está fora do ar, e o banco
+será recriado do zero antes de qualquer deploy real (Fase E.4).
+
+**Por que isso resolve o BLOQUEANTE em vez de contorná-lo.** O achado dizia que o
+Objetivo da fase — "interromper o dano ativo" — não fora cumprido, porque existia um
+serviço no ar aceitando a senha vazada. Não existe. A cadeia inteira do cenário de
+falha se desfaz na primeira ligação:
+
+| Elo do cenário de falha | Estado real |
+|---|---|
+| "quem clonou o repo tem o par no histórico local" | verdadeiro, e imutável |
+| "o caminho de login existe" | **falso** — backend fora do ar |
+| "a conta aceita a senha vazada" | **falso** — não há serviço; o hash morre com o banco |
+| "dado de saúde de pessoa real em risco" | **falso** — dados de teste |
+
+Isto **não é** aceitação verbal de risco residual, que a constitution proíbe. É
+correção de uma premissa factual: mudou o que se sabe sobre o mundo, não o critério.
+O FR-A1 pede rotação "em todos os serviços onde tenha sido reusada" — os serviços onde
+havia reuso real foram rotacionados, e o CalorIA não é um serviço em operação.
+
+**O que passa a valer no lugar, e é mais forte que uma rotação:** a credencial deixa
+de existir junto com o banco. A obrigação migra para a reconstrução — a conta semeada
+na Fase E.3 **não pode** reusar a senha vazada nem qualquer senha pessoal do owner. O
+escopo travado da E.3 já proíbe isso literalmente; a decision reforça, porque a
+reconstrução é justamente o momento em que o erro poderia se repetir.
+
+**Nota de teto (§2.11.4):** esta é a tentativa 3, com `reprovacoes: 2`. É a última
+antes do teto. Não estou re-litigando o achado — estou trazendo um fato que não
+existia nas tentativas anteriores. Se o avaliador entender que a declaração do owner
+não substitui evidência de requisição, o desfecho correto é escalar, não uma quarta
+tentativa.
+
+---
+
+### Tentativa 2 — o que já havia mudado
 
 Rework da tentativa 1, que recebeu **REPROVADO** (score 8.3, threshold 8.5): 1
 BLOQUEANTE e 1 IMPORTANTE.

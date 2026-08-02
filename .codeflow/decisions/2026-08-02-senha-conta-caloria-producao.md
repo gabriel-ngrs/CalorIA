@@ -1,13 +1,40 @@
 ---
 data: 2026-08-02
-titulo: Adiar a troca da senha da conta do CalorIA em producao para a Fase E.4
+titulo: A conta do CalorIA nunca foi producao real e sera destruida com o ambiente
 status: ativa
 tags: [seguranca, deploy, spec-002, fase-a1, risco-residual]
 spec: 002-vitrine-eval-e-saneamento
 fase: A.1
 ---
 
-# Senha da conta do CalorIA em produção — adiamento com risco residual declarado
+# Senha da conta do CalorIA — a premissa estava errada
+
+> **ATUALIZAÇÃO 2026-08-02 (posterior à segunda avaliação).** Esta decision foi
+> escrita como "adiar a troca da senha", sob a premissa de que existia um ambiente de
+> produção com uma conta real em uso. **A premissa estava errada**, e o owner corrigiu
+> o fato: o servidor está fora do ar, o ambiente **nunca foi produção de verdade** —
+> era ambiente de teste —, e o banco será recriado do zero antes de qualquer deploy
+> real (Fase E.4).
+>
+> A consequência não é de prazo, é de natureza: **não há conta a proteger.** A senha
+> exposta não abre nada, porque o serviço que ela abria não está no ar e o banco que
+> guardava o hash será descartado. Não é um risco adiado — é um risco que deixou de
+> existir. O texto original fica abaixo como registro do que se sabia antes.
+>
+> **O que isso muda no FR-A1:** "rotacionar em todos os serviços onde tenha sido
+> reusada" está cumprido — os serviços onde havia reuso real (Google e demais) foram
+> rotacionados, e o CalorIA não é um serviço onde a credencial conceda acesso a coisa
+> alguma hoje.
+>
+> **O que continua valendo:** quando o ambiente for reconstruído na E.4, a conta
+> semeada **não pode** reusar a senha vazada nem qualquer senha pessoal do owner — o
+> escopo travado da Fase E.3 já proíbe isso explicitamente ("não reusar nenhuma senha
+> pessoal do owner — é literalmente o problema que o Track A existe para resolver").
+> Esta decision reforça: a reconstrução é o momento em que o erro poderia se repetir.
+
+---
+
+## Registro original (2026-08-02, antes da correção da premissa)
 
 ## Contexto
 
