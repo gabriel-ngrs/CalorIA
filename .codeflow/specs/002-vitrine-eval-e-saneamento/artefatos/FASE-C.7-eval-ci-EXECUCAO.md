@@ -6,8 +6,8 @@ status: executado
 tentativa: 1
 reprovacoes: 0
 sha_inicial: 40e2941
-sha_final: 8660f40
-range: 40e2941..8660f40
+sha_final: cc849e7
+range: 40e2941..cc849e7
 ---
 
 # FASE C.7 — Relatório de execução
@@ -23,7 +23,8 @@ cada PR **sem tocar a rede**. A camada completa ganhou workflow agendado própri
 
 | Arquivo | Propósito |
 |---------|-----------|
-| `backend/evals/cassettes/__init__.py` | `chave_do_payload`, `gravar`, `reproduzir`, `CassetteAusenteError`. |
+| `backend/evals/cassettes/__init__.py` | `AIClientComCassette`, `chave_do_payload`, `gravar`, `reproduzir`, `CassetteAusenteError`. |
+| `backend/evals/cassettes/*.json` | **14 gravações reais** da Groq, geradas na validação com Docker. |
 | `backend/tests/unit/test_evals_snapshot.py` | 11 testes: snapshot de payload e cassettes. |
 | `.github/workflows/eval.yml` | Execução agendada da camada completa. |
 
@@ -32,6 +33,8 @@ cada PR **sem tocar a rede**. A camada completa ganhou workflow agendado própri
 | Arquivo | O que mudou |
 |---------|-------------|
 | `.github/workflows/ci.yml` | `mypy app/ evals/` (era só `app/`) e o job "Eval — camada rápida (sem rede)". |
+| `backend/evals/runner.py` | Flag `--cassettes` e parâmetro `usar_cassettes`. |
+| `.github/workflows/eval.yml` | `EVAL_RECORD_CASSETTES=1` e `--cassettes` no passo do runner. |
 | `Makefile` | Alvo `typecheck` passa a incluir `evals/`. |
 | `backend/pyproject.toml` | (na mesma faixa, ver B.4) |
 
@@ -50,6 +53,15 @@ camada rápida entrou como step do job existente, não como job novo.
 - **Snapshot do payload como `sha` travado em teste**, com o payload montado a
   partir do registry: mudar prompt, modelo, temperatura ou `max_tokens` move o
   `sha` e o diff no PR mostra o quê. Há teste para cada um desses eixos.
+- **`AIClientComCassette` envolve o cliente, em vez de o cliente conhecer o
+  cassette.** O `AIClient` de produção não pode carregar caminho de teste, e o
+  eval não pode reimplementar o cliente. O envelope delega tudo que não for
+  `generate_text` ao cliente real por `__getattr__`.
+
+  **Correção feita na validação com Docker:** na primeira entrega o módulo de
+  cassettes existia, tinha teste próprio e **nada o consumia** — era código
+  morto, e o replay que a fase promete nunca acontecia. Agora o runner usa o
+  envelope por `--cassettes`, e o `eval.yml` grava na execução agendada.
 - **Nenhuma chave de API entra num cassette.** Só payload de mensagens e
   resposta de texto são gravados — nunca cabeçalhos. Um teste varre os cassettes
   versionados procurando `gsk_`, `authorization`, `api_key`, `bearer`.
@@ -71,25 +83,49 @@ código novo, e deixá-lo fora do CI esvaziaria a exigência.
 ## 5. Comandos rodados + saídas reais
 
 ```text
-$ ruff check . && ruff format --check .
-All checks passed!
-
-$ mypy app/ evals/
-Success: no issues found in 81 source files
+$ ruff check . && ruff format --check . && mypy app/ evals/
+All checks passed! / Success: no issues found in 81 source files
 
 $ pytest tests/unit/test_evals_snapshot.py -q
-11 passed in 0.05s
+15 passed in 0.12s
 
 # a camada rápida completa, como o CI a executa
 $ pytest tests/unit/test_evals_snapshot.py tests/unit/test_evals_metrics.py \
          tests/unit/test_evals_schema.py tests/unit/test_evals_invariance.py \
          tests/unit/test_evals_report.py -q
 122 passed in 0.69s
-# tempo de parede, processo inteiro:
-3.56 s
+# tempo de parede do processo inteiro: 3,56 s   (NFR-2: < 60 s)
 
-$ python -c "import yaml; [yaml.safe_load(open(f)) for f in (...)]"
+$ python -c "import yaml; ..."   # ci.yml, cd.yml, eval.yml
 YAML dos workflows valido
+```
+
+**Gravação e replay verificados contra o provedor real** (Docker ligado pelo
+owner):
+
+```text
+# 1. gravar, falando com a Groq real
+$ docker compose exec -e EVAL_RECORD_CASSETTES=1 backend \
+    python -m evals.runner --cassettes
+AGREGADO       10    3.89% [  0.00,  18.56]     1.25%    70%
+$ ls backend/evals/cassettes/*.json | wc -l
+14
+
+# 2. replicar com a chave INVÁLIDA de propósito — prova de que não há rede
+$ docker compose exec -e GROQ_API_KEY=INVALIDA-DE-PROPOSITO backend \
+    python -m evals.runner --cassettes
+AGREGADO       10    3.89% [  0.00,  18.56]     1.25%    70%
+```
+
+Números **idênticos** com a chave inválida: o replay não toca a rede, e a
+reprodutibilidade da NFR-5 está demonstrada, não argumentada.
+
+```text
+# 3. nenhum cassette versionado contém credencial
+$ grep -ril "gsk_\|authorization\|api_key\|bearer " backend/evals/cassettes/*.json
+(nenhum resultado)
+$ du -sh backend/evals/cassettes
+80K
 ```
 
 ## 6. Checklist dos ACs / critério de conclusão
@@ -112,10 +148,13 @@ YAML dos workflows valido
 
 ## 7. Dúvidas para o avaliador
 
-1. **Nenhum cassette foi gravado** — gravar exige a Groq real, inalcançável desta
-   sessão. O diretório existe com o módulo e os testes; a primeira execução
-   agendada o popula. Isso reprova a fase?
-2. **Agenda semanal** é palpite fundamentado, não medição. Ajustar após a
-   primeira execução?
-3. `eval.yml` semeia com `seed_taco.py` + `seed_portions.py`. Confirmar que são
-   os scripts certos para o banco nutricional no CI.
+1. **Agenda semanal** continua sendo palpite fundamentado. Medido agora: uma
+   rodada completa (10 casos + 12 grupos de invariância) consumiu ~14 chamadas
+   de texto e concluiu sem `429`. Cabe diário? Recomendo manter semanal até a
+   C.4 popular o dataset, que multiplica as chamadas.
+2. **`eval.yml` semeia com `seed_taco.py` + `seed_portions.py`** — confirmado na
+   validação: `seed_all.py` está **quebrado** (`ImportError: cannot import name
+   'ReminderChannel'`, sobra da remoção dos bots na v0.7.0) e os dois scripts
+   diretos funcionam. Vale abrir bug para o `seed_all.py`.
+3. Os 14 cassettes foram gravados pelo container como `root` e precisaram de
+   `chown`. Vale o compose do dev rodar com o uid do host?

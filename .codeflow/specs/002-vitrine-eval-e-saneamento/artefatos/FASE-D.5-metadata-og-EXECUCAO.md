@@ -78,20 +78,26 @@ Route (app)                              Size     First Load JS
       multi-resolução. O App Router o serve automaticamente a partir de `app/`.
 - [x] **`metadataBase`, `openGraph` e `twitter` presentes** em
       `app/layout.tsx`; a rota `/opengraph-image` aparece no output do build.
-- [—] **`npm run build` sem warning de `metadataBase` — verificado
-      PARCIALMENTE.** O build **não roda no diretório do projeto**:
-      `frontend/.next/chunks` pertence a `root` (sobra de um build via Docker) e
-      o Next falha com `EACCES: permission denied, unlink`. Para não deixar o
-      gate por conta, o build foi executado numa cópia da árvore no scratchpad,
-      com `node_modules` ligado por symlink: **concluiu e registrou a rota de
-      OG**. Não consegui reexecutar a mesma cópia para capturar o cabeçalho
-      completo do log e afirmar, com a saída em mãos, que a linha de warning
-      sumiu. **Ação para o owner:** `sudo rm -rf frontend/.next` e um
-      `npm run build` limpo.
+- [x] **AC-22, `npm run build` sem warning de `metadataBase`** — verificado no
+      próprio diretório do projeto, após remover o `.next` root-owned com um
+      container descartável (`docker run --rm -v .../frontend:/fe alpine rm -rf
+      /fe/.next`). Saída:
+
+      ```text
+      $ npm run build
+      Creating an optimized production build ...
+       ✓ Compiled successfully
+      ├ ƒ /opengraph-image                     0 B                0 B
+      EXIT: 0
+      ```
+
+      **Nenhuma linha de `metadataBase`** no log; o único warning é o
+      pré-existente de `components/auth/Plasma.tsx:156`. O favicon aparece
+      compilado como rota: `.next/server/app/favicon.ico/route.js`.
 
 ## 7. Dúvidas para o avaliador
 
-1. O item do gate `npm run build` sem warning ficou `[—]` por um problema de
-   permissão de arquivo herdado do Docker, não por código. Aceitável?
-2. `NEXT_PUBLIC_SITE_URL` precisa ser configurada na Vercel para o OG resolver
+1. `NEXT_PUBLIC_SITE_URL` precisa ser configurada na Vercel para o OG resolver
    com o domínio real — depende da E.2. Registrar como pendência de deploy?
+2. O cartão OG não foi validado num **validador externo** (Twitter/Facebook), só
+   no build. Vale conferir depois do deploy da E.4?

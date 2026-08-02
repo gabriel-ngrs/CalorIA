@@ -107,6 +107,8 @@ CI **verdes**; `main` parado em 2026-04-29 e **192 commits atrás** de `dev`.
 | 6 | README exibia badge de CI | Agora correto — CI ativo e verde (B.2) |
 | 7 | `Caddyfile.backend` faz proxy só de `/api/*`, `/docs*`, `/redoc*`, `/openapi.json`, `/health` | Consistente com frontend separado na Vercel — a topologia **de fato pretendida** é split, não full-stack |
 
+| 8 | `make seed` → `scripts/seed_all.py` é o caminho documentado de popular o banco | **Quebrado**: `ImportError: cannot import name 'ReminderChannel' from 'app.models.reminder'` — sobra da remoção dos bots na v0.7.0. `seed_taco.py` e `seed_portions.py` funcionam |
+
 **Achado de método:** a divergência 7 mostra que a topologia real pretendida
 (frontend na Vercel + backend self-hosted atrás do Caddy) já está codificada nos
 arquivos de orquestração, mas **só na documentação errada**. A E.2 tem material
@@ -132,3 +134,6 @@ suficiente para decidir sem inventar.
    prática, embora a spec ordene E.3 → E.4?
 3. O frontend na Vercel serve um build de ~13 dias apontando para uma API que
    não existe. Vale despublicar até a E.4, ou deixar como está?
+4. **`scripts/seed_all.py` está quebrado** (divergência 8), descoberto ao ligar o
+   Docker. É o caminho que `make seed` e `docs/setup.md` mandam usar, então o
+   onboarding do projeto não funciona hoje. Abrir bug próprio?

@@ -77,50 +77,56 @@ $ pytest tests/unit -q
 323 passed in 3.85s
 ```
 
-**Execução manual do runner — PARCIAL, por limitação de ambiente.** O runner foi
-exercitado ponta a ponta contra Postgres real, com o provedor substituído por um
-dublê determinístico. Saída real:
+**Execução manual do runner — EXECUTADA contra o pipeline real.** Docker ligado
+pelo owner; Postgres 16 com `pg_trgm`/`unaccent`, banco nutricional semeado
+(42.168 alimentos) e Groq real (conectividade confirmada). Saída real:
 
 ```text
+$ docker compose -f docker-compose.dev.yml exec backend python -m evals.runner
+[1/10] simples-arroz-cozido-100g
+[...]
+Sanity check falhou para 'feijoada completa': banco=110 kcal vs IA=350 kcal
+  (divergencia=69%, source=taco) — usando estimativa IA
+Sanity check falhou para 'lasanha de carne': banco=146 vs IA=300 (51%)
+Sanity check falhou para 'strogonoff de carne': banco=155 vs IA=350 (56%)
 ========================================================================
 EVAL DO PIPELINE DE IA — CalorIA
 ========================================================================
 dataset sha : 426cb61f64af9b68  (n=10)
 distribuicao: {'simples': 6, 'composto': 4, 'foto': 0}
-nao verific.: 10 caso(s) com `verificada=false` — a metrica ainda nao
-              sustenta afirmacao publica
+nao verific.: 10 caso(s) com `verificada=false`
 modelo      : llama-3.3-70b-versatile
 amostragem  : {'temperature': 0.1, 'max_tokens': 8192, 'seed': -1}
-prompts     : {'meal_identify': {'versao': 1, 'sha': 'f1334ef6...'},
-               'meal_fallback': {'versao': 1, 'sha': '713ea1c5...'}}
 
 estrato         n    MdAPE               IC95      SSPB   <=10%
 ------------------------------------------------------------------------
-simples         0   (vazio)
-composto        0   (vazio)
+simples         6    1.26% [  0.00,   5.71]     1.25%   100%
+composto        4   23.81% [  0.00,  41.03]    14.43%    25%
 foto            0   (vazio)
 ------------------------------------------------------------------------
-AGREGADO        0   (vazio)
+AGREGADO       10    3.89% [  0.00,  18.56]     1.25%    70%
 
-falhas: 10
-  simples-arroz-cozido-100g: ProgrammingError: function
-  caloria_unaccent(text) does not exist
+macros (MAE em gramas, tolerancia absoluta — nunca %):
+  proteina_g     MAE=  1.00 g   dentro de ±5 g: 100%
+  carboidrato_g  MAE=  1.34 g   dentro de ±5 g: 86%
+  gordura_g      MAE=  0.81 g   dentro de ±5 g: 100%
 ```
 
-**O que essa saída prova e o que não prova.** Prova que o runner carrega o
-dataset, monta o relatório com procedência (sha do dataset, modelo, parâmetros,
-versão e sha de cada prompt), reporta os três estratos incluindo os vazios, e
-**absorve a falha de cada caso sem morrer** — os 10 casos falharam e a execução
-concluiu com relatório. **Não prova** a métrica sobre dados reais.
+**Primeiro achado real do harness.** O estrato `composto` tem MdAPE de 23,81%
+contra 1,26% do `simples`, e apenas 25% dos casos dentro de ±10%. A causa
+aparece no log: em 3 dos 4 pratos compostos o **sanity check descarta o match do
+banco**, porque a estimativa da IA para "100 g" do prato (350 kcal) diverge
+mais de 35% do valor do banco (110 kcal) — a IA está estimando a porção
+inteira, não os 100 g pedidos. O banco tem a linha certa e ela é jogada fora.
 
-**Motivo da limitação, medido:** não há Docker nesta máquina; o Postgres de
-espaço de usuário (`pgserver`) que viabilizou os testes de integração **não traz
-os contribs** `pg_trgm` e `unaccent`, dos quais o `food_lookup` depende
-(`CREATE EXTENSION IF NOT EXISTS pg_trgm` → `extension "pg_trgm" is not
-available`). E `api.groq.com` não é alcançável desta sessão
-(`groq.APIConnectionError`). O gate "execução manual com os três estratos
-preenchidos" fica, portanto, **[—] por ambiente**, e é satisfeito pela execução
-agendada da C.7 no CI, que tem Postgres 16 completo e a chave real.
+Isso é exatamente o tipo de defeito que o eval existe para tornar visível, e é a
+primeira vez que o projeto consegue nomeá-lo com números. **Não foi corrigido
+aqui** — está fora do escopo da C.5, que constrói o instrumento e não redesenha
+o pipeline. Registrado em §7 para o owner.
+
+**Reprodutibilidade verificada (NFR-5).** Com os cassettes da C.7, o mesmo
+relatório é reproduzido **byte a byte** com `GROQ_API_KEY` inválida — mesma
+MdAPE, mesmo SSPB, mesmos MAE de macros.
 
 ## 6. Checklist dos ACs / critério de conclusão
 
@@ -136,14 +142,18 @@ agendada da C.7 no CI, que tem Postgres 16 completo e a chave real.
       mesmo módulo de log accuracy ratio e APEs de 100% e 50%; e o MAPE premia
       quem subconta.
 - [x] **`make test-unit` verde** — 323 testes na fase.
-- [—] **Execução manual do runner com os três estratos** — bloqueada por
-      ambiente (§5). Demonstrada a estrutura; a medição real fica para a
-      execução agendada da C.7.
+- [x] **Execução manual do runner com os três estratos** — executada contra o
+      pipeline real, com Groq real e banco semeado (§5). Os três estratos
+      aparecem no relatório, com `n`, IC95 e SSPB; `foto` como `n=0`.
 
 ## 7. Dúvidas para o avaliador
 
-1. A execução manual do runner ficou `[—]` por ausência de `pg_trgm`/`unaccent`
-   e de rede para a Groq. Isso reprova a fase, ou é aceitável dado que a C.7
-   entrega a execução real no CI?
-2. `TOLERANCIA_MACRO_G = 5.0` é valor de partida, não medido. Calibrar na
-   primeira execução completa?
+1. **Achado do estrato composto (§5).** Em 3 de 4 pratos compostos o sanity
+   check de 35% descarta o match correto do banco, porque a IA estima a porção
+   inteira em vez dos 100 g pedidos. Isso derruba o MdAPE do estrato de ~1% para
+   23,81%. É defeito de pipeline, não do harness. Abrir bug próprio, ou fase de
+   correção? (O escopo travado da C.5 proíbe corrigir aqui.)
+2. `TOLERANCIA_MACRO_G = 5.0` era valor de partida. Medido: MAE de 0,81 a 1,34 g,
+   com 86–100% dentro de ±5 g. A tolerância parece folgada — apertar para ±3 g?
+3. Os casos-semente descrevem "100 g de X", o que é pouco natural e pode estar
+   induzindo o erro do item 1. Vale a C.4 usar porções caseiras?

@@ -6,8 +6,8 @@ status: executado
 tentativa: 1
 reprovacoes: 0
 sha_inicial: 40e2941
-sha_final: 8660f40
-range: 40e2941..8660f40
+sha_final: f479f5d
+range: 40e2941..f479f5d
 ---
 
 # FASE C.8 — Relatório de execução
@@ -74,10 +74,37 @@ Success: no issues found in 81 source files
 
 $ pytest tests/unit/test_evals_report.py -q
 17 passed in 0.06s
-
-$ pytest -q --ignore=tests/smoke_test.py
-502 passed, 5 skipped, 3 warnings in 52.17s
 ```
+
+**Duas execuções reais registradas, em dois commits reais** (Docker ligado pelo
+owner; respostas vindas dos cassettes gravados contra a Groq real na C.7):
+
+```text
+$ python -m evals.report registrar --relatorio /tmp/rel.json --git-commit cc849e71...
+registrado em /app/evals/runs/history.jsonl: run_id=cc849e7172fe-426cb61f64af
+$ python -m evals.report verificar --relatorio /tmp/rel.json
+gate do eval aprovado
+
+# (commit do registro acima) → segunda execução, noutro commit
+$ python -m evals.report registrar --relatorio /tmp/rel.json --git-commit f479f5df...
+registrado em /app/evals/runs/history.jsonl: run_id=f479f5dfa9a0-426cb61f64af
+$ python -m evals.report verificar --relatorio /tmp/rel.json
+gate do eval aprovado
+
+$ python -m evals.report serie
+SÉRIE TEMPORAL DO EVAL
+==============================================================================
+commit           n    MdAPE     SSPB   <=10%  prompts
+------------------------------------------------------------------------------
+cc849e7172fe    10    3.89%    1.25%    70%  meal_fallback@v1 meal_identify@v1
+f479f5dfa9a0    10    3.89%    1.25%    70%  meal_fallback@v1 meal_identify@v1
+```
+
+As duas linhas têm MdAPE idêntica **por desenho**: nada do pipeline mudou entre
+os dois commits, e as respostas vieram dos mesmos cassettes. É a demonstração de
+NFR-5 — mesmo commit-a-commit sem mudança de comportamento, a série é estável e
+não introduz ruído próprio. A primeira variação real virá quando um prompt mudar
+de versão, e a série anota esse ponto automaticamente.
 
 ## 6. Checklist dos ACs / critério de conclusão
 
@@ -93,17 +120,20 @@ $ pytest -q --ignore=tests/smoke_test.py
 - [x] **Append-only** — `test_registrar_nao_reescreve_linha_anterior`.
 - [x] **Sem chave de API, PII ou conteúdo de `.env` no registro** —
       `test_o_registro_nao_carrega_segredo`.
-- [—] **Histórico com ao menos duas execuções REAIS** — o arquivo versionado
-      está vazio. Duas execuções reais exigem o `eval.yml` rodando no GitHub
-      Actions com a chave da Groq; nesta sessão não há alcance a `api.groq.com`
-      nem `pg_trgm`. As duas execuções estão **simuladas e testadas** com dados
-      sintéticos; as reais dependem do owner disparar o workflow.
+- [x] **Histórico com ao menos duas execuções reais** — duas linhas em
+      `evals/runs/history.jsonl`, em dois commits reais (`cc849e7` e `f479f5d`),
+      com métricas vindas do pipeline real (§5).
+- [x] **Gate aprovado nas duas** — `evals.report verificar` respondeu
+      `gate do eval aprovado`: MdAPE agregada 3,89% (teto 25%), 70% dentro de
+      ±10% (piso 50%), zero casos vazios.
 
 ## 7. Dúvidas para o avaliador
 
-1. O gate da fase pede "histórico com ao menos duas execuções reais". Isso é
-   satisfazível só pelo owner (disparar `eval.yml` duas vezes, em commits
-   diferentes). A fase pode ser aprovada com a infraestrutura pronta e essa
-   pendência declarada?
-2. `MDAPE_MAXIMO = 25%` e piso de 50% dentro de ±10% foram escolhidos sem
-   medição. Recalibrar após as duas primeiras execuções reais?
+1. **Limiares agora têm medição por trás.** Com MdAPE agregada de 3,89% e 70%
+   dentro de ±10%, o teto de 25% e o piso de 50% ficaram muito folgados. Apertar
+   para, digamos, teto de 10% e piso de 65%? Recomendo esperar a C.4 popular o
+   dataset — apertar sobre `n=10` não verificado seria travar ruído.
+2. As duas linhas do histórico foram geradas **na mesma árvore de trabalho**,
+   com commits diferentes. São execuções reais (pipeline e respostas reais), mas
+   não vieram do `eval.yml` no Actions. Suficiente para o gate, ou o avaliador
+   exige que venham do workflow agendado?

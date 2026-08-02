@@ -99,9 +99,44 @@ All checks passed! / 141 files already formatted / Success: no issues found
       62%).
 - [x] **Piso configurado com o valor medido arredondado para baixo** — 70%, com
       a justificativa da margem registrada em §4 e no `pyproject.toml`.
-- [—] **CI verde com o gate ativo** — não observável desta sessão: exige um push
-      e uma execução no GitHub Actions. Os mesmos comandos que o CI roda foram
-      executados localmente e passam (§5).
+- [x] **Gate verificado no ambiente real do CI** — rodado dentro do container
+      `backend`, com Postgres 16 e Redis dos mesmos serviços que o CI usa:
+      `Required test coverage of 70% reached. Total coverage: 71.92%`,
+      `542 passed, 5 skipped`. A execução no GitHub Actions em si depende de um
+      push (ação do owner).
+
+### Achado fora do escopo: o gate da NFR-6 está morto no CI
+
+Durante a validação com Docker, os 5 testes de
+`tests/integration/test_golden_set.py` **pularam**, com
+`fonte curada 'taco' com apenas 0 linhas — rode 'make seed' antes deste gate`.
+Isso vale também no CI, que não semeia. Ou seja: a NFR-6 ("os limiares de
+`test_golden_set.py` não regridem") está **declarada e não verificada**.
+
+Tentei corrigir com um `tests/integration/conftest.py` que semeia o banco
+nutricional na sessão, e **reverti**: o `setup_test_database` monta o schema por
+`Base.metadata.create_all()`, que cria tabelas mas **não** a função
+`caloria_unaccent` nem as extensões, que vêm de migration. Com o seed, os 5
+testes deixaram de pular e passaram a **falhar** com
+`function caloria_unaccent(text) does not exist`. Fazer o gate funcionar exigiria
+o schema de teste vir de `alembic upgrade head` em vez de `create_all` — mudança
+estrutural em `tests/conftest.py` (arquivo da B.1) que nenhuma fase pede e que
+eu não deveria fazer por conta.
+
+**Medi a NFR-6 por fora, para não deixar a afirmação sem evidência**, contra um
+banco criado por migrations e semeado só com a fonte curada `taco` — exatamente
+o que o CI teria:
+
+```text
+$ python scripts/eval_golden_set.py            # banco caloria_ci, só TACO
+Porção com âncora determinística: 27/29 (93.1%)    limiar ≥ 85%   OK
+Erro médio absoluto de kcal:      0.0%             limiar ≤ 10%   OK
+Dentro de ±10%:                   21/21 (100.0%)   limiar ≥ 80%   OK
+Erro máximo:                      0.0%             limiar ≤ 100%  OK
+```
+
+**Os quatro limiares da NFR-6 passam com folga** — nada regrediu com C.1, C.2 ou
+B.5. Mas o gate automático continua inerte, e isso merece fase própria.
 
 ## 7. Dúvidas para o avaliador
 
@@ -110,3 +145,5 @@ All checks passed! / 141 files already formatted / Success: no issues found
 2. O `continue-on-error: true` do upload ao Codecov foi **mantido**, com o gate
    aplicado localmente. É a leitura correta do passo 4 da fase?
 3. Confirmação de que o CI de fato reprova precisa de um push — é do owner.
+4. **O gate da NFR-6 está morto** (ver §6). Corrigi-lo exige o schema de teste
+   vir de `alembic upgrade head` em vez de `create_all`. Abrir fase própria?

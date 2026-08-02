@@ -80,15 +80,60 @@ $ pytest tests/unit -q
 352 passed in 3.94s
 ```
 
-**Execução manual da bateria — [—] por ambiente**, pelo mesmo motivo da C.5: sem
-`pg_trgm`/`unaccent` no Postgres de espaço de usuário e sem alcance a
-`api.groq.com`, nenhum grupo pode ser medido contra o pipeline real. O cálculo
-de spread e de coeficiente de variação está validado em casos sintéticos,
-incluindo os números reais do bug 001 (3486 vs 2098 → spread 1,6615) e do teste
-de determinismo (572,3 × 3 → CV 0,0).
+**Execução manual da bateria — EXECUTADA contra o pipeline real**, com Docker
+ligado pelo owner, banco semeado e Groq real:
 
-**Achados de reprovação: nenhum registrado**, porque nenhuma medição real foi
-possível. A primeira execução agendada (C.7) produz os primeiros achados.
+```text
+$ docker compose -f docker-compose.dev.yml exec backend python -m evals.invariance
+n_grupos: 12 | aprovacao: 0.417 | spread mediano: 1.2115 | p95: 3.5126
+
+OK       inv-01-pizza-calabresa       spread=1.0     tol=1.10  kcal=[2160.0, 2160.0]
+OK       inv-02-ovos-numeral-extenso  spread=1.0     tol=1.10  kcal=[171.0, 171.0]
+REPROVOU inv-03-pf-vago-vs-gramas     spread=1.5221  tol=1.25  kcal=[859.2, 564.5]
+REPROVOU inv-04-pao-manteiga          spread=4.1392  tol=1.25  kcal=[880.0, 212.6]
+OK       inv-05-leite-copo-ml         spread=1.0     tol=1.15  kcal=[133.4, 133.4]
+REPROVOU inv-06-marmita-strogonoff    spread=1.4812  tol=1.25  kcal=[945.0, 638.0]
+REPROVOU inv-07-tacaca-ausente        spread=3.0     tol=1.30  kcal=[140.0, 420.0]
+REPROVOU inv-08-determinismo          spread=1.2355  tol=1.02  kcal=[859.2, 859.2, 695.4]
+OK       inv-09-ordem-arroz-feijao    spread=1.0238  tol=1.05  kcal=[533.2, 520.8]
+REPROVOU inv-10-unidade-g-kg          spread=1.75    tol=1.05  kcal=[1120.0, 640.0]
+OK       inv-11-ruido-cortes          spread=1.0     tol=1.05  kcal=[128.0, 128.0]
+REPROVOU inv-12-escala-dobro          spread=1.1875  tol=1.05  kcal=[128.0, 304.0]
+```
+
+### Achados de reprovação — 7 de 12 grupos
+
+A fase declara que **uma reprovação é um achado, não um defeito do teste**.
+Nenhuma tolerância foi afrouxada e nenhum grupo foi removido. Em ordem de
+gravidade:
+
+1. **`inv-04` pão com manteiga — spread 4,14 (880 vs 212,6 kcal).** O caso
+   patológico que o p95 existe para revelar. "1 pão francês com manteiga" dá
+   880 kcal; "50g pão francês + 10g manteiga" dá 212,6. Mais de 4× de diferença
+   para a mesma refeição.
+2. **`inv-07` tacacá — spread 3,00 (140 vs 420).** Item ausente do banco: os
+   dois lados caem no fallback da IA e divergem por 3×. Mede a instabilidade do
+   caminho de fallback, que é o pior caminho do pipeline.
+3. **`inv-10` unidade g↔kg — spread 1,75 (1120 vs 640).** "0,5 kg de arroz
+   cozido" **não** é convertido para 500 g. É bug de normalização de unidade,
+   determinístico e corrigível.
+4. **`inv-03` prato feito vago vs gramas — 1,52** e **`inv-06` marmita — 1,48.**
+   Ambos acima da tolerância de 1,25, que já era folgada por reconhecer a
+   incerteza da porção caseira.
+5. **`inv-12` escala — resíduo 1,19 (128 → 304 em vez de 256).** Dobrar a porção
+   não dobra as calorias: sobram 48 kcal (18,75%).
+6. **`inv-08` determinismo — CV ≠ 0 (859,2 / 859,2 / 695,4).** A mesma string
+   repetida três vezes deu dois valores. **Contradiz a medição do bug 001**, que
+   observara 572,3 kcal idênticos em três execuções — mas era outra frase e outro
+   prompt. Achado relevante: o não-determinismo do modelo **existe** e é
+   dependente da entrada, então qualquer comparação A/B precisa de repetição.
+
+**O que passou, e por que importa:** `inv-01`, a **reprodução oficial do bug
+001**, deu spread **1,000** (2160 = 2160 kcal). É a confirmação, medida agora e
+não em maio, de que a correção do bug 001 **se mantém**. Junto com `inv-02`
+(numeral vs extenso), `inv-05` (copo vs ml), `inv-09` (ordem) e `inv-11`
+(ruído), mostra que as invariâncias de forma da frase estão sólidas; o que
+quebra é **conversão de porção e o caminho de fallback**.
 
 ## 6. Checklist dos ACs / critério de conclusão
 
@@ -103,13 +148,24 @@ possível. A primeira execução agendada (C.7) produz os primeiros achados.
 - [x] **Os 7 pares originais migraram** —
       `test_os_sete_pares_originais_migraram` lista os sete `id` esperados.
 - [x] **O teste de autoconsistência migrou** — `repeticoes: 3`, como no original.
-- [—] **Execução manual produzindo relatório de invariância** — bloqueada por
-      ambiente (§5).
+- [x] **Execução manual produzindo relatório de invariância** — executada (§5):
+      12 grupos, taxa de aprovação 0,417, spread mediano 1,2115, p95 3,5126.
+- [x] **Achados de reprovação registrados no relatório da fase** — os 7
+      reprovados estão em §5, com números e ordem de gravidade.
 
 ## 7. Dúvidas para o avaliador
 
-1. As tolerâncias dos 5 grupos novos (`ordem` 1.05, `unidade g↔kg` 1.05, `ruido`
-   1.05, `escala` 1.05) foram escolhidas por raciocínio, não por medição.
-   Confirmar ou ajustar depois da primeira execução real?
-2. A bateria não é gate de CI nesta fase, por determinação do escopo travado.
-   Em que fase ela deve virar gate?
+1. **7 de 12 grupos reprovam.** Os achados 1 a 5 (§5) são bugs de pipeline
+   reais, não tolerâncias mal calibradas — `0,5 kg` não virar 500 g é
+   inequívoco. Abrir bugs próprios, ou uma fase de correção de normalização de
+   porção?
+2. **`inv-08` mostra não-determinismo do modelo** (859,2 / 859,2 / 695,4). Isso
+   afeta o desenho do eval: uma execução única por caso pode não ser suficiente.
+   Vale repetir cada caso N vezes e usar a mediana?
+3. As tolerâncias dos 5 grupos novos foram escolhidas por raciocínio. Com a
+   medição em mãos, `ordem` (1,0238 medido) e `ruido` (1,0 medido) parecem bem
+   calibradas; `escala` e `unidade` reprovam por bug, não por tolerância
+   apertada. Confirmar?
+4. A bateria não é gate de CI nesta fase, por escopo travado. Com 41,7% de
+   aprovação, travá-la agora deixaria o CI vermelho. Em que fase ela vira gate,
+   e com que piso?
