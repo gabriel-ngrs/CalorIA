@@ -139,7 +139,14 @@ hostname interno do Docker, irresolvível a partir do host. Com
 |---|---|---|
 | `tests/unit/` | 199 | 199 |
 | `tests/integration/` | 99 | 99 |
-| **total** | **298** | **298** |
+| `tests/smoke_test.py` | 4 | 4 |
+| **total da suíte** | **302** | **302** |
+
+> Correção da tentativa 2 (achado da reavaliação): eu havia escrito "total 298", que é
+> a soma de `unit` + `integration`. O total real de `pytest --collect-only` é **302** —
+> faltavam os 4 de `tests/smoke_test.py`, que a Fase B.2 depois passou a marcar como
+> `skipped` fora do ambiente de dev. A afirmação de que a contagem ficou **inalterada**
+> segue verdadeira; o número absoluto é que estava errado.
 
 ## 6. Critérios de aceite da fase (com evidência)
 
@@ -157,7 +164,7 @@ hostname interno do Docker, irresolvível a partir do host. Com
       alterado, nada em `backend/app/`; o commit toca exatamente 2 `conftest.py`
 - [x] Nenhum segredo/PII em log/DTO/exceção
 - [x] Commit em pt-BR: `test(backend): cria schema em fixture e libera testes unit de infra`
-- [x] Critério de conclusão: contagem de testes coletados inalterada (298 antes e depois)
+- [x] Critério de conclusão: contagem de testes coletados inalterada (302 antes e depois; ver §5.4)
 
 ## 8. (Em rework) O que mudou nesta tentativa
 
@@ -184,7 +191,7 @@ depender de um SHA morto.
 ### Nada de código mudou nesta tentativa
 
 A correção dos dois `conftest.py` está intacta e continua verificada: 199 testes
-unitários passando sem Postgres nem Redis, contagem total inalterada em 298.
+unitários passando sem Postgres nem Redis, contagem total inalterada em 302.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 
