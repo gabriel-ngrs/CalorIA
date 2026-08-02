@@ -126,9 +126,19 @@ function LevelSelector({ value, onChange }: { value: number; onChange: (v: numbe
 
 // ── Quick Meal Modal ──────────────────────────────────────────────────────────
 
-type InputMode = "text" | "photo" | "audio";
+export type InputMode = "text" | "photo" | "audio";
 
-export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function QuickMealModal({
+  open,
+  onOpenChange,
+  initialMode = "text",
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** Modo em que o modal abre. Os três atalhos do dashboard apontavam para o
+      mesmo modal e abriam sempre em texto, ignorando o ícone clicado. */
+  initialMode?: InputMode;
+}) {
   const today = getLocalToday();
   const analyzeMeal = useAnalyzeMeal();
   const analyzePhoto = useAnalyzePhoto();
@@ -136,7 +146,7 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
 
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [parsedItems, setParsedItems] = useState<ParsedFoodItem[] | null>(null);
-  const [inputMode, setInputMode] = useState<InputMode>("text");
+  const [inputMode, setInputMode] = useState<InputMode>(initialMode);
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -156,11 +166,18 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // O modal permanece montado entre aberturas, então o estado inicial de
+  // `useState` só valeria para o primeiro atalho clicado. Sincroniza a cada
+  // abertura para que Foto, Texto e Áudio abram no modo pedido.
+  useEffect(() => {
+    if (open) setInputMode(initialMode);
+  }, [open, initialMode]);
+
   function reset() {
     setParsedItems(null);
     setDescription("");
     setMealType("lunch");
-    setInputMode("text");
+    setInputMode(initialMode);
     setImageFile(null);
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(null);

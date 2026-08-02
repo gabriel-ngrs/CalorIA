@@ -267,7 +267,7 @@ export default function PesoPage() {
                 return (
                   <div key={l.id} className="flex justify-between items-center py-2.5 px-6 hover:bg-muted/30 transition-colors">
                     <span className="text-muted-foreground text-xs">
-                      {new Date(l.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                      {new Date(l.date + "T12:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                     </span>
                     <div className="flex items-center gap-3">
                       {d !== null && (

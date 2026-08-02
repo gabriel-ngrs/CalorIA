@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { isAxiosError } from "axios";
 import { setApiToken } from "@/lib/api";
+import { devError, devLog } from "@/lib/dev-log";
 
 /** Sincroniza o token da sessão React com o cache do axios — sem chamadas HTTP extras */
 function SessionSync() {
@@ -28,7 +29,7 @@ function NavTimer() {
     if (prev.current && prev.current !== pathname) {
       const ms = (performance.now() - t0.current).toFixed(0);
       const slow = Number(ms) > 300 ? " ⚠️ LENTO" : "";
-      console.log(`[NAV] ${prev.current} → ${pathname}  ${ms}ms${slow}`);
+      devLog(`[NAV] ${prev.current} → ${pathname}  ${ms}ms${slow}`);
     }
     prev.current = pathname;
     t0.current = performance.now();
@@ -44,11 +45,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         queryCache: new QueryCache({
           onSuccess: (_data, query) => {
             const key = JSON.stringify(query.queryKey);
-            console.log(`[QUERY✓] ${key}`);
+            devLog(`[QUERY✓] ${key}`);
           },
           onError: (error, query) => {
             const key = JSON.stringify(query.queryKey);
-            console.error(`[QUERY✗] ${key}`, (error as Error).message);
+            devError(`[QUERY✗] ${key}`, (error as Error).message);
           },
         }),
         defaultOptions: {

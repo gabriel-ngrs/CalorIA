@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MacroCards } from "@/components/dashboard/MacroCards";
 import { MacroPieChart } from "@/components/dashboard/MacroPieChart";
 import { CaloriesBarChart } from "@/components/dashboard/CaloriesBarChart";
-import { QuickMealModal, QuickWaterModal, QuickWeightModal, QuickMoodModal } from "@/components/dashboard/QuickAddModals";
+import { QuickMealModal, QuickWaterModal, QuickWeightModal, QuickMoodModal, type InputMode } from "@/components/dashboard/QuickAddModals";
 import { useDashboardToday, useMacrosChart } from "@/lib/hooks/useDashboard";
 import { useMe } from "@/lib/hooks/useProfile";
 import type { MealType } from "@/types";
@@ -63,6 +63,7 @@ export default function DashboardPage() {
   const { data: macros } = useMacrosChart(7);
   const { data: user } = useMe();
   const [quickModal, setQuickModal] = useState<QuickModal>(null);
+  const [quickMealMode, setQuickMealMode] = useState<InputMode>("text");
   const router = useRouter();
 
   useEffect(() => {
@@ -106,7 +107,7 @@ export default function DashboardPage() {
   if (isEmpty) {
     return (
       <>
-        <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} />
+        <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} initialMode={quickMealMode} />
         <QuickWaterModal open={quickModal === "water"} onOpenChange={(v) => setQuickModal(v ? "water" : null)} />
         <QuickWeightModal open={quickModal === "weight"} onOpenChange={(v) => setQuickModal(v ? "weight" : null)} />
         <QuickMoodModal open={quickModal === "mood"} onOpenChange={(v) => setQuickModal(v ? "mood" : null)} />
@@ -330,7 +331,7 @@ export default function DashboardPage() {
         </h2>
         <div className="grid grid-cols-3 gap-3">
           <button
-            onClick={() => setQuickModal("meal")}
+            onClick={() => { setQuickMealMode("photo"); setQuickModal("meal"); }}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -339,7 +340,7 @@ export default function DashboardPage() {
             <span className="text-xs font-medium text-gray-600">Foto</span>
           </button>
           <button
-            onClick={() => setQuickModal("meal")}
+            onClick={() => { setQuickMealMode("text"); setQuickModal("meal"); }}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -348,7 +349,7 @@ export default function DashboardPage() {
             <span className="text-xs font-medium text-gray-600">Texto</span>
           </button>
           <button
-            onClick={() => setQuickModal("meal")}
+            onClick={() => { setQuickMealMode("audio"); setQuickModal("meal"); }}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 border border-border hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -366,7 +367,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick action modals */}
-      <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} />
+      <QuickMealModal open={quickModal === "meal"} onOpenChange={(v) => setQuickModal(v ? "meal" : null)} initialMode={quickMealMode} />
       <QuickWaterModal open={quickModal === "water"} onOpenChange={(v) => setQuickModal(v ? "water" : null)} />
       <QuickWeightModal
         open={quickModal === "weight"}

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import api from "@/lib/api";
 import type { GoalType, User, UserProfile } from "@/types";
 
@@ -34,6 +35,9 @@ export function useUpdateProfile() {
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["me"] });
     },
+    // Sem isto a falha era silenciosa: o formulário voltava ao estado normal e
+    // o usuário concluía que salvou.
+    onError: () => toast.error("Não foi possível salvar o perfil"),
   });
 }
 
@@ -45,5 +49,6 @@ export function useUpdateMe() {
       return data as User;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+    onError: () => toast.error("Não foi possível salvar suas metas"),
   });
 }
