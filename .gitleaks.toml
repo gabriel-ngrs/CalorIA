@@ -52,11 +52,21 @@ regex = '''(?i)(?:senha|password|pwd)[^\n]{0,40}?\.fill\(\s*["'][^"'\s${}]{6,}["
 keywords = ["fill("]
 
   [rules.allowlist]
-  description = "Senha propositalmente errada no teste de rejeição, e o placeholder de redação da Fase A.2"
+  description = """
+  Valores que não são credenciais, isentos um a um:
+  - `senhaerrada`: senha propositalmente errada no teste de rejeição.
+  - `[REDIGIDO]`: placeholder da redação dos documentos (Fase A.2).
+  - `SENHA-REDIGIDA`: texto de substituição gravado pelo `git filter-repo` na purga
+    do histórico. É literalmente o valor que tomou o lugar da credencial — isentá-lo
+    é a consequência lógica de a purga ter funcionado.
+  - `senha123`: senha sintética de um teste e2e de março/2026, viva só no histórico.
+  """
   regexTarget = "match"
   regexes = [
     '''senhaerrada''',
     '''\[REDIGIDO\]''',
+    '''SENHA-REDIGIDA''',
+    '''senha123''',
   ]
 
 # ---------------------------------------------------------------------------
@@ -72,7 +82,9 @@ keywords = ["@gmail", "@googlemail", "@hotmail", "@outlook", "@live", "@yahoo", 
   Duas isenções, ambas verificáveis:
   1. `devteste@gmail.com` — conta sintética de desenvolvimento semeada por
      `backend/scripts/seed_dev_user.py`. Não é caixa real e não pertence a ninguém.
-  2. `data/` — os CSVs do banco nutricional são dado bruto do Open Food Facts, que
+  2. `auditcaloria@gmail.com` — conta criada para a auditoria de março/2026, citada
+     em `docs/audit-report-2026-03-13.md`. Não é caixa pessoal.
+  3. `data/` — os CSVs do banco nutricional são dado bruto do Open Food Facts, que
      traz o e-mail do contribuidor em algumas linhas. É PII de terceiro dentro de um
      dataset público de origem externa, não credencial do projeto; a limpeza dessa
      tabela é a Roadmap 10.3, fora desta spec.
@@ -80,6 +92,7 @@ keywords = ["@gmail", "@googlemail", "@hotmail", "@outlook", "@live", "@yahoo", 
   regexTarget = "match"
   regexes = [
     '''devteste@gmail\.com''',
+    '''auditcaloria@gmail\.com''',
   ]
   paths = [
     '''^data/''',
