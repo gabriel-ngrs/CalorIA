@@ -2,14 +2,14 @@
 +++ backend/app/services/ai/vision_parser.py	2026-05-10 12:20:25.787913021 -0300
 @@ -1,5 +1,6 @@
  from __future__ import annotations
- 
+
 +import base64
  import json
  import logging
  from typing import TYPE_CHECKING
 @@ -15,68 +16,62 @@
  logger = logging.getLogger(__name__)
- 
+
  # ---------------------------------------------------------------------------
 -# Estágio 1 — Identificação (a IA só identifica, sem estimar macros)
 +# Estágio 1 — Identificação visual (sem macros)
@@ -43,7 +43,7 @@
 -em gramas, o método de preparo e as calorias totais para a porção.
 +_IDENTIFY_SYSTEM_PROMPT = """Você é um nutricionista analisando fotos de refeições brasileiras.
 +Identifique todos os alimentos visíveis, estime as porções e as calorias totais de cada item.
- 
+
  REGRAS ABSOLUTAS — nunca viole:
  1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
 -2. Liste CADA ingrediente separadamente, mesmo em pratos compostos.
@@ -61,7 +61,7 @@
 +6. NÃO calcule macros detalhados — apenas calorias totais da porção (kcal_estimate).
 +7. confidence: 0.9 = claramente identificado + porção bem visível; 0.7 = identificado mas porção incerta; 0.5 = difícil de identificar.
 +8. kcal_estimate: calorias totais da porção com base no seu conhecimento nutricional.
- 
+
  FORMATO OBRIGATÓRIO (array JSON):
  [
 -  {{
@@ -79,7 +79,7 @@
 +    "kcal_estimate": 245
 +  }
  ]
- 
+
 -{_PORTIONS_REF}"""
 -
 -_IDENTIFY_TEMPLATE = """CONTEXTO DO USUÁRIO (use para calibrar porções):
@@ -108,7 +108,7 @@
 +  Ovo inteiro médio = ~50g
 +  Fatia de pão de forma = ~25g
 +"""
- 
+
 -Retorne SOMENTE o array JSON com a identificação dos alimentos."""
 +_IDENTIFY_TEMPLATE = (
 +    "CONTEXTO DO USUÁRIO (use para calibrar porções):\n{user_context}\n\n"
@@ -117,7 +117,7 @@
 +    "2) Estime a porção em gramas usando as referências visuais. "
 +    "Retorne SOMENTE o array JSON com a identificação."
 +)
- 
+
  # ---------------------------------------------------------------------------
  # Estágio 2 — Estimativa de macros (fallback quando sem match no banco)
 @@ -94,8 +89,8 @@
@@ -133,13 +133,13 @@
  ]"""
 @@ -103,23 +98,22 @@
  _CONFIDENCE_THRESHOLD = 0.6
- 
- 
+
+
 -class MealParser:
 +class VisionParser:
      def __init__(self, client: AIClient) -> None:
          self._client = client
- 
+
      async def _identify_foods(
          self,
 -        description: str,
@@ -165,7 +165,7 @@
          data = extract_json_from_ai_response(raw)
 @@ -135,6 +129,11 @@
          to_estimate_idx: list[int] = []
- 
+
          for i, item in enumerate(items):
 +            # Só faz lookup quando a unidade é gramas
 +            if item.unit.lower() not in ("g", "gramas", "gr"):
@@ -203,9 +203,9 @@
              [item.model_dump() for item in items],
              ensure_ascii=False,
 @@ -246,18 +245,26 @@
- 
+
          return correct_calories(parsed)
- 
+
 -    async def parse(
 +    async def parse_base64(
          self,
@@ -233,5 +233,5 @@
 -                "A IA não conseguiu identificar os alimentos da descrição."
 +                "A IA não conseguiu identificar os alimentos na imagem."
              ) from exc
- 
+
          try:

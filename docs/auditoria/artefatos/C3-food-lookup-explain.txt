@@ -1,5 +1,5 @@
 === EXPLAIN ANALYZE — query atual (% OR similarity >=) ===
-                                                                         QUERY PLAN                                                                          
+                                                                         QUERY PLAN
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
  Limit  (cost=2253.41..2253.46 rows=20 width=43) (actual time=584.882..584.886 rows=20 loops=1)
    ->  Sort  (cost=2253.41..2288.51 rows=14037 width=43) (actual time=584.879..584.882 rows=20 loops=1)
@@ -14,7 +14,7 @@
 
 
 === EXPLAIN ANALYZE — só %>> (usa índice GIN) ===
-                                                                 QUERY PLAN                                                                  
+                                                                 QUERY PLAN
 ---------------------------------------------------------------------------------------------------------------------------------------------
  Limit  (cost=193.48..193.49 rows=4 width=43) (actual time=7.669..7.673 rows=20 loops=1)
    ->  Sort  (cost=193.48..193.49 rows=4 width=43) (actual time=7.668..7.669 rows=20 loops=1)
@@ -32,7 +32,7 @@
 
 
 === EXPLAIN ANALYZE — só similarity() >= (Seq Scan) ===
-                                                      QUERY PLAN                                                       
+                                                      QUERY PLAN
 -----------------------------------------------------------------------------------------------------------------------
  Limit  (cost=2148.07..2148.12 rows=20 width=43) (actual time=248.654..248.657 rows=20 loops=1)
    ->  Sort  (cost=2148.07..2183.15 rows=14034 width=43) (actual time=248.651..248.653 rows=20 loops=1)
@@ -47,7 +47,7 @@
 
 
 === Índices existentes em foods ===
-      indexname       |                                        indexdef                                        
+      indexname       |                                        indexdef
 ----------------------+----------------------------------------------------------------------------------------
  taco_foods_pkey      | CREATE UNIQUE INDEX taco_foods_pkey ON public.foods USING btree (id)
  taco_foods_name_key  | CREATE UNIQUE INDEX taco_foods_name_key ON public.foods USING btree (name)
@@ -59,8 +59,7 @@
 
 
 === Total de registros ===
- count 
+ count
 -------
  42103
 (1 row)
-

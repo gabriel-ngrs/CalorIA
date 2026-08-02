@@ -55,7 +55,7 @@ ERROR tests/unit/test_vision_parser.py::TestVisionParser::test_mime_type_e_passa
 ../../../.local/share/uv/python/cpython-3.12.11-linux-x86_64-gnu/lib/python3.12/asyncio/selector_events.py:651: in sock_connect
     return await fut
            ^^^^^^^^^
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 self = <_UnixSelectorEventLoop running=False closed=True debug=False>
 fut = None, sock = <socket.socket [closed] fd=-1, family=2, type=1, proto=6>
@@ -64,7 +64,7 @@ address = ('127.0.0.1', 5432)
     def _sock_connect_cb(self, fut, sock, address):
         if fut.done():
             return
-    
+
         try:
             err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if err != 0:

@@ -1,4 +1,4 @@
- schemaname |     tablename      |              indexname               |                                                  indexdef                                                   
+ schemaname |     tablename      |              indexname               |                                                  indexdef
 ------------+--------------------+--------------------------------------+-------------------------------------------------------------------------------------------------------------
  public     | ai_conversations   | ai_conversations_pkey                | CREATE UNIQUE INDEX ai_conversations_pkey ON public.ai_conversations USING btree (id)
  public     | ai_conversations   | ix_ai_conversations_external_chat_id | CREATE INDEX ix_ai_conversations_external_chat_id ON public.ai_conversations USING btree (external_chat_id)
@@ -37,4 +37,3 @@
  public     | weight_logs        | ix_weight_logs_user_id               | CREATE INDEX ix_weight_logs_user_id ON public.weight_logs USING btree (user_id)
  public     | weight_logs        | weight_logs_pkey                     | CREATE UNIQUE INDEX weight_logs_pkey ON public.weight_logs USING btree (id)
 (36 rows)
-

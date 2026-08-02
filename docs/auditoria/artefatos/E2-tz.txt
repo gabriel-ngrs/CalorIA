@@ -1,4 +1,4 @@
-     TimeZone      
+     TimeZone
 -------------------
  America/Sao_Paulo
 (1 row)
