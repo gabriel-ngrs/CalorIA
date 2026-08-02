@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-07-30
+updated_at: 2026-08-02
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001]
@@ -122,7 +122,7 @@ Agravante que bloqueia o resto: `backend/tests/conftest.py:69` chama
 documentada em `:64-68`. O efeito colateral é que até `pytest tests/unit
 --collect-only` falha com `InvalidPasswordError` sem um Postgres no ar — e o stub
 de `backend/tests/unit/conftest.py:12-18` não neutraliza isso, porque a conexão
-acontece no import do conftest pai, não numa fixture. Os 129 testes unitários são
+acontece no import do conftest pai, não numa fixture. Os 199 testes unitários são
 puros e usam mocks; deveriam rodar em segundos sem infraestrutura.
 
 **Ausência de eval.** Esta é a lacuna que o owner identificou e a que mais vale
@@ -304,14 +304,27 @@ Cada princípio rastreia a uma regra real do repositório.
 
 ## 3. Critérios de aceite
 
-- **AC-1** (FR-A1) — *Dado* o repositório após o Track A, *quando* se inspeciona o
-  HEAD de toda branch remota, *então* a credencial não aparece em nenhum arquivo, e
-  o owner confirmou por escrito no relatório da fase que a senha foi rotacionada nos
-  serviços afetados.
-- **AC-2** (FR-A2) — *Dado* o histórico purgado, *quando* se roda uma varredura de
-  segredos sobre todo o histórico (`gitleaks detect --log-opts="--all"`), *então* o
-  resultado é zero achados, e `docs/auditoria/achados.md` não contém comando de
+- **AC-1** (FR-A1) — *Dado* o repositório após a Fase A.1, *quando* se inspeciona o
+  working tree, *então* a credencial não aparece em nenhum arquivo; *e* o owner
+  confirmou por escrito no relatório da fase que a senha foi rotacionada nos serviços
+  afetados; *e* o repositório está privado até o fim da Fase A.2.
+- **AC-2** (FR-A2) — *Dado* o histórico purgado, *quando* se roda **(a)** a varredura
+  de segredos sobre todo o histórico com as regras do projeto
+  (`gitleaks detect --config .gitleaks.toml --log-opts="--all"`) *e* **(b)** a
+  verificação direta, independente de heurística,
+  `git log --all -S'<valor da credencial>' --oneline | wc -l`, *então* **(a)**
+  retorna zero achados *e* **(b)** retorna `0`; *e* o HEAD de toda branch remota está
+  livre da credencial; *e* nenhum documento de `docs/auditoria/` contém comando de
   extração nem e-mail pessoal.
+  > **Nota (2026-08-02).** A redação anterior aceitava
+  > `gitleaks detect --log-opts="--all"` com as regras default como gate. Isso é um
+  > gate **falso**: medido, ele retornava zero **antes** de qualquer purga, sobre um
+  > histórico que ainda continha a credencial em 11 commits (as regras default casam
+  > por forma de chave de API, não por senha arbitrária). Daí as duas exigências
+  > independentes — a varredura com `--config .gitleaks.toml` e a busca literal por
+  > conteúdo com `git log -S`, que não depende de heurística alguma. A cláusula sobre
+  > o HEAD das branches remotas migrou do AC-1 para cá: ela só é satisfazível depois
+  > do force-push da A.2, não pela A.1 isolada.
 - **AC-3** (FR-A3) — *Dado* um commit que introduza um segredo de teste, *quando* se
   tenta commitar, *então* o hook local rejeita; e *quando* o mesmo chega ao CI,
   *então* o job falha.
@@ -508,20 +521,43 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **Objetivo:** remover a credencial de todo o histórico e eliminar o mapa de
   extração publicado.
 - **Depende de:** `A.1`.
-- **Arquivos alterados:** `docs/auditoria/achados.md`, `docs/auditoria/log.md`.
+- **Arquivos alterados:** `docs/auditoria/achados.md`, `docs/auditoria/log.md`,
+  `docs/auditoria/runbook.md`, `docs/auditoria/07-seguranca.md`,
+  `docs/auditoria/artefatos/G1-creds.txt`, `docs/auditoria/plano.md`,
+  `docs/auditoria/plano-correcao.md`, `docs/auditoria/relatorio-preliminar.md`,
+  `docs/auditoria/08-testes.md`, `docs/legacy/analise.md`.
+  > **Escopo corrigido (2026-08-02).** O plano declarava 2 arquivos; a execução
+  > tocou 10. A credencial e o comando de extração viviam nos outros 8 também, e
+  > `runbook.md` e `07-seguranca.md` **ainda publicavam o comando de extração** —
+  > reescrever só os 2 declarados esvaziaria o FR-A2, que existe para eliminar o
+  > mapa de extração, não uma cópia dele. Ver
+  > `.codeflow/decisions/2026-08-02-extensao-escopo-redacao-pii-auditoria.md` e OQ7.
 - **Passos:**
-  1. Reescrever `docs/auditoria/achados.md` e `docs/auditoria/log.md` removendo o
+  1. Reescrever **todos os documentos listados em "Arquivos alterados"** removendo o
      e-mail pessoal e o comando de extração, preservando o achado em si (que houve
-     credencial hardcoded, que foi corrigida, e a lição) sem os dados.
+     credencial hardcoded, que foi corrigida, e a lição) sem os dados. O inventário
+     não é o do diagnóstico da §1 (que localizou uma ocorrência, `achados.md:36`):
+     é o resultado de uma varredura sobre `docs/` — ver a nota de escopo acima.
   2. Preparar o comando de `git filter-repo` que remove a credencial de todo o
      histórico, e documentá-lo no relatório da fase junto com o plano de force-push
      e o plano de reabertura dos PRs do Dependabot afetados.
   3. **Ação do owner, fora do agente:** executar `git filter-repo`, forçar push em
      todas as branches e refs, e solicitar ao GitHub Support a invalidação do cache
      de commits órfãos — que permanecem acessíveis por SHA mesmo após force-push.
+     > **Omissão deliberada do ticket ao GitHub Support (2026-08-02).** O owner
+     > decidiu não abrir o ticket, com fundamentação verificada no momento:
+     > `forks: 0` e `network: 0` (não existe rede de forks que mantivesse os
+     > objetos alcançáveis), `visibility: private` (acesso anônimo por SHA retorna
+     > 404), a senha já rotacionada nos serviços de reuso (credencial morta), e o
+     > e-mail restante declarado não sensível pelo owner. Risco residual e
+     > mitigação em OQ10 e
+     > `.codeflow/decisions/2026-08-02-omissao-ticket-github-support.md`.
   4. Verificar com varredura sobre todo o histórico que não há mais achados.
-- **Testes:** varredura de segredos sobre `--all` com zero achados; `git log --all`
-  sem ocorrência do e-mail; suíte completa verde após a reescrita.
+- **Testes (AC-2):** `gitleaks detect --config .gitleaks.toml --log-opts="--all"`
+  com zero achados **e** `git log --all -S'<valor da credencial>' --oneline | wc -l`
+  igual a `0` — as duas verificações, porque a varredura por heurística sozinha não
+  é gate (ver nota do AC-2); `git log --all` sem ocorrência do e-mail; suíte completa
+  verde após a reescrita.
 - **Escopo travado / violações BLOQUEANTES:** **o agente não executa `filter-repo`
   nem force-push** — prepara, documenta e verifica. Não apagar os achados de
   auditoria por inteiro: o registro do incidente tem valor e deve sobreviver sem os
@@ -537,7 +573,24 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **Objetivo:** fechar a classe de problema, não só a instância.
 - **Depende de:** `A.2`, `B.2`.
 - **Arquivos alterados:** `.pre-commit-config.yaml`, `.github/workflows/ci.yml`,
-  `SECURITY.md`.
+  `SECURITY.md`; e mais 19 arquivos num commit `style:` isolado, só de higiene
+  (whitespace no fim de linha e ausência de newline final).
+  > **Escopo corrigido (2026-08-02).** A dívida de whitespace/EOF é
+  > **pré-existente** e só ficou visível porque o gate desta fase é
+  > `pre-commit run --all-files`, que passa a rodar os hooks genéricos sobre o
+  > repositório inteiro. Decisão do owner: corrigir agora, num commit `style:`
+  > separado dos commits funcionais da fase, para não misturar higiene com
+  > mudança de comportamento e manter o gate honesto (nenhum hook foi
+  > desabilitado nem recebeu `exclude` para contornar a dívida).
+- **Arquivos novos:** `.gitleaks.toml`.
+  > **Escopo corrigido (2026-08-02).** O plano não previa arquivo de
+  > configuração. Medido: as regras default do gitleaks retornam
+  > `no leaks found` sobre um histórico que continha a credencial em 11 commits,
+  > porque casam segredos com **forma** reconhecível (chaves de API com prefixo)
+  > e a credencial era uma senha arbitrária. Com as 3 regras próprias, a mesma
+  > varredura passou a acusar 30 achados. Sem o arquivo, a A.3 entregaria um
+  > scanner que não detectaria o incidente que criou o Track A. Ver
+  > `.codeflow/decisions/2026-08-02-regras-proprias-gitleaks.md` e OQ8.
 - **Passos:**
   1. Adicionar o hook do `gitleaks` ao `.pre-commit-config.yaml`, que hoje tem
      apenas `ruff`, `ruff-format` e hooks genéricos.
@@ -583,7 +636,8 @@ que é telemetria de execução, fica o que é registro de engenharia.
   acomodar a mudança de fixture — se um teste quebrar, a fixture está errada. Não
   tocar em `backend/app/`.
 - **Critério de conclusão (gate):** AC-5 satisfeito; `make test-unit` e
-  `make test-integration` verdes; contagem de testes coletados inalterada.
+  `make test-integration` verdes; contagem de testes coletados inalterada
+  (199 testes unitários, medidos antes e depois da mudança).
 
 ### Fase B.2 — Reativar CI com gates bloqueantes *(S)*
 
@@ -592,7 +646,17 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **Objetivo:** voltar a impor a qualidade que já existe.
 - **Depende de:** `B.1`.
 - **Arquivos alterados:** `.github/workflows/ci.yml`, `.github/workflows/cd.yml`,
-  `Makefile`, `README.md`.
+  `Makefile`, `README.md`, `backend/tests/smoke_test.py`.
+  > **Escopo corrigido (2026-08-02).** Materialização do risco R3 ("reativar o CI
+  > expõe falhas latentes"): com os gatilhos restaurados, 3 testes falharam, todos
+  > em `backend/tests/smoke_test.py`. O arquivo é uma **sonda de ambiente** morando
+  > dentro da árvore de testes automatizados — fala com a API real da Groq e tem
+  > `DB_URL` hardcoded para `caloria_db`, o banco de **desenvolvimento**. Nunca
+  > poderia passar no CI. Recebeu `pytestmark = pytest.mark.skipif` quando
+  > `GROQ_API_KEY` não começa com `gsk_`, e skip em `InvalidCatalogNameError` no
+  > teste de banco. **Nenhum gate foi afrouxado** e nenhum `continue-on-error` foi
+  > adicionado. Ver `.codeflow/decisions/2026-08-02-smoke-test-como-sonda-de-ambiente.md`
+  > e OQ9.
 - **Passos:**
   1. Restaurar em `ci.yml` os gatilhos comentados em `:5-8` (`push` em `dev`,
      `pull_request` em `main`) e remover o `workflow_dispatch` isolado de `:9-10`
@@ -1373,6 +1437,56 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   premissa do owner é que os documentos estão desatualizados. A topologia em si é
   decidida na Fase E.2, com os fatos de E.1 em mãos.
 
+- **OQ7 — Extensão da redação de PII/comando de extração além dos 2 documentos
+  declarados na A.2.** **RESOLVIDO (2026-08-02).** Estender a reescrita a 10
+  arquivos (os 2 declarados + `runbook.md`, `07-seguranca.md`,
+  `artefatos/G1-creds.txt`, `plano.md`, `plano-correcao.md`,
+  `relatorio-preliminar.md`, `08-testes.md` e `docs/legacy/analise.md`).
+  Justificativa: a credencial e o comando de extração viviam nos 8 arquivos extras
+  também, e `runbook.md` e `07-seguranca.md` **ainda publicavam o comando de
+  extração** — limitar-se aos 2 declarados deixaria o mapa de extração publicado e
+  esvaziaria o FR-A2. Extensão reportada ao owner e autorizada antes da execução.
+  Ver `.codeflow/decisions/2026-08-02-extensao-escopo-redacao-pii-auditoria.md`.
+
+- **OQ8 — Regras próprias de detecção no gitleaks (`.gitleaks.toml`), não previstas
+  na A.3.** **RESOLVIDO (2026-08-02).** Adicionar `.gitleaks.toml` com
+  `useDefault = true` mais 3 regras próprias (`caloria-senha-hardcoded`,
+  `caloria-senha-preenchida-em-teste`, `caloria-email-pessoal`), que casam o
+  **padrão** — atribuição de senha, `.fill()` de senha em teste de UI, e-mail de
+  provedor de consumo — e nunca o valor concreto. Justificativa mensurável: as
+  regras default retornavam
+  `no leaks found` sobre um histórico que continha a credencial em **11 commits**,
+  porque casam segredos por forma reconhecível de chave de API, e a credencial era
+  uma senha arbitrária; com as regras próprias a mesma varredura passou a acusar
+  **30 achados**. Sem o arquivo, a A.3 entregaria um scanner incapaz de detectar o
+  incidente que criou o Track A. Consequência no gate: o AC-2 foi reescrito para
+  exigir `--config .gitleaks.toml` e uma verificação literal por `git log -S`.
+  Ver `.codeflow/decisions/2026-08-02-regras-proprias-gitleaks.md`.
+
+- **OQ9 — `backend/tests/smoke_test.py` falhando ao reativar o CI.**
+  **RESOLVIDO (2026-08-02).** Marcar os testes com
+  `pytestmark = pytest.mark.skipif` quando `GROQ_API_KEY` não começa com `gsk_`, e
+  skip em `InvalidCatalogNameError` no teste de banco — em vez de excluir o arquivo
+  da suíte ou afrouxar o gate. Justificativa: é a materialização do risco R3; o
+  arquivo é uma **sonda de ambiente** (fala com a API real da Groq, `DB_URL`
+  hardcoded para `caloria_db`, o banco de desenvolvimento) morando dentro da árvore
+  de testes automatizados — nunca poderia passar no CI. Nenhum gate de `ruff`,
+  `mypy`, `pytest` ou `npm run lint` foi relaxado e nenhum `continue-on-error` foi
+  introduzido. Débito registrado: mover a sonda para fora de `tests/`.
+  Ver `.codeflow/decisions/2026-08-02-smoke-test-como-sonda-de-ambiente.md`.
+
+- **OQ10 — Ticket ao GitHub Support para invalidação do cache de commits órfãos
+  (passo 3 da A.2).** **RESOLVIDO (2026-08-02).** Omitir o ticket, por decisão do
+  owner. Fundamentação verificada no momento da decisão: `forks: 0` e `network: 0`
+  (não há rede de forks que mantenha os objetos alcançáveis), `visibility: private`
+  (acesso anônimo por SHA retorna 404), senha já rotacionada nos serviços de reuso
+  (credencial morta) e e-mail remanescente declarado não sensível pelo owner.
+  **Risco residual acordado:** na Fase D.2 o repositório volta a ser público, e
+  commits órfãos em cache podem voltar a ser alcançáveis por SHA. Mitigação
+  combinada: deixar passar alguns dias entre a purga e a reabertura — prazo que as
+  dependências da D.2 consomem naturalmente.
+  Ver `.codeflow/decisions/2026-08-02-omissao-ticket-github-support.md`.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1384,7 +1498,7 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
       tratados.
 - [ ] **A.3** — AC-3; `pre-commit run --all-files` verde; CI verde.
 - [ ] **B.1** — AC-5; `pytest tests/unit/` sem infraestrutura; contagem de testes
-      coletados inalterada.
+      coletados inalterada (199 testes unitários).
 - [ ] **B.2** — AC-6; execução verde no GitHub Actions com os gatilhos restaurados.
 - [ ] **B.3** — AC-7 e AC-8; `make test-integration` verde.
 - [ ] **B.4** — AC-9; piso de cobertura ativo e CI verde.
