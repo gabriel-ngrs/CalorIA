@@ -74,7 +74,14 @@ jobs:
         run: ruff check .
 
       - name: Type check — mypy
-        run: mypy app/
+        run: mypy app/ evals/
+
+      # Camada RÁPIDA do eval: zero rede, roda a cada PR. Falha se o payload
+      # enviado ao provedor mudar sem atualização do snapshot — a regressão de
+      # prompt que sai de graça, antes de gastar quota. A camada completa roda
+      # em agenda, em `eval.yml`.
+      - name: Eval — camada rápida (sem rede)
+        run: pytest tests/unit/test_evals_snapshot.py tests/unit/test_evals_metrics.py tests/unit/test_evals_schema.py tests/unit/test_evals_invariance.py tests/unit/test_evals_report.py -q
 
       - name: Testes
         env:

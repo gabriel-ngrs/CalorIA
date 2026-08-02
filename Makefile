@@ -283,7 +283,7 @@ fmt:
 
 typecheck:
 	@echo "$(BLUE)Type check backend (mypy)...$(NC)"
-	@$(COMPOSE_DEV) exec backend mypy app/
+	@$(COMPOSE_DEV) exec backend mypy app/ evals/
 	@echo "$(BLUE)Type check frontend (tsc)...$(NC)"
 	@cd frontend && npx tsc --noEmit
 

@@ -134,3 +134,7 @@ data/raw/*.jsonl
 backend/artefatos/
 # Build de sondagem criado durante QA
 frontend/.next-probe/
+
+# Artefatos de uma execução do eval (o histórico versionado é o history.jsonl)
+backend/evals/runs/ultimo-relatorio.json
+backend/evals/runs/ultima-invariancia.json
