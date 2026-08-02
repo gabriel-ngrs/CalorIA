@@ -6,8 +6,8 @@ status: executado
 tentativa: 1
 reprovacoes: 0
 sha_inicial: 5769f238590027c4036776edddc679e5e0dafa4a
-sha_final: 66bc2d4ea8c7eba0d67d08284c5f668a189c3b76
-range: 5769f238590027c4036776edddc679e5e0dafa4a..66bc2d4ea8c7eba0d67d08284c5f668a189c3b76
+sha_final: 7bb06aab4ba590b46b9018e40d0bfab173b23f1b
+range: 5769f238590027c4036776edddc679e5e0dafa4a..7bb06aab4ba590b46b9018e40d0bfab173b23f1b
 ---
 
 # FASE A.3 — Relatório de execução
@@ -296,10 +296,30 @@ $ pytest tests/unit/ -q   → 199 passed
       instância"** — satisfeito só depois do `.gitleaks.toml`. Com as regras default a
       classe do incidente ficava aberta; a §5.5 mede a diferença.
 - [x] **`pre-commit run gitleaks --all-files` verde no repositório limpo** — §5.1.
-- [ ] **`pre-commit run --all-files` (todos os hooks) verde** — **NÃO satisfeito**,
-      por dívida de whitespace/EOF pré-existente em 25 arquivos fora do escopo. §5.1 e §9.1.
-- [ ] **"CI verde"** — **NÃO verificado.** Depende do push para `dev`, que não foi
-      feito (mesma pendência da B.2).
+- [ ] **`pre-commit run --all-files` (todos os hooks) verde** — **NÃO satisfeito, por
+      duas causas pré-existentes e independentes do gitleaks.** Deixo aberto de
+      propósito: fechá-lo exigiria trabalho fora dos arquivos que esta fase declara.
+      1. **Dívida de whitespace/EOF em 25 arquivos** (`docs/auditoria/artefatos/*.txt`,
+         CSVs de `data/`, uma migration, 4 testes, uma página do frontend). Os hooks
+         `trailing-whitespace` e `end-of-file-fixer` **já existiam** antes da A.3 e
+         nunca haviam rodado sobre a árvore inteira. Boa parte desses arquivos é
+         candidata à poda da Fase D.4 — sugiro resolver lá.
+      2. **`backend/.ruff_cache/` com subpastas de `root`**, criadas pelo container
+         Docker, que fazem o hook do `ruff` abortar com
+         `Failed to create temporary file … Permission denied`. Não é código: com
+         `RUFF_CACHE_DIR` apontando para outro diretório, `ruff` e `ruff-format`
+         passam. Some com `sudo rm -rf backend/.ruff_cache`.
+      Nenhuma das duas afeta o CI, que faz checkout limpo — a run
+      [#30751992281](https://github.com/gabriel-ngrs/CalorIA/actions/runs/30751992281)
+      está verde em `ruff`, `ruff-format` e no step do gitleaks.
+- [x] **"CI verde"** — **SATISFEITO em 2026-08-02.** O step
+      `Varredura de segredos — gitleaks` passou na run
+      [#30751992281](https://github.com/gabriel-ngrs/CalorIA/actions/runs/30751992281),
+      com os dois jobs `success`.
+      E o gate provou que não é decorativo: na run anterior (`#30751122897`) **este
+      mesmo step foi o que derrubou a build**, porque o histórico ainda continha a
+      PII. Só passou depois da purga da Fase A.2. É a sequência que se queria —
+      o scanner forçou a limpeza, em vez de aprová-la por omissão.
 
 ## 7. Definition of Done da fase
 
@@ -339,8 +359,27 @@ N/A — primeira execução.
      manter a varredura **e** somar a verificação direta
      `git log --all -S'<valor>' | wc -l == 0`, que não depende de heurística.
 
-2b. **O CI ficará vermelho até a purga.** É consequência desejada do item anterior, e
-   está detalhada na §5.5. Não é regressão nem erro de configuração.
+2b. **"O CI ficará vermelho até a purga" — foi exatamente o que aconteceu, e depois
+   ficou verde.** A run `#30751122897` falhou no step do gitleaks com o histórico
+   ainda contaminado; a purga da A.2 foi executada; a run `#30751992281` passou.
+   O gate cumpriu a função de forçar a limpeza. Não era regressão nem erro de
+   configuração — era o desenho.
+
+2c. **Quatro isenções adicionais foram necessárias após a purga** (commit
+   `ci(seguranca): isenta valores sinteticos remanescentes no gitleaks`), todas
+   nominais e verificadas uma a uma:
+
+   | Valor | Por que não é segredo |
+   |---|---|
+   | `SENHA-REDIGIDA` | É o texto que o `filter-repo` **escreveu no lugar** da senha. A regra pegou o resultado da própria purga — isentá-lo é a consequência lógica de ela ter funcionado |
+   | `senha123` | Senha sintética de um teste e2e de março/2026, viva só no histórico |
+   | `auditcaloria@gmail.com` | Conta criada para a auditoria de março, não é caixa pessoal |
+   | `[REDIGIDO]` | Placeholder de redação da A.2, já isento, agora documentado |
+
+   Houve ainda três falsos positivos que **não** exigiram isenção: vinham do branch
+   local `main`, que continuava apontando para o histórico pré-purga porque
+   `git reset --hard origin/dev` só move `dev`. Resolvido com
+   `git branch -f main origin/main`. O CI nunca foi afetado — faz clone limpo.
 
 3. **A dependência `A.2` não está concluída** (ver nota em §1). Se o avaliador seguir
    a máquina de estados de ARTIFACTS_SPEC §2.11 à risca, esta fase não era elegível.

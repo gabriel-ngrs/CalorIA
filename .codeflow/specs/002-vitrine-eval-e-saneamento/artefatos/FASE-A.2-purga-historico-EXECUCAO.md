@@ -6,8 +6,8 @@ status: executado
 tentativa: 1
 reprovacoes: 0
 sha_inicial: cb2e4ca7bd7323123ab4196d5f5906ff06dda7be
-sha_final: 76672b2ba7a60d0b49f3214b7812e4c713bf93b4
-range: cb2e4ca7bd7323123ab4196d5f5906ff06dda7be..76672b2ba7a60d0b49f3214b7812e4c713bf93b4
+sha_final: 7bb06aab4ba590b46b9018e40d0bfab173b23f1b
+range: cb2e4ca7bd7323123ab4196d5f5906ff06dda7be..7bb06aab4ba590b46b9018e40d0bfab173b23f1b
 ---
 
 # FASE A.2 — Relatório de execução
@@ -24,8 +24,12 @@ O comando de `git filter-repo`, o plano de force-push e o plano de tratamento do
 do Dependabot estão documentados na §5 deste relatório. **O agente não executou
 `filter-repo` nem force-push** — escopo travado da fase.
 
-A varredura de verificação (passo 4) **falha o gate**: a credencial continua em 11
-commits do histórico e em 8 arquivos do working tree fora do escopo declarado. Ver §6 e §9.
+**ATUALIZAÇÃO 2026-08-02 — a purga foi executada pelo owner e o gate FECHOU.**
+O `git filter-repo` rodou com o script preparado nesta fase, seguido de force-push em
+todas as branches. Resultado medido: **0 ocorrências** da credencial nas refs
+publicadas (eram 12 commits), `origin/main` limpo, **405 commits preservados na `dev`
+— nenhum perdido**, 9 PRs do Dependabot fechados e suas branches removidas. Evidência
+completa em §5.7.
 
 ## 2. Arquivos CRIADOS
 
@@ -292,21 +296,121 @@ versão de dev-dependencies do frontend (`@babel/*`, `@radix-ui/react-label`,
 `recharts`, `react-dom`). Fechar e deixar recriar é seguro e mais barato que rebasear
 5 branches sobre um histórico reescrito.
 
+### 5.7 EXECUÇÃO DA PURGA — 2026-08-02, pelo owner
+
+O plano da §5.4 foi transformado num script executável entregue ao owner
+(`~/purgar-historico-caloria.sh`, fora do repositório de propósito: ele manipula a
+credencial em texto claro). O agente **não o executou** — escopo travado respeitado.
+
+**Antes da reescrita (verificação de pré-condição do próprio script):**
+
+```text
+✓ senha:  encontrada em 10 commit(s)
+✓ e-mail: encontrado em 12 commit(s)
+✓ espelho pronto: 426 commits em 12 branches
+```
+
+**Depois da reescrita, antes de publicar:**
+
+```text
+  commits (branches+tags):  426 → 426
+  branches:                 12 → 12
+  dev: 405 commits   main: 234 commits   test: 51 commits
+✓ senha:  0 ocorrências no histórico reescrito
+✓ e-mail: 0 ocorrências no histórico reescrito
+✓ verificação completa — histórico limpo
+```
+
+**Depois do force-push, medido no repositório real:**
+
+```text
+$ git log origin/dev origin/main origin/test --oneline -S'<e-mail>' | wc -l
+0                                                  # era 12
+
+$ git show origin/main:frontend/e2e/auth.spec.ts | grep -c '<e-mail>'
+0                                                  # era 1
+
+# prova de que a substituição ocorreu (e não uma remoção de arquivos)
+$ git log origin/dev origin/main origin/test --oneline -S'email-redigido@example.com' | wc -l
+13
+$ git log origin/dev origin/main origin/test --oneline -S'SENHA-REDIGIDA' | wc -l
+11
+
+# varredura de segredos sobre o histórico publicado, comando exato do CI
+$ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+INF 413 commits scanned.
+INF no leaks found
+>>> exit=0
+```
+
+**Nenhum commit perdido — verificado antes de tocar no clone local:**
+
+```text
+os 28 commits que existiam só no local:  28
+presentes em origin/dev:                 28 de 28
+faltando:                                 0
+árvore de arquivos local vs origin/dev:  1 arquivo de diferença
+   └── docs/auditoria/09-qualidade.md — a purga redigiu uma ocorrência da senha
+       que as duas rodadas de redação manual da A.2 não tinham alcançado
+```
+
+**Dependabot, conforme o plano da §5.5:** os 9 PRs abertos (#13–#21) foram fechados
+com a justificativa padronizada e o inventário salvo em
+`~/caloria-backups/dependabot-prs-*.json`; as 9 branches órfãs foram removidas. O
+remoto ficou com exatamente `dev`, `main` e `test`.
+
+**Backup:** `~/caloria-backups/CalorIA-pre-purga-20260802-105424.tar.gz` (27 MB),
+espelho completo pré-reescrita, com o comando de restauração registrado.
+
+### 5.8 Dois defeitos do script, encontrados e corrigidos durante a execução
+
+Registrados por honestidade — o script é entregável desta fase.
+
+1. **Verificação medindo a coisa errada.** A primeira execução abortou no passo 7
+   acusando "6 commits perdidos". Investigação: a contagem usava
+   `rev-list --count --all`, que inclui `refs/pull/*` — refs sintéticas que o GitHub
+   gera para pull requests, somente-leitura, nunca enviadas por `push --all` e
+   regeneradas pelo próprio GitHub. O `filter-repo` legitimamente podou ali um commit
+   vazio e alguns merges degenerados. Comparação commit a commit de `refs/heads`:
+   **0 diferenças**. Corrigido para `--branches --tags`. **A parada foi um falso
+   alarme, mas o comportamento — não publicar em caso de dúvida — estava certo.**
+
+2. **Senha não encontrada passava batido.** A checagem de pré-condição exigia que
+   *algum* valor fosse achado; com a senha digitada errada, a reescrita rodaria
+   removendo só o e-mail e o owner ficaria achando que resolveu — o pior desfecho
+   possível. Corrigido para parada dura. E, como a digitação manual foi a origem do
+   erro, o script passou a **detectar a senha sozinho** no histórico, apresentando
+   apenas comprimento, primeira/última letra e número de commits para confirmação —
+   eliminando a necessidade de copiar e colar a credencial.
+
+Um terceiro defeito (o loop de remoção das branches do Dependabot terminando em `&&`,
+que sob `set -e` matava o script antes da ressincronização local) foi corrigido depois
+da execução; o efeito colateral — clone local desalinhado — foi resolvido à mão com
+`git reset --hard origin/dev` e `git branch -f main origin/main`.
+
 ## 6. Critérios de aceite da fase (com evidência)
 
 - [x] **AC-2, parte 2** — *"`docs/auditoria/achados.md` não contém comando de
       extração nem e-mail pessoal"*. Evidência: `grep -c` → 0 para e-mail e para o
       fragmento da senha; comando de extração da linha 36 substituído por prosa.
-- [ ] **AC-2, parte 1** — *"varredura de segredos sobre todo o histórico
-      (`gitleaks detect --log-opts="--all"`) → zero achados"*.
-      **Literalmente satisfeito (`EXIT=0`, "no leaks found"), mas o critério é
-      vazio** — ele já retornava zero antes de qualquer trabalho. A varredura que
-      mede de verdade (`git log -S`) retorna **11 commits com o e-mail e 3 com o
-      fragmento da senha**. Considero o AC **NÃO satisfeito** e reporto assim, em vez
-      de me abrigar na letra do critério.
-- [ ] **Critério de conclusão: "PRs do Dependabot reabertos ou fechados
-      conscientemente"** — **NÃO satisfeito.** O plano está escrito e é executável,
-      mas depende do force-push, que é do owner. Nenhum PR foi tocado.
+- [x] **AC-2, parte 1** — *"varredura de segredos sobre todo o histórico → zero
+      achados"*. **SATISFEITO, e agora de forma significativa.** Duas medições, porque
+      a primeira sozinha não provaria nada:
+      - `gitleaks detect --config .gitleaks.toml` → `no leaks found`, exit 0. Com as
+        regras próprias criadas na A.3, este comando **deixou de ser vazio**: antes da
+        purga ele acusava 30 achados.
+      - Verificação direta, que não depende de heurística:
+        `git log origin/dev origin/main origin/test -S'<e-mail>' | wc -l` → **0**
+        (era 12).
+- [x] **Critério de conclusão: "PRs do Dependabot reabertos ou fechados
+      conscientemente"** — **SATISFEITO.** 9 PRs (#13–#21) fechados com justificativa
+      registrada em cada um, inventário salvo antes da operação, e as 9 branches
+      órfãs removidas. Decisão consciente documentada na §5.5: nenhum era PR de
+      segurança, apenas bumps de dev-dependencies do frontend, então fechar e deixar
+      o Dependabot recriar é mais barato e mais seguro que rebasear sobre histórico
+      reescrito.
+- [x] **Critério de conclusão: "varredura sobre todo o histórico com zero achados;
+      documentos reescritos"** — SATISFEITO (§5.7 e §3.1).
 
 ## 7. Definition of Done da fase
 
@@ -326,10 +430,24 @@ N/A — primeira execução.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 
-1. **O gate da fase NÃO está satisfeito e a fase não deveria ser aprovada como está.**
-   O passo 3 (execução do `filter-repo` + force-push + ticket ao GitHub Support) é
-   explicitamente do owner e não aconteceu. A credencial segue em 11 commits e no
-   HEAD de `origin/main`.
+1. **DECISÃO DO OWNER: o ticket ao GitHub Support NÃO será aberto.** Registrado aqui
+   porque é o único passo da fase deliberadamente omitido, e o avaliador precisa
+   saber que foi escolha, não esquecimento.
+   Fundamentação verificada no momento da decisão:
+   - `forks: 0`, `network: 0` — commits órfãos continuariam alcançáveis por uma rede
+     de forks, e ela não existe. Este era o fator decisivo.
+   - `visibility: private` — o acesso anônimo por SHA direto, que é o vetor clássico
+     pós-force-push, retorna 404 num repositório privado.
+   - A senha já foi rotacionada (A.1), então um commit órfão recuperado entregaria
+     uma credencial morta.
+   - O que restaria é o e-mail, que o owner declarou não considerar sensível e que
+     permanece nas assinaturas dos ~439 commits por decisão dele.
+
+   **Risco residual e mitigação combinada:** na Fase D.2 o repositório volta a ser
+   público. Se o garbage collection do GitHub não tiver rodado até lá, objetos órfãos
+   poderiam voltar a ser alcançáveis por SHA. Mitigação acordada: deixar passar
+   alguns dias entre a purga e a reabertura — prazo que as dependências da D.2
+   consomem naturalmente.
 
 2. **O AC-2 é um gate falso e precisa de correção na spec.** `gitleaks` com regras
    default retorna zero para senhas arbitrárias — retornou zero *antes* da purga.
