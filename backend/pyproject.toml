@@ -103,6 +103,16 @@ testpaths = ["tests"]
 source = ["app"]
 omit = ["*/tests/*", "*/alembic/*"]
 
+[tool.coverage.report]
+# PISO, não meta. Medido em 2026-08-02 sobre a suíte completa (unit +
+# integration): 72%. O piso fica em 70% para absorver a variação entre
+# ambientes — os testes que dependem do banco nutricional semeado pulam onde
+# ele não existe — sem virar um número a perseguir.
+#
+# Subir o piso é decisão consciente, acompanhada da medição que a justifica.
+fail_under = 70
+show_missing = true
+
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",

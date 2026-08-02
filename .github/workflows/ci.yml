@@ -89,7 +89,9 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-test-secret-key-com-minimo-32-caracteres
           GROQ_API_KEY: fake-key-for-tests
-        run: pytest --cov=app --cov-report=xml -q
+        # `--cov-fail-under` aplica o piso LOCALMENTE, no próprio job: o
+        # upload ao Codecov tem `continue-on-error` e não serve de gate.
+        run: pytest --cov=app --cov-report=xml --cov-fail-under=70 -q
 
       - name: Upload cobertura
         uses: codecov/codecov-action@v4
