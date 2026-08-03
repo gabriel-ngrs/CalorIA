@@ -2,41 +2,64 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: D.6
 slug_fase: polimento-ui
-tentativa: 1
-veredito: RESSALVAS
-score: 9.5
+tentativa: 2
+veredito: APROVADO
+score: 9.7
 threshold: 8.5
-range_avaliado: 40e2941..7f9f59a
+range_avaliado: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE D.6 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.5 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.7 / threshold 8.5
 
-Os seis passos estão entregues, e a verificação do anti-FOUC é a melhor da fase:
-o executor não se contentou em ler o fonte, foi ao HTML pré-renderizado do build
-de produção e mediu a posição do script contra a do `<body>`. Isso é o padrão
-certo para um defeito que só existe em tempo de carregamento.
+**O D6-IMP-1 está fechado, pela opção mais barata das duas, e com uma peça a mais.** O
+teste é sobre o **hook**, com `sonner` mockado e sem montar a página — exatamente a
+saída que eu havia sugerido. E a afirmação mudou de natureza: os testes que já existiam
+verificavam o **conteúdo** da mensagem e passariam com dois toasts; os novos verificam a
+**contagem** (`toHaveBeenCalledTimes(1)`), que é o que o defeito violava.
 
-A ressalva é um teste que a fase pede nominalmente e que não foi escrito.
+Quatro testes novos, e o quarto é o que eu não tinha pedido:
+
+| teste | o que trava |
+|---|---|
+| `useLogMood emite exatamente um toast de sucesso` | o par página/hook do defeito original |
+| `useLogWeight emite exatamente um toast de sucesso` | mesmo padrão em peso |
+| `useLogHydration emite exatamente um toast de sucesso` | mesmo padrão em hidratação |
+| `a falha emite só o toast de erro, e nenhum de sucesso` | o caso negativo |
+
+Os três primeiros cobrem a sugestão da §5 da avaliação anterior — verificar se o mesmo
+par página/hook existe em outros lugares. E `humor/page.tsx:106` ganhou um comentário
+dizendo por que o toast **não** está ali, que é o que impede a reintrodução silenciosa
+pelo próximo editor.
+
+Revalidei os seis passos da fase no código, não no relatório, e os três itens do AC-23.
+Todos conferem. Detalhe em §6.
+
+**Nota de escopo desta avaliação:** a fase toca interface, e o protocolo prevê carregar
+as skills de auditoria visual nesse caso. O delta da tentativa 2 é um arquivo de teste;
+a substância visual foi avaliada na tentativa 1 e não mudou. Fiz a verificação
+funcional dos seis passos e a leitura de acessibilidade dos pontos que a fase alterou
+(§5), sem repetir a auditoria de design — declaro isso em vez de fingir cobertura que
+não exerci.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4 | Os seis passos verificados no diff. AC-23 nas três cláusulas: FOUC (script inline no `<head>`), logs de produção (`devLog`/`devError`), data do peso (`+ "T12:00"`). Escopo travado respeitado: nenhuma página refatorada, `getLocalToday`/`fileToBase64`/`MEAL_LABELS` seguem duplicados, biblioteca de toast inalterada. Desconto por D6-IMP-1. |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | `lib/dev-log.ts` é o ponto único de decisão sobre `NODE_ENV`, consumido por `api.ts` e `providers.tsx` — antes cada arquivo decidia sozinho (ou não decidia). `ThemeProvider` deixou de **aplicar** o tema no `useEffect` e passou a **alinhar** o estado ao DOM, o que é a correção estrutural certa: se continuasse aplicando, reintroduziria o flash que o script eliminou. |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Os logs removidos de produção emitiam uma linha por request, navegação e query — vazamento de dado de saúde para o console do navegador. Fechar isso é ganho de privacidade, não só de ruído. `try/catch` no script inline cobre navegador com `localStorage` bloqueado, onde a leitura já lança. |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | O padrão de guardar por `NODE_ENV` já existia em `providers.tsx:77` (ReactQueryDevtools) e virou função em vez de ser recopiado. O sufixo `"T12:00"` já era usado em três arquivos; o histórico de peso era o único ponto fora do padrão, e foi alinhado a ele. `next-themes` **não** foi adotado — a spec oferecia as duas rotas e trocar de biblioteca seria maior que o defeito. |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | `onError` nas 6 mutations segue o formato dos hooks existentes; `initialMode` entra como prop opcional, sem quebrar chamador. |
-| 6 | Local e nomes dos arquivos | 2 | 5 | `lib/dev-log.ts` junto de `lib/api.ts`; três arquivos de teste em `__tests__/` espelhando o caminho do código. |
-| 7 | Qualidade de código | 2 | 5 | `npx tsc --noEmit` limpo; `npm run lint` sem novidade (o único warning é o pré-existente de `Plasma.tsx:156`). O efeito que sincroniza `initialMode` na abertura resolve o caso real — o modal fica montado entre aberturas, então `useState` inicial só valeria para o primeiro atalho. |
-| 8 | Testes e cobertura | 2 | 4 | 14 testes novos (114 contra 100 antes da fase), cobrindo `devLog` nos dois ramos, a data com e sem o sufixo (reproduzindo o defeito anterior) e os cinco casos do modal, incluindo a reabertura com outro modo. Desconto por D6-IMP-1. |
-| 9 | Migration safety (se aplicável) | 2 | [—] | Não aplicável — fase só de frontend. |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | Os seis passos verificados no código (§6). AC-23 nas três partes: sem flash claro (script inline blocante, `layout.tsx:15,73`), console limpo em produção (zero `console.` em `lib/api.ts` e `app/providers.tsx`), data correta (`peso/page.tsx:270` com `+ "T12:00"`). Os quatro testes declarados agora existem. Escopo travado respeitado: páginas não refatoradas, `getLocalToday`/`fileToBase64`/`MEAL_LABELS` seguem duplicados como manda o escopo, e a biblioteca de toast é a mesma |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | Teste no hook e não na página — a afirmação fica onde o comportamento mora, e não depende de montar React Query + página. O `ThemeProvider` foi ajustado para **não** reaplicar o tema no `useEffect` (`theme-provider.tsx:20-28`), só alinhar o estado ao DOM: reaplicar reintroduziria o flash que o script eliminou, e o comentário registra isso |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Remover os logs de request/navegação/query do build de produção fecha um vazamento real: eram uma linha por request no console, com endpoint e atividade do usuário. O script inline tem `try/catch` para navegador com `localStorage` bloqueado, onde só **ler** já lança |
+| 4 | Reusar/espelhar, não duplicar | 3 | 4 | O teste reusa o `createWrapper` e os mocks já presentes no arquivo, sem fixture nova. Desconto: o passo 2 apontava `providers.tsx:77` (`NODE_ENV === "development"`) como precedente a espelhar, e a implementação **removeu** os logs em vez de guardá-los — resultado mais forte para o AC, mas não é o padrão nomeado (§8) |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | `initialMode` com default `"text"` e `useState(initialMode)` + `if (open) setInputMode(initialMode)` (`QuickAddModals.tsx:134,149,173`) — o modal reabre no modo pedido, não fica preso ao primeiro |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Arquivos declarados na §5 mais o teste novo, no diretório que já abriga os testes de hook |
+| 7 | Qualidade de código | 2 | 5 | Os comentários registram *por que*, nunca *o quê*: por que o `try` no script (`layout.tsx:14`), por que o `ThemeProvider` não reaplica (`:20-22`), por que o toast não está na página (`humor/page.tsx:106`). O último é o que fecha o buraco que o teste também fecha |
+| 8 | Testes e cobertura | 2 | 5 | `useLogs.test.ts` → 17 passed (§6); suíte inteira 118/118, contra 114 antes. O caso negativo ("a falha emite só o toast de erro") cobre o modo pelo qual um `onError` mal escrito vazaria sucesso |
+| 9 | Migration safety | 2 | [—] | Nenhuma migration tocada |
 
-Média ponderada das 8 dimensões aplicáveis: 95/20 = 4.75 → **9.5**.
+Score = (3·5 + 3·5 + 3·5 + 3·4 + 2·5 + 2·5 + 2·5 + 2·5) / 20 · 2 = 97/20 · 2 = **9.7**
 
 ## 3. Achados BLOQUEANTES
 
@@ -44,119 +67,147 @@ Nenhum.
 
 ## 4. Achados IMPORTANTES
 
-**D6-IMP-1 — o teste de toast único, pedido nominalmente pela fase, não foi
-escrito.**
+Nenhum.
 
-`SPEC_002...md:1232-1234`, "Testes (AC-23)":
+**D6-IMP-1 da tentativa 1 está fechado.** O achado era *"o teste de toast único, pedido
+nominalmente pela fase, não foi escrito"*, com duas correções sugeridas. Foi adotada a
+opção 1 (teste sobre o hook), estendida aos três pares página/hook e ao caso negativo:
 
-> teste de que a data renderizada confere; **teste de que um único toast é
-> emitido**; teste de que o modal abre no modo solicitado; build de produção sem
-> os logs.
-
-Três dos quatro existem. O do toast não — o executor marca `[~]` e explica: o
-toast duplicado saiu de `humor/page.tsx:107`, o import de `toast` saiu junto (e o
-lint quebraria se sobrasse não usado), e escrever o teste exigiria montar a
-página inteira com React Query e sonner.
-
-A explicação é verdadeira e a verificação por leitura de diff é razoável para um
-código que foi **removido**. Ainda assim isto é um item de teste declarado que
-não foi entregue, e a rule `testing` do framework é direta sobre mudança de
-comportamento precisar de teste correspondente. A consequência prática é
-concreta: nada impede que alguém reintroduza o `toast.success` na página numa
-próxima edição — o defeito volta silencioso, porque o hook continua emitindo o
-seu.
-
-**Correção sugerida** — a mais barata das duas:
-
-1. Teste sobre o **hook**, não sobre a página: montar `useLogs` com React Query e
-   afirmar que uma mutation bem-sucedida chama `toast.success` exatamente uma
-   vez, com `sonner` mockado. Não precisa da página.
-2. Ou, se montar a página for aceitável, um teste de integração leve com
-   `jest.mock("sonner")` contando as chamadas depois de submeter o formulário de
-   humor.
-
-Se o owner preferir aceitar o `[~]` como está, então a saída correta é registrar
-a exceção — a rule `testing` prevê exceções, mas exige que sejam declaradas, e
-uma decision de uma linha resolve.
+```text
+$ npx jest __tests__/lib/hooks/useLogs.test.ts
+✓ useLogMood emite exatamente um toast de sucesso
+✓ useLogWeight emite exatamente um toast de sucesso
+✓ useLogHydration emite exatamente um toast de sucesso
+✓ a falha emite só o toast de erro, e nenhum de sucesso
+Tests: 17 passed, 17 total
+```
 
 ## 5. Sugestões
 
-- **Script inline vs. `next-themes`** (dúvida 2 do EXECUCAO): a escolha foi certa
-  para esta fase. Mas `next-themes` continua no `package.json` sem ser usado —
-  dependência órfã que alguém vai tentar "aproveitar" um dia. Removê-la numa fase
-  de poda deixa a decisão explícita em vez de latente.
-- **Teste de frame do FOUC** (dúvida 1): não vale Playwright só por isso. A
-  verificação estrutural que o executor fez — script antes do `<body>` no HTML de
-  build — é a condição necessária e suficiente, e é mais estável que um teste
-  visual, que ficaria flaky. Recomendo não fazer.
-- O `devLog` depende de o bundler substituir `NODE_ENV` por literal para o `if`
-  virar código morto. É verdade no Next, mas é conhecimento implícito: um
-  comentário de uma linha em `dev-log.ts` explicando por que isso não deixa
-  string de log no bundle de produção evita que alguém "otimize" a função para
-  algo que quebre a eliminação.
-- `humor/page.tsx` e `useLogs.ts` emitiam toast cada um. Vale checar se o mesmo
-  padrão existe em outros pares página/hook — se existir, é o mesmo defeito
-  esperando, e um teste no hook (sugestão 1 acima) cobriria todos de uma vez.
+- **O script anti-FOUC não consulta `prefers-color-scheme`.** Ele lê
+  `caloria-theme` e aplica `dark` só se estiver salvo; visitante de primeira viagem com
+  SO em modo escuro recebe a interface clara. Não é defeito contra o AC-23, que fala de
+  "usuário com tema escuro **salvo**", e o default do produto é claro
+  (`theme-provider.tsx:13,18`) — mas é a diferença entre "sem flash" e "no tema que a
+  pessoa espera". Uma linha a mais no script (`||(!t&&matchMedia("(prefers-color-scheme:dark)").matches)`)
+  resolveria, e é decisão de produto, não de engenharia.
+- **`next-themes` continua no `package.json` sem uso.** O passo 1 o citava como
+  alternativa e o caminho escolhido foi outro, melhor para o caso. Concordo com o
+  relatório que remover é poda e tem fase própria (D.4) — registro para que a D.4 não o
+  perca.
+- **Leitura de acessibilidade dos pontos que a fase mexeu:** o `onError` acrescentado em
+  `useProfile.ts` (2 ocorrências) e `useReminders.ts` (4) é ganho real — falha silenciosa
+  é o pior caso para quem usa leitor de tela, porque não há nem pista visual a inferir.
+  E o toast duplicado não era só ruído visual: dois anúncios do mesmo evento em região
+  `aria-live` são lidos duas vezes. A correção melhora as duas coisas, mesmo sem ter
+  sido motivada por acessibilidade.
 
 ## 6. Comandos rodados + saídas reais
 
-Ambiente: branch `dev`, HEAD `e3a974a`.
-`git merge-base --is-ancestor 7f9f59a HEAD` → OK.
+> Gates compartilhados rodados uma vez sobre o HEAD atual (`ef17694`), descendente do
+> `sha_final` desta fase.
 
 ```text
-$ cd frontend && npm test
-Test Suites: 20 passed, 20 total
-Tests:       114 passed, 114 total
-Snapshots:   0 total
-Time:        4.207 s
+# --- Passo 2: ancestralidade e árvore limpa ---
+$ git status --porcelain | wc -l
+0
+$ git merge-base --is-ancestor 40e2941 HEAD                                  → ANCESTRAL
+$ git merge-base --is-ancestor 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f HEAD → ANCESTRAL
+$ git show 2d940ed --stat
+ frontend/__tests__/lib/hooks/useLogs.test.ts | 85 ++++++++++++++  (1 arquivo, aditivo)
 
-$ npx tsc --noEmit
-EXIT=0
+# --- D6-IMP-1 fechado ---
+$ cd frontend && npx jest __tests__/lib/hooks/useLogs.test.ts
+Tests: 17 passed, 17 total  (4 novos no bloco "toast único por registro")      ✓
+$ grep -n "toast" "app/(dashboard)/humor/page.tsx"
+106:    // O toast de sucesso é emitido pelo hook (useLogs.ts) — emitir de novo …
+   → nenhuma emissão na página, e o comentário explica a ausência              ✓
+$ grep -n "toast.success" lib/hooks/useLogs.ts | wc -l
+5      → o hook segue sendo a única fonte                                      ✓
 
-$ npm run lint -- --no-cache
-./components/auth/Plasma.tsx
-156:26  Warning: The ref value 'containerRef.current' will likely have changed [...]
-# único warning, pré-existente e fora do escopo desta fase
+# --- os seis passos da fase, relidos no código ---
+# 1) FOUC: script inline blocante, com try/catch
+$ sed -n '14,15p' app/layout.tsx
+// Roda antes do primeiro paint, síncrono e sem depender de React. O `try` cobre
+const THEME_NO_FLASH_SCRIPT = `try{var t=localStorage.getItem("caloria-theme");
+                                if(t==="dark"){document.documentElement.classList.add("dark")}}catch(e){}`;
+$ grep -n "dangerouslySetInnerHTML" app/layout.tsx        → 73                 ✓
+$ sed -n '20,28p' components/theme-provider.tsx
+// O script inline de `layout.tsx` já aplicou a classe antes do paint. Aqui
+// o estado só se alinha ao que está no DOM — nada é reaplicado …             ✓
 
-$ npm run build
-EXIT=0   (sem warnings; ver a avaliação da D.5)
+# 2) logs fora do build de produção
+$ grep -n "console\." lib/api.ts app/providers.tsx
+(vazio)                                                                        ✓
+$ grep -n "NODE_ENV" app/providers.tsx
+78:  {process.env.NODE_ENV === "development" && <ReactQueryDevtools …>}   (pré-existente)
 
-# passos 3, 4, 5 e 6 — verificados no diff do range
-$ git diff --stat 40e2941..7f9f59a -- frontend/ | tail -12
- frontend/lib/dev-log.ts                              | (novo)
- frontend/app/layout.tsx                              | script anti-FOUC no <head>
- frontend/components/theme-provider.tsx               | useEffect alinha, não aplica
- frontend/lib/api.ts                                  | 4 console.* → devLog/devError
- frontend/app/providers.tsx                           | 3 idem
- frontend/app/(dashboard)/peso/page.tsx               | + "T12:00"
- frontend/app/(dashboard)/humor/page.tsx              | toast duplicado + import removidos
- frontend/app/(dashboard)/dashboard/page.tsx          | estado quickMealMode
- frontend/components/dashboard/QuickAddModals.tsx     | initialMode
- frontend/lib/hooks/useProfile.ts                     | onError em 2 mutations
- frontend/lib/hooks/useReminders.ts                   | onError em 4 mutations
+# 3) data com o sufixo T12:00
+$ grep -n 'T12:00' "app/(dashboard)/peso/page.tsx"
+51: // O sufixo "T12:00" evita que a string date-only seja lida como meia-noite
+57:  date: new Date(d.date + "T12:00").toLocaleDateString("pt-BR", …)
+270: {new Date(l.date + "T12:00").toLocaleDateString("pt-BR", …)}              ✓
 
-$ gitleaks detect --config .gitleaks.toml --log-opts="d8cc463~1..HEAD"
-22 commits scanned.  no leaks found
+# 5) initialMode chegando ao modal
+$ grep -n "initialMode" "app/(dashboard)/dashboard/page.tsx" components/dashboard/QuickAddModals.tsx
+dashboard/page.tsx:110  <QuickMealModal … initialMode={quickMealMode} />
+dashboard/page.tsx:370  <QuickMealModal … initialMode={quickMealMode} />
+QuickAddModals.tsx:134  initialMode = "text",
+QuickAddModals.tsx:149  const [inputMode, setInputMode] = useState<InputMode>(initialMode);
+QuickAddModals.tsx:173  if (open) setInputMode(initialMode);                    ✓
 
-$ git status --short
-(limpo)
+# 6) onError nos hooks silenciosos
+$ grep -c "onError" lib/hooks/useProfile.ts lib/hooks/useReminders.ts
+useProfile.ts:2   useReminders.ts:4                                            ✓
+
+# --- gate da fase ---
+$ cd frontend && npm test         → Test Suites: 20 passed · Tests: 118 passed  ✓
+$ cd frontend && npm run lint     → exit 0 (1 Warning pré-existente, Plasma.tsx:156)  ✓
+$ cd frontend && npx tsc --noEmit → exit 0                                     ✓
+
+# --- gates de backend, sobre o HEAD atual (a fase não toca backend) ---
+$ docker exec caloria_backend pytest -q --cov=app --cov=evals
+620 passed, 1 skipped — Required test coverage of 72.0% reached. Total coverage: 74.28%
+$ docker exec caloria_backend ruff check . / ruff format --check . / mypy app/ evals/
+All checks passed! / 147 files already formatted / Success: no issues found in 81 source files
+
+$ git status --porcelain | wc -l
+0
 ```
-
-Não repeti a inspeção do HTML pré-renderizado: o `.next` foi regerado pelo meu
-`npm run build` e a verificação do executor (posição 3824 do script contra 4015
-do `<body>`, com o `<script>` colado no relatório) é reproduzível e específica o
-bastante para eu aceitá-la — o script inline está no `layout.tsx` e o App Router
-o emite no `<head>` por construção.
 
 ## 7. Itens da fase / DoD não atendidos
 
-- **"Teste de que um único toast é emitido"** — não entregue (D6-IMP-1).
-- Os demais itens do gate ("AC-23 satisfeito; `make test-frontend`, `npm run
-  lint` e `npx tsc --noEmit` verdes") estão cumpridos e verificados por execução
-  própria.
+| Item (§5 / §9 da spec) | Estado |
+|---|---|
+| Passo 1 — FOUC do tema eliminado | Atendido (script inline blocante, com `try/catch`) |
+| Passo 2 — logs fora do build de produção | Atendido (removidos; ver §8) |
+| Passo 3 — data do histórico de peso | Atendido (`peso/page.tsx:270`) |
+| Passo 4 — toast duplicado removido | Atendido, agora com teste e comentário |
+| Passo 5 — `initialMode` nos três atalhos | Atendido |
+| Passo 6 — `onError` em `useProfile` e `useReminders` | Atendido (2 e 4 ocorrências) |
+| Teste — data renderizada confere | Atendido |
+| **Teste — um único toast é emitido** | **Atendido nesta tentativa** (4 testes, incl. caso negativo) |
+| Teste — modal abre no modo solicitado | Atendido |
+| Teste — build de produção sem os logs | Atendido |
+| AC-23 (três partes) | Atendido |
+| Gate — `make test-frontend`, `npm run lint`, `npx tsc --noEmit` | Atendido, rodados por mim |
+
+Nada em aberto.
 
 ## 8. Divergências entre o relatório e o código real
 
-Nenhuma. As dez linhas da tabela de arquivos alterados conferem com o diff, e o
-item não entregue está marcado `[~]` com a razão, em vez de omitido. A contagem
-de testes (114, contra 100 antes da fase) confere com a minha execução.
+1. **Nenhuma divergência.** Os quatro testes existem com os nomes declarados, e os seis
+   passos conferem no código.
+
+2. **Divergência de letra, não de substância, herdada da tentativa 1:** o passo 2 pede
+   *"guardar atrás de `NODE_ENV`"* os logs e aponta `providers.tsx:77` como o padrão a
+   espelhar; a implementação **removeu** os `console.*`. O resultado é mais forte para o
+   AC-23 ("em build de produção o console não recebe log"), e foi aceito na avaliação da
+   tentativa 1 — não o reabro. Registro porque o efeito colateral é real: some também o
+   log de desenvolvimento, que era o motivo de a instrução dizer "guardar" em vez de
+   "remover". Se fizer falta em depuração, o padrão de `providers.tsx:77` continua ali
+   para reintroduzi-los guardados.
+
+3. **O relatório declara ter coberto a sugestão da §5 da avaliação anterior** (verificar
+   o mesmo par página/hook em outros lugares). Confirmei: peso e hidratação também
+   ganharam teste de contagem. É entrega acima do pedido.
