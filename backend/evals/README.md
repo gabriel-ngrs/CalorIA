@@ -143,6 +143,37 @@ contínua.
   autoconsistência mede separadamente (coeficiente de variação sobre a mesma
   entrada repetida).
 
+## O que a execução em replay mede — e o que ela não mede
+
+`python -m evals.runner --cassettes` resolve as respostas do provedor por gravação
+em disco (C.7). Isso torna a reexecução barata e **perfeitamente pareada**: o
+mesmo conjunto de respostas do modelo entra nas duas medições, então a diferença
+observada vem só do código.
+
+**O que o replay mede bem:** qualquer mudança de **pós-processamento** — sanity
+check, lookup no banco, normalização de porção, agregação de macros. Tudo isso
+roda *depois* da resposta da IA, sobre a resposta gravada. Foi assim que a
+correção do sanity check de fonte curada foi medida (MdAPE do estrato `composto`
+23,81% → 6,86%), e o pareamento é o que dá crédito ao número.
+
+**O que o replay NÃO mede:**
+
+- **Qualquer mudança que altere o payload enviado** — texto de prompt, versão de
+  prompt, modelo, `temperature`, `max_tokens`, `seed`. O cassette é indexado pelo
+  `sha256` do payload, então uma mudança dessas não tem gravação correspondente e
+  a execução estoura com `CassetteAusenteError`. Isso é por desenho: comparar
+  "antes e depois" com o mesmo vocabulário nos dois casos induz erro. Para medir
+  mudança de prompt é preciso regravar contra o provedor (`EVAL_RECORD_CASSETTES=1`),
+  e aí a comparação deixa de ser pareada no ruído do modelo.
+- **Ruído de amostragem do modelo.** As N repetições de um caso enviam o mesmo
+  payload, então em replay `reproduzir()` devolve N vezes a mesma string e o
+  coeficiente de variação é zero **por construção** — "o disco é determinístico",
+  não "o modelo é determinístico". Por isso o runner força `--repeticoes 1` em
+  replay e diz que forçou, em vez de publicar um zero que parece medição. O CV só
+  é legítimo com gravação ligada, que é o caso da execução agendada do `eval.yml`.
+  Quem quiser medir ruído sem gastar o dataset inteiro tem o grupo `inv-08` da
+  bateria de invariância, que chama o `AIClient` direto, sem cassette.
+
 ## Imutabilidade de versão de prompt
 
 Um arquivo de versão em `app/prompts/<nome>/v<N>.txt` **não é editado** depois de

@@ -49,6 +49,13 @@ def _relatorio(
         "modelo": "llama-3.3-70b-versatile",
         "amostragem": {"temperature": 0.1, "max_tokens": 8192, "seed": 20260802},
         "prompts": {"meal_identify": {"versao": prompt_v, "sha": "f1334ef6"}},
+        "custo": {
+            "chamadas": 20,
+            "tokens_in": 12345,
+            "tokens_out": 6789,
+            "origem": "provedor",
+        },
+        "latencia": {"n": 10, "mediana_s": 2.5, "total_s": 31.0},
         "agregado": agregado,
         "por_estrato": {"simples": agregado, "composto": agregado, "foto": agregado},
         "falhas": falhas or [],
@@ -184,3 +191,30 @@ class TestHistoricoVersionado:
 
         assert HISTORY_PATH.is_file()
         assert carregar_historico() == carregar_historico()
+
+
+class TestCustoELatenciaNoHistorico:
+    """C8-IMP-2: token é o recurso que já derrubou duas rodadas (risco R5)."""
+
+    def test_a_linha_registra_tokens_e_latencia(self) -> None:
+        linha = montar_linha(_relatorio(), git_commit="c" * 40)
+        assert linha["custo"]["tokens_in"] == 12345
+        assert linha["custo"]["tokens_out"] == 6789
+        assert linha["custo"]["chamadas"] == 20
+        assert linha["latencia"]["mediana_s"] == 2.5
+        assert linha["latencia"]["total_s"] == 31.0
+
+    def test_a_origem_do_custo_acompanha_o_numero(self) -> None:
+        """`tokens_in: 0` em replay significa "veio do disco", não "de graça"."""
+        assert montar_linha(_relatorio(), git_commit="c" * 40)["custo"]["origem"] == (
+            "provedor"
+        )
+
+    def test_relatorio_antigo_registra_nao_medido_em_vez_de_zero(self) -> None:
+        """As três linhas já gravadas são anteriores à instrumentação."""
+        relatorio = _relatorio()
+        del relatorio["custo"]
+        del relatorio["latencia"]
+        linha = montar_linha(relatorio, git_commit="c" * 40)
+        assert linha["custo"] is None
+        assert linha["latencia"] is None

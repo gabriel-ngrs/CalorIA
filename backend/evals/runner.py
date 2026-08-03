@@ -19,6 +19,7 @@ import asyncio
 import json
 import statistics
 import sys
+import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -28,10 +29,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import settings
 from app.prompts import get_prompt
 from app.services.ai import food_lookup as food_lookup_mod
-from app.services.ai.ai_client import AIClient
+from app.services.ai.ai_client import AIClient, UsoDaChamada
 from app.services.ai.meal_parser import MealParser
 from evals import metrics
-from evals.cassettes import AIClientComCassette
+from evals.cassettes import AIClientComCassette, gravacao_ligada
 from evals.schema import (
     CasoEval,
     Estrato,
@@ -79,6 +80,8 @@ class ResultadoCaso:
     itens: list[dict[str, Any]] = field(default_factory=list)
     identificacao: list[dict[str, Any]] = field(default_factory=list)
     lookups: list[dict[str, Any]] = field(default_factory=list)
+    #: Tempo de parede do caso inteiro, todas as repetições somadas.
+    segundos: float = 0.0
     erro: str | None = None
 
     @property
@@ -97,6 +100,25 @@ class ResumoEstrato:
     dentro_da_tolerancia_kcal: float | None
     mae_macros_g: dict[str, float] = field(default_factory=dict)
     acuracia_macros: dict[str, float] = field(default_factory=dict)
+
+
+class ContadorDeUso:
+    """Acumula tokens e chamadas ao provedor durante uma execução.
+
+    É passado como observador ao `AIClient`: sem isso o custo da rodada só
+    existiria no log estruturado, e a decisão "eval semanal ou diário" seguiria
+    sem o dado que o risco R5 (quota) exige.
+    """
+
+    def __init__(self) -> None:
+        self.tokens_in = 0
+        self.tokens_out = 0
+        self.chamadas = 0
+
+    def __call__(self, uso: UsoDaChamada) -> None:
+        self.tokens_in += uso.tokens_in
+        self.tokens_out += uso.tokens_out
+        self.chamadas += 1
 
 
 class ColetorDeEstagios:
@@ -160,6 +182,7 @@ async def executar_caso(
     pipeline do ruído de amostragem do modelo.
     """
     coletor.limpar()
+    inicio = time.monotonic()
     try:
         medidas: list[float] = []
         itens = []
@@ -178,8 +201,10 @@ async def executar_caso(
             referencia_kcal=caso.referencia_kcal,
             previsto_kcal=0.0,
             ape=float("nan"),
+            segundos=round(time.monotonic() - inicio, 3),
             erro=f"{type(exc).__name__}: {exc}",
         )
+    segundos = round(time.monotonic() - inicio, 3)
 
     previsto = statistics.median(medidas)
     cv = (
@@ -211,7 +236,23 @@ async def executar_caso(
         itens=[item.model_dump() for item in itens],
         identificacao=[i.model_dump() for i in identificados],
         lookups=list(coletor.lookups),
+        segundos=segundos,
     )
+
+
+def repeticoes_efetivas(repeticoes: int, *, usar_cassettes: bool) -> int:
+    """Repetições que produzem informação no modo de execução escolhido.
+
+    Em replay as N repetições de um caso enviam o **mesmo** payload, e o
+    cassette devolve N vezes a mesma resposta gravada: o coeficiente de variação
+    sairia zero por construção, e o relatório publicaria "o disco é
+    determinístico" como se fosse ruído do modelo. Repetir aí não mede nada —
+    só custa. Com gravação ligada o provedor é chamado a cada repetição e o CV
+    volta a ser legítimo.
+    """
+    if usar_cassettes and not gravacao_ligada() and repeticoes > 1:
+        return 1
+    return repeticoes
 
 
 def resumir(estrato: str, resultados: Sequence[ResultadoCaso]) -> ResumoEstrato:
@@ -301,6 +342,7 @@ def montar_relatorio(
     resultados: Sequence[ResultadoCaso],
     *,
     repeticoes: int = REPETICOES_PADRAO,
+    custo: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Relatório estruturado: por estrato e no agregado, com procedência."""
     por_estrato = {
@@ -324,6 +366,8 @@ def montar_relatorio(
             "repeticoes": repeticoes,
         },
         "ruido_do_modelo": _resumo_do_ruido(resultados),
+        "custo": custo or _CUSTO_NAO_MEDIDO,
+        "latencia": _resumo_da_latencia(resultados),
         "prompts": {
             nome: {"versao": p.version, "sha": p.sha256}
             for nome, p in (
@@ -334,6 +378,42 @@ def montar_relatorio(
         "agregado": asdict(resumir("agregado", resultados)),
         "por_estrato": {k: asdict(v) for k, v in por_estrato.items()},
         "falhas": [{"id": r.id, "erro": r.erro} for r in resultados if not r.executou],
+    }
+
+
+#: Custo publicado quando ninguém observou as chamadas — `montar_relatorio`
+#: chamado direto por teste, por exemplo. Zero aqui significaria "de graça".
+_CUSTO_NAO_MEDIDO: dict[str, Any] = {
+    "chamadas": 0,
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "origem": "nao medido",
+}
+
+
+def resumo_do_custo(contador: ContadorDeUso, *, origem: str) -> dict[str, Any]:
+    """Custo da execução, com a origem declarada.
+
+    A origem importa tanto quanto o número: em replay o provedor não é chamado,
+    e `tokens_in: 0` significa "veio do disco", não "saiu de graça".
+    """
+    return {
+        "chamadas": contador.chamadas,
+        "tokens_in": contador.tokens_in,
+        "tokens_out": contador.tokens_out,
+        "origem": origem,
+    }
+
+
+def _resumo_da_latencia(resultados: Sequence[ResultadoCaso]) -> dict[str, Any]:
+    """Tempo de parede por caso: mediana e total da execução."""
+    tempos = [r.segundos for r in resultados if r.segundos > 0]
+    if not tempos:
+        return {"n": 0, "mediana_s": None, "total_s": None}
+    return {
+        "n": len(tempos),
+        "mediana_s": round(statistics.median(tempos), 3),
+        "total_s": round(sum(tempos), 3),
     }
 
 
@@ -364,6 +444,8 @@ def formatar_texto(relatorio: dict[str, Any]) -> str:
         f"modelo      : {relatorio['modelo']}",
         f"amostragem  : {relatorio['amostragem']}",
         f"prompts     : {relatorio['prompts']}",
+        f"custo       : {relatorio.get('custo')}",
+        f"latencia    : {relatorio.get('latencia')}",
         "",
         f"{'estrato':<12} {'n':>4} {'MdAPE':>8} {'IC95':>18} {'SSPB':>9} {'<=10%':>7}",
         "-" * 72,
@@ -419,23 +501,41 @@ async def executar(
     if not casos:
         raise SystemExit(f"nenhum caso executável para estrato={estrato!r}")
 
+    efetivas = repeticoes_efetivas(repeticoes, usar_cassettes=usar_cassettes)
+    if efetivas != repeticoes:
+        print(
+            f"aviso: --repeticoes {repeticoes} reduzido a 1 — em replay as "
+            "repetições devolvem a mesma gravação e o coeficiente de variação "
+            "sairia zero por construção. Regrave com EVAL_RECORD_CASSETTES=1 "
+            "para medir ruído do modelo.",
+            file=sys.stderr,
+        )
+
     engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
     sessao = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     coletor = ColetorDeEstagios()
+    contador = ContadorDeUso()
     lookup_original = instrumentar_lookup(coletor)
     try:
-        cliente: Any = AIClient()
+        cliente: Any = AIClient(observador=contador)
+        origem = "provedor"
         if usar_cassettes:
             cliente = AIClientComCassette(cliente)
+            origem = "provedor" if gravacao_ligada() else "replay"
         parser = MealParser(cliente)
         resultados = []
         async with sessao() as db:
             for indice, caso in enumerate(casos, start=1):
                 print(f"[{indice}/{len(casos)}] {caso.id}", file=sys.stderr)
                 resultados.append(
-                    await executar_caso(caso, parser, db, coletor, repeticoes)
+                    await executar_caso(caso, parser, db, coletor, efetivas)
                 )
-        return montar_relatorio(casos, resultados, repeticoes=repeticoes)
+        return montar_relatorio(
+            casos,
+            resultados,
+            repeticoes=efetivas,
+            custo=resumo_do_custo(contador, origem=origem),
+        )
     finally:
         food_lookup_mod.lookup_food = lookup_original
         await engine.dispose()

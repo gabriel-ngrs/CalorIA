@@ -22,24 +22,47 @@ from evals.cassettes import (
     gravar,
     reproduzir,
 )
-from evals.runner import CONTEXTO_NEUTRO
+from evals.runner import CONTEXTO_NEUTRO, repeticoes_efetivas
 from evals.schema import carregar_casos
 
-#: `sha256` do payload renderizado de cada prompt de produção, com um contexto
-#: fixo. Mudar prompt, parâmetro de amostragem ou modelo move o `sha` e quebra
-#: aqui — o diff no PR mostra exatamente o quê.
+#: `sha256` do payload renderizado de **cada um dos quatro** prompts de
+#: produção, com um contexto fixo. Mudar prompt, parâmetro de amostragem ou
+#: modelo move o `sha` e quebra aqui — o diff no PR mostra exatamente o quê.
+#:
+#: O teste de `sha` do registry (C.1) pega mudança de *texto de prompt*; este
+#: pega mudança de qualquer coisa que vá no envelope — modelo, `temperature`,
+#: `max_tokens`, `seed`, formato da mensagem. São defeitos diferentes.
 SNAPSHOT_DE_PAYLOAD = {
     "meal_identify": "ee413e7a6a322f841c34e94574e1eff0408492ee4470ac26a2b1e98d640d7995",
+    "meal_fallback": "237cd3db2dfc79fd9628373e57f3ec1c5cf52f0c5a38b6c51d90d70eefd2f52f",
+    "vision_identify": "3c774d4c02ffcae36ed937189bc2715d4fad2372efddd2f4b0b41c7f3d756417",
+    "vision_fallback": "7adc5e0b4d86da069f369febb688591f7e561b293f7836120b028be4f592964b",
 }
 
 _DESCRICAO_FIXA = "1 prato de arroz feijão e frango grelhado"
 
+#: Os dois `*_fallback` não têm template de user message — quem monta é o
+#: parser. Este texto espelha o formato que ele envia (`meal_parser.py:310-313`).
+_PEDIDO_DE_MACROS = (
+    "Calcule os macronutrientes para os alimentos abaixo:\n"
+    '[{"food_name": "arroz", "quantity": 150.0, "unit": "g", "preparation": null}]'
+)
 
-def payload_de_texto(nome: str, **variaveis: str) -> dict[str, object]:
+#: Prompts que saem pelo modelo de visão, e não pelo de texto.
+_PROMPTS_DE_VISAO = frozenset({"vision_identify", "vision_fallback"})
+
+
+def payload_de_texto(
+    nome: str,
+    *,
+    user_msg: str | None = None,
+    modelo: str | None = None,
+    **variaveis: str,
+) -> dict[str, object]:
     """Monta o payload que o `AIClient` enviaria — sem enviar nada."""
     prompt = get_prompt(nome)
     return {
-        "model": settings.GROQ_TEXT_MODEL,
+        "model": modelo or settings.GROQ_TEXT_MODEL,
         "temperature": settings.GROQ_TEMPERATURE,
         "max_tokens": settings.GROQ_MAX_TOKENS,
         "seed": settings.GROQ_SEED,
@@ -47,20 +70,42 @@ def payload_de_texto(nome: str, **variaveis: str) -> dict[str, object]:
         "prompt_sha": prompt.sha256,
         "messages": [
             {"role": "system", "content": prompt.system},
-            {"role": "user", "content": prompt.render(**variaveis)},
+            {
+                "role": "user",
+                "content": user_msg
+                if user_msg is not None
+                else prompt.render(**variaveis),
+            },
         ],
     }
 
 
-class TestSnapshotDePayload:
-    def test_payload_do_meal_identify_esta_travado(self) -> None:
-        """Editar o prompt sem atualizar o snapshot faz o CI falhar."""
-        payload = payload_de_texto(
-            "meal_identify",
+def payload_do_prompt(nome: str) -> dict[str, object]:
+    """Payload de qualquer um dos quatro prompts, com entrada fixa."""
+    modelo = settings.GROQ_VISION_MODEL if nome in _PROMPTS_DE_VISAO else None
+    if nome == "meal_identify":
+        return payload_de_texto(
+            nome,
+            modelo=modelo,
             user_context=CONTEXTO_NEUTRO,
             description=_DESCRICAO_FIXA,
         )
-        assert chave_do_payload(payload) == SNAPSHOT_DE_PAYLOAD["meal_identify"]
+    if nome == "vision_identify":
+        return payload_de_texto(nome, modelo=modelo, user_context=CONTEXTO_NEUTRO)
+    return payload_de_texto(nome, modelo=modelo, user_msg=_PEDIDO_DE_MACROS)
+
+
+class TestSnapshotDePayload:
+    @pytest.mark.parametrize("nome", sorted(SNAPSHOT_DE_PAYLOAD))
+    def test_payload_do_prompt_esta_travado(self, nome: str) -> None:
+        """Editar o prompt sem atualizar o snapshot faz o CI falhar."""
+        assert chave_do_payload(payload_do_prompt(nome)) == SNAPSHOT_DE_PAYLOAD[nome]
+
+    def test_o_snapshot_cobre_todos_os_prompts_de_producao(self) -> None:
+        """Prompt novo sem snapshot passaria despercebido — este teste impede."""
+        from app.prompts import PromptRegistry
+
+        assert set(SNAPSHOT_DE_PAYLOAD) == set(PromptRegistry().names())
 
     def test_o_payload_carrega_a_identidade_do_prompt(self) -> None:
         payload = payload_de_texto(
@@ -217,3 +262,32 @@ class TestCamadaRapidaNaoTocaARede:
             "meal_identify", user_context="ctx", description="arroz"
         )
         assert payload["messages"]
+
+
+class TestRepeticoesEmReplay:
+    """C5-IMP-1: repetir em replay mede o disco, não o modelo."""
+
+    def test_replay_reduz_repeticoes_a_uma(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("EVAL_RECORD_CASSETTES", raising=False)
+        assert repeticoes_efetivas(3, usar_cassettes=True) == 1
+
+    def test_gravando_preserva_as_repeticoes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Com gravação ligada o provedor é chamado a cada repetição."""
+        monkeypatch.setenv("EVAL_RECORD_CASSETTES", "1")
+        assert repeticoes_efetivas(3, usar_cassettes=True) == 3
+
+    def test_sem_cassettes_preserva_as_repeticoes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("EVAL_RECORD_CASSETTES", raising=False)
+        assert repeticoes_efetivas(3, usar_cassettes=False) == 3
+
+    def test_uma_repeticao_nunca_e_alterada(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("EVAL_RECORD_CASSETTES", raising=False)
+        assert repeticoes_efetivas(1, usar_cassettes=True) == 1

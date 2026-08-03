@@ -65,6 +65,11 @@ def montar_linha(
         "modelo": relatorio["modelo"],
         "amostragem": relatorio["amostragem"],
         "prompts": relatorio["prompts"],
+        # Custo e latência entram com `.get` porque relatórios gravados antes
+        # da instrumentação não os têm — registrar `None` diz "não medido", que
+        # é diferente de `0`, que diria "não custou nada".
+        "custo": relatorio.get("custo"),
+        "latencia": relatorio.get("latencia"),
         "dataset_sha": dataset["sha"],
         "dataset_n": dataset["n"],
         "dataset_distribuicao": dataset["distribuicao"],
