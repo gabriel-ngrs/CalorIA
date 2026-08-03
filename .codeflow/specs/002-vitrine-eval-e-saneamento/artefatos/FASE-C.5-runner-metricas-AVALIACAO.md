@@ -2,11 +2,11 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.5
 slug_fase: runner-metricas
-tentativa: 1
+tentativa: 2
 veredito: RESSALVAS
 score: 9.5
 threshold: 8.5
-range_avaliado: 0d4d9ec..e338ed4
+range_avaliado: 0d4d9ec..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.5 — Avaliação independente
@@ -15,172 +15,198 @@ range_avaliado: 0d4d9ec..e338ed4
 
 **Veredito:** RESSALVAS · **Score:** 9.5 / threshold 8.5
 
-`metrics.py` é o melhor arquivo do Track C: funções puras, justificativa
-estatística correta e testes contra valor calculado à mão. E a fase entregou o
-que o projeto inteiro existia para conseguir — o primeiro defeito de qualidade de
-IA nomeado com número, não com opinião.
+**Os dois achados da tentativa 1 estão fechados, e o primeiro foi fechado com as duas
+correções que a avaliação ofereceu como alternativas, não com uma.** Eu havia sugerido
+*ou* forçar `repeticoes = 1` em replay *ou* publicar `origem` em vez de zeros. O
+executor fez as duas:
 
-Duas ressalvas. A mais séria é uma armadilha de validade introduzida pela própria
-rodada de correção: `--repeticoes N` combinado com `--cassettes` em modo replay
-reporta ruído do modelo igual a zero **por construção**, e nada no relatório
-avisa disso.
+```text
+$ python -m evals.runner --cassettes --repeticoes 3 --json
+amostragem     : {'temperature': 0.1, 'max_tokens': 8192, 'seed': -1, 'repeticoes': 1}
+ruido_do_modelo: {"n": 0, "cv_mediano": null, "cv_maximo": null}
+```
+
+O `--repeticoes 3` vira 1 com aviso em `stderr`, e o campo de ruído publica `null` em
+vez de `0.0`. Não sobra caminho pelo qual "o disco é determinístico" apareça como
+medição de ruído do modelo. O C5-IMP-2 também está fechado: `evals/README.md:146-176`
+tem a seção "O que a execução em replay mede — e o que ela não mede", com a distinção
+pós-processamento × mudança de payload.
+
+**O que impede o APROVADO é o mesmo defeito, sobrevivendo no campo irmão.** O `custo`
+declara de onde veio (`origem: 'replay'`); a `latencia` publicada ao lado **não
+declara nada**, e em replay ela mede leitura de disco. Detalhe em §4.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | AC-13 completo: MdAPE e SSPB por estrato e agregado, `n` e IC95 por estrato (`runner.py:236-251`), macros em MAE com tolerância **absoluta** (`_mae_macros`, `TOLERANCIA_MACRO_G = 5.0`). Escopo travado: MdAPE é a headline e `mape()` existe só para exibir o contraste (`metrics.py:65-71`); nenhum percentual para macros; limiares de `test_golden_set.py` intocados. |
-| 2 | Arquitetura e direção de dependências | 3 | 4 | `metrics.py` é puro e não conhece o pipeline — testável sem banco, sem rede, sem IA, como a fase exige. Desconto: `runner.py:168-171` chama `parser._identify_foods` e `parser._lookup_and_fill`, dois métodos privados do `MealParser` (§5). |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Nenhum segredo no relatório emitido; `montar_relatorio` publica modelo, amostragem e `sha` de prompt, nunca chave. `gitleaks` sobre o range: zero achados. |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | Usa o `MealParser` **de produção**, não uma reimplementação — o que o eval mede é o que o usuário recebe. `instrumentar_lookup` reusa o padrão de monkeypatch de `scripts/instrument_meal_pipeline.py:118` e devolve a original para o chamador restaurar (`runner.py:439-440`, no `finally`), evitando vazamento entre execuções. |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | Dataclasses para resultado, enum para estrato, CLI por `argparse` como os demais módulos de `evals/`. Estrato vazio vira `n=0` em vez de sumir do relatório — decisão pequena e certa. |
-| 6 | Local e nomes dos arquivos | 2 | 5 | `evals/metrics.py`, `evals/runner.py`, `tests/unit/test_evals_metrics.py` — exatamente onde a fase pediu. |
-| 7 | Qualidade de código | 2 | 4 | `mypy` strict limpo; funções curtas; os docstrings explicam a escolha estatística, não a mecânica. Desconto pelo C5-IMP-1, que é de projeto de medição e não de estilo. |
-| 8 | Testes e cobertura | 2 | 5 | 31 testes com o valor esperado escrito no comentário. O teste da assimetria do APE (erro de 2× e de ½× dão o mesmo módulo em log accuracy ratio e APEs de 100% e 50%) é a prova de que a escolha da métrica headline não é arbitrária. |
-| 9 | Migration safety (se aplicável) | 2 | [—] | Nenhuma migration no range (NFR-7). |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | AC-13 verificado por execução, não por leitura (§6): MdAPE e SSPB por estrato e no agregado, `n` e IC95 por estrato, macros em `MAE em gramas, tolerancia absoluta — nunca %`. Escopo travado respeitado: MAPE não é headline; nenhum percentual para macros; as métricas são funções puras testáveis sem rede; e `tests/integration/test_golden_set.py` não recebeu **nenhum** commit no range |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | `repeticoes_efetivas` (`runner.py:243-255`) é função pura, testável isoladamente, com o *porquê* no docstring; a decisão não ficou enterrada dentro de `executar()` |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | O relatório publica métricas agregadas e `id` de caso; nenhuma descrição de refeição de usuário real, nenhum token. O `ContadorDeUso` observa consumo sem tocar em conteúdo |
+| 4 | Reusar/espelhar, não duplicar | 3 | 4 | O contador de uso é passado como observador ao `AIClient` em vez de duplicar contabilidade (`runner.py:108`). Desconto: `resumo_do_custo(contador, origem=origem)` (`:394-405`) e `_resumo_da_latencia(resultados)` (`:408`) são irmãos no mesmo arquivo e só o primeiro declara a origem — espelhar o padrão teria evitado o achado 4.1 |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | Estrato vazio vira `n=0` em vez de sumir (`resumir`, `:258-259`), e o relatório imprime `foto 0 (vazio)` — decisão certa para um dataset que ainda não tem o estrato |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Exatamente os arquivos declarados na §5 |
+| 7 | Qualidade de código | 2 | 5 | Os docstrings registram o *porquê* não-óbvio (por que repetir em replay não mede nada; por que a origem importa tanto quanto o número) |
+| 8 | Testes e cobertura | 2 | 4 | `repeticoes_efetivas` coberto nos quatro casos de fronteira (`test_evals_snapshot.py:274-293`), e `test_a_origem_do_custo_acompanha_o_numero` trava a origem do custo. Desconto: não há o teste equivalente para a latência — que é justamente o campo do achado 4.1 |
+| 9 | Migration safety | 2 | [—] | Nenhuma migration tocada |
 
-Média ponderada das 8 dimensões aplicáveis: 95/20 = 4.75 → **9.5**.
+Score = (3·5 + 3·5 + 3·5 + 3·4 + 2·5 + 2·5 + 2·5 + 2·4) / 20 · 2 = 95/20 · 2 = **9.5**
 
 ## 3. Achados BLOQUEANTES
 
 Nenhum.
 
+Os dois achados da tentativa 1 estão fechados e verificados por execução (§6):
+**C5-IMP-1** (CV zero por construção em replay) e **C5-IMP-2** (limitação do replay
+não documentada).
+
 ## 4. Achados IMPORTANTES
 
-**C5-IMP-1 — `backend/evals/runner.py:184-189` + `:340-351`: com `--cassettes` em
-replay, o coeficiente de variação é zero por construção, e o relatório o publica
-como se fosse medição de ruído do modelo.**
+**C5-IMP-3 — `backend/evals/runner.py:408-411`: a latência é publicada sem declarar a
+origem, e em replay ela mede o disco. É o defeito do C5-IMP-1 no campo irmão.**
 
-O `--repeticoes N` foi acrescentado na rodada de correção justamente para separar
-duas fontes de erro (`CORRECOES-2026-08-02-POS-VALIDACAO.md` §3): erro do
-pipeline contra a referência, e ruído de amostragem do modelo. O segundo sai em
-`ruido_do_modelo.cv_mediano`.
+**Onde:** `_resumo_da_latencia` (`runner.py:408`) contra `resumo_do_custo`
+(`runner.py:394-405`), que recebe `origem` e a publica.
 
-Mas o cassette é indexado pelo `sha256` do payload
-(`evals/cassettes/__init__.py:107-116`), e as N repetições de um caso enviam
-**exatamente o mesmo payload**. Em replay, `reproduzir()` devolve N vezes a mesma
-string gravada. Logo:
+**O defeito.** Rodei o runner em replay:
 
-- `medidas` fica com N valores idênticos;
-- `statistics.stdev(medidas)` = 0;
-- `cv` = 0.0;
-- `_resumo_do_ruido` reporta `cv_mediano: 0.0`, `cv_maximo: 0.0`.
+```text
+custo       : {'chamadas': 0, 'tokens_in': 0, 'tokens_out': 0, 'origem': 'replay'}
+latencia    : {'n': 10, 'mediana_s': 0.073, 'total_s': 0.92}
+```
 
-Um leitor do relatório conclui "o modelo é determinístico" a partir de um número
-que só diz "o disco é determinístico". E é o cenário mais provável de acontecer:
-replay é a forma barata de rodar, e é o que a documentação do runner incentiva.
+`0,073 s` é o tempo de ler um cassette do disco, não o tempo de resposta do provedor.
+O `custo` ao lado se protege: declara `origem: 'replay'`, e os zeros ficam
+autoexplicativos. A `latencia` publica um número plausível **sem marcação nenhuma**.
+O docstring reforça a leitura errada: *"Tempo de parede por caso: mediana e total da
+execução"* — verdadeiro, e é justamente por isso que engana.
 
-Vale notar o que **não** é o problema: no `eval.yml` a execução agendada roda com
-`EVAL_RECORD_CASSETTES=1`, e nesse modo o envelope chama o provedor real a cada
-repetição (`cassettes/__init__.py:91-100`), de modo que o CV é legítimo. O
-defeito é a execução manual em replay, que não distingue os dois casos.
+**Cenário de falha concreto, e é o que torna isto mais que cosmético.** O campo é
+propagado para a linha do histórico da C.8 (`report.py`, coberto por
+`test_a_linha_registra_tokens_e_latencia`). Hoje as três linhas gravadas têm
+`latencia: null`, porque são anteriores ao campo — verifiquei. A próxima execução em
+replay que rodar `evals.report registrar` grava `mediana_s: 0.073`; uma execução com
+`EVAL_RECORD_CASSETTES=1` grava algo na casa dos segundos. As duas entram na **mesma
+série append-only**, sem nada que as distinga, e a diferença de ~34× lê-se como ganho
+de performance que nunca existiu. Append-only significa que a linha errada não sai
+depois.
 
-**Correção sugerida** (qualquer uma resolve; a primeira é a mais barata):
+E é o cenário provável: replay é a forma barata de rodar, e o README a incentiva.
 
-1. Em `executar()`, quando `usar_cassettes and not gravacao_ligada() and
-   repeticoes > 1`, emitir aviso e forçar `repeticoes = 1` — repetir em replay
-   não produz informação nenhuma, só custo.
-2. Ou propagar a origem do valor até `_resumo_do_ruido` e publicar
-   `{"n": 0, "cv_mediano": None, "origem": "replay — CV não medível"}` em vez de
-   zeros.
+**Por que não é BLOQUEANTE.** Nada está incorreto no cálculo, o histórico ainda não
+foi contaminado, e a correção é de poucas linhas.
 
-**C5-IMP-2 — o relatório da fase não distingue a execução em rede da execução em
-replay ao apresentar os números "antes e depois" da correção.**
+**Correção sugerida** — espelhar o que o `custo` já faz:
 
-A tabela de §5 do EXECUCAO ("composto MdAPE 23,81% → 6,86%") é o resultado mais
-citado desta spec, e a citação em `CORRECOES...md` §1 declara corretamente a
-metodologia: `python -m evals.runner --cassettes`, mesmo dataset, mesmos
-cassettes, só o código mudou. Isso é um desenho **bom** — é pareado, e isola a
-mudança de código do ruído do modelo.
-
-O que falta é a declaração da limitação que o desenho impõe: as correções são de
-pós-processamento (o sanity check roda **depois** da resposta da IA), então o
-replay as mede corretamente; mas qualquer correção futura que mude o payload
-enviado **não** é medível por esse caminho, e comparar as duas coisas com o mesmo
-vocabulário ("antes e depois") vai induzir erro. O README do harness tem a seção
-certa para isso e é onde a limitação deveria estar registrada.
-
-**Correção sugerida:** acrescentar ao `evals/README.md`, junto da análise de
-poder, um parágrafo declarando o que o eval em replay mede (mudança de
-pós-processamento, com pareamento perfeito) e o que ele **não** mede (qualquer
-mudança de prompt ou de parâmetro de amostragem, que invalida os cassettes por
-desenho).
+1. `_resumo_da_latencia(resultados, *, origem: str)` e incluir `"origem": origem` no
+   dicionário, passando o mesmo valor que `resumo_do_custo` recebe em `:537`.
+2. Um teste irmão de `test_a_origem_do_custo_acompanha_o_numero` para a latência.
+3. Opcionalmente, `mediana_s: None` quando `origem == "replay"` — a latência de disco
+   não é informação sobre o pipeline, e `null` é mais honesto que um número certo
+   sobre a coisa errada. Foi o caminho adotado para `ruido_do_modelo`, e vale a mesma
+   lógica.
 
 ## 5. Sugestões
 
-- **Acoplamento a métodos privados.** `runner.py:168-171` e `invariance.py:220-221`
-  chamam `_identify_foods` e `_lookup_and_fill`. É deliberado — o eval precisa dos
-  estágios intermediários, e `parse()` só devolve o fim — mas significa que
-  renomear um método privado do `MealParser` quebra o harness em silêncio, e o
-  `mypy` não avisa que a fronteira foi cruzada. Promover os dois a públicos (ou
-  expor um `analisar_por_estagios()` no parser) tornaria o contrato explícito. Não
-  cabia nesta fase; cabe numa de arrumação do Track C.
-- **`TOLERANCIA_MACRO_G = 5.0`** ficou folgada demais depois da correção (100%
-  dentro de ±5 g nos três macros). A dúvida 2 do EXECUCAO propõe ±3 g na C.4 —
-  concordo, e sugiro decidir isso **junto** do dataset real, não antes.
-- **Os casos-semente descrevem "100 g de X"** (dúvida 3), o que não é como o
-  usuário escreve. Vale mais que uma sugestão: o estrato `composto` só teve o
-  defeito do sanity check exposto porque a descrição em gramas colide com a
-  estimativa de porção inteira da IA. Dataset em medida caseira, como a OQ2 agora
-  permite (POF → gramas), mede o caminho real e provavelmente revela outro
-  conjunto de defeitos.
-- `ape()` devolve 100.0 quando `previsto <= 0` (`runner.py:196`), o que trata
-  "pipeline não devolveu nada" como "errou 100%". Defensável, mas mistura falha
-  com erro; hoje só aparece se um caso retornar zero kcal sem levantar exceção.
+- **O texto do relatório imprime `repeticoes: 1` sem repetir o aviso.** O aviso vai
+  para `stderr` e some quando alguém redireciona só `stdout` (que é o caso de
+  `--json | tee`). Como o campo `amostragem.repeticoes` já carrega o valor efetivo,
+  um `repeticoes_solicitadas` ao lado tornaria a redução visível no próprio artefato,
+  não só no terminal de quem rodou.
+- **`latencia.n` e `agregado.n` são coisas diferentes com o mesmo nome.** O primeiro
+  conta casos com tempo medido, o segundo conta casos válidos para a métrica. Hoje
+  coincidem em 10; quando um caso falhar, não vão coincidir, e a leitura fica
+  ambígua.
 
 ## 6. Comandos rodados + saídas reais
 
-Ambiente: container `caloria_backend`, branch `dev`, HEAD `e3a974a`.
-`git merge-base --is-ancestor e338ed4 HEAD` → OK.
+> Gates compartilhados rodados uma vez sobre o HEAD atual (`bcaf397`), descendente do
+> `sha_final` desta fase.
 
 ```text
-$ docker compose -f docker-compose.dev.yml exec -T backend pytest --cov=app --cov-report=term -q
-581 passed, 1 skipped, 5 warnings in 88.01s
-Required test coverage of 72.0% reached. Total coverage: 73.10%
-
-$ ... ruff check . && ... ruff format --check . && ... mypy app/ evals/
-All checks passed! / 147 files already formatted / Success: no issues found in 81 source files
-
-# a série temporal, gerada do histórico que este runner alimenta
-$ python3 -c "... history.jsonl ..."
-1 cc849e71  n=10 mdape=3.89 sspb=1.25 <=10%=0.7  amostragem={'max_tokens':8192,'seed':-1,'temperature':0.1}
-2 f479f5df  n=10 mdape=3.89 sspb=1.25 <=10%=0.7  amostragem={'max_tokens':8192,'seed':-1,'temperature':0.1}
-3 298d7993  n=10 mdape=3.89 sspb=0.00 <=10%=0.9  amostragem={...,'repeticoes':1,...}
-
-A linha 3 é a pós-correção e confirma os números da tabela do EXECUCAO no
-agregado: SSPB 1,25% → 0,00% e dentro de ±10% 70% → 90%.
-
-# escopo travado: limiares do gate determinístico intocados
-$ git diff --name-only 0d4d9ec..e338ed4 | grep -c "test_golden_set"
+# --- Passo 2: ancestralidade e árvore limpa ---
+$ git status --porcelain | wc -l
 0
-$ ... pytest tests/integration/test_golden_set.py -q
-5 passed, 1 warning in 2.12s
+$ git merge-base --is-ancestor 0d4d9ec HEAD                                  → ANCESTRAL
+    0d4d9ec feat(evals): cria o esqueleto do harness e o contrato do caso de eval
+$ git merge-base --is-ancestor 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f HEAD → ANCESTRAL
 
-$ git status --short
-(limpo)
+# --- escopo travado: limiares do golden set intocados ---
+$ git log --oneline e338ed4..HEAD -- backend/tests/integration/test_golden_set.py
+(vazio — nenhum commit)                                                       ✓
+
+# --- C5-IMP-1 fechado: as DUAS correções sugeridas, verificadas por execução ---
+$ docker exec caloria_backend python -m evals.runner --cassettes --repeticoes 3 --json
+amostragem     : {'temperature': 0.1, 'max_tokens': 8192, 'seed': -1, 'repeticoes': 1}
+ruido_do_modelo: {"n": 0, "cv_mediano": null, "cv_maximo": null}
+   → --repeticoes 3 reduzido a 1; ruído publica null, não 0.0                 ✓
+$ sed -n '253,255p' backend/evals/runner.py
+    if usar_cassettes and not gravacao_ligada() and repeticoes > 1:
+        return 1
+$ grep -rn "repeticoes_efetivas" backend/tests/
+tests/unit/test_evals_snapshot.py:274  assert repeticoes_efetivas(3, usar_cassettes=True) == 1
+tests/unit/test_evals_snapshot.py:281  assert repeticoes_efetivas(3, usar_cassettes=True) == 3   # gravando
+tests/unit/test_evals_snapshot.py:287  assert repeticoes_efetivas(3, usar_cassettes=False) == 3
+tests/unit/test_evals_snapshot.py:293  assert repeticoes_efetivas(1, usar_cassettes=True) == 1   ✓
+
+# --- C5-IMP-2 fechado ---
+$ grep -n "^## " backend/evals/README.md | sed -n '6p'
+146:## O que a execução em replay mede — e o que ela não mede                  ✓
+
+# --- AC-13, verificado no relatório real ---
+$ docker exec caloria_backend python -m evals.runner --cassettes
+estrato         n    MdAPE               IC95      SSPB   <=10%
+simples         6    1.26% [  0.00,   5.71]     1.25%   100%
+composto        4    6.86% [  0.00,  30.95]    -3.13%    75%
+foto            0   (vazio)
+AGREGADO       10    3.89% [  0.00,   6.16]     0.00%    90%
+macros (MAE em gramas, tolerancia absoluta — nunca %):
+  proteina_g     MAE=  0.99 g   dentro de ±5 g: 100%                          ✓
+
+# --- o achado 4.1 ---
+custo       : {'chamadas': 0, 'tokens_in': 0, 'tokens_out': 0, 'origem': 'replay'}
+latencia    : {'n': 10, 'mediana_s': 0.073, 'total_s': 0.92}   ← sem origem
+$ grep -rn "latencia.*origem\|origem.*latencia" backend/
+(vazio — o campo não existe em lugar nenhum)
+$ python3 -c "…history.jsonl…"
+1 cc849e7172fe-426cb61 custo= null latencia= null
+2 f479f5dfa9a0-426cb61 custo= null latencia= null
+3 298d79939a66-426cb61 custo= null latencia= null
+   → série ainda não contaminada; a próxima gravação em replay a contamina
+
+# --- gates do manifest, sobre o HEAD atual ---
+$ docker exec caloria_backend pytest -q --cov=app --cov=evals
+620 passed, 1 skipped — Required test coverage of 72.0% reached. Total coverage: 74.28%
+$ docker exec caloria_backend ruff check .          → All checks passed!
+$ docker exec caloria_backend ruff format --check . → 147 files already formatted
+$ docker exec caloria_backend mypy app/ evals/      → Success: no issues found in 81 source files
+$ cd frontend && npm test / npm run lint / npx tsc --noEmit → 118/118 · exit 0 · exit 0
+
+$ git status --porcelain | wc -l
+0
 ```
-
-Não reexecutei o runner contra a rede: a quota do free tier da Groq está esgotada
-(a própria rodada de correção bateu em `RateLimitError`, com log registrado). A
-verificação que fiz foi sobre o código, sobre os testes e sobre o histórico
-gravado — que é o artefato que o runner produz.
 
 ## 7. Itens da fase / DoD não atendidos
 
-Nenhum item do gate. "AC-13 satisfeito; `make test-unit` verde; uma execução
-manual do runner produz relatório com os três estratos" está cumprido — o estrato
-`foto` aparece como `n=0`, que é o comportamento projetado e não uma omissão.
-
-As duas ressalvas são de qualidade da medição, não de entrega.
+| Item (§5 / §9 da spec) | Estado |
+|---|---|
+| Passo 1 — métricas puras (APE, MdAPE, SSPB, tolerância, MAE, IC95) | Atendido |
+| Passo 2 — runner com pipeline real e estágios intermediários | Atendido |
+| Passo 3 — kcal em MdAPE/SSPB, macros em MAE absoluto | Atendido, verificado na saída |
+| Passo 4 — relatório em texto e JSON | Atendido, ambos exercitados |
+| AC-13 — `n` e IC95 por estrato, macros nunca em percentual | Atendido |
+| Gate — relatório com os três estratos, `n` e IC95 | Atendido (`foto` aparece com `n=0`, não some) |
+| **Honestidade de origem dos números publicados** | **PARCIAL** — resolvida para ruído e custo, ausente na latência (achado 4.1) |
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **`ruido_do_modelo` sob replay** — o EXECUCAO §7 dúvida 4 apresenta
-   `--repeticoes` como a resposta ao achado `inv-08`, sem a ressalva de que o
-   modo replay zera o CV por construção (C5-IMP-1). Não é afirmação falsa; é
-   omissão de uma condição de validade que o leitor não tem como inferir.
-2. **Contagens de teste** — §5 do relatório cita `323 passed` na suíte unitária da
-   época; hoje a suíte inteira dá `581 passed, 1 skipped`. Evolução esperada.
-3. O restante confere: verifiquei `mape()` existindo só para contraste, a
-   tolerância absoluta nos macros, o `finally` que restaura o `lookup_food`
-   original, e o `n`/IC95 por estrato.
+1. **Nenhuma divergência no que o relatório afirma.** As duas correções estão no código
+   e funcionam; verifiquei por execução, não por leitura do diff.
+
+2. **O relatório declara "custo com origem declarada e latencia no relatório"** como um
+   item só. São dois campos com tratamento diferente, e a diferença é o achado 4.1 — a
+   redação conjunta esconde que só um deles ganhou origem.
+
+3. **`ruido_do_modelo` publica `null` além da redução de repetições.** O relatório
+   descreve a redução, não a mudança de `0.0` para `null`. É entrega **acima** do
+   declarado, não abaixo — registro porque melhora a fase e não estava no texto.
