@@ -367,7 +367,11 @@ def montar_relatorio(
         },
         "ruido_do_modelo": _resumo_do_ruido(resultados),
         "custo": custo or _CUSTO_NAO_MEDIDO,
-        "latencia": _resumo_da_latencia(resultados),
+        # A origem sai do custo: uma definição só de "de onde veio esta execução",
+        # dois consumidores.
+        "latencia": _resumo_da_latencia(
+            resultados, origem=(custo or _CUSTO_NAO_MEDIDO)["origem"]
+        ),
         "prompts": {
             nome: {"versao": p.version, "sha": p.sha256}
             for nome, p in (
@@ -405,15 +409,25 @@ def resumo_do_custo(contador: ContadorDeUso, *, origem: str) -> dict[str, Any]:
     }
 
 
-def _resumo_da_latencia(resultados: Sequence[ResultadoCaso]) -> dict[str, Any]:
-    """Tempo de parede por caso: mediana e total da execução."""
+def _resumo_da_latencia(
+    resultados: Sequence[ResultadoCaso], *, origem: str
+) -> dict[str, Any]:
+    """Tempo de parede por caso, com a origem declarada.
+
+    Mesma razão do custo, e a consequência aqui é pior: em replay isto mede o
+    disco (centésimos de segundo), contra o provedor mede a rede (segundos). As
+    duas medições entram na mesma série append-only da C.8, e sem a origem uma
+    diferença de ordem de grandeza se lê como ganho de performance — num arquivo
+    de onde, uma vez gravada, a linha não sai.
+    """
     tempos = [r.segundos for r in resultados if r.segundos > 0]
     if not tempos:
-        return {"n": 0, "mediana_s": None, "total_s": None}
+        return {"n": 0, "mediana_s": None, "total_s": None, "origem": origem}
     return {
         "n": len(tempos),
         "mediana_s": round(statistics.median(tempos), 3),
         "total_s": round(sum(tempos), 3),
+        "origem": origem,
     }
 
 

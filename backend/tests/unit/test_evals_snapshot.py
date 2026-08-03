@@ -22,7 +22,14 @@ from evals.cassettes import (
     gravar,
     reproduzir,
 )
-from evals.runner import CONTEXTO_NEUTRO, repeticoes_efetivas
+from evals.runner import (
+    CONTEXTO_NEUTRO,
+    ContadorDeUso,
+    ResultadoCaso,
+    montar_relatorio,
+    repeticoes_efetivas,
+    resumo_do_custo,
+)
 from evals.schema import carregar_casos
 
 #: `sha256` do payload renderizado de **cada um dos quatro** prompts de
@@ -291,3 +298,46 @@ class TestRepeticoesEmReplay:
     ) -> None:
         monkeypatch.delenv("EVAL_RECORD_CASSETTES", raising=False)
         assert repeticoes_efetivas(1, usar_cassettes=True) == 1
+
+
+class TestOrigemDaLatencia:
+    """A latência entra na mesma série append-only vinda de duas origens."""
+
+    @staticmethod
+    def _resultado(segundos: float) -> ResultadoCaso:
+        return ResultadoCaso(
+            id="c1",
+            estrato="simples",
+            descricao="arroz",
+            referencia_kcal=100.0,
+            previsto_kcal=100.0,
+            ape=0.0,
+            segundos=segundos,
+        )
+
+    def test_a_latencia_declara_a_origem_do_custo(self) -> None:
+        """Sem isso, 0,07 s de disco e 2,4 s de rede se comparam como se fossem o mesmo."""
+        relatorio = montar_relatorio(
+            carregar_casos(),
+            [self._resultado(0.058)],
+            custo=resumo_do_custo(ContadorDeUso(), origem="replay"),
+        )
+        assert relatorio["latencia"]["origem"] == "replay"
+        assert relatorio["custo"]["origem"] == "replay"
+
+    def test_execucao_sem_custo_medido_nao_finge_origem(self) -> None:
+        relatorio = montar_relatorio(carregar_casos(), [self._resultado(2.4)])
+        assert relatorio["latencia"]["origem"] == "nao medido"
+
+    def test_execucao_vazia_ainda_declara_a_origem(self) -> None:
+        relatorio = montar_relatorio(
+            carregar_casos(),
+            [],
+            custo=resumo_do_custo(ContadorDeUso(), origem="provedor"),
+        )
+        assert relatorio["latencia"] == {
+            "n": 0,
+            "mediana_s": None,
+            "total_s": None,
+            "origem": "provedor",
+        }
