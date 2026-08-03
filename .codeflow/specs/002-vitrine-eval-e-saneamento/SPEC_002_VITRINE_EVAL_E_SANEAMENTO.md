@@ -705,7 +705,16 @@ que é telemetria de execução, fica o que é registro de engenharia.
   caracteres e deve continuar funcionando. Não alterar o algoritmo de assinatura nem
   nada em `backend/app/core/security.py`: é área de alto risco declarada na
   constitution do projeto. Não introduzir rate limiting em endpoints autenticados de
-  leitura.
+  leitura — **exceto** leitura que chama o provedor de IA (ver nota abaixo).
+  > **Escopo corrigido (2026-08-02).** A restrição de leitura foi escrita sob a
+  > premissa "GET autenticado = leitura barata de banco", que é falsa para os cinco
+  > GET de `ai.py` (`suggest-meal`, `patterns`, `nutritional-alerts`,
+  > `goal-adjustment`, `monthly-report`): todos passam por `_require_ai` e
+  > `get_ai_client()`, com o mesmo custo em tokens do provedor que justifica o teto
+  > nos três POST. Os cinco recebem `RATE_LIMIT_AI_LEITURA` (40/min, mais folgado que
+  > o dos POST). `GET /ai/conversations` fica **de fora** por ser leitura pura de
+  > banco, com teste travando esse desenho — o critério é "gasta token", não "é GET".
+  > Ver `.codeflow/decisions/2026-08-02-rate-limit-em-get-de-ia.md` e OQ11.
 - **Critério de conclusão (gate):** AC-7 e AC-8 satisfeitos; `make test-integration`
   verde; `mypy app/` limpo.
 
@@ -1496,6 +1505,21 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   combinada: deixar passar alguns dias entre a purga e a reabertura — prazo que as
   dependências da D.2 consomem naturalmente.
   Ver `.codeflow/decisions/2026-08-02-omissao-ticket-github-support.md`.
+
+- **OQ11 — Rate limiting nos cinco GET de IA, que o escopo travado da B.3 declarava
+  violação BLOQUEANTE.** **RESOLVIDO (2026-08-02).** Manter o teto nos cinco GET que
+  chamam o provedor (`suggest-meal`, `patterns`, `nutritional-alerts`,
+  `goal-adjustment`, `monthly-report`), com setting própria `RATE_LIMIT_AI_LEITURA`
+  (40/min), e manter `GET /ai/conversations` sem teto. Justificativa: a restrição
+  original supõe que leitura autenticada é consulta barata de banco; os cinco
+  dependem de `_require_ai` e `get_ai_client()` e têm o mesmo custo em tokens que
+  justifica o teto nos três POST — enquanto `GET /ai/conversations`, que é leitura
+  pura de banco, ficou de fora, o que evidencia que o critério aplicado é "gasta
+  token do provedor", não "é método GET". O teto mais folgado vem de
+  `frontend/app/(dashboard)/insights/page.tsx:72-76`, que dispara quatro dessas
+  consultas por carga da página. Débito registrado: a chave de contagem é por IP;
+  `user_id` seria a chave natural nos endpoints autenticados.
+  Ver `.codeflow/decisions/2026-08-02-rate-limit-em-get-de-ia.md`.
 
 ## 9. Definition of Done (gate por etapa)
 
