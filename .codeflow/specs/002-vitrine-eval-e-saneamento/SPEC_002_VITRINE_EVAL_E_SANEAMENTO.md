@@ -1575,6 +1575,20 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   sobre `dev`.
   Ver `.codeflow/decisions/2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md`.
 
+- **OQ16 — Topologia de deploy (passo 1 da E.2, e pendência aberta desde a OQ6).**
+  **RESOLVIDO (2026-08-03).** **Host único, self-hosted:** `docker-compose.yml` +
+  `Caddyfile`, com Postgres, Redis, backend, frontend, workers e proxy no mesmo lugar.
+  Decisão do owner com duas condições temporais: **agora roda localmente** — não há
+  servidor contratado e a E.4 fica adiada por decisão, não por impedimento — e **no
+  futuro a mesma stack sobe numa VPS**, sem mudança de topologia. O par
+  `docker-compose.backend.yml` + `Caddyfile.backend` (topologia dividida, com frontend
+  na Vercel, que foi a que de fato rodou até o servidor sair do ar) vira **legado
+  declarado no cabeçalho**, sem uso, marcado para remoção na poda da D.4.
+  **Consequência registrada:** o deploy do frontend na Vercel fica órfão — continua no
+  ar apontando para uma API inexistente —, e retirá-lo ou reapontá-lo é ação do owner,
+  anotada como pendência da E.4.
+  Ver `docs/architecture.md` (ADR-009).
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
