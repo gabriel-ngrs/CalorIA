@@ -1095,6 +1095,10 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **id:** `D.2`
 - **slug:** `release-v070`
 - **Objetivo:** fazer a vitrine mostrar o projeto que existe.
+- **Momento de execução:** *(decisão do owner, 2026-08-03 — OQ15)* **última operação de
+  branch da spec.** A `main` não é tocada antes de os Tracks C, D e E concluírem, ainda
+  que os impedimentos da fase já tenham caído. O conteúdo da fase não muda; muda quando
+  ela roda.
 - **Depende de:** `A.2`, `B.2`, `D.1`.
 - **Arquivos alterados:** nenhum (operação de branch e release).
 - **Passos:**
@@ -1558,6 +1562,19 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   "porção de manteiga" é o defeito, e `portions` é o lugar certo de corrigi-lo.
   Ver `.codeflow/decisions/2026-08-03-regras-de-porcao-para-gordura-de-passar.md`.
 
+- **OQ15 — Momento da promoção `dev` → `main` (Fase D.2).**
+  **RESOLVIDO (2026-08-03).** A `main` **não é tocada em momento nenhum** antes do fim
+  da spec: a D.2 sai da posição declarada na §5 e passa a ser a última operação de
+  branch do projeto, depois de os Tracks C, D e E concluírem. O conteúdo da fase não
+  muda — muda quando ela roda. Justificativa: a `main` é o branch que o mundo vê, e
+  promover cedo publicaria um estado intermediário (Track C em rework, README ainda
+  não reescrito na D.3, repositório ainda não podado na D.4, deploy indeterminado).
+  **Consequência aceita:** a D.1 não fecha até lá, porque `licenseInfo` só é detectado
+  a partir do branch default; D.3, D.4 e E.4 esperam junto, o que é coerente com a
+  dependência que já declaravam. Nada em B.4 ou C.7 depende disto — os dois rodam
+  sobre `dev`.
+  Ver `.codeflow/decisions/2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md`.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1588,7 +1605,8 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [ ] **C.7** — AC-15, NFR-2, NFR-3; execução agendada completa sem casos vazios.
 - [ ] **C.8** — AC-16; histórico com ao menos duas execuções reais.
 - [ ] **D.1** — AC-18.
-- [ ] **D.2** — AC-19; proteção de `main` configurada.
+- [ ] **D.2** — AC-19; proteção de `main` configurada. *(Executada por último, por
+      decisão do owner — OQ15.)*
 - [ ] **D.3** — AC-20; execução limpa a partir do README validada.
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
 - [ ] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.

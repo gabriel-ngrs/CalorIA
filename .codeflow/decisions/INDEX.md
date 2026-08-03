@@ -10,6 +10,7 @@ Filtrar por tag antes de carregar decisions individuais.
 
 | data | título | status | tags |
 |------|--------|--------|------|
+| 2026-08-03 | [A main só é tocada no fim da spec, não na posição declarada da D.2](2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md) | ativa | git, release, deploy, spec-002, fase-d2, ordem-de-execucao |
 | 2026-08-03 | [Regras próprias de porção para gordura de passar e acompanhamentos](2026-08-03-regras-de-porcao-para-gordura-de-passar.md) | ativa | nutricao, portions, eval, spec-002, fase-c6 |
 | 2026-08-02 | [Rate limiting nos cinco GET de IA que gastam token do provedor](2026-08-02-rate-limit-em-get-de-ia.md) | ativa | seguranca, rate-limiting, api, spec-002, fase-b3 |
 | 2026-08-02 | [Sanity check calórico não descarta match de fonte curada](2026-08-02-sanity-check-nao-descarta-fonte-curada.md) | ativa | ai, sanity-check, food-lookup, eval, spec-002, adr-006 |

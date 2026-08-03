@@ -12,6 +12,25 @@ range: 7f9f59a..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 
 # FASE D.1 — Relatório de execução
 
+## Nota de 2026-08-03 — o item restante passou a ser represado por decisão, não por pendência
+
+*Não é rework: nenhum trabalho novo foi feito nesta fase, e `status`, `tentativa` e
+`reprovacoes` ficam como estavam.*
+
+A metade aberta do AC-18 é `licenseInfo: null`, que depende de a `main` avançar. Até
+hoje isso era "esperar a D.2 rodar". **O owner decidiu em 2026-08-03 que a `main` não
+será tocada em momento nenhum antes do fim da spec** (OQ15), então a D.2 passa a ser a
+última operação de branch do projeto.
+
+Consequência para esta fase, declarada para que ninguém a leia como defeito: **a D.1
+não fecha até lá**, e uma avaliação antes da D.2 deve manter RESSALVAS por esse item —
+com causa conhecida e aceita. As duas cláusulas acionáveis do AC-18 (description e
+topics) seguem cumpridas e verificadas na §"Tentativa 2" acima; o `LICENSE` está
+commitado e correto na `dev`. Não há trabalho pendente nesta fase — há espera.
+
+Ver `.codeflow/decisions/2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md`.
+
+
 ## Tentativa 2 — o que mudou
 
 Veredito da tentativa 1: **RESSALVAS**, score 9.4. Um achado IMPORTANTE, fechado na
