@@ -352,3 +352,88 @@ describe("useLogMood", () => {
     );
   });
 });
+
+// ─── Toast único por mutation (AC-23) ─────────────────────────────────────────
+
+// O defeito: `humor/page.tsx` emitia `toast.success` e o hook emitia o seu, então
+// um único registro produzia dois toasts. A correção removeu o da página — mas
+// nada impedia que alguém o reintroduzisse, porque o hook continua emitindo. Os
+// testes abaixo travam a contagem, que é o que o defeito realmente violava.
+
+describe("toast único por registro", () => {
+  it("useLogMood emite exatamente um toast de sucesso", async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: mockMoodLog });
+
+    const { result } = renderHook(() => useLogMood(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        date: "2026-03-15",
+        energy_level: 4,
+        mood_level: 3,
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedToast.success).toHaveBeenCalledTimes(1);
+    expect(mockedToast.error).not.toHaveBeenCalled();
+  });
+
+  it("useLogWeight emite exatamente um toast de sucesso", async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: mockWeightLog });
+
+    const { result } = renderHook(() => useLogWeight(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ weight_kg: 74.5, date: "2026-03-15" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedToast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it("useLogHydration emite exatamente um toast de sucesso", async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: mockHydrationLog });
+
+    const { result } = renderHook(() => useLogHydration(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        amount_ml: 500,
+        date: "2026-03-15",
+        time: "10:00",
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockedToast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it("a falha emite só o toast de erro, e nenhum de sucesso", async () => {
+    mockedApi.post.mockRejectedValueOnce(new Error("500"));
+
+    const { result } = renderHook(() => useLogMood(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current
+        .mutateAsync({ date: "2026-03-15", energy_level: 4, mood_level: 3 })
+        .catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(mockedToast.error).toHaveBeenCalledTimes(1);
+    expect(mockedToast.success).not.toHaveBeenCalled();
+  });
+});
