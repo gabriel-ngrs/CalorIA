@@ -3,14 +3,85 @@ spec: 002-vitrine-eval-e-saneamento
 fase: C.6
 slug_fase: invariancia
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: e338ed4
-sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
-range: e338ed4..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+sha_final: 769cf69b0964bc47f5a2e201729b244478ee1e7f
+range: e338ed4..769cf69b0964bc47f5a2e201729b244478ee1e7f
 ---
 
 # FASE C.6 — Relatório de execução
+
+## Tentativa 3 — a remedição foi TENTADA, e o limite é medido
+
+Veredito da tentativa 2: **RESSALVAS**, score 9.4, por C6-IMP-1 mantido. O achado
+estava certo em cheio, e a crítica de método também: eu transportei "a quota está
+esgotada" de 2026-08-02 para o rework de 2026-08-03 **sem retestar**, transformando
+"não deu" em "não tentei". O free tier reseta por dia; a afirmação tinha validade de
+um dia e foi usada como se fosse permanente.
+
+### O que fiz nesta tentativa
+
+Retestei antes de afirmar qualquer coisa. O provedor **respondeu**:
+
+```text
+$ ... pytest tests/smoke_test.py::test_groq_texto -q
+1 passed, 1 warning in 2.64s
+```
+
+Com a porta aberta, rodei o eval completo contra o provedor (12 chamadas, 8.911 tokens
+de entrada e 796 de saída — a primeira medição de custo real desta spec) e em seguida a
+bateria de invariância, na ordem recomendada.
+
+### O resultado: impossibilidade **medida**, não presumida
+
+```text
+$ docker compose -f docker-compose.dev.yml exec -T backend python -m evals.invariance
+...
+groq.RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for
+model `llama-3.3-70b-versatile` in organization `org_...` service tier `on_demand` on
+tokens per day (TPD): Limit 100000, Used 99151, Requested 1026. Please try again in
+2m32.928s. ...', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+```
+
+O limite não é RPM (por minuto), é **TPD — tokens por dia**: teto de 100.000, com
+99.151 já consumidos. O backoff de `_espera_do_backoff` fez o seu trabalho (15s → 30s →
+60s, dentro do teto de 120s declarado na C.2) e desistiu corretamente: esperar não
+resolve um limite diário. Sobravam ~850 tokens; a bateria precisa de dezenas de
+milhares.
+
+**Isto é o dado que faltava, e vale mais que a remedição em si.** A spec registra o
+risco R5 ("quota do free tier") como risco; agora ele é uma medida:
+
+| item | tokens | fonte |
+|---|---|---|
+| eval completo, 10 casos, 12 chamadas | **9.707** | medido hoje (`custo` do relatório) |
+| teto diário do free tier | **100.000** | mensagem do 429 |
+| bateria de invariância (12 grupos, ~30 chamadas) | **não coube nos ~850 restantes** | medido hoje |
+
+O eval completo cabe ~10× por dia. A bateria não coube **depois** de o dia já estar
+99% consumido — pelas verificações da própria avaliação somadas à minha execução. Não é
+que a bateria não caiba num dia; é que ela não cabe no mesmo dia em que se gasta a
+quota verificando outras coisas.
+
+### O que continua em aberto, e como fechar
+
+A remedição do `inv-04` e dos quatro grupos atingidos pelo sanity check **não foi
+feita**. Ela é o primeiro comando de um dia com quota limpa:
+
+```bash
+docker compose -f docker-compose.dev.yml exec -T backend python -m evals.invariance
+```
+
+Linha de base a comparar, da §5 deste relatório: **aprovação 0,417 · spread mediano
+1,2115 · p95 3,5126**, com `inv-04` em 4,14. A nova medição entra como seção datada
+aqui, sem apagar a antiga.
+
+**Recomendação de ordem, aprendida hoje:** rodar a bateria **antes** do eval completo e
+antes de qualquer verificação avulsa contra o provedor. O eval completo custa ~9.700
+tokens e o histórico da C.8 já tem a execução real de que precisava — a bateria é agora
+a única coisa que justifica gastar quota.
+
 
 ## Tentativa 2 — o que mudou
 

@@ -3,14 +3,79 @@ spec: 002-vitrine-eval-e-saneamento
 fase: C.8
 slug_fase: historico-eval
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: 40e2941
-sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
-range: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+sha_final: 769cf69b0964bc47f5a2e201729b244478ee1e7f
+range: 40e2941..769cf69b0964bc47f5a2e201729b244478ee1e7f
 ---
 
 # FASE C.8 — Relatório de execução
+
+## Tentativa 3 — a segunda execução real existe
+
+Veredito da tentativa 2: **RESSALVAS**, score 9.4. C8-IMP-2 (tokens e latência) foi
+confirmado fechado; C8-IMP-1 foi mantido, com a mesma crítica de método que a C.6
+recebeu — eu declarei "falta quota" sem retestar. Retestei, a porta estava aberta, e o
+achado está **fechado**.
+
+### C8-IMP-1 — as duas execuções reais eram a mesma medição — **FECHADO**
+
+Rodado contra o provedor real, não em replay:
+
+```text
+$ docker compose -f docker-compose.dev.yml exec -T backend python -m evals.runner --json > /tmp/rel-provedor.json
+EXIT=0
+custo   : {'chamadas': 12, 'tokens_in': 8911, 'tokens_out': 796, 'origem': 'provedor'}
+latencia: {'n': 10, 'mediana_s': 4.829, 'total_s': 72.302, 'origem': 'provedor'}
+falhas  : []
+
+$ ... python -m evals.report registrar --relatorio /tmp/rel-provedor.json --git-commit <sha>
+registrado em /app/evals/runs/history.jsonl: run_id=0a18e93e2d46-426cb61f64af
+```
+
+A linha 2 **não** foi removida — remover colidiria com o append-only, que é a
+propriedade que o arquivo existe para ter, e a avaliação preferia a mesma saída. O
+histórico passa a ter quatro linhas, das quais **duas são medições distintas e reais**:
+a linha 3 (`298d7993`, pós-correção do sanity check) e a linha 4 (`0a18e93e`, contra o
+provedor). O gate pede "ao menos duas execuções reais", e agora há.
+
+```text
+$ python -m evals.report serie
+commit           n    MdAPE     SSPB   <=10%  prompts
+------------------------------------------------------------------------------
+cc849e7172fe    10    3.89%    1.25%    70%  meal_fallback@v1 meal_identify@v1
+f479f5dfa9a0    10    3.89%    1.25%    70%  meal_fallback@v1 meal_identify@v1   ← a duplicata histórica
+298d79939a66    10    3.89%    0.00%    90%  meal_fallback@v1 meal_identify@v1
+0a18e93e2d46    10    3.89%    0.00%    90%  meal_fallback@v1 meal_identify@v1   ← provedor real
+```
+
+**A linha 4 é distinguível das anteriores por mais que o `run_id`:** é a única com
+`custo` e `latencia` preenchidos, e a origem declarada como `provedor`. As três
+anteriores gravam `null` nos dois campos — "não medido", que é o que de fato eram.
+
+### Um resultado que não estava previsto, e é o melhor da tentativa
+
+A execução contra o provedor produziu **as mesmas métricas** da execução em replay:
+MdAPE 3,89%, SSPB 0,00%, 90% dentro de ±10%, nos mesmos estratos. Isso é evidência
+direta de **NFR-5 (reprodutibilidade)** — a que a tentativa 1 alegou ter e não tinha.
+Não é `json.load` sendo determinístico: é o pipeline devolvendo o mesmo resultado com
+as respostas vindas da rede e do disco, o que valida o desenho do cassette da C.7.
+
+### E fecha a dúvida 2 da C.2
+
+`GROQ_MAX_TOKENS = 8192` foi escolhido por folga, sem medição. Medido agora: **796
+tokens de saída em 12 chamadas**, máximo por chamada bem abaixo do teto. O valor é
+generoso por uma ordem de grandeza, o que é seguro e caro — cada chamada reserva
+orçamento que não usa. Fica registrado para quem for calibrar; não mexo nele aqui,
+porque alterá-lo move o payload e invalida os cassettes.
+
+### O que continua em aberto
+
+A sugestão da §5 da tentativa 1 — o histórico gravado pela execução agendada nunca
+volta ao repositório — segue sem correção, e depende do `eval.yml`, que é arquivo da
+C.7. Decisão a tomar junto do primeiro disparo real.
+
 
 ## Tentativa 2 — o que mudou
 

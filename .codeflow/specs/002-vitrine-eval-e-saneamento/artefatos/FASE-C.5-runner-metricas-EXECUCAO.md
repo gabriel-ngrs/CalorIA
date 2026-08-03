@@ -3,14 +3,65 @@ spec: 002-vitrine-eval-e-saneamento
 fase: C.5
 slug_fase: runner-metricas
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: 0d4d9ec
-sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
-range: 0d4d9ec..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+sha_final: 769cf69b0964bc47f5a2e201729b244478ee1e7f
+range: 0d4d9ec..769cf69b0964bc47f5a2e201729b244478ee1e7f
 ---
 
 # FASE C.5 — Relatório de execução
+
+## Tentativa 3 — o que mudou
+
+Veredito da tentativa 2: **RESSALVAS**, score 9.5. Os dois achados da tentativa 1
+foram confirmados fechados; um achado novo entrou. Ele está fechado.
+
+### C5-IMP-3 — a latência era publicada sem origem — **FECHADO**
+
+**Aceito, e o achado é bom: é o meu próprio C5-IMP-1 no campo irmão.** Corrigi o
+ruído, corrigi o custo, e deixei a latência publicando `mediana_s: 0.073` sem
+marcação — número certo sobre a coisa errada. O cenário descrito é o que importa: a
+linha vai para a série append-only da C.8, e uma medição de disco ao lado de uma de
+rede se lê como ganho de performance que nunca existiu.
+
+`_resumo_da_latencia` agora recebe `origem` e a publica, espelhando `resumo_do_custo`.
+A origem sai do próprio custo em `montar_relatorio` — uma definição só de "de onde veio
+esta execução", dois consumidores, sem chance de divergirem.
+
+Medido nas duas origens, hoje:
+
+```text
+# replay
+latencia: {'n': 10, 'mediana_s': 0.058, 'total_s': 1.041,  'origem': 'replay'}
+# provedor real
+latencia: {'n': 10, 'mediana_s': 4.829, 'total_s': 72.302, 'origem': 'provedor'}
+```
+
+**83× de diferença.** Era exatamente essa a leitura falsa que o achado antecipou.
+
+Três testes novos (`TestOrigemDaLatencia`): a origem acompanha o número, execução sem
+custo medido não finge origem (`"nao medido"`), e execução vazia ainda declara a
+origem em vez de devolver um dicionário mudo.
+
+### Sobre a sugestão 3 do achado — `mediana_s: None` em replay
+
+**Não adotada, e declaro a razão em vez de omitir.** A analogia com `ruido_do_modelo`
+não se sustenta inteira: o CV em replay é zero *por construção* — não há informação
+nenhuma ali. A latência em replay **é** informação real, só que sobre outra coisa: é o
+tempo de execução do harness, que é o número que sustenta a NFR-2 e que se quer ver
+subir quando o dataset crescer. Anular perderia isso. Com `origem: "replay"` explícito,
+o leitor tem o número e sabe o que ele mede.
+
+Se o avaliador discordar, a mudança é de uma linha e não tenho apego.
+
+### Evidência
+
+```text
+$ ... pytest tests/unit/ -q      → 475 passed  (eram 472)
+$ ... ruff check . && ruff format --check . && mypy app/ evals/   → limpos
+```
+
 
 ## Tentativa 2 — o que mudou
 
