@@ -233,3 +233,61 @@ class TestCacheDegradaSilenciosamente:
         )
 
         assert await instancia.generate_text("oi", use_cache=True) == "ok"
+
+
+class TestJsonMode:
+    """Passo 2 da C.2: `response_format` só nas versões de prompt com topo objeto."""
+
+    async def test_desligado_por_default_nao_manda_response_format(
+        self, client: AIClient
+    ) -> None:
+        """Mandá-lo desligado mudaria o payload de toda chamada sem ganho."""
+        await client.generate_text("oi", use_cache=False)
+        assert (
+            "response_format"
+            not in client._groq.chat.completions.create.call_args.kwargs
+        )  # type: ignore[attr-defined]
+
+    async def test_ligado_manda_json_object(self, client: AIClient) -> None:
+        await client.generate_text("oi", use_cache=False, json_object=True)
+        kwargs = client._groq.chat.completions.create.call_args.kwargs  # type: ignore[attr-defined]
+        assert kwargs["response_format"] == {"type": "json_object"}
+
+    async def test_visao_tambem_aceita_json_mode(self, client: AIClient) -> None:
+        await client.generate_with_image("descreva", b"\x00", json_object=True)
+        kwargs = client._groq.chat.completions.create.call_args.kwargs  # type: ignore[attr-defined]
+        assert kwargs["response_format"] == {"type": "json_object"}
+
+    def test_json_mode_muda_a_chave_de_cache(self) -> None:
+        """Resposta em objeto e em array não podem compartilhar entrada de cache."""
+        comum = {"model": "m", "temperature": 0.1}
+        assert AIClient._cache_key(
+            "t", **comum, json_object=False
+        ) != AIClient._cache_key(  # type: ignore[arg-type]
+            "t", **comum, json_object=True
+        )
+
+
+class TestObservadorDeUso:
+    """C.8: tokens e latência saem do cliente sem passar pelo log."""
+
+    async def test_observador_recebe_tokens_e_tempo(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(AIClient, "_get_cached", AsyncMock(return_value=None))
+        monkeypatch.setattr(AIClient, "_set_cached", AsyncMock(return_value=None))
+        usos: list[Any] = []
+        instancia = AIClient(observador=usos.append)
+        instancia._groq = MagicMock()  # type: ignore[assignment]
+        instancia._groq.chat.completions.create = AsyncMock(return_value=_resposta())
+
+        await instancia.generate_text("oi", use_cache=False)
+
+        assert len(usos) == 1
+        assert (usos[0].tokens_in, usos[0].tokens_out) == (1, 2)
+        assert usos[0].modelo == settings.GROQ_TEXT_MODEL
+        assert usos[0].segundos >= 0.0
+
+    async def test_sem_observador_a_chamada_segue_igual(self, client: AIClient) -> None:
+        """Produção não passa observador — o caminho não pode depender dele."""
+        assert await client.generate_text("oi", use_cache=False) == "[]"

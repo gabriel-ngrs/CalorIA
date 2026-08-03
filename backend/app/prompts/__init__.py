@@ -33,6 +33,31 @@ _VERSION_FILE = re.compile(r"^v(\d+)\.txt$")
 #: partes. Nunca é enviado ao provedor.
 _SHA_SEPARATOR = "\x00"
 
+#: Versão de cada prompt **em produção**. Criar o arquivo `vN.txt` registra a
+#: versão, não a promove: promover é editar esta tabela, do mesmo jeito que
+#: criar uma migration não a aplica. Sem isso, largar um arquivo na pasta
+#: trocaria o prompt de produção em silêncio e moveria a linha de base do eval
+#: sem ninguém decidir nada. Nome ausente aqui resolve pela maior versão.
+VERSOES_EM_PRODUCAO: dict[str, int] = {
+    "meal_identify": 1,
+    "meal_fallback": 1,
+    "vision_identify": 2,
+    "vision_fallback": 1,
+}
+
+#: Versões cujo FORMATO declara **objeto** no topo (`{"itens": [...]}`) e que,
+#: por isso, podem ser enviadas com `response_format={"type": "json_object"}`.
+#: O JSON mode da API recusa array no topo, então ligá-lo numa versão que pede
+#: array quebraria a resposta — a associação fica aqui, num lugar só.
+_TOPO_OBJETO: frozenset[tuple[str, int]] = frozenset(
+    {
+        ("meal_identify", 2),
+        ("meal_fallback", 2),
+        ("vision_identify", 3),
+        ("vision_fallback", 2),
+    }
+)
+
 
 @dataclass(frozen=True)
 class PromptVersion:
@@ -43,6 +68,11 @@ class PromptVersion:
     system: str
     user_template: str | None
     sha256: str
+
+    @property
+    def topo_objeto(self) -> bool:
+        """A saída desta versão é um objeto JSON, e aceita o JSON mode da API."""
+        return (self.name, self.version) in _TOPO_OBJETO
 
     @property
     def ref(self) -> str:
@@ -136,8 +166,14 @@ def _registry() -> PromptRegistry:
 
 
 def get_prompt(name: str, version: int | None = None) -> PromptVersion:
-    """Atalho para o registry padrão, com cache de leitura por processo."""
-    return _cached_prompt(name, version)
+    """Resolve um prompt de produção, com cache de leitura por processo.
+
+    Sem `version`, vale a versão fixada em `VERSOES_EM_PRODUCAO` — não a maior
+    disponível. É o que permite uma versão nova coexistir no disco (e ser medida
+    pelo eval) sem entrar em produção antes de haver medição.
+    """
+    alvo = version if version is not None else VERSOES_EM_PRODUCAO.get(name)
+    return _cached_prompt(name, alvo)
 
 
 @lru_cache(maxsize=64)

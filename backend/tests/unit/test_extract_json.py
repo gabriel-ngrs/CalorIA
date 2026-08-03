@@ -48,3 +48,39 @@ class TestExtractJson:
     def test_resposta_vazia_levanta_decode_error(self) -> None:
         with pytest.raises(json.JSONDecodeError):
             extract_json_from_ai_response("")
+
+
+class TestTopoEmObjeto:
+    """JSON mode da API recusa array no topo; as versões com ele devolvem objeto."""
+
+    def test_objeto_com_itens_vira_lista(self) -> None:
+        bruto = '{"itens": [{"food_name": "arroz"}, {"food_name": "feijão"}]}'
+        assert extract_json_from_ai_response(bruto) == [
+            {"food_name": "arroz"},
+            {"food_name": "feijão"},
+        ]
+
+    def test_objeto_com_chave_renomeada_ainda_e_aceito(self) -> None:
+        """Uma única lista no objeto torna a intenção inequívoca."""
+        bruto = '{"alimentos": [{"food_name": "arroz"}]}'
+        assert extract_json_from_ai_response(bruto) == [{"food_name": "arroz"}]
+
+    def test_objeto_dentro_de_cerca_de_markdown(self) -> None:
+        bruto = '```json\n{"itens": [{"food_name": "arroz"}]}\n```'
+        assert extract_json_from_ai_response(bruto) == [{"food_name": "arroz"}]
+
+    def test_objeto_sem_lista_nenhuma_estoura(self) -> None:
+        """Os parsers dependem do JSONDecodeError para virar 422 legível."""
+        with pytest.raises(json.JSONDecodeError):
+            extract_json_from_ai_response('{"erro": "não identifiquei"}')
+
+    def test_objeto_com_duas_listas_estoura(self) -> None:
+        """Ambíguo: adivinhar qual é a dos itens perderia dados em silêncio."""
+        with pytest.raises(json.JSONDecodeError):
+            extract_json_from_ai_response('{"a": [{"x": 1}], "b": [{"y": 2}]}')
+
+    def test_array_no_topo_continua_funcionando(self) -> None:
+        """As versões v1 dos prompts seguem em produção — não podem regredir."""
+        assert extract_json_from_ai_response('[{"food_name": "arroz"}]') == [
+            {"food_name": "arroz"}
+        ]

@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.prompts import (
+    VERSOES_EM_PRODUCAO,
     PromptNotFoundError,
     PromptRegistry,
     PromptVersion,
@@ -236,3 +237,69 @@ class TestPromptsUsadosPelosParsers:
 
         assert vision_parser._IDENTIFY_PROMPT.sha256 == SHA_TRAVADO["vision_identify"]
         assert vision_parser._FALLBACK_PROMPT.sha256 == SHA_TRAVADO["vision_fallback"]
+
+
+class TestVersaoEmProducao:
+    """Criar o arquivo registra a versão; promover é editar a tabela."""
+
+    def test_a_tabela_cobre_os_quatro_prompts(self) -> None:
+        assert set(VERSOES_EM_PRODUCAO) == set(SHA_TRAVADO)
+
+    def test_versao_nova_no_disco_nao_entra_em_producao_sozinha(self) -> None:
+        """A v2 do `meal_identify` existe e **não** é a que produção usa."""
+        assert 2 in PromptRegistry().versions("meal_identify")
+        assert get_prompt("meal_identify").version == 1
+
+    def test_versao_explicita_alcanca_a_nova(self) -> None:
+        """É assim que o eval mede v1 contra v2 sem trocar produção."""
+        assert get_prompt("meal_identify", 2).version == 2
+
+    def test_nome_fora_da_tabela_resolve_pela_maior(self, tmp_path: Path) -> None:
+        (tmp_path / "p").mkdir()
+        (tmp_path / "p" / "v1.txt").write_text("a", encoding="utf-8")
+        (tmp_path / "p" / "v2.txt").write_text("b", encoding="utf-8")
+        assert PromptRegistry(root=tmp_path).get("p").version == 2
+
+
+class TestTopoEmObjeto:
+    """As versões com JSON mode declaram objeto no topo; as v1 não."""
+
+    @pytest.mark.parametrize(
+        ("nome", "versao"),
+        [
+            ("meal_identify", 2),
+            ("meal_fallback", 2),
+            ("vision_identify", 3),
+            ("vision_fallback", 2),
+        ],
+    )
+    def test_versao_nova_declara_topo_objeto(self, nome: str, versao: int) -> None:
+        prompt = PromptRegistry().get(nome, versao)
+        assert prompt.topo_objeto
+        assert '"itens"' in prompt.system
+
+    @pytest.mark.parametrize("nome", sorted(SHA_TRAVADO))
+    def test_versao_em_producao_nao_usa_json_mode(self, nome: str) -> None:
+        """Ligar o JSON mode numa versão que pede array quebraria a resposta."""
+        assert not get_prompt(nome).topo_objeto
+
+    @pytest.mark.parametrize(
+        ("nome", "anterior", "nova"),
+        [
+            ("meal_identify", 1, 2),
+            ("meal_fallback", 1, 2),
+            ("vision_identify", 2, 3),
+            ("vision_fallback", 1, 2),
+        ],
+    )
+    def test_o_delta_da_versao_nova_e_so_o_bloco_de_formato(
+        self, nome: str, anterior: int, nova: int
+    ) -> None:
+        """Qualquer outra diferença tornaria a comparação v1 vs v2 ininterpretável."""
+        registry = PromptRegistry()
+        antes = registry.get(nome, anterior).system
+        depois = registry.get(nome, nova).system
+        corte = "FORMATO"
+        assert antes[: antes.index(corte)] == depois[: depois.index(corte)]
+        assert "array JSON" in antes[antes.index(corte) :]
+        assert "array JSON" not in depois[depois.index(corte) :]

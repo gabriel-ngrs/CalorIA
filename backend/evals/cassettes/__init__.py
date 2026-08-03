@@ -82,7 +82,11 @@ class AIClientComCassette:
         system: str | None = None,
         prompt_ref: Any = None,
         temperature: float | None = None,
+        json_object: bool = False,
     ) -> str:
+        # `json_object` fica fora da chave de propósito: ele é determinado pela
+        # versão do prompt, que já entra na chave por `prompt_sha`. Incluí-lo
+        # mudaria o `sha` de todos os cassettes gravados sem distinguir nada.
         payload = self._payload(prompt, system, prompt_ref, temperature)
         if not gravacao_ligada():
             self.reproduziu += 1
@@ -94,6 +98,7 @@ class AIClientComCassette:
             system=system,
             prompt_ref=prompt_ref,
             temperature=temperature,
+            json_object=json_object,
         )
         gravar(payload, resposta, diretorio=self._diretorio)
         self.gravou += 1

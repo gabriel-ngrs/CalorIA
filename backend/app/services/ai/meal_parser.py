@@ -106,6 +106,7 @@ class MealParser:
             use_cache=False,
             system=_IDENTIFY_PROMPT.system,
             prompt_ref=_IDENTIFY_PROMPT,
+            json_object=_IDENTIFY_PROMPT.topo_objeto,
         )
         data = extract_json_from_ai_response(raw)
         return [IdentifiedFood(**item) for item in data if isinstance(item, dict)]
@@ -317,6 +318,7 @@ class MealParser:
             use_cache=False,
             system=_FALLBACK_PROMPT.system,
             prompt_ref=_FALLBACK_PROMPT,
+            json_object=_FALLBACK_PROMPT.topo_objeto,
         )
         data = extract_json_from_ai_response(raw)
 

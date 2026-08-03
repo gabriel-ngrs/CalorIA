@@ -7,6 +7,30 @@ import re
 logger = logging.getLogger(__name__)
 
 
+#: Chave do array quando o prompt declara topo em **objeto**. O JSON mode da API
+#: (`response_format={"type": "json_object"}`) recusa array no topo, então as
+#: versões de prompt que o usam devolvem `{"itens": [...]}`. Ver
+#: `app.prompts._TOPO_OBJETO`.
+_CHAVE_DOS_ITENS = "itens"
+
+
+def _lista_do_topo(dados: object, bruto: str) -> list[dict[str, object]]:
+    """Normaliza as duas formas de topo aceitas: array e objeto com `itens`."""
+    if isinstance(dados, list):
+        return dados
+    if isinstance(dados, dict):
+        itens = dados.get(_CHAVE_DOS_ITENS)
+        if isinstance(itens, list):
+            return itens
+        # O modelo às vezes renomeia a chave. Com um único valor de lista no
+        # objeto a intenção é inequívoca, e aceitar é melhor que devolver vazio
+        # — que perderia a refeição inteira em silêncio.
+        listas = [v for v in dados.values() if isinstance(v, list)]
+        if len(listas) == 1:
+            return listas[0]
+    raise json.JSONDecodeError("resposta sem array de itens", bruto, 0)
+
+
 def extract_json_from_ai_response(text: str) -> list[dict[str, object]]:
     """Extrai a lista JSON da resposta da IA.
 
@@ -18,6 +42,10 @@ def extract_json_from_ai_response(text: str) -> list[dict[str, object]]:
        de visão anterior) escrevem o raciocínio antes da resposta, e o
        `json.loads` estourava na primeira letra.
     3. **Texto solto antes ou depois do array**, do tipo "Aqui está o JSON:".
+
+    Aceita o topo em array (versões v1 dos prompts) e em objeto com a chave
+    `itens` (versões com JSON mode), continuando a ser a rede de segurança que
+    a spec pede mesmo com o formato garantido pela API.
 
     Levanta `json.JSONDecodeError` quando não há array algum — os parsers
     dependem desse tipo para transformar a falha em erro 422 legível.
@@ -32,14 +60,14 @@ def extract_json_from_ai_response(text: str) -> list[dict[str, object]]:
     text = text.strip()
 
     try:
-        return json.loads(text)  # type: ignore[no-any-return]
+        return _lista_do_topo(json.loads(text), text)
     except json.JSONDecodeError:
         # Último recurso: recorta do primeiro '[' ao último ']'. Resolve o
         # "Aqui está o JSON:" sem mascarar uma resposta sem JSON nenhum.
         inicio, fim = text.find("["), text.rfind("]")
         if inicio == -1 or fim <= inicio:
             raise
-        return json.loads(text[inicio : fim + 1])  # type: ignore[no-any-return]
+        return _lista_do_topo(json.loads(text[inicio : fim + 1]), text)
 
 
 #: Tolerância de divergência entre calorias declaradas e calculadas por Atwater.

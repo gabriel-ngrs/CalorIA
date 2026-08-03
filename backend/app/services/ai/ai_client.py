@@ -4,6 +4,9 @@ import asyncio
 import base64
 import hashlib
 import logging
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
 import redis.asyncio as aioredis
@@ -16,6 +19,22 @@ if TYPE_CHECKING:
     from groq.types.chat import ChatCompletionMessageParam
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class UsoDaChamada:
+    """Consumo de uma chamada ao provedor: tokens e tempo de parede."""
+
+    modelo: str
+    tokens_in: int
+    tokens_out: int
+    segundos: float
+
+
+#: Observador opcional de consumo. Produção não passa nenhum — quem passa é o
+#: runner do eval, que precisa agregar custo e latência por execução e não tem
+#: como extrair isso do log estruturado sem reimplementar o cliente.
+ObservadorDeUso = Callable[[UsoDaChamada], None]
 
 _CACHE_TTL = 7 * 24 * 3600  # 7 dias
 _CACHE_PREFIX = "ai:"
@@ -39,10 +58,21 @@ def _sampling_params() -> dict[str, Any]:
     return params
 
 
+def _formato_da_resposta(json_object: bool) -> dict[str, Any]:
+    """JSON mode da API, ligado só por prompt cujo topo é objeto.
+
+    O parâmetro é omitido quando desligado — mandá-lo como `None` mudaria o
+    payload de toda chamada e invalidaria os cassettes gravados do eval sem
+    nenhuma mudança de comportamento em troca.
+    """
+    return {"response_format": {"type": "json_object"}} if json_object else {}
+
+
 class AIClient:
     """Cliente Groq — texto e visão 100% gratuito."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, observador: ObservadorDeUso | None = None) -> None:
+        self._observador = observador
         self._groq = AsyncGroq(
             api_key=settings.GROQ_API_KEY,
             # Sem timeout explícito, o default da lib (60s) ficava implícito e
@@ -64,16 +94,23 @@ class AIClient:
         system: str | None = None,
         prompt_ref: PromptVersion | None = None,
         temperature: float | None = None,
+        json_object: bool = False,
     ) -> str:
         """Gera texto via Groq com cache Redis opcional.
 
         `prompt_ref` só identifica a origem do texto para o log estruturado —
         não altera o que é enviado ao provedor. `temperature` explícita vence a
-        regra herdada resolvida por `_resolver_temperatura`.
+        regra herdada resolvida por `_resolver_temperatura`. `json_object` liga
+        o JSON mode da API, e só pode ser usado com prompt cujo topo é objeto.
         """
         temp = self._resolver_temperatura(temperature, system)
         cache_input = f"[SYS]{system}\n[USR]{prompt}" if system else prompt
-        cache_key = self._cache_key(cache_input, model=_TEXT_MODEL, temperature=temp)
+        cache_key = self._cache_key(
+            cache_input,
+            model=_TEXT_MODEL,
+            temperature=temp,
+            json_object=json_object,
+        )
         if use_cache:
             if cached := await self._get_cached(cache_key):
                 logger.debug("Cache hit AI")
@@ -85,6 +122,7 @@ class AIClient:
             model=_TEXT_MODEL,
             prompt_ref=prompt_ref,
             temperature=temp,
+            json_object=json_object,
         )
 
         if use_cache:
@@ -119,6 +157,7 @@ class AIClient:
         *,
         system: str | None = None,
         prompt_ref: PromptVersion | None = None,
+        json_object: bool = False,
     ) -> str:
         """Gera texto a partir de imagem via Groq Vision (sem cache)."""
         b64 = base64.b64encode(image_bytes).decode()
@@ -149,13 +188,16 @@ class AIClient:
         gasto_no_backoff = 0.0
         for attempt in range(4):
             try:
+                inicio = time.monotonic()
                 response = await self._groq.chat.completions.create(
                     model=_VISION_MODEL,
                     messages=cast("list[ChatCompletionMessageParam]", messages),
                     temperature=settings.GROQ_TEMPERATURE,
                     **_sampling_params(),
+                    **_formato_da_resposta(json_object),
                     **extras,
                 )
+                self._notificar_uso(_VISION_MODEL, response, time.monotonic() - inicio)
                 prompt_name, prompt_version, prompt_sha = self._prompt_log_fields(
                     prompt_ref
                 )
@@ -225,6 +267,20 @@ class AIClient:
             return None
         return float(min(15.0 * (2**attempt), restante))
 
+    def _notificar_uso(self, modelo: str, response: Any, segundos: float) -> None:
+        """Publica o consumo da chamada, quando alguém está observando."""
+        if self._observador is None:
+            return
+        uso = response.usage
+        self._observador(
+            UsoDaChamada(
+                modelo=modelo,
+                tokens_in=uso.prompt_tokens if uso else 0,
+                tokens_out=uso.completion_tokens if uso else 0,
+                segundos=segundos,
+            )
+        )
+
     @staticmethod
     def _prompt_log_fields(prompt_ref: PromptVersion | None) -> tuple[str, str, str]:
         """Trio (name, version, sha) para o log estruturado — nunca vazio."""
@@ -240,6 +296,7 @@ class AIClient:
         model: str,
         prompt_ref: PromptVersion | None = None,
         temperature: float,
+        json_object: bool = False,
     ) -> str:
         messages: list[dict[str, Any]] = []
         if system:
@@ -249,12 +306,15 @@ class AIClient:
         gasto_no_backoff = 0.0
         for attempt in range(4):
             try:
+                inicio = time.monotonic()
                 response = await self._groq.chat.completions.create(
                     model=model,
                     messages=cast("list[ChatCompletionMessageParam]", messages),
                     temperature=temperature,
                     **_sampling_params(),
+                    **_formato_da_resposta(json_object),
                 )
+                self._notificar_uso(model, response, time.monotonic() - inicio)
                 content = response.choices[0].message.content or ""
                 prompt_name, prompt_version, prompt_sha = self._prompt_log_fields(
                     prompt_ref
@@ -291,7 +351,9 @@ class AIClient:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _cache_key(text: str, *, model: str, temperature: float) -> str:
+    def _cache_key(
+        text: str, *, model: str, temperature: float, json_object: bool = False
+    ) -> str:
         """Chave de cache que inclui tudo que muda a resposta.
 
         A chave anterior era o `sha256` só de system + prompt. Trocar
@@ -304,6 +366,7 @@ class AIClient:
             f"[TEMP]{temperature}"
             f"[MAXTOK]{settings.GROQ_MAX_TOKENS}"
             f"[SEED]{seed}"
+            f"[JSON]{int(json_object)}"
             f"[TEXT]{text.lower().strip()}"
         )
         digest = hashlib.sha256(assinatura.encode()).hexdigest()[:24]
