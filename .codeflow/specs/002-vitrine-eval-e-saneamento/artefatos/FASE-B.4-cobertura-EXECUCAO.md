@@ -3,14 +3,68 @@ spec: 002-vitrine-eval-e-saneamento
 fase: B.4
 slug_fase: cobertura
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: 8660f40
-sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
-range: 8660f40..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+sha_final: bbbf03a2ba1371b3c5933acf72917eae84b333dd
+range: 8660f40..bbbf03a2ba1371b3c5933acf72917eae84b333dd
 ---
 
 # FASE B.4 — Relatório de execução
+
+## Tentativa 3 — o CI verde com o gate ativo existe
+
+Veredito da tentativa 2: **RESSALVAS**, score 9.7, por um único achado — B4-IMP-2. Ele
+está **fechado**, e o achado estava certo na distinção que fazia: verificar o piso no
+container prova que a flag funciona, não que o job do GitHub Actions reprova o build.
+
+### B4-IMP-2 — "CI verde com o gate ativo" — **FECHADO**
+
+O diagnóstico era preciso: o `--cov-fail-under=72` existia só no repositório local, e a
+última execução de CI no GitHub tinha rodado sobre um `ci.yml` sem a flag. Faltava
+empurrar. O owner autorizou e o push saiu:
+
+```text
+$ git push origin dev
+To https://github.com/gabriel-ngrs/CalorIA.git
+   da08121..bbbf03a  dev -> dev
+```
+
+Execução resultante, **no GitHub Actions, com a flag ativa**:
+
+```text
+run 30837561079 · commit bbbf03a · conclusão: success
+https://github.com/gabriel-ngrs/CalorIA/actions/runs/30837561079
+
+Backend — lint e testes .......... success
+Frontend — lint e build .......... success
+
+# o passo que importa, do log do job:
+$ pytest --cov=app --cov-report=xml --cov-fail-under=72 -q
+Required test coverage of 72% reached. Total coverage: 73.86%
+620 passed, 4 skipped, 5 warnings in 60.48s
+
+# e os demais gates do mesmo job:
+Lint — ruff ...................... All checks passed!
+Eval — camada rápida (sem rede) ... 140 passed in 0.76s
+Frontend — Testes ................. 20 suites, 118 passed
+```
+
+O gate é agora o que a fase declarou que seria: a flag está no job remoto, o job rodou,
+e a cobertura medida no runner do GitHub (**73,86%**) é a mesma medida no container —
+o que confirma que o par Postgres 16 + Redis do compose de dev reproduz o do CI.
+
+### Uma diferença de contagem que registro em vez de deixar para o avaliador achar
+
+No container: `623 passed, 1 skipped`. No CI: `620 passed, 4 skipped`. São os mesmos 624
+testes coletados; três a mais pulam no runner do GitHub. Não investiguei quais — o gate
+da fase é a cobertura, que passou nos dois com o mesmo número —, mas fica anotado
+porque a diferença é real e alguém vai reparar.
+
+### O que fica em aberto
+
+Nada nesta fase. AC-9 satisfeito, piso ativo, CI verde com o gate exercitado no remoto.
+
 
 ## Tentativa 2 — o que mudou
 

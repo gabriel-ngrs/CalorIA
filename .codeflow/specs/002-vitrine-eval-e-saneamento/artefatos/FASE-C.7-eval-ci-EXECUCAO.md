@@ -12,6 +12,69 @@ range: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 
 # FASE C.7 — Relatório de execução
 
+## Nota de 2026-08-03 — o push saiu, e revelou um impedimento que não estava previsto
+
+*Não é rework: `status`, `tentativa` e `reprovacoes` ficam como estavam. O achado
+C7-IMP-1 continua aberto, mas por uma razão diferente da declarada, e a diferença
+importa.*
+
+O terceiro impedimento que a avaliação nomeou — *"o `eval.yml` não existe no GitHub"* —
+foi resolvido pela metade. O owner autorizou o push e ele saiu:
+
+```text
+$ git push origin dev
+   da08121..bbbf03a  dev -> dev
+$ git show origin/dev:.github/workflows/eval.yml    → existe
+```
+
+**E aí apareceu o que ninguém tinha medido:** o arquivo estar numa branch não basta.
+
+```text
+$ gh workflow list --all --repo gabriel-ngrs/CalorIA
+CD — Deploy em Produção   active
+CI                        active
+Dependabot Updates        active
+                                     ← eval.yml não aparece
+
+$ gh workflow run eval.yml --ref dev --repo gabriel-ngrs/CalorIA
+HTTP 404: Not Found (https://api.github.com/repos/gabriel-ngrs/CalorIA/actions/workflows/eval.yml)
+
+$ git show origin/main:.github/workflows/eval.yml
+NAO em origin/main (default branch)
+```
+
+O GitHub só registra um workflow — e só aceita `workflow_dispatch` — quando o arquivo
+está no **branch default**, que aqui é `main`. O `--ref dev` escolhe o código que vai
+rodar, não onde o workflow é procurado. E a mesma regra vale para o gatilho `schedule`:
+o cron semanal de `eval.yml:15` **não vai disparar** enquanto o arquivo não estiver na
+`main`. Hoje os dois gatilhos da fase estão inertes.
+
+### O choque com a OQ15, declarado em vez de contornado
+
+O owner decidiu em 2026-08-03 que a `main` **não é tocada até o fim da spec** (OQ15).
+Somando as duas coisas: **a C.7 não tem como fechar antes da D.2.** Não é falta de
+quota nem falta de secret — é que o gate da fase ("uma execução agendada completa
+registrada") depende de um mecanismo que só existe a partir do branch default.
+
+Isso coloca a C.7 na mesma situação da D.1: item aberto por decisão consciente, com
+causa medida, e não por trabalho pendente. **Uma avaliação da C.7 antes da D.2 deve
+manter RESSALVAS por este item.** Registro aqui para que a decisão de como proceder
+seja do owner e não uma descoberta no meio da próxima avaliação.
+
+### Estado dos três impedimentos, medido hoje
+
+| impedimento | estado |
+|---|---|
+| `eval.yml` ausente do remoto | **resolvido em `dev`**; inerte até chegar à `main` |
+| `GROQ_API_KEY` nos secrets | **ainda ausente** — `gh secret list` devolve vazio |
+| quota do provedor | **teto diário estourado hoje**: TPD 100.000, 99.151 consumidos (medido na C.6) |
+
+O que **não** está em aberto e vale separar: a camada rápida rodou no CI remoto nesta
+mesma execução — `Eval — camada rápida (sem rede): 140 passed in 0.76s`, run
+[30837561079](https://github.com/gabriel-ngrs/CalorIA/actions/runs/30837561079). AC-15
+na parte rápida e NFR-2 estão exercitados **no GitHub**, não só no container.
+
+
 ## Tentativa 2 — o que mudou
 
 Veredito da tentativa 1: **RESSALVAS**, score 9.4. Dois achados IMPORTANTES: um
