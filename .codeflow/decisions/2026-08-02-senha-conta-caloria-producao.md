@@ -32,6 +32,19 @@ fase: A.1
 > pessoal do owner — é literalmente o problema que o Track A existe para resolver").
 > Esta decision reforça: a reconstrução é o momento em que o erro poderia se repetir.
 
+> **ATUALIZAÇÃO 2026-08-03 (achado A1-IMP-2).** O corpo deste documento continuava
+> afirmando, em texto vigente, o contrário do bloco acima — e mantinha um portão sobre
+> a Fase D.2 apoiado numa premissa já retratada. Três coisas mudam, e estão detalhadas
+> na seção **"Estado final"**, ao pé do documento:
+>
+> 1. A condicional "se o backend estiver no ar" foi **medida e resolvida como falsa**.
+> 2. O **portão sobre a D.2 está levantado**, por decisão do owner.
+> 3. A afirmação "a URL do backend não é descobrível a partir do código" é
+>    **factualmente errada** e está marcada como tal nos dois pontos onde aparece.
+>
+> Tudo abaixo desta linha é registro histórico: descreve o que se sabia em 2026-08-02,
+> não o que vale hoje.
+
 ---
 
 ## Registro original (2026-08-02, antes da correção da premissa)
@@ -64,6 +77,9 @@ Não é esquecimento; é ausência de caminho técnico:
   backend **não é descobrível a partir do código**. Isso é exatamente o problema que
   a §1 da spec descreve ("Deploy indeterminado… estado atual desconhecido") e que a
   **Fase E.1 existe para resolver**.
+  > ❌ **FALSO — retratado em 2026-08-03.** A URL sempre esteve no repositório, em
+  > texto claro: `docs/deploy.md:188` e `docs/deploy-checklist.md:107` trazem
+  > `APP_DOMAIN=caloria-gabriel.duckdns.org`. Bastava um `grep` em `docs/`.
 
 O owner declarou nesta sessão que o backend de produção está fora do ar. Essa
 declaração **não foi verificada de forma independente** — não havia URL para sondar.
@@ -89,6 +105,10 @@ fora do repositório porque lida com a senha em texto claro.
    evidência. Descartada porque a URL do backend não é descobrível pelo repositório, e
    sondá-la exigiria fazer o levantamento que é escopo da Fase E.1 — ampliar a A.1
    para dentro do Track E seria violação de escopo.
+   > ❌ **FALSO — retratado em 2026-08-03.** A premissa é a mesma refutada acima, e
+   > esta é a consequência cara do erro: **este era o caminho certo, e foi descartado
+   > por um fato que não se conferiu.** A avaliação da tentativa 3 percorreu esse
+   > caminho em três comandos e fechou o AC-1 com ele.
 3. **Deletar a conta em produção.** Resolveria o acesso, mas destruiria os dados que
    servem de base para a conta de demonstração da Fase E.3, e sem acesso ao servidor
    esbarra no mesmo impedimento.
@@ -113,6 +133,9 @@ reescreveu o remoto, não os clones de terceiros.
 a senha tenha sido trocada. A D.2 **não deve ser executada** antes desta pendência ser
 fechada, e essa dependência não está declarada na §5 da spec — está declarada aqui.
 
+> ⛔ **PORTÃO LEVANTADO em 2026-08-03.** Ver "Estado final", abaixo. Esta restrição
+> sobre a D.2 **não vale mais**.
+
 ## Reprodução
 
 ```text
@@ -120,7 +143,59 @@ fechada, e essa dependência não está declarada na §5 da spec — está decla
 $ grep -n "@router.post\|@router.put\|@router.patch" backend/app/api/v1/auth.py
 40, 56 (login), 72 (refresh), 104 (logout), 112 (forgot-password), 140 (reset-password)
 
-# a URL do backend não é descobrível pelo repositório
+# a URL do backend não é descobrível pelo repositório   ← ❌ FALSO, ver retratação
 $ cat Caddyfile.backend | head -1
 {$APP_DOMAIN} {
 ```
+
+---
+
+## Estado final (2026-08-03)
+
+### A condicional foi medida, e é falsa
+
+O risco residual acima era condicional: *"**se** o backend de produção estiver no ar,
+a conta aceita a senha vazada"*. A condicional foi resolvida por medição na avaliação
+da tentativa 3 da A.1 (`FASE-A.1-rotacao-credencial-AVALIACAO.md` §6):
+
+```text
+# o host que o frontend PUBLICADO de fato chama, extraído do bundle da Vercel
+$ grep -oE 'https?://[a-zA-Z0-9.-]+' allchunks.js | sort -u | grep duckdns
+https://caloria.duckdns.org
+$ getent hosts caloria.duckdns.org        → 3.21.134.83
+$ for p in 443 80 8000; do ... done       → todas fechadas/filtradas (timeout 8s)
+
+# o host DOCUMENTADO nem resolve
+$ getent hosts caloria-gabriel.duckdns.org
+(sem saída)
+```
+
+A Fase E.1, aprovada e independente, mediu a mesma indisponibilidade pelo host
+documentado. **Não há backend no ar, logo não há conta que aceite a senha vazada.**
+O risco residual descrito na seção anterior deixou de existir; não foi mitigado nem
+aceito — foi refutado.
+
+### O portão sobre a Fase D.2 está levantado
+
+**Decisão do owner, 2026-08-03.** O portão existia por uma razão só: a possibilidade
+de o backend estar no ar quando o repositório voltasse a ser público. Essa
+possibilidade foi medida e descartada. Manter a trava seria manter a conclusão depois
+de perder a premissa.
+
+A D.2 fica livre desta dependência. O que **não** cai junto, e segue valendo para a
+reabertura do repositório:
+
+- A mitigação da **OQ10** (deixar alguns dias entre a purga do histórico da A.2 e a
+  reabertura, por causa do cache de commits órfãos do GitHub) — restrição de outra
+  origem, não tocada aqui.
+- A proibição da **E.3** de semear a conta de demonstração com a senha vazada ou com
+  qualquer senha pessoal do owner. Esta é a única obrigação que sobrevive desta
+  decision, e é a que importa: a reconstrução é o momento em que o erro se repetiria.
+
+### Lição de método
+
+O erro de fato desta decision não foi decorativo: **"a URL não é descobrível" foi a
+razão declarada para descartar a única verificação capaz de fechar o AC-1**, e custou
+duas tentativas da fase. A afirmação nunca foi testada — um `grep` em `docs/` a
+derrubava. Afirmar um negativo sem procurar é o defeito, e ele reaparece na E.1
+("a URL de produção do frontend não aparece em documento nenhum" — aparece, em três).
