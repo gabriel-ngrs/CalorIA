@@ -166,6 +166,61 @@ Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.
 
 ---
 
+## ADR-009 — Topologia self-hosted em host único
+
+**Contexto:** o projeto acumulou **três** arquivos de compose e **dois** Caddyfiles, sem
+que nenhum declarasse seu propósito, e a documentação descrevia como "produção" um par
+que não era o que rodava. Havia duas topologias implícitas competindo:
+
+| topologia | arquivos | frontend | estado |
+|---|---|---|---|
+| **A — host único** | `docker-compose.yml` + `Caddyfile` | no mesmo host | documentada como "Produção" |
+| **B — dividida** | `docker-compose.backend.yml` + `Caddyfile.backend` | na Vercel | a que de fato rodava |
+
+A auditoria da Fase E.1 (2026-08-02) mediu o estado real e **refutou a premissa da
+documentação**: o backend não estava "indeterminado", estava inexistente — o host
+`caloria-gabriel.duckdns.org` não resolve sequer em DNS. O frontend na Vercel continua
+no ar, com build de ~13 dias, servindo uma tela de login sem API atrás.
+
+O `Caddyfile.backend` deixa a topologia B evidente: ele publica apenas `/api`, `/docs` e
+`/redoc` — a cara de um host que existe só para servir a API.
+
+**Decisão:** a topologia oficial é a **A — self-hosted em host único**:
+`docker-compose.yml` + `Caddyfile`, subindo Postgres, Redis, backend, frontend, os dois
+workers Celery e o proxy no mesmo lugar.
+
+Decisão do owner em 2026-08-03, com duas condições temporais explícitas:
+
+- **Agora:** roda **localmente**. Não há servidor contratado e não haverá deploy nesta
+  spec — a Fase E.4 fica adiada por decisão, não por impedimento.
+- **Futuro:** o mesmo par sobe numa VPS quando houver. Nada na topologia muda; muda o
+  host.
+
+O par da topologia B (`docker-compose.backend.yml` + `Caddyfile.backend`) **não é
+deletado aqui**: recebe cabeçalho declarando que é legado e fica marcado para a poda da
+Fase D.4. O escopo desta fase é desambiguar, não remover.
+
+**Justificativa:** um host único é a forma mais simples de um projeto pessoal ter uma
+stack reprodutível — `docker compose up` e está tudo de pé, incluindo o frontend, sem
+depender de plataforma externa nem de dois lugares para configurar. A topologia dividida
+paga o preço de coordenar dois ambientes (variáveis de API, CORS, dois deploys) em troca
+de um CDN gratuito, e esse preço só se justifica com tráfego que este projeto não tem.
+
+**Consequências:**
+- `docker-compose.yml` passa a ser a stack de produção **e** o jeito de rodar o projeto
+  inteiro localmente. O README deixa de chamá-lo de "Produção" sem qualificação.
+- O deploy na **Vercel fica órfão**: continua no ar apontando para uma API que não
+  existe. Retirá-lo (ou reapontá-lo) é ação do owner, registrada como pendência na Fase
+  E.4 — deixar uma tela de login quebrada acessível é o oposto do objetivo de vitrine
+  desta spec.
+- `docs/deploy.md` vira o **único** guia de deploy; `docs/deploy-checklist.md` foi
+  incorporado a ele. Dois documentos descrevendo o mesmo procedimento foi como o host
+  errado acabou registrado em quatro lugares.
+- O `cd.yml` do ADR-008 continua válido como desenho, e continua inerte enquanto não
+  houver servidor.
+
+---
+
 ## Fluxo de Registro de Refeição (Web)
 
 ```

@@ -81,9 +81,13 @@ VAPID_CLAIMS_EMAIL=seu@email.com
 # Desenvolvimento (hot reload)
 docker compose -f docker-compose.dev.yml up
 
-# Produção local
+# Stack completa — a mesma que vai para produção (ADR-009)
 docker compose up -d
 ```
+
+> A topologia oficial é **host único**: um `docker compose up` sobe banco, cache,
+> backend, frontend, workers e proxy no mesmo lugar. Hoje ela roda localmente; a
+> mesma stack sobe numa VPS quando houver. Ver `docs/deploy.md`.
 
 ### 4. Executar migrações
 
@@ -129,13 +133,15 @@ CalorIA/
 │   ├── architecture.md     # Decisões de arquitetura (ADRs)
 │   ├── auditoria/          # Auditoria de arquitetura/qualidade/segurança
 │   ├── setup.md            # Guia de setup do zero
-│   ├── deploy.md           # Guia de deploy em produção (Hetzner)
+│   ├── deploy.md           # Guia de deploy em host único (+ checklist)
 │   ├── git-workflow.md     # Estratégia de branches e CI/CD
 │   └── flow.md             # Fluxo do registro ao banco
 ├── scripts/                # Scripts de servidor e deploy
-├── Caddyfile               # Reverse proxy (HTTPS produção)
-├── docker-compose.yml      # Produção
-├── docker-compose.dev.yml  # Desenvolvimento
+├── Caddyfile               # Proxy HTTPS da stack completa  ← oficial (ADR-009)
+├── docker-compose.yml      # Stack completa em host único   ← oficial (ADR-009)
+├── docker-compose.dev.yml  # Desenvolvimento, com hot reload
+├── Caddyfile.backend       # Legado: proxy só da API        — remoção na poda
+├── docker-compose.backend.yml # Legado: sem frontend (era Vercel) — remoção na poda
 └── .env.example
 ```
 

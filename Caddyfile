@@ -1,6 +1,10 @@
 # =============================================================================
-# CalorIA — Caddyfile
+# CalorIA — Caddyfile  ·  par oficial do `docker-compose.yml` (ADR-009)
 # Reverse proxy com HTTPS automático via Let's Encrypt.
+#
+# Serve o site inteiro a partir de um host só: frontend na raiz e backend sob
+# /api, /docs e /redoc. É o proxy da topologia oficial — não confundir com
+# `Caddyfile.backend`, que é legado da topologia dividida.
 #
 # APP_DOMAIN é injetado via variável de ambiente no docker-compose.yml.
 # Exemplos de valor: caloria.seudominio.com | app.seudominio.com

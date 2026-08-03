@@ -1,3 +1,18 @@
+# =============================================================================
+# CalorIA — apenas o BACKEND  ·  LEGADO da topologia dividida (ADR-009)
+#
+# Sobe tudo MENOS o frontend, porque nesta topologia o frontend ficava na
+# Vercel e este host servia só a API. Usa o `Caddyfile.backend`, que publica
+# apenas /api, /docs e /redoc.
+#
+# NÃO é a topologia oficial. Foi o par que de fato rodou em produção até o
+# servidor sair do ar — a Fase E.1 (2026-08-02) mediu que o host
+# `caloria-gabriel.duckdns.org` não resolve mais nem em DNS.
+#
+# Mantido como referência histórica, sem uso. Marcado para remoção na poda do
+# repositório (Fase D.4). Para subir o projeto, use `docker-compose.yml`.
+# =============================================================================
+
 services:
   postgres:
     image: postgres:16-alpine

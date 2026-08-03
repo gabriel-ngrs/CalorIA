@@ -405,6 +405,13 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [ ] Proteção da branch `main` no GitHub (PR obrigatório + CI obrigatório)
 
 ### 9.2 Deploy em Produção
+
+> **Adiado por decisão do owner (2026-08-03).** A topologia está decidida e registrada
+> no **ADR-009** — host único, `docker-compose.yml` + `Caddyfile` —, e por enquanto a
+> stack roda **localmente**. Nenhum servidor será contratado nesta etapa; a VPS entra
+> no futuro, e aí os itens abaixo valem sem alteração. O deploy anterior saiu do ar:
+> a auditoria da Fase E.1 mediu que o host antigo não resolve mais nem em DNS.
+
 - [ ] Provisionar servidor (Hetzner CX22 — ~R$22/mês)
 - [ ] Configurar secrets no GitHub (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`)
 - [ ] Configurar environment `production` no GitHub Actions

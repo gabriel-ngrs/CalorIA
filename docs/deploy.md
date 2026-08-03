@@ -1,9 +1,20 @@
-# Deploy — CalorIA no Hetzner
+# Deploy — CalorIA em host único
 
-Guia completo para hospedar o CalorIA em produção usando Hetzner Cloud + Docker Compose + Caddy (HTTPS automático).
+Guia completo para hospedar o CalorIA em produção: um servidor com Docker Compose + Caddy (HTTPS automático). O provedor usado como exemplo é a Hetzner Cloud, mas qualquer VPS com Docker serve.
 
-**Custo:** ~€3.92/mês (≈ R$22)
+**Topologia:** host único — Postgres, Redis, backend, frontend, workers e proxy no mesmo lugar, via `docker-compose.yml` + `Caddyfile`. Ver **ADR-009** em `docs/architecture.md`.
+
+**Custo:** ~€3.92/mês (≈ R$22) no exemplo da Hetzner
 **Tempo estimado:** 30–45 minutos na primeira vez
+
+> **Estado em 2026-08-03 — não há servidor no ar.**
+> O deploy anterior saiu do ar: a Fase E.1 mediu que o host que a versão antiga deste
+> guia citava não resolve mais nem em DNS. Por decisão do owner, o projeto **roda
+> localmente** por enquanto (`docker compose up -d --build` na raiz, mesmo arquivo),
+> e uma VPS entra no futuro. Este guia é o procedimento para quando isso acontecer —
+> não a descrição de algo que está funcionando agora.
+>
+> Onde você ler `caloria.exemplo.com`, troque pelo seu domínio.
 
 ---
 
@@ -74,9 +85,9 @@ TTL: 300
 ### Opção B — Subdomínio gratuito via DuckDNS
 
 1. Acesse [duckdns.org](https://www.duckdns.org) e entre com Google/GitHub
-2. Escolha um nome (ex: `caloria-gabriel`) e clique em **add domain**
+2. Escolha um nome (ex: `caloria-seunome`) e clique em **add domain**
 3. Cole o IP do servidor no campo **current ip** e clique em **update ip**
-4. Seu domínio ficará: `caloria-gabriel.duckdns.org`
+4. Seu domínio ficará: `<nome-escolhido>.duckdns.org`
 
 > Aguarde 2–5 minutos para o DNS propagar antes de prosseguir.
 
@@ -185,12 +196,12 @@ REDIS_URL=redis://redis:6379/0
 # Aplicação
 APP_ENV=production
 SECRET_KEY=abc123...resultado_do_openssl
-APP_DOMAIN=caloria-gabriel.duckdns.org
+APP_DOMAIN=caloria.exemplo.com
 
 # Next.js
-NEXTAUTH_URL=https://caloria-gabriel.duckdns.org
+NEXTAUTH_URL=https://caloria.exemplo.com
 NEXTAUTH_SECRET=xyz789...outro_resultado_do_openssl
-NEXT_PUBLIC_API_URL=https://caloria-gabriel.duckdns.org
+NEXT_PUBLIC_API_URL=https://caloria.exemplo.com
 
 # Groq
 GROQ_API_KEY=gsk_...sua_chave_aqui
@@ -252,7 +263,7 @@ docker exec caloria_backend python scripts/import_off.py
 docker compose ps
 
 # Testa o backend
-curl https://caloria-gabriel.duckdns.org/health
+curl https://caloria.exemplo.com/health
 # Resposta esperada: {"status":"ok","version":"0.1.0"}
 ```
 
@@ -389,3 +400,27 @@ docker compose down -v   # -v remove os volumes com os dados
 docker compose up -d --build
 docker exec caloria_backend alembic upgrade head
 ```
+
+---
+
+## Checklist de primeiro deploy
+
+Resumo das partes acima, para conferir sem reler o guia. **Os comandos ficam nas
+partes** — esta lista não os repete de propósito: duplicar procedimento em dois
+lugares foi exatamente como um host desatualizado acabou documentado em quatro.
+
+- [ ] Chave SSH criada (Parte 1)
+- [ ] Servidor provisionado e IP anotado (Parte 2)
+- [ ] Domínio apontando para o IP, DNS propagado (Parte 3)
+- [ ] Docker instalado no servidor (Parte 5)
+- [ ] Repositório clonado em `/opt/caloria` (Parte 6)
+- [ ] Chaves VAPID geradas e `vapid_private.pem` com permissão `600` (Parte 7)
+- [ ] `.env` preenchido, com `SECRET_KEY` e `NEXTAUTH_SECRET` gerados por `openssl` (Parte 8)
+- [ ] `docker compose up -d --build` e todos os serviços em `Up` (Parte 9)
+- [ ] `alembic upgrade head` aplicado (Parte 10)
+- [ ] Seed do banco nutricional rodado — sem ele a IA cai sempre no fallback (Parte 10)
+- [ ] `/health` respondendo pelo domínio, com HTTPS (Parte 11)
+
+Para o deploy automático a cada merge na `main`, configure também o environment
+`production` no GitHub com os secrets `SERVER_HOST`, `SERVER_USER` e `SERVER_SSH_KEY`
+— ver "Fluxo de desenvolvimento → produção", mais acima, e o ADR-008.
