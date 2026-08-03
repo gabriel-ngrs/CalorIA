@@ -754,7 +754,11 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **id:** `B.5`
 - **slug:** `vision-parser-bug001`
 - **Objetivo:** corrigir o caminho de foto, que o eval expõe imediatamente.
-- **Depende de:** `C.6`.
+- **Depende de:** `C.4`. *(Corrigido em 2026-08-03, achado B5-IMP-1: a fase
+  declarava depender da `C.6`, mas o gate que ela se impõe — "delta do estrato
+  de foto" — depende do dataset de foto, que nasce na `C.4`. O código da fase
+  está pronto e aprovado; o que falta é o dataset. Decisão do owner: manter o
+  gate como está e reabrir a B.5 depois da C.4.)*
 - **Arquivos alterados:** `backend/app/services/ai/vision_parser.py`,
   `backend/app/prompts/vision_identify/` (nova versão),
   `backend/tests/unit/test_vision_parser.py`.
@@ -1521,12 +1525,46 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   `user_id` seria a chave natural nos endpoints autenticados.
   Ver `.codeflow/decisions/2026-08-02-rate-limit-em-get-de-ia.md`.
 
+- **OQ12 — Passo 2 da C.2 (JSON mode), não entregue por incompatibilidade de formato.**
+  **RESOLVIDO (2026-08-03).** Implementar agora, por decisão do owner, em três partes:
+  versões novas dos quatro prompts com topo em objeto (`meal_identify@v2`,
+  `meal_fallback@v2`, `vision_identify@v3`, `vision_fallback@v2`, delta restrito ao
+  bloco FORMATO e verificado por teste); `response_format` amarrado à versão do prompt
+  via `PromptVersion.topo_objeto`, nunca a uma flag solta; e **produção fixada nas
+  versões já medidas** por `VERSOES_EM_PRODUCAO`, de modo que `get_prompt` deixa de
+  resolver pela maior versão do disco. Justificativa: promover no mesmo passo trocaria
+  o prompt sem medição e invalidaria os 14 cassettes, deixando o harness do Track C
+  inutilizável até haver quota. FR-C2 fica completo no código; o que falta é uma
+  execução comparando v1 e v2, bloqueada pelo risco R5.
+  Ver `.codeflow/decisions/2026-08-03-json-mode-com-versoes-de-prompt-em-objeto.md`.
+
+- **OQ13 — Fase A.1 no teto do §2.11.4 (3 vereditos não-APROVADO).**
+  **RESOLVIDO (2026-08-03).** O owner aceitou a fase e a encerrou, em vez de gastar
+  uma quarta tentativa. Fundamentação: os dois achados IMPORTANTES eram de artefato
+  (§9 do relatório contradizendo a §1/§8, e a decision da fase contradizendo o próprio
+  cabeçalho), ambos corrigidos nesta data, e o trabalho técnico já fora verificado por
+  medição independente na tentativa 3. No mesmo ato o owner **levantou o portão sobre
+  a Fase D.2** que a decision mantinha: a premissa que o sustentava — "se o backend
+  estiver no ar, a conta aceita a senha vazada" — foi medida e é falsa. Seguem valendo
+  a mitigação da OQ10 e a proibição da E.3 de reusar a senha vazada.
+  Ver `.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`, seção
+  "Estado final".
+
+- **OQ14 — Regras de porção alteradas fora do conjunto declarado de arquivos.**
+  **RESOLVIDO (2026-08-03).** A correção de `backend/scripts/seed_portions.py`
+  (13 entradas novas para gordura de passar e acompanhamentos) nasceu do achado
+  `inv-04` da C.6 e tocou arquivo que não consta dos "Arquivos alterados" de nenhuma
+  fase. Registrada como decision, sem reversão: a regra genérica de 100 g para
+  "porção de manteiga" é o defeito, e `portions` é o lugar certo de corrigi-lo.
+  Ver `.codeflow/decisions/2026-08-03-regras-de-porcao-para-gordura-de-passar.md`.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
 
-- [ ] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
-      a credencial; `make test-frontend` verde.
+- [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
+      a credencial; `make test-frontend` verde. *(Encerrada por aceite do owner em
+      2026-08-03, no teto do §2.11.4 — ver OQ13.)*
 - [ ] **A.2** — varredura sobre todo o histórico com zero achados; documentos de
       auditoria reescritos sem PII nem caminho de extração; PRs do Dependabot
       tratados.
@@ -1536,7 +1574,9 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [ ] **B.2** — AC-6; execução verde no GitHub Actions com os gatilhos restaurados.
 - [ ] **B.3** — AC-7 e AC-8; `make test-integration` verde.
 - [ ] **B.4** — AC-9; piso de cobertura ativo e CI verde.
-- [ ] **B.5** — AC-17; delta do estrato de foto registrado com números.
+- [ ] **B.5** — AC-17; delta do estrato de foto registrado com números. *(AC-17 e os
+      quatro passos de código estão satisfeitos e verificados; o delta depende do
+      dataset de foto, que nasce na C.4 — dependência corrigida em 2026-08-03.)*
 - [ ] **C.1** — AC-10; testes existentes dos parsers passam **sem modificação**.
 - [ ] **C.2** — AC-11; suíte de IA verde sem modificação nos testes existentes.
 - [ ] **C.3** — AC-12; README do harness com a análise de poder.

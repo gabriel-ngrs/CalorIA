@@ -8,7 +8,17 @@ reprovacoes: 2
 sha_inicial: 461ee3805bf5f8848d4da6ebd23779ff8817c315
 sha_final: 7348d948dd9a5176fa0dbd13549b26e25c87e3f0
 range: 461ee3805bf5f8848d4da6ebd23779ff8817c315..7348d948dd9a5176fa0dbd13549b26e25c87e3f0
+encerrada: aceite-do-owner
+aceite_owner: 2026-08-03
 ---
+
+> **FASE ENCERRADA POR ACEITE DO OWNER em 2026-08-03.** A fase bateu o teto do
+> §2.11.4 (3 vereditos não-APROVADO) e saiu do ciclo executor↔avaliador, como o
+> protocolo manda. O owner decidiu aceitá-la: os dois achados IMPORTANTES eram
+> saneamento de artefato — esta §9 e a decision da fase —, ambos corrigidos nesta
+> data, e o trabalho técnico já estava verificado por terceiro na tentativa 3.
+> Não há tentativa 4: `status`, `tentativa` e `reprovacoes` ficam como estavam
+> porque nenhuma nova execução ocorreu. Ver §10.
 
 # FASE A.1 — Relatório de execução
 
@@ -254,23 +264,46 @@ O `sha_inicial` da A.1 passou a ser o commit da própria spec (`461ee38`), que �
 início original da fase, em vez do commit de código — corrigindo também a inconsistência
 que o avaliador apontou entre `sha_final` declarado e o commit real da fase.
 
-## 9. Itens em aberto / dúvidas para o avaliador
+## 9. Itens em aberto
 
-1. **Pendência residual: a senha da conta do CalorIA em produção não foi trocada.**
-   Motivo verificado, não esquecimento: a aplicação **não tem tela de troca de senha
-   para usuário autenticado** (`backend/app/api/v1/auth.py` expõe apenas
-   `forgot-password` e `reset-password`), e **o envio de e-mail não está configurado
-   em produção**, então o fluxo de recuperação não completa. Mitigações que tornam o
-   risco residual baixo: a senha foi rotacionada em todos os outros serviços (que era
-   o vetor grave, por reuso), o repositório está privado, e a credencial saiu do
-   histórico na A.2. Foi entregue ao owner um utilitário
-   (`~/trocar-senha-caloria.py`) que troca a senha direto no banco usando o mesmo
-   `hash_password` da aplicação. O ambiente de produção será reconstruído na Fase E.4
-   de qualquer forma.
-2. **AC-1 era insatisfazível pela A.1 isoladamente** — a cláusula "o HEAD de todas as
-   branches remotas deve estar livre dela" depende da A.2. Hoje está satisfeita, mas
-   a evidência veio da fase seguinte. Sugiro ao avaliador manter a leitura conjunta,
-   ou ajustar a spec para mover essa cláusula para o AC-2.
+*Reescrita em 2026-08-03, achado A1-IMP-1: esta seção não havia sido atualizada no
+rework e listava como pendente, em tempo presente, o que a §1 e a §8 deste mesmo
+relatório já davam por resolvido. O que segue é o estado real da fase.*
+
+1. **Rotação da credencial: concluída.** A senha foi rotacionada pelo owner no
+   Google/Gmail (conta de recuperação) e nos demais serviços onde havia reuso — que
+   era o vetor grave. **A conta do CalorIA não é um serviço em operação**, e isso não
+   é declaração: foi medido por requisição na avaliação da tentativa 3
+   (`FASE-A.1-rotacao-credencial-AVALIACAO.md` §6). O host de API que o frontend
+   publicado de fato chama (`caloria.duckdns.org`, extraído do bundle da Vercel)
+   resolve em DNS mas não aceita conexão em 443, 80 nem 8000; o host documentado
+   (`caloria-gabriel.duckdns.org`) nem resolve. A Fase E.1, aprovada e independente,
+   mediu a mesma indisponibilidade. Não há caminho de login em pé, logo não há conta
+   a proteger. O utilitário `~/trocar-senha-caloria.py` segue entregue ao owner, e
+   perde o propósito com a destruição do banco.
+2. **AC-1 — resolvido na spec, não pendente.** A cláusula "o HEAD de todas as branches
+   remotas livre da credencial" migrou para o **AC-2**, por nota de 2026-08-02 na §3
+   da spec. A leitura conjunta com a A.2 deixou de ser necessária.
 3. **A credencial persistia em 8 arquivos de `docs/`** além dos dois que a A.2
    declarava. Resolvido: o owner autorizou estender o escopo da A.2 aos 10 arquivos.
    Ver §3.1 do relatório da A.2.
+4. **O `range` desta fase resolve, mas não a isola.** `461ee38..7348d94` engloba 21
+   commits de cinco fases (A.1, A.2, A.3, B.1, B.2), porque o schema manda ir do
+   início original ao HEAD (§2.9.3). O **único commit de código da A.1 é `240d708`**,
+   que altera uma linha de `frontend/e2e/auth.spec.ts`. Registrado aqui para quem
+   comparar o diff do range com o escopo da fase.
+
+## 10. Aceite do owner (teto do §2.11.4)
+
+Com o veredito RESSALVAS da tentativa 3, `reprovacoes` chegaria a 3 e a fase atinge o
+teto: sai do ciclo executor↔avaliador e vai à mesa do owner. **Em 2026-08-03 o owner
+decidiu aceitar a fase e encerrá-la**, tratando os dois achados IMPORTANTES como
+saneamento de artefato — o que ambos são: A1-IMP-1 é esta seção, A1-IMP-2 é a decision
+da fase. Nenhum toca código, e o trabalho técnico já estava verificado por terceiro.
+
+O owner decidiu também, no mesmo ato, **levantar o portão sobre a Fase D.2** que a
+decision desta fase mantinha. Justificativa registrada na própria decision: a premissa
+que sustentava o portão ("se o backend de produção estiver no ar, a conta aceita a
+senha vazada") foi medida e é falsa.
+
+Nada foi reexecutado nesta rodada: os gates da fase seguem os da tentativa 3.
