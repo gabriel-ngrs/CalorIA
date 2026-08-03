@@ -34,7 +34,7 @@
     "react": "^18",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18",
-    "react-hook-form": "^7.72.1",
+    "react-hook-form": "^7.83.0",
     "recharts": "^2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2",
