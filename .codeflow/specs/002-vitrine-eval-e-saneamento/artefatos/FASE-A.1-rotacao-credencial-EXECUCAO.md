@@ -8,8 +8,6 @@ reprovacoes: 2
 sha_inicial: 461ee3805bf5f8848d4da6ebd23779ff8817c315
 sha_final: 7348d948dd9a5176fa0dbd13549b26e25c87e3f0
 range: 461ee3805bf5f8848d4da6ebd23779ff8817c315..7348d948dd9a5176fa0dbd13549b26e25c87e3f0
-encerrada: aceite-do-owner
-aceite_owner: 2026-08-03
 ---
 
 > **FASE ENCERRADA POR ACEITE DO OWNER em 2026-08-03.** A fase bateu o teto do
