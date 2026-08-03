@@ -113,8 +113,8 @@ omit = ["*/tests/*", "*/alembic/*"]
 # Histórico das medições, para que subir o piso seja sempre decisão com número:
 #   2026-05-10  62%  auditoria
 #   2026-08-02  72%  fase B.4 (testes de push/reminders), piso posto em 70%
-#   2026-08-02  ..%  após o schema de teste vir das migrations, que destravou
-#                    os 5 testes do golden set — ver o valor atual abaixo
+#   2026-08-02  73%  após o schema de teste vir das migrations, que destravou
+#                    os 5 testes do golden set (medido: 73,10%)
 #
 # A margem entre medido e piso existia para absorver os testes que pulavam sem
 # o banco nutricional semeado. Esses testes **não pulam mais** (o seed entrou em
