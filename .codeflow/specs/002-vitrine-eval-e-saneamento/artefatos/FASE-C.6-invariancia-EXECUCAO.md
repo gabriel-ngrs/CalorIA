@@ -2,15 +2,70 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.6
 slug_fase: invariancia
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: e338ed4
-sha_final: 36d68cc
-range: e338ed4..36d68cc
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: e338ed4..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.6 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.7. Dois achados IMPORTANTES: um
+fechado, um **bloqueado por quota** e declarado como tal.
+
+### C6-IMP-2 — correção das regras de porção sem decision registrada — **FECHADO**
+
+**Aceito.** O achado `inv-04` é desta fase, mas a correção mexeu em
+`backend/scripts/seed_portions.py`, que não consta dos "Arquivos alterados" de fase
+nenhuma. O DoD global exige que toda decisão de escopo tomada durante a execução seja
+registrada, e não estava.
+
+Registrado em `.codeflow/decisions/2026-08-03-regras-de-porcao-para-gordura-de-passar.md`,
+indexado em `.codeflow/decisions/INDEX.md` com as tags pedidas (`nutricao`, `portions`,
+`eval`, `spec-002`, `fase-c6`), e referenciado na **OQ14** da spec. A decision registra
+o defeito medido (spread 4,14 no `inv-04`, 880 kcal contra 212,6 kcal para a mesma
+refeição), a mudança e o efeito esperado.
+
+Uma correção de fato ao que a avaliação registrou: são **13 entradas** acrescentadas,
+não sete — conferidas na tabela. Nenhuma entrada foi removida e nenhuma alterada; a
+mudança é aditiva. Não há duplicata no estado final, e
+`test_nenhum_par_termo_unidade_duplicado` garante isso (a coluna tem
+`unique (term, unit)`, e uma duplicata derruba o seed inteiro).
+
+### C6-IMP-1 — a medição é anterior às correções que a fase motivou — **EM ABERTO**
+
+**Aceito, e não resolvido: falta quota.** O achado é procedente — a §5 deste relatório
+descreve `7 de 12 reprovam` sobre um pipeline em que quatro dessas causas já foram
+atacadas (o sanity check de fonte curada, e agora as regras de porção). Rodar a
+bateria hoje produziria `RateLimitError`, não medição.
+
+O que fica pronto para quando a quota voltar:
+
+```bash
+docker compose -f docker-compose.dev.yml exec -T backend python -m evals.invariance
+```
+
+Linha de base a comparar, da §5 deste relatório: **aprovação 0,417 · spread mediano
+1,2115 · p95 3,5126**, com `inv-04` em 4,14 e `inv-03`, `inv-06`, `inv-10`, `inv-12`
+atribuídos ao sanity check. A nova medição entra como **seção datada** neste relatório,
+sem apagar a antiga — a antiga é a metade "antes" da narrativa.
+
+**Consequência honesta:** enquanto isso não sair, esta fase não fecha, e uma
+reavaliação agora deve manter RESSALVAS por este item. Está declarado aqui para que
+o avaliador não precise descobrir.
+
+### Evidência desta tentativa
+
+```text
+$ ... pytest --cov=app -q     → 620 passed, 1 skipped, 73.86% (piso 72%)
+$ ... pytest tests/unit/test_portions_gorduras.py -q   → 20 passed
+$ ... ruff check . && ruff format --check . && mypy app/ evals/  → limpos
+```
+
 
 ## 1. Resumo do que foi feito
 

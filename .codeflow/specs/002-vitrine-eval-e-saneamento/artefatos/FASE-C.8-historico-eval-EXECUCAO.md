@@ -2,15 +2,99 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.8
 slug_fase: historico-eval
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 40e2941
-sha_final: f479f5d
-range: 40e2941..f479f5d
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.8 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.2. Dois achados IMPORTANTES: um
+fechado, um **bloqueado por quota**.
+
+### C8-IMP-2 — a linha do histórico não registrava tokens nem latência — **FECHADO**
+
+**Aceito.** O passo 1 da fase lista "custo em tokens e latência" explicitamente, e
+`montar_linha` gravava tudo menos os dois. A avaliação está certa sobre por que não é
+enfeite: token é o recurso que já derrubou duas rodadas de eval (risco R5), e sem a
+série de consumo a decisão "semanal ou diário" continua sem dado.
+
+Implementado no ponto que a avaliação apontou como natural — o envelope que vê toda
+chamada —, com uma diferença: o `AIClientComCassette` não enxerga o `usage` da
+resposta, que morre dentro do `AIClient`. Então o `AIClient` ganhou um **observador
+opcional de consumo**:
+
+```python
+@dataclass(frozen=True)
+class UsoDaChamada:
+    modelo: str
+    tokens_in: int
+    tokens_out: int
+    segundos: float
+```
+
+Produção não passa observador nenhum e o caminho não depende dele (há teste para
+isso). O runner passa um `ContadorDeUso`, e o relatório publica:
+
+```text
+custo       : {'chamadas': 0, 'tokens_in': 0, 'tokens_out': 0, 'origem': 'replay'}
+latencia    : {'n': 10, 'mediana_s': 0.058, 'total_s': 1.041}
+```
+
+**A `origem` é parte da correção, não enfeite.** Em replay o provedor não é chamado, e
+`tokens_in: 0` significa "veio do disco", não "saiu de graça" — publicar o zero sem a
+origem repetiria, no custo, exatamente o erro que o C5-IMP-1 apontou no ruído.
+
+A latência é tempo de parede por caso, medido no runner e agregado em mediana e total.
+
+`montar_linha` propaga os dois com `.get`: as três linhas já gravadas são anteriores à
+instrumentação e registram `null`, que diz "não medido" — diferente de `0`, que diria
+"não custou nada". Há teste para esse caso.
+
+### C8-IMP-1 — as duas "execuções reais" são a mesma medição — **EM ABERTO**
+
+**Aceito integralmente; a crítica é justa.** Rodar `registrar` duas vezes sobre o mesmo
+`/tmp/rel.json` com `--git-commit` diferente não demonstra reprodutibilidade — demonstra
+que `json.load` é determinístico. A demonstração real de NFR-5 existe e está na C.7
+(mesma saída com `GROQ_API_KEY` inválida, provando o replay).
+
+Adotada a saída que a avaliação prefere: **não** remover a linha 2 (colidiria com o
+append-only, que é a propriedade que o arquivo existe para ter), e sim acrescentar uma
+execução real. Isso exige quota, e a quota está esgotada. Comando pronto:
+
+```bash
+docker compose -f docker-compose.dev.yml exec -T backend \
+  python -m evals.runner --json > /tmp/rel.json
+docker compose -f docker-compose.dev.yml exec -T backend \
+  python -m evals.report registrar --relatorio /tmp/rel.json
+```
+
+A partir de agora essa linha nasce com `custo` e `latencia` preenchidos, o que a torna
+distinguível das três anteriores por mais que o `run_id`.
+
+**Consequência honesta:** o gate ("histórico com ao menos duas execuções reais") segue
+atendido só na forma, e uma reavaliação agora deve manter RESSALVAS por este item.
+
+### Sobre as sugestões da §5
+
+O histórico da execução agendada não voltar ao repositório é achado real e continua
+sem correção — depende do `eval.yml`, que é arquivo da C.7, e a decisão entre "passo
+que commita na `dev`" e "registrar que o fluxo é manual" cabe junto do primeiro
+disparo. Os limiares folgados seguem para a C.4, como a própria avaliação recomenda.
+
+### Evidência desta tentativa
+
+```text
+$ ... pytest tests/unit/test_evals_report.py -q    → todos verdes, incl. custo/latência
+$ ... pytest --cov=app -q     → 620 passed, 1 skipped, 73.86% (piso 72%)
+$ ... ruff check . && ruff format --check . && mypy app/ evals/  → limpos
+```
+
 
 > **Nota de commit.** C.7 e C.8 compartilham o commit `8660f40`. O `eval.yml` da
 > C.7 chama `evals.report` da C.8 nos passos de registro e de gate; separá-las em

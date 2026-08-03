@@ -2,15 +2,65 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: D.6
 slug_fase: polimento-ui
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 40e2941
-sha_final: 7f9f59a
-range: 40e2941..7f9f59a
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE D.6 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.5. Um achado IMPORTANTE, fechado.
+
+### D6-IMP-1 — o teste de toast único não foi escrito
+
+**Aceito.** A explicação da tentativa 1 era verdadeira (o `toast.success` duplicado
+saiu de `humor/page.tsx` junto com o import, e verificar remoção por leitura de diff é
+razoável), mas o item de teste estava declarado nominalmente na fase e não foi
+entregue. A consequência que a avaliação aponta é concreta: nada impedia reintroduzir
+o `toast.success` na página, e o defeito voltaria em silêncio porque o hook continua
+emitindo o seu.
+
+Adotada a **opção 1**, que a avaliação chama de mais barata: teste sobre o hook, com
+React Query e `sonner` mockado — sem montar a página.
+
+`frontend/__tests__/lib/hooks/useLogs.test.ts`, novo bloco `toast único por registro`:
+
+| teste | o que trava |
+|---|---|
+| `useLogMood emite exatamente um toast de sucesso` | o par página/hook do defeito original |
+| `useLogWeight emite exatamente um toast de sucesso` | mesmo padrão em peso |
+| `useLogHydration emite exatamente um toast de sucesso` | mesmo padrão em hidratação |
+| `a falha emite só o toast de erro, e nenhum de sucesso` | o `onError` não duplica nem vaza sucesso |
+
+Os três primeiros cobrem a sugestão da §5 da avaliação — verificar se o mesmo padrão
+existe em outros pares página/hook. A afirmação passa a ser sobre **contagem**
+(`toHaveBeenCalledTimes(1)`), que é o que o defeito violava; os testes que já existiam
+afirmavam só o conteúdo da mensagem, e passariam com dois toasts.
+
+### Evidência
+
+```text
+$ cd frontend && npm test
+Test Suites: 20 passed, 20 total
+Tests:       118 passed, 118 total        # eram 114
+Time:        4.436 s
+
+$ npx tsc --noEmit    → EXIT=0
+$ npm run lint        → só o warning pré-existente de Plasma.tsx:156
+```
+
+### Sobre as sugestões da §5
+
+Não implementadas, e de propósito: o teste de frame do FOUC a própria avaliação
+recomenda **não** fazer; remover o `next-themes` órfão é poda, que tem fase própria
+(D.4); e o comentário em `dev-log.ts` sobre eliminação de código morto pelo bundler é
+melhoria de documentação fora do achado. Nenhuma delas é item de gate.
+
 
 > **Nota de commit.** D.5 e D.6 compartilham o commit `7f9f59a` — ver a nota no
 > relatório da D.5.

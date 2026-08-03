@@ -12,6 +12,39 @@ range: 36d68cc..40e2941
 
 # FASE B.5 — Relatório de execução
 
+## Nota de 2026-08-03 — fase estacionada até a C.4
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.7, por um único achado — B5-IMP-1.
+
+**O achado é procedente e não é corrigível dentro desta fase.** O gate declarado
+("delta do estrato de foto registrado com números antes e depois") depende do estrato
+`foto` do dataset, que está vazio: `casos.jsonl` traz
+`{'simples': 6, 'composto': 4, 'foto': 0}`, e o dataset de foto é entregável da **C.4**,
+que não foi executada. A fase declarava `Depende de: C.6`, quando o gate que ela mesma
+se impõe depende da `C.4` — erro de grafo na spec, não de execução.
+
+**Decisão do owner em 2026-08-03: manter o gate e reabrir a B.5 depois da C.4**
+(opção 2 das duas que a avaliação apresenta). A spec foi corrigida em §5: a linha
+"Depende de" da B.5 passa de `C.6` para `C.4`, com a justificativa registrada ali e no
+item do §9 do DoD. O gate estrutural (`run-structural.sh`) continua em `EXIT=0` — a
+C.4 depende só da C.3, então não há ciclo.
+
+**Nada mudou no código desta fase**, e por isso `status`, `tentativa` e `reprovacoes`
+ficam como estavam: não houve rework. Os quatro passos entregues e o AC-17 seguem
+verificados como na tentativa 1; o que falta é o dataset.
+
+**Para quem retomar depois da C.4:** rodar o eval do estrato de foto antes e depois da
+v2 do prompt de visão e registrar o delta com números — é o passo 5 da fase, o único
+não executado. A avaliação registra uma observação que vale ler junto: o prompt de
+visão nunca passou por medição, então a v2 entra no eval sem linha de base, e vale a
+C.4 incluir dois ou três casos de foto só para dar essa linha de base.
+
+*(Registro adicional: a fase C.2 criou `vision_identify@v3` para o JSON mode. A v2 —
+que é a desta fase — continua sendo a versão em produção, fixada em
+`VERSOES_EM_PRODUCAO`. A v3 não substitui o trabalho da B.5: acrescenta o formato de
+objeto por cima dele.)*
+
+
 ## 1. Resumo do que foi feito
 
 Os quatro defeitos que o `MealParser` já tinha resolvido e o caminho de foto

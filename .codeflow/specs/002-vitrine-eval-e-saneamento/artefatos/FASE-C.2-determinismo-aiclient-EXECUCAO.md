@@ -2,15 +2,97 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.2
 slug_fase: determinismo-aiclient
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 2d7d5ff
-sha_final: 467fee6
-range: 2d7d5ff..467fee6
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: 2d7d5ff..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.2 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.7. Um achado IMPORTANTE, fechado.
+
+### C2-IMP-1 — passo 2 (JSON mode) não entregue
+
+**Decisão do owner em 2026-08-03: implementar agora.** O diagnóstico da tentativa 1
+continua correto — o JSON mode da API recusa array no topo, e os quatro prompts
+declaram `FORMATO OBRIGATÓRIO (array JSON)` —, então a entrega passa por versão nova
+de prompt, não por edição das existentes.
+
+Registrada em `.codeflow/decisions/2026-08-03-json-mode-com-versoes-de-prompt-em-objeto.md`
+e na **OQ12** da spec. Três partes:
+
+**1. Versões novas dos quatro prompts, com topo em objeto.**
+
+| prompt | versão nova | delta |
+|---|---|---|
+| `meal_identify` | v2 (+ `v2.user.txt`) | bloco FORMATO + frase final da user message |
+| `meal_fallback` | v2 | bloco FORMATO |
+| `vision_identify` | v3 (+ `v3.user.txt`) | bloco FORMATO + frase final da user message |
+| `vision_fallback` | v2 | bloco FORMATO |
+
+O delta é **só** isso, e há teste que verifica: `test_o_delta_da_versao_nova_e_so_o_bloco_de_formato`
+compara tudo que vem antes de `FORMATO` byte a byte entre a versão vigente e a nova.
+Qualquer outra diferença tornaria a comparação v1 vs v2 ininterpretável, que é o que
+o eval existe para evitar.
+
+**2. `response_format` amarrado à versão do prompt, nunca a uma flag solta.**
+`PromptVersion.topo_objeto` responde se aquela versão declara objeto, a partir de
+`_TOPO_OBJETO` em `app/prompts/__init__.py`; os parsers passam
+`json_object=<prompt>.topo_objeto`. Não há caminho que ligue o JSON mode numa versão
+que pede array. O parâmetro é **omitido** quando desligado — enviá-lo como `None`
+mudaria o payload de toda chamada e invalidaria os 14 cassettes gravados.
+
+**3. Produção continua nas versões medidas.** `VERSOES_EM_PRODUCAO` fixa
+`meal_identify@v1`, `meal_fallback@v1`, `vision_identify@v2`, `vision_fallback@v1`, e
+`get_prompt(nome)` resolve por essa tabela em vez de pela maior versão do disco.
+
+`extract_json_from_ai_response` passa a aceitar as duas formas de topo, continuando a
+ser a rede de segurança que o passo 2 da fase manda manter.
+
+### Por que não promover as versões novas agora
+
+Promover no mesmo passo trocaria o prompt de produção **sem medição** e faria os 14
+cassettes deixarem de casar: o eval em replay passaria a estourar com
+`CassetteAusenteError` e o harness inteiro do Track C ficaria inutilizável até haver
+quota para regravar. A quota do free tier está esgotada (risco R5). Separar "existir"
+de "estar em produção" entrega o passo 2 por inteiro e deixa a promoção como uma
+linha de diff, decidida com número na mão.
+
+Efeito colateral bem-vindo: até aqui, largar um `vN.txt` na pasta trocava o prompt de
+produção em silêncio.
+
+### Evidência
+
+```text
+# produção segue nas versões medidas — o payload não se moveu
+$ python -m evals.runner --cassettes
+prompts     : {'meal_identify': {'versao': 1, ...}, 'meal_fallback': {'versao': 1, ...}}
+AGREGADO       10    3.89% [  0.00,   6.16]     0.00%    90%
+# os 14 cassettes resolveram: zero CassetteAusenteError
+
+$ ... pytest --cov=app -q
+620 passed, 1 skipped — Total coverage: 73.86% (piso 72%)
+$ ... ruff check . && ruff format --check . && mypy app/ evals/
+All checks passed! / 147 files already formatted / Success: no issues found in 81 source files
+```
+
+Testes novos: JSON mode enviado só quando ligado (texto e visão), chave de cache
+distinta com e sem JSON mode, topo em objeto aceito pelo extrator nas suas variações
+(chave `itens`, chave renomeada, cerca de markdown), objeto sem lista e objeto
+ambíguo estourando `JSONDecodeError` — o tipo de que os parsers dependem para virar
+422 legível.
+
+### O que fica em aberto
+
+FR-C2 deixa de ser parcial no código e passa a ser parcial na **medição**: falta uma
+execução do runner comparando v1 e v2, que exige quota. Até lá, as versões novas são
+código exercitado por teste e não exercitado pelo provedor.
+
 
 ## 1. Resumo do que foi feito
 

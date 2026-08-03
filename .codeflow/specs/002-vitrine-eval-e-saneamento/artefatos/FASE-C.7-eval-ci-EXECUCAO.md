@@ -2,15 +2,88 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.7
 slug_fase: eval-ci
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 40e2941
-sha_final: cc849e7
-range: 40e2941..cc849e7
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.7 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.4. Dois achados IMPORTANTES: um
+fechado, um **dependente do owner e de quota**.
+
+### C7-IMP-2 — snapshot de payload cobria 1 dos 4 prompts — **FECHADO**
+
+**Aceito.** O passo 2 da fase pede "snapshot do payload renderizado dos prompts", no
+plural, e só `meal_identify` estava travado. A avaliação está certa sobre por que isso
+importa mesmo com o teste de `sha` da C.1: os dois pegam defeitos diferentes — o `sha`
+do registry pega mudança de **texto de prompt**, o snapshot pega mudança de **qualquer
+coisa que vá no envelope** (modelo, `temperature`, `max_tokens`, `seed`, formato da
+mensagem). Uma mudança de `GROQ_MAX_TOKENS` passava despercebida em três dos quatro.
+
+`SNAPSHOT_DE_PAYLOAD` agora tem os quatro, e o teste é parametrizado sobre o dicionário:
+
+```python
+SNAPSHOT_DE_PAYLOAD = {
+    "meal_identify":   "ee413e7a6a...",   # inalterado — produção não se moveu
+    "meal_fallback":   "237cd3db2d...",
+    "vision_identify": "3c774d4c02...",
+    "vision_fallback": "7adc5e0b4d...",
+}
+```
+
+Dois detalhes de montagem, declarados no arquivo: os dois `*_fallback` não têm
+template de user message (quem monta é o parser), então o snapshot usa um texto fixo
+que espelha o formato enviado por `meal_parser.py:310-313`; e os dois prompts de visão
+saem pelo `GROQ_VISION_MODEL`, não pelo de texto.
+
+Acrescentado também `test_o_snapshot_cobre_todos_os_prompts_de_producao`, que falha se
+um prompt novo entrar sem snapshot — o defeito de origem era exatamente esse, e agora
+não se repete em silêncio.
+
+**O `sha` do `meal_identify` não mudou**, o que confirma que a refatoração da função de
+montagem não moveu o payload existente.
+
+### C7-IMP-1 — execução agendada completa — **EM ABERTO**
+
+**Aceito, e não resolvido.** Duas ações que não são do executor:
+
+1. **`GROQ_API_KEY` nos secrets do repositório** — ação do owner.
+2. **Quota** — o free tier está esgotado. Disparar o `eval.yml` hoje produziria a
+   falha por 429 que a NFR-3 existe para proibir, o que é o pior resultado possível:
+   nem mede, nem prova o gate.
+
+Quando as duas condições existirem: disparar por `workflow_dispatch`, anexar a saída
+(ou o link da execução) como seção datada neste relatório, e reavaliar. A avaliação
+registra o desdobramento certo se a quota não comportar a execução completa nem em
+disparo manual — isso vira achado de primeira ordem para a spec, não detalhe
+operacional, e a periodicidade semanal precisa virar decision com o dado por trás.
+
+**Consequência honesta:** o gate da fase ("uma execução agendada completa registrada")
+segue não satisfeito, e uma reavaliação agora deve manter RESSALVAS por este item.
+
+### Sobre `--repeticoes` no `eval.yml` (sugestão da §5)
+
+Não alterado nesta tentativa, e agora com um motivo a mais: a correção do C5-IMP-1
+tornou explícito que `--repeticoes 3` só mede ruído com `EVAL_RECORD_CASSETTES=1` —
+que é o modo da agendada. A flag entra junto do primeiro disparo, quando houver
+número para calibrar, não antes.
+
+### Evidência desta tentativa
+
+```text
+$ ... pytest tests/unit/test_evals_snapshot.py -q
+23 passed in 0.08s                      # NFR-2: teto de 60 s, zero rede
+
+$ ... pytest --cov=app -q     → 620 passed, 1 skipped, 73.86% (piso 72%)
+$ ... ruff check . && ruff format --check . && mypy app/ evals/  → limpos
+```
+
 
 ## 1. Resumo do que foi feito
 

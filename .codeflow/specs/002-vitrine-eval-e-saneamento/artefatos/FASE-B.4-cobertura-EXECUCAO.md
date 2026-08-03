@@ -2,15 +2,61 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: B.4
 slug_fase: cobertura
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 8660f40
-sha_final: b31604d
-range: 8660f40..b31604d
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: 8660f40..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE B.4 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.5. Um achado IMPORTANTE, fechado.
+
+### B4-IMP-1 — placeholder `..%` no histórico de medições
+
+**Aceito.** O bloco de `[tool.coverage.report]` existe para que subir o piso seja
+sempre decisão com número, e a linha que registra a medição que autorizou a subida
+de 70% para 72% era a única sem número. A segunda metade da linha ainda remetia ao
+`fail_under`, que é o piso — coisa diferente da medição, e a confusão entre os dois
+apaga justamente a margem que o comentário existe para documentar.
+
+`backend/pyproject.toml:116-117`, antes e depois:
+
+```diff
+-#   2026-08-02  ..%  após o schema de teste vir das migrations, que destravou
+-#                    os 5 testes do golden set — ver o valor atual abaixo
++#   2026-08-02  73%  após o schema de teste vir das migrations, que destravou
++#                    os 5 testes do golden set (medido: 73,10%)
+```
+
+### Medição nesta tentativa
+
+A cobertura subiu de novo, pelas fases posteriores. Rodado no container, mesmo
+Postgres 16 + Redis do CI:
+
+```text
+$ docker compose -f docker-compose.dev.yml exec -T backend pytest --cov=app --cov-report=term -q
+TOTAL                                      3244    848    74%
+Required test coverage of 72.0% reached. Total coverage: 73.86%
+620 passed, 1 skipped, 5 warnings in 106.99s
+
+$ ... pytest tests/integration/test_golden_set.py -q      # NFR-6
+5 passed
+```
+
+A margem entre medido e piso é hoje de 1,86 p.p., contra 1,1 p.p. na avaliação. O
+número registrado no comentário (73%) é o da medição que autorizou o piso vigente,
+não o de agora — é o histórico que o bloco documenta, não o estado corrente.
+
+### Fora do escopo desta correção
+
+O item do §9 do DoD ("piso ativo **e CI verde**") continua dependendo de um push,
+que é ação do owner. O gate em si está verificado no mesmo par Postgres/Redis do CI.
+
 
 ## 1. Resumo do que foi feito
 

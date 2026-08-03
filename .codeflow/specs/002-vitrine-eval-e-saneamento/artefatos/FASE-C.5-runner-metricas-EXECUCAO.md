@@ -2,15 +2,86 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.5
 slug_fase: runner-metricas
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 0d4d9ec
-sha_final: e338ed4
-range: 0d4d9ec..e338ed4
+sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range: 0d4d9ec..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.5 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.5. Dois achados IMPORTANTES, ambos
+fechados.
+
+### C5-IMP-1 — `--repeticoes N` com `--cassettes` reportava ruído zero por construção
+
+**Aceito integralmente, e o defeito era meu.** O `--repeticoes` foi acrescentado na
+rodada de correção justamente para separar erro do pipeline de ruído de amostragem —
+e em replay ele media o disco. As N repetições enviam o mesmo payload, `reproduzir()`
+devolve N vezes a mesma string, `stdev` dá 0, e `_resumo_do_ruido` publicava
+`cv_mediano: 0.0`. Um leitor concluiria "o modelo é determinístico" a partir de um
+número que só diz "o disco é determinístico" — e replay é o modo barato, que a
+documentação do runner incentiva.
+
+Adotada a primeira correção sugerida, que é a mais barata: `repeticoes_efetivas()`
+reduz a 1 quando há cassette sem gravação ligada, e o runner **avisa que reduziu**.
+Com `EVAL_RECORD_CASSETTES=1` o provedor é chamado a cada repetição e o CV volta a
+ser legítimo — o caso da execução agendada do `eval.yml`.
+
+```text
+$ python -m evals.runner --cassettes --repeticoes 3
+aviso: --repeticoes 3 reduzido a 1 — em replay as repetições devolvem a mesma
+gravação e o coeficiente de variação sairia zero por construção. Regrave com
+EVAL_RECORD_CASSETTES=1 para medir ruído do modelo.
+[1/10] simples-arroz-cozido-100g
+...
+amostragem  : {'temperature': 0.1, 'max_tokens': 8192, 'seed': -1, 'repeticoes': 1}
+```
+
+Quatro testes travam o comportamento nos quatro quadrantes (replay reduz; gravando
+preserva; sem cassette preserva; `repeticoes=1` nunca é alterado).
+
+### C5-IMP-2 — o relatório não declarava o que o replay mede e o que não mede
+
+**Aceito.** A tabela "composto MdAPE 23,81% → 6,86%" é o resultado mais citado desta
+spec, e o desenho por trás dela é bom — pareado, mesmos cassettes, só o código mudou.
+O que faltava era a **condição de validade**: isso vale porque as correções são de
+pós-processamento. Uma correção futura que mude o payload não é medível por esse
+caminho, e chamar as duas coisas de "antes e depois" induz erro.
+
+Acrescentada a seção **"O que a execução em replay mede — e o que ela não mede"** ao
+`evals/README.md`, junto da análise de poder, declarando os dois lados e apontando o
+grupo `inv-08` da bateria de invariância como o lugar onde ruído de modelo é medido
+de verdade (a bateria chama o `AIClient` direto, sem cassette).
+
+### Também entregue nesta tentativa
+
+Custo e latência no relatório do runner (achado C8-IMP-2, que cai neste arquivo):
+`custo: {chamadas, tokens_in, tokens_out, origem}` e
+`latencia: {n, mediana_s, total_s}`. A **origem** importa tanto quanto o número —
+em replay, `tokens_in: 0` significa "veio do disco", não "saiu de graça".
+
+### Evidência
+
+```text
+$ python -m evals.runner --cassettes
+custo       : {'chamadas': 0, 'tokens_in': 0, 'tokens_out': 0, 'origem': 'replay'}
+latencia    : {'n': 10, 'mediana_s': 0.058, 'total_s': 1.041}
+AGREGADO       10    3.89% [  0.00,   6.16]     0.00%    90%   ← inalterado
+
+$ ... pytest --cov=app -q     → 620 passed, 1 skipped, 73.86%
+$ ... ruff check . && ruff format --check . && mypy app/ evals/  → limpos
+```
+
+As sugestões da §5 da avaliação (acoplamento a métodos privados, `TOLERANCIA_MACRO_G`,
+dataset em medida caseira, `ape()` devolvendo 100 para previsto ≤ 0) **não** foram
+implementadas: são sugestões, e três delas a própria avaliação recomenda decidir
+junto do dataset real, na C.4.
+
 
 ## 1. Resumo do que foi feito
 
