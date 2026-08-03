@@ -2,11 +2,11 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.7
 slug_fase: eval-ci
-tentativa: 1
+tentativa: 2
 veredito: RESSALVAS
 score: 9.4
 threshold: 8.5
-range_avaliado: 40e2941..cc849e7
+range_avaliado: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
 ---
 
 # FASE C.7 — Avaliação independente
@@ -15,176 +15,231 @@ range_avaliado: 40e2941..cc849e7
 
 **Veredito:** RESSALVAS · **Score:** 9.4 / threshold 8.5
 
-A camada rápida é excelente e eu a medi: **15 testes em 0,06 s, zero rede**, com
-NFR-2 sobrando duas ordens de grandeza. O desenho do cassette — indexado pelo
-`sha256` do payload canônico, gravação opt-in desligada no CI — produz exatamente
-a propriedade pedida: falha se e somente se o payload mudar.
+**O C7-IMP-2 está fechado, e fechado com uma peça a mais do que eu havia pedido.** Os
+quatro prompts de produção têm snapshot de payload, o teste é parametrizado sobre o
+dicionário — e entrou também `test_o_snapshot_cobre_todos_os_prompts_de_producao`
+(`:104`), que reprova se um prompt novo aparecer sem snapshot. O defeito de origem era
+exatamente "alguém acrescentou prompt e ninguém travou"; agora ele não se repete em
+silêncio. O `sha` do `meal_identify` não mudou, o que confirma que a refatoração da
+montagem não moveu o payload existente.
 
-O que impede o APROVADO é o gate declarado da fase: "uma execução agendada
-completa registrada". Ela não aconteceu, e o executor marca `[—]` corretamente.
+**O C7-IMP-1 continua aberto.** O gate da fase é *"uma execução agendada completa
+registrada"*, e ela não ocorreu. O relatório nomeia dois impedimentos; medi os dois, e
+encontrei um terceiro que o relatório não nomeia — e que é o único inteiramente sob
+controle local:
+
+| Impedimento | Declarado no relatório | O que eu medi |
+|---|---|---|
+| `GROQ_API_KEY` nos secrets | sim | **confirmado** — `gh secret list` volta vazio; o repositório não tem secret nenhum |
+| Quota do free tier esgotada | sim | **refutado** — chamada de 1 token ao provedor respondeu `Hello` |
+| `eval.yml` não existe no GitHub | **não** | `gh workflow list` → só CI, CD e Dependabot. O arquivo não está em `origin/dev` nem em `origin/main` |
+
+O terceiro é decisivo para a instrução que a avaliação anterior deu ("disparar por
+`workflow_dispatch`"): **não é possível disparar um workflow que o GitHub não conhece.**
+Detalhe em §4.
+
+Tudo o mais da fase verifica bem. A camada rápida roda sem rede em 2 s (o AC pede
+menos de 60), o `eval.yml` não tem `continue-on-error` em passo nenhum, e o escopo
+travado sobre credencial em cassette virou **teste**, não promessa.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 3 | Passos 1–4 entregues; AC-15 metade satisfeita (camada rápida) e metade não (execução agendada — C7-IMP-1). Escopo travado respeitado integralmente: nenhum cassette com chave (teste varre `gsk_`/`authorization`/`api_key`/`bearer`), eval completo não roda por PR, nenhum `continue-on-error` no `eval.yml`, nenhuma imagem de terceiro versionada. |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | `AIClientComCassette` **envolve** o cliente em vez de o cliente conhecer o cassette (`cassettes/__init__.py:37-46`, com o porquê no docstring): o `AIClient` de produção não carrega caminho de teste, e o eval não reimplementa o cliente. `__getattr__` delega o resto. É a inversão certa. |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Só payload de mensagens e resposta entram no cassette — nunca cabeçalho, nunca o objeto de requisição. Há teste varrendo os cassettes versionados (`test_nenhum_cassette_versionado_contem_credencial`), e `gitleaks` sobre os 22 commits confirma: zero achados. Gravação desligada por default, então um payload novo **falha** em vez de chamar a API em silêncio e queimar quota. |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | A camada rápida entrou como step do job `backend` já reativado na B.2, não como job novo. `chave_do_payload` é a mesma função usada pelo snapshot e pelo cassette — uma definição de "o que é o payload", dois consumidores. |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | `eval.yml` espelha a estrutura do `ci.yml` (services Postgres/Redis com healthcheck, `defaults.run.working-directory: backend`); `concurrency` declarado; `timeout-minutes` declarado. |
-| 6 | Local e nomes dos arquivos | 2 | 5 | `evals/cassettes/`, `tests/unit/test_evals_snapshot.py`, `.github/workflows/eval.yml` — exatamente os declarados. |
-| 7 | Qualidade de código | 2 | 5 | `mypy app/ evals/` limpo — e a extensão do `mypy` para `evals/` foi desvio declarado desta fase, na direção certa: sem ela todo o Track C ficaria fora do gate de tipos. A mensagem de `CassetteAusenteError` diz o que fazer, não só o que falhou. |
-| 8 | Testes e cobertura | 2 | 5 | 15 testes cobrindo snapshot travado, os três eixos que movem o `sha` (prompt, modelo, temperatura), gravação/replay, o envelope, e a garantia central `test_replicando_nao_chama_o_provedor`. |
-| 9 | Migration safety (se aplicável) | 2 | [—] | Nenhuma migration no range (NFR-7). O `eval.yml` **aplica** `alembic upgrade head` no banco efêmero do job; não altera migration. |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 3 | Passos 1–3 entregues e verificados. AC-15 em duas de três partes: camada rápida sem rede em 2 s (§6) e `test_prompt_alterado_sem_regravar_estoura` (`:234`) cobrindo "alterar prompt sem regravar faz falhar". A terceira — "o workflow agendado conclui sem casos vazios" — **não foi exercitada** (§4). Escopo travado respeitado nos quatro itens, incluindo o eval completo fora do PR |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | O cassette é um **envelope** sobre o `AIClient` (`test_metodos_nao_envolvidos_vao_ao_cliente_real`, `:248`), não um fork do cliente — métodos não envolvidos seguem para o real. É a direção certa: o eval depende do pipeline, não o contrário |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | O escopo travado "não gravar cassette contendo chave de API" virou teste versionado: `test_nenhum_cassette_versionado_contem_credencial` (`:181`). Regra travada que vira asserção é o padrão que o resto da spec deveria imitar |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | O snapshot reusa a mesma função de montagem de payload do runner; os `sha` saem de execução do próprio teste, não de valor copiado à mão |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | `EVAL_RECORD_CASSETTES=1` só na agendada (`eval.yml:110`), replay no CI — a separação que o passo 1 pede |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Exatamente os arquivos declarados na §5 |
+| 7 | Qualidade de código | 2 | 5 | Os comentários registram o *porquê*: por que a agendada grava (`eval.yml:108-109`), por que não há `continue-on-error` (`:132-134`), por que os `*_fallback` usam texto fixo no snapshot (`test_evals_snapshot.py:44-46`) |
+| 8 | Testes e cobertura | 2 | 5 | 23 testes verdes em 0,09 s (§6), incluindo o guarda contra prompt novo sem snapshot |
+| 9 | Migration safety | 2 | [—] | Nenhuma migration tocada |
 
-Média ponderada das 8 dimensões aplicáveis: 94/20 = 4.7 → **9.4**.
+Score = (3·3 + 3·5 + 3·5 + 3·5 + 2·5 + 2·5 + 2·5 + 2·5) / 20 · 2 = 94/20 · 2 = **9.4**
 
 ## 3. Achados BLOQUEANTES
 
 Nenhum.
 
-## 4. Achados IMPORTANTES
+**C7-IMP-2 da tentativa 1 está fechado.** `SNAPSHOT_DE_PAYLOAD` cobre os quatro
+prompts de produção, o teste é parametrizado, e há guarda contra prompt novo sem
+snapshot:
 
-**C7-IMP-1 — o gate da fase e o item §9 do DoD exigem uma execução agendada
-completa; ela não ocorreu.**
-
-`SPEC_002...md:1022-1023`:
-
-> **Critério de conclusão (gate):** AC-15 e NFR-2 e NFR-3 satisfeitos; uma
-> execução agendada completa registrada.
-
-E §9: *"C.7 — AC-15, NFR-2, NFR-3; execução agendada completa sem casos vazios."*
-
-O `eval.yml` está escrito, o YAML é válido, o gate de limiares (`evals.report
-verificar`) está implementado e testado, e não há `continue-on-error` em passo
-nenhum. Mas o workflow nunca rodou: exige `secrets.GROQ_API_KEY` no GitHub e um
-disparo (`workflow_dispatch` ou a agenda de segunda-feira), e ambos são ação do
-owner. O executor marca os dois itens com `[—]` e nomeia a causa — conduta
-correta, gate mesmo assim não satisfeito.
-
-NFR-3 ("nenhuma execução pode terminar com casos vazios por 429") é o requisito
-que só uma execução real exercita, e é justamente o que a spec registra como
-risco R5 — materializado duas vezes já (2026-07-26 e 2026-08-02).
-
-**Correção sugerida:** configurar `GROQ_API_KEY` nos secrets do repositório e
-disparar `eval.yml` por `workflow_dispatch` quando a quota voltar; anexar a saída
-(ou o link da execução) como seção datada no EXECUCAO da C.7 e reavaliar. Se a
-quota do free tier não comportar a execução completa nem em disparo manual, isso
-é achado de primeira ordem para a spec, não detalhe operacional: significa que a
-camada completa não é executável no plano gratuito, e a periodicidade semanal
-precisa virar decision explícita com o dado por trás.
-
-**C7-IMP-2 — `backend/tests/unit/test_evals_snapshot.py:31-33`: o snapshot de
-payload cobre 1 dos 4 prompts de produção.**
-
-```python
-SNAPSHOT_DE_PAYLOAD = {
-    "meal_identify": "ee413e7a6a...",
-}
+```text
+$ docker exec caloria_backend pytest tests/unit/test_evals_snapshot.py -q
+23 passed in 0.09s
+$ grep -n "def test_o_snapshot_cobre_todos_os_prompts_de_producao" …
+104:    def test_o_snapshot_cobre_todos_os_prompts_de_producao(self) -> None:
 ```
 
-O passo 2 da fase pede "snapshot do payload renderizado dos prompts", no plural, e
-AC-15 fala em "o payload enviado ao provedor". Hoje `meal_fallback`,
-`vision_identify` e `vision_fallback` não têm snapshot de payload.
+## 4. Achados IMPORTANTES
 
-A exposição real é menor do que parece — o teste de `sha` do registry (C.1) trava
-os quatro templates, então editar qualquer prompt quebra a suíte. Mas os dois
-testes pegam coisas diferentes: o `sha` do registry pega mudança **de texto do
-prompt**; o snapshot de payload pega mudança de **qualquer coisa que vá no
-envelope** — modelo, temperatura, `max_tokens`, `seed`, formato da mensagem. Uma
-mudança de `GROQ_MAX_TOKENS` hoje passa despercebida para três dos quatro
-prompts.
+**C7-IMP-1 (mantido) — o gate "execução agendada completa registrada" não foi
+satisfeito; e dos três impedimentos reais, um está refutado e um não estava nomeado.**
 
-**Correção sugerida:** estender `SNAPSHOT_DE_PAYLOAD` aos quatro nomes,
-parametrizando `test_payload_do_meal_identify_esta_travado` sobre o dicionário.
-Custo: poucas linhas, e os `sha` saem de uma execução do próprio teste.
+**Onde:** Critério de conclusão da Fase C.7 e §9 do DoD (*"C.7 — AC-15, NFR-2, NFR-3;
+execução agendada completa sem casos vazios"*), contra o estado do repositório no
+GitHub.
+
+**O que medi, um a um:**
+
+```text
+# 1) secret — o relatório está certo
+$ gh secret list --repo gabriel-ngrs/CalorIA
+(vazio)                         → o repositório não tem secret nenhum configurado
+
+# 2) quota — o relatório NÃO está certo hoje
+$ docker exec caloria_backend python -c "…AsyncGroq… max_tokens=1…"
+QUOTA OK — resposta recebida: Hello
+
+# 3) o workflow não existe no GitHub — impedimento não nomeado
+$ gh workflow list --repo gabriel-ngrs/CalorIA
+CD — Deploy em Produção   active
+CI                        active
+Dependabot Updates        active
+$ git show origin/dev:.github/workflows/eval.yml   → NAO
+$ git show origin/main:.github/workflows/eval.yml  → NAO
+$ git rev-list --count origin/dev..dev
+38
+```
+
+**Por que o terceiro item importa mais que os outros dois.** A correção que a avaliação
+da tentativa 1 sugeriu foi *"configurar `GROQ_API_KEY` nos secrets e disparar `eval.yml`
+por `workflow_dispatch`"*. Essa instrução é inexequível como está: o GitHub não oferece
+`workflow_dispatch` para um arquivo que não está na branch. O `eval.yml` existe só no
+repositório local, junto com outros 37 commits. Um leitor do relatório conclui que
+faltam duas ações do owner; na verdade falta uma ação que nem depende de owner —
+empurrar — e ela é pré-condição das outras duas.
+
+**Sobre a quota.** A afirmação *"o free tier está esgotado; disparar o `eval.yml` hoje
+produziria a falha por 429"* era verdadeira em 2026-08-02 e foi transportada para o
+rework de 2026-08-03 sem reteste. O provedor responde agora. Uma chamada de 1 token não
+prova que a execução completa (10 casos, com gravação) termina sem esbarrar em RPM — mas
+prova que a premissa não é mais verificável, e essa distinção é o que separa "não deu" de
+"não tentei".
+
+**Por que não é BLOQUEANTE.** O `eval.yml` está correto e completo: agenda dimensionada
+(semanal, `cron: "0 6 * * 1"`), `concurrency` declarada, gravação ligada só na agendada,
+gate de limiares por `evals.report verificar`, e **zero** `continue-on-error` — que era
+a violação BLOQUEANTE que o escopo travado nomeava. O que falta é execução, não código.
+
+**Correção sugerida, na ordem em que as coisas destravam:**
+
+1. `git push origin dev` — registra o `eval.yml` no GitHub e torna o `workflow_dispatch`
+   possível.
+2. `gh secret set GROQ_API_KEY --repo gabriel-ngrs/CalorIA`.
+3. `gh workflow run eval.yml --ref dev`, enquanto a janela de quota estiver aberta.
+4. Anexar a saída (ou o link da execução) como seção datada no EXECUCAO da C.7 e
+   reavaliar. **Se a execução estourar por 429**, colar a saída: isso não é fracasso, é
+   a medição que o passo 4 da fase pede ("dimensionar a agenda ao rate limit real") e
+   vira decision sobre periodicidade, com o dado por trás.
 
 ## 5. Sugestões
 
-- **`--repeticoes` no `eval.yml`.** `CORRECOES...md` §3 diz que a execução
-  agendada "deve subir para 3", e o workflow não passa a flag (`eval.yml:111`).
-  Está declarado como decisão pendente do owner, então não é divergência — mas
-  vale fechar junto do primeiro disparo, e ler a C5-IMP-1 antes: com
-  `EVAL_RECORD_CASSETTES=1` o CV é legítimo, o que torna a agendada o único lugar
-  onde `--repeticoes 3` mede o que promete.
-- **Cache de cassettes com `key: eval-cassettes-${{ github.sha }}`**: como a chave
-  inclui o SHA, toda execução erra o cache exato e cai no `restore-keys`, que
-  restaura a gravação mais recente. Funciona, mas o `actions/cache` só **salva**
-  quando a chave exata não existia — o que aqui é sempre. Está correto por
-  acidente feliz; um comentário evitaria que alguém "conserte" isso depois.
-- Os 14 cassettes foram gravados como `root` pelo container (dúvida 3 do
-  EXECUCAO). Rodar o compose de dev com o uid do host resolve, e é mudança de
-  infra que cabe na E.2, não aqui.
-- Vale registrar no README do harness quantas chamadas uma rodada completa
-  consome (~14 de texto, medido pelo executor) — é o dado que transforma "semanal
-  por palpite" em "semanal porque a quota é X".
+- **`--repeticoes` no `eval.yml`:** concordo com a decisão de não mexer agora, e a razão
+  nova que o relatório dá é melhor que a minha original — a correção do C5-IMP-1 tornou
+  explícito que repetir só mede ruído com gravação ligada, que é justamente o modo da
+  agendada. Entra junto do primeiro disparo, com número para calibrar.
+- **O `eval.yml` não roda em `push`, só em `schedule` e `workflow_dispatch`.** Correto
+  por desenho (o escopo travado proíbe eval completo por PR), mas significa que o
+  arquivo pode entrar na branch e ficar meses sem nunca executar, sem que nada avise.
+  Um passo no CI que só valide a **sintaxe** do `eval.yml` (`actionlint`) custaria
+  segundos e pegaria erro de YAML que hoje só apareceria na segunda-feira.
+- **O repositório não tem secret nenhum** — inclusive os do CD. Não é achado desta fase,
+  mas a Fase E.4 ("deploy automático verificado ponta a ponta") vai esbarrar nisso, e
+  vale saber antes de chegar lá.
 
 ## 6. Comandos rodados + saídas reais
 
-Ambiente: container `caloria_backend`, branch `dev`, HEAD `e3a974a`.
-`git merge-base --is-ancestor cc849e7 HEAD` → OK.
+> Gates compartilhados rodados uma vez sobre o HEAD atual (`0e570a6`), descendente do
+> `sha_final` desta fase.
 
 ```text
-# NFR-2, medido por mim
-$ time docker compose -f docker-compose.dev.yml exec -T backend \
-       pytest tests/unit/test_evals_snapshot.py -q
-15 passed in 0.06s
-real    0m1.978s
-# teto da NFR-2: 60 s. Zero rede: nenhum dos 5 arquivos do job importa AIClient.
-
-# a camada rápida como o CI a executa
-$ grep -n -A2 "Eval" .github/workflows/ci.yml
-79: # Camada RÁPIDA do eval: zero rede, roda a cada PR. [...]
-84: run: pytest tests/unit/test_evals_snapshot.py tests/unit/test_evals_metrics.py
-     tests/unit/test_evals_schema.py tests/unit/test_evals_invariance.py
-     tests/unit/test_evals_report.py -q
-
-# escopo travado, verificado no arquivo
-$ grep -c "continue-on-error" .github/workflows/eval.yml
+# --- Passo 2: ancestralidade e árvore limpa ---
+$ git status --porcelain | wc -l
 0
-$ grep -n "on:\|schedule\|cron" .github/workflows/eval.yml
-13:on:
-14:  schedule:
-15:    - cron: "0 6 * * 1"        # semanal, não por PR
-16:  workflow_dispatch:
+$ git merge-base --is-ancestor 40e2941 HEAD                                  → ANCESTRAL
+    40e2941 fix(ai): propaga a correcao do bug 001 ao VisionParser
+$ git merge-base --is-ancestor 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f HEAD → ANCESTRAL
 
-# nenhum segredo nos 14 cassettes versionados
-$ gitleaks detect --config .gitleaks.toml --log-opts="d8cc463~1..HEAD"
-22 commits scanned.  no leaks found
+# --- C7-IMP-2 fechado: os quatro prompts travados ---
+$ sed -n '35,40p' backend/tests/unit/test_evals_snapshot.py
+SNAPSHOT_DE_PAYLOAD = {
+    "meal_identify": "ee413e7a6a32…",     # inalterado — produção não se moveu
+    "meal_fallback": "237cd3db2dfc…",
+    "vision_identify": "3c774d4c02ff…",
+    "vision_fallback": "7adc5e0b4d86…",
+}
+$ grep -n "def test_" backend/tests/unit/test_evals_snapshot.py | sed -n '2p'
+104:    def test_o_snapshot_cobre_todos_os_prompts_de_producao   ← guarda novo   ✓
+$ docker exec caloria_backend pytest tests/unit/test_evals_snapshot.py -q
+23 passed in 0.09s                                                             ✓
 
-$ docker compose -f docker-compose.dev.yml exec -T backend pytest --cov=app --cov-report=term -q
-581 passed, 1 skipped, 5 warnings in 88.01s
-Required test coverage of 72.0% reached. Total coverage: 73.10%
+# --- AC-15: camada rápida sem rede, teto de 60s ---
+$ docker exec caloria_backend python -m evals.runner --cassettes
+runner replay: 2s                                                              ✓
+$ docker exec caloria_backend pytest tests/unit -q
+472 passed in 3.91s   (suíte inteira: 6s de parede)                            ✓
 
-$ ... ruff check . && ... ruff format --check . && ... mypy app/ evals/
-All checks passed! / 147 files already formatted / Success: no issues found in 81 source files
+# --- escopo travado: sem continue-on-error, credencial coberta por teste ---
+$ grep -c "continue-on-error" .github/workflows/eval.yml
+0                                     (só a menção no comentário :132)         ✓
+$ grep -n "def test_nenhum_cassette_versionado_contem_credencial" …
+181:    def test_nenhum_cassette_versionado_contem_credencial                   ✓
+$ grep -n "cron\|concurrency\|EVAL_RECORD_CASSETTES\|verificar" .github/workflows/eval.yml
+15:    - cron: "0 6 * * 1"
+24:concurrency:
+110:          EVAL_RECORD_CASSETTES: "1"
+136:        run: python -m evals.report verificar --relatorio …/ultimo-relatorio.json  ✓
 
-$ git status --short
-(limpo)
+# --- o achado 4.1: os três impedimentos, medidos ---
+$ gh secret list --repo gabriel-ngrs/CalorIA
+(vazio)                                                    → secret ausente  (confirma)
+$ docker exec caloria_backend python -c "…AsyncGroq… max_tokens=1…"
+QUOTA OK — resposta recebida: Hello                        → quota           (refuta)
+$ gh workflow list --repo gabriel-ngrs/CalorIA
+CD — Deploy em Produção / CI / Dependabot Updates          → eval.yml ausente (novo)
+
+# --- gates do manifest, sobre o HEAD atual ---
+$ docker exec caloria_backend pytest -q --cov=app --cov=evals
+620 passed, 1 skipped — Required test coverage of 72.0% reached. Total coverage: 74.28%
+$ docker exec caloria_backend ruff check .          → All checks passed!
+$ docker exec caloria_backend ruff format --check . → 147 files already formatted
+$ docker exec caloria_backend mypy app/ evals/      → Success: no issues found in 81 source files
+$ cd frontend && npm test / npm run lint / npx tsc --noEmit → 118/118 · exit 0 · exit 0
+
+$ git status --porcelain | wc -l
+0
 ```
-
-Não disparei o `eval.yml`: exige `secrets.GROQ_API_KEY` no repositório e um
-disparo remoto, nenhum dos dois acessível ao avaliador — e a quota do free tier
-está esgotada de qualquer forma.
 
 ## 7. Itens da fase / DoD não atendidos
 
-- **"Uma execução agendada completa registrada"** — não atendido (C7-IMP-1). É o
-  único item do gate em aberto; AC-15 (camada rápida) e NFR-2 estão verificados
-  por mim.
-- **NFR-3** — implementado e testado (`test_caso_vazio_reprova`), mas só
-  exercitado ponta a ponta por uma execução real. Cai junto do item acima.
-- **Snapshot de payload em 1 de 4 prompts** — cobertura parcial do passo 2
-  (C7-IMP-2).
+| Item (§5 / §9 da spec) | Estado |
+|---|---|
+| Passo 1 — gravação e replay, CI configurado para não gravar | Atendido |
+| Passo 2 — snapshot do payload dos prompts | Atendido nesta tentativa (4 de 4 + guarda) |
+| Passo 3 — workflow agendado com artifact e gate de limiar | Atendido **como código**; nunca executado |
+| Passo 4 — agenda dimensionada ao rate limit real | **PARCIAL** — semanal escolhida sem o dado; o dado só vem da primeira execução |
+| AC-15 — camada rápida sem rede em < 60 s | Atendido (2 s) |
+| AC-15 — prompt alterado sem regravar quebra o CI | Atendido (`:234`) |
+| **AC-15 / NFR-3 — execução agendada conclui sem casos vazios** | **NÃO ATENDIDO** — nunca executada (achado 4.1) |
+| Escopo travado — sem credencial em cassette, sem `continue-on-error`, eval completo fora do PR | Atendido, e o primeiro virou teste |
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **Contagem de testes do snapshot** — o EXECUCAO §2 diz "11 testes" na tabela de
-   arquivos criados e "15 passed" na §5. São 15; a tabela ficou desatualizada.
-   Trivial, mas registro porque a tabela é a parte que se lê primeiro.
-2. **"Correção feita na validação com Docker"** (§4) — confirmei: `runner.py:428-429`
-   instancia `AIClientComCassette` sob `--cassettes`, então o módulo deixou mesmo
-   de ser código morto. A auto-crítica do relatório se sustenta.
-3. Nada mais. Verifiquei o desenho do cassette, a ausência de
-   `continue-on-error`, a agenda semanal, o teste de credencial e a extensão do
-   `mypy` para `evals/`.
+1. **Nenhuma divergência no código.** Os quatro `sha` estão no arquivo, o teste guarda
+   existe, e o `eval.yml` é o que o relatório descreve.
+
+2. **Divergência factual — "o free tier está esgotado".** Medido hoje: o provedor
+   responde. Premissa correta na origem, não retestada no rework.
+
+3. **Omissão material — o `eval.yml` não está no GitHub.** O relatório lista dois
+   impedimentos e conclui "quando as duas condições existirem, disparar por
+   `workflow_dispatch`". Falta o terceiro, que é pré-condição dos outros dois e não
+   depende do owner: os 38 commits não empurrados. Sem isso a instrução não é
+   executável.
+
+4. **Correção do relatório sobre a minha sugestão de `--repeticoes`:** o motivo que ele
+   dá para adiar é melhor que o que eu havia escrito. Registro porque é o segundo caso
+   nesta fase em que o executor entrega acima do pedido, e não abaixo.
