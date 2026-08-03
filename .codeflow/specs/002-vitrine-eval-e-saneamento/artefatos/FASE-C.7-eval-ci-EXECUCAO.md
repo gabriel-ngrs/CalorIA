@@ -66,8 +66,17 @@ seja do owner e não uma descoberta no meio da próxima avaliação.
 | impedimento | estado |
 |---|---|
 | `eval.yml` ausente do remoto | **resolvido em `dev`**; inerte até chegar à `main` |
-| `GROQ_API_KEY` nos secrets | **ainda ausente** — `gh secret list` devolve vazio |
+| `GROQ_API_KEY` nos secrets | **RESOLVIDO** — configurado pelo owner em 2026-08-03 17:42:28Z |
 | quota do provedor | **teto diário estourado hoje**: TPD 100.000, 99.151 consumidos (medido na C.6) |
+
+```text
+$ gh secret list --repo gabriel-ngrs/CalorIA
+GROQ_API_KEY    2026-08-03T17:42:28Z
+```
+
+**Dos três impedimentos, sobra um que é decisão e um que é tempo:** o workflow precisa
+chegar ao branch default (represado pela OQ15) e a quota diária precisa virar. O
+secret, que era o único que exigia ação manual do owner, está feito.
 
 O que **não** está em aberto e vale separar: a camada rápida rodou no CI remoto nesta
 mesma execução — `Eval — camada rápida (sem rede): 140 passed in 0.76s`, run
