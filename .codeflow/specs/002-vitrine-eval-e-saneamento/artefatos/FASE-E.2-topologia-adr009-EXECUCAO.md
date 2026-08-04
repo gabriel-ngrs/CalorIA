@@ -2,15 +2,54 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: E.2
 slug_fase: topologia-adr009
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: d43b1bc488fb63abc8994bbbbc98cf2271b150c0
-sha_final: 70401f5c3397b95ffdb27fa7f4b6dcc33033b369
-range: d43b1bc488fb63abc8994bbbbc98cf2271b150c0..70401f5c3397b95ffdb27fa7f4b6dcc33033b369
+sha_final: 091641c
+range: d43b1bc488fb63abc8994bbbbc98cf2271b150c0..091641c
 ---
 
 # FASE E.2 — Relatório de execução
+
+## Tentativa 2 — o que mudou
+
+Veredito da tentativa 1: **RESSALVAS**, score 9.4. Um achado IMPORTANTE:
+**E2-IMP-1 — o cabeçalho novo dizia "sem uso" sobre o arquivo que o `cd.yml` sobe, e o
+ADR-009 declarava o `cd.yml` compatível quando ele implementa a topologia aposentada.**
+
+O achado está certo e é do tipo que envenena a fase seguinte: `cd.yml:38` roda
+`docker compose -f docker-compose.backend.yml up -d --build`, então o compose que o
+cabeçalho marcava como "sem uso, marcado para remoção na D.4" é justamente o que uma
+pipeline consome. A D.4 leria o cabeçalho, removeria o arquivo, e o CD quebraria por um
+caminho que ninguém associaria à poda.
+
+Apliquei as três correções sugeridas — as duas recomendadas (1 e 2) e a terceira, que é
+uma linha e fecha a contradição no próprio arquivo:
+
+| # | Onde | O que passou a dizer |
+|---|---|---|
+| 2 | `docs/architecture.md` (Consequências do ADR-009) | o `cd.yml` vale **como desenho de pipeline**, mas **implementa a topologia aposentada** (`cd.yml:38`); trocar o compose é trabalho da **E.4**; e a **D.4 só pode remover o legado depois disso** |
+| 3 | `docker-compose.backend.yml` (cabeçalho) | saiu "sem uso"; entrou o aviso de que `cd.yml:38` ainda o referencia e a ordem obrigatória E.4 → D.4 |
+| 1 | este relatório, §7 | a pendência entrou como item aberto nomeando a E.4 como dona |
+
+**Por que não editei o `cd.yml`.** Ele não está nos "Arquivos alterados" da E.2, e a
+E.4 já é dona da reativação do gatilho — o próprio avaliador apontou que a correção certa
+aqui é declarar a pendência, não invadir o escopo da fase vizinha.
+
+**Verificação depois da mudança:**
+
+```text
+$ docker compose -f docker-compose.yml config -q          && echo OK   → OK
+$ docker compose -f docker-compose.backend.yml config -q  && echo OK   → OK
+$ docker compose -f docker-compose.dev.yml config -q      && echo OK   → OK
+$ grep -n "docker compose" .github/workflows/cd.yml
+38:            docker compose -f docker-compose.backend.yml up -d --build
+$ sed -n '9,10p' .github/workflows/cd.yml
+  workflow_dispatch:          # o push em main segue comentado — o CD não dispara
+```
+
+Nenhum arquivo de código foi tocado nesta tentativa; as duas mudanças são de documento.
 
 ## 1. Resumo do que foi feito
 
@@ -139,3 +178,11 @@ estado verde conhecido é o da execução anterior (`623 passed, 1 skipped`, cob
    Generalizei o título e a abertura, mas não reescrevi o passo a passo para ser
    agnóstico de provedor: seria reescrita grande, fora do que a fase pede, e a Hetzner
    segue sendo um exemplo válido. Fica anotado como melhoria da D.3.
+
+4. **`cd.yml:38` ainda aponta para o compose legado** (achado E2-IMP-1 da tentativa 1).
+   A referência está declarada agora nos dois lados — no ADR-009 e no cabeçalho do
+   `docker-compose.backend.yml` —, com a ordem obrigatória: a **E.4** troca por
+   `docker-compose.yml` ao reativar o gatilho, e só então a **D.4** pode remover o
+   arquivo na poda. Não editei o `cd.yml` porque ele é arquivo declarado da E.4, e o CD
+   está inerte hoje (só `workflow_dispatch`, sem servidor), então não há risco de
+   produção — há risco de sequência, que é o que ficou registrado.
