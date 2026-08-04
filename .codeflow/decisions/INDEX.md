@@ -10,6 +10,7 @@ Filtrar por tag antes de carregar decisions individuais.
 
 | data | título | status | tags |
 |------|--------|--------|------|
+| 2026-08-03 | [Dataset da C.4 — terceira fonte para o que a TACO não cobre, imagens versionadas e testes da C.3 atualizados](2026-08-03-dataset-c4-fontes-e-arquivos-alem-do-declarado.md) | ativa | eval, dataset, ground-truth, taco, ibge-pof, spec-002, fase-c4 |
 | 2026-08-03 | [A main só é tocada no fim da spec, não na posição declarada da D.2](2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md) | ativa | git, release, deploy, spec-002, fase-d2, ordem-de-execucao |
 | 2026-08-03 | [Regras próprias de porção para gordura de passar e acompanhamentos](2026-08-03-regras-de-porcao-para-gordura-de-passar.md) | ativa | nutricao, portions, eval, spec-002, fase-c6 |
 | 2026-08-02 | [Rate limiting nos cinco GET de IA que gastam token do provedor](2026-08-02-rate-limit-em-get-de-ia.md) | ativa | seguranca, rate-limiting, api, spec-002, fase-b3 |

@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-02
+updated_at: 2026-08-03
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001]
@@ -1589,6 +1589,29 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   anotada como pendência da E.4.
   Ver `docs/architecture.md` (ADR-009).
 
+- **OQ17 — Fontes e arquivos da C.4 além do par declarado na OQ2.**
+  **RESOLVIDO (2026-08-03).** Três extensões, todas medidas antes de decidir:
+  **(a)** onde a TACO não cobre o item, a composição vem das *Tabelas de
+  Composição Nutricional dos Alimentos Consumidos no Brasil* (IBGE, POF
+  2008-2009) — publicação irmã da tabela de medidas já adotada, do mesmo
+  instituto. Entra em 2 dos 43 casos: pizza de calabresa (a TACO **não tem**
+  pizza, e a reprodução do bug 001 depende dela) e leite integral (a linha da
+  TACO vem sem valores, só `*`). Precedência fixa e declarada — TACO onde a TACO
+  cobre —, porque as duas fontes discordam onde ambas cobrem (feijoada: 117
+  kcal/100 g na TACO, 181,59 na POF). **(b)** Três imagens versionadas em
+  `backend/evals/dataset/imagens/`, do Wikimedia Commons, licença conferida pela
+  API antes de baixar e atribuída no README, sem pessoa identificável: sem elas o
+  estrato `foto` nasceria vazio e a B.5 seguiria bloqueada, contra a
+  redependência decidida em 2026-08-03. **(c)** Quatro asserções de
+  `tests/unit/test_evals_schema.py` e `test_evals_metrics.py` que travavam o
+  estado de semente ("nenhum caso conferido", "estrato `foto` vazio") passaram a
+  afirmar o estado pós-C.4; as duas que provavam a renderização de estrato vazio
+  seguem provando, sobre dataset sintético. **Consequência registrada:** o runner
+  de texto passa de 10 para 40 casos executáveis (~4× de quota na camada
+  agendada, pressão direta no risco R5), e os 14 cassettes da C.7 não cobrem as
+  descrições novas até a próxima gravação.
+  Ver `.codeflow/decisions/2026-08-03-dataset-c4-fontes-e-arquivos-alem-do-declarado.md`.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1612,7 +1635,8 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [ ] **C.2** — AC-11; suíte de IA verde sem modificação nos testes existentes.
 - [ ] **C.3** — AC-12; README do harness com a análise de poder.
 - [ ] **C.4** — OQ2 resolvida e registrada; dataset completo validando; limitações
-      documentadas.
+      documentadas. *(Executada em 2026-08-03: 43 casos verificados, três estratos
+      populados; extensões de fonte e de arquivos em OQ17.)*
 - [ ] **C.5** — AC-13; relatório com os três estratos, `n` e IC95.
 - [ ] **C.6** — AC-14; grupo do bug 001 presente; reprovações registradas como
       achado.
