@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-03
+updated_at: 2026-08-04
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001]
@@ -1635,6 +1635,28 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   que é decisão de owner vigente.
   Ver `.codeflow/decisions/2026-08-03-licenca-detectada-migra-do-ac18-para-o-ac19.md`.
 
+- **OQ19 — Caminho de foto no runner e teto de tokens da visão (rework da B.5).**
+  **RESOLVIDO (2026-08-04).** Duas coisas, medidas antes de decidir:
+  **(a)** o estrato de foto passa a ser executado por `backend/evals/runner.py`,
+  arquivo que não consta dos "Arquivos alterados" da B.5 — mas cuja própria
+  linha de exclusão (`# o caminho de foto entra na fase B.5`) já atribuía o
+  trabalho a esta fase. Entra também `backend/tests/unit/test_evals_runner_foto.py`.
+  Sem isso o gate da fase ("delta do estrato de foto, antes e depois") continua
+  sem instrumento, mesmo com o dataset da C.4 pronto. **(b)** Na configuração de
+  produção os três casos de foto falham com **HTTP 413** (`Requested 11357` >
+  `TPM 8000`), com o **mesmo** número para imagens de 111 KB, 200 KB e 291 KB —
+  o que estoura o limite é o `max_tokens` reservado (`GROQ_MAX_TOKENS = 8192`,
+  da C.2), não o tamanho da foto. Como nem o frontend nem o backend
+  redimensionam a imagem, **a análise por foto está quebrada em produção no free
+  tier**. O achado fica **registrado, não corrigido**: o fix é em `config.py`/
+  `ai_client.py` (C.2) e no frontend, fora do escopo travado da B.5, que proíbe
+  ampliar a fase. **Consequência registrada:** as quatro execuções do delta
+  rodaram com `GROQ_MAX_TOKENS=2048`, declarado no campo `amostragem` de cada
+  relatório; o delta v1→v2 é válido (mesmo teto dos dois lados), mas nenhum
+  número do estrato de foto vale como linha de base **de produção** enquanto o
+  413 existir — a ressalva acompanha o número na D.3 e no histórico da C.8.
+  Ver `.codeflow/decisions/2026-08-04-estrato-de-foto-no-runner-e-teto-de-tokens-da-visao.md`.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1651,9 +1673,10 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [ ] **B.2** — AC-6; execução verde no GitHub Actions com os gatilhos restaurados.
 - [ ] **B.3** — AC-7 e AC-8; `make test-integration` verde.
 - [ ] **B.4** — AC-9; piso de cobertura ativo e CI verde.
-- [ ] **B.5** — AC-17; delta do estrato de foto registrado com números. *(AC-17 e os
-      quatro passos de código estão satisfeitos e verificados; o delta depende do
-      dataset de foto, que nasce na C.4 — dependência corrigida em 2026-08-03.)*
+- [ ] **B.5** — AC-17; delta do estrato de foto registrado com números.
+      *(Medido em 2026-08-04, tentativa 2: quatro execuções contra o provedor real,
+      MdAPE 52,17% e SSPB +52,17% em todas as quatro — nenhum delta separável do
+      ruído em n=3. Achado do HTTP 413 na configuração de produção em OQ19.)*
 - [ ] **C.1** — AC-10; testes existentes dos parsers passam **sem modificação**.
 - [ ] **C.2** — AC-11; suíte de IA verde sem modificação nos testes existentes.
 - [ ] **C.3** — AC-12; README do harness com a análise de poder.

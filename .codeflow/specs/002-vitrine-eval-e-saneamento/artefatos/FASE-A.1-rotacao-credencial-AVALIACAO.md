@@ -3,7 +3,7 @@ spec: 002-vitrine-eval-e-saneamento
 fase: A.1
 slug_fase: rotacao-credencial
 tentativa: 3
-veredito: RESSALVAS
+veredito: APROVADO
 score: 9.2
 threshold: 8.5
 range_avaliado: 461ee3805bf5f8848d4da6ebd23779ff8817c315..7348d948dd9a5176fa0dbd13549b26e25c87e3f0
@@ -11,9 +11,39 @@ range_avaliado: 461ee3805bf5f8848d4da6ebd23779ff8817c315..7348d948dd9a5176fa0dbd
 
 # FASE A.1 — Avaliação independente
 
+> ## Encerramento por decisão do owner (2026-08-04)
+>
+> **O veredito do frontmatter passou de `RESSALVAS` para `APROVADO`.** Isto não é
+> uma reavaliação — é o registro, no único lugar que a máquina de estados lê
+> (ARTIFACTS_SPEC §2.11.3), de uma decisão que já estava tomada em prosa e que o
+> artefato ainda contradizia.
+>
+> **O caminho.** O teto do §2.11.4 (`reprovacoes: 2` + este veredito = o 3º) parou
+> a fase e a escalou ao owner, que é o estado terminal previsto. O owner decidiu em
+> 2026-08-03 (OQ13 da spec, e "Estado final" de
+> `.codeflow/decisions/2026-08-02-senha-conta-caloria-producao.md`) encerrar a fase
+> em vez de gastar uma quarta tentativa, e a §9 da spec já a marcava `[x]`. Em
+> 2026-08-04 o owner autorizou explicitamente refletir isso no documento. Não houve
+> override conversacional de gate: o gate rodou, parou, escalou, e o humano decidiu.
+>
+> **Os dois IMPORTANTES que sustentavam o veredito foram fechados** — conferido
+> arquivo a arquivo antes desta edição, e é o que torna `APROVADO` coerente com a
+> §2.10.3 (score 9.2 ≥ 8.5, zero BLOQUEANTES, zero IMPORTANTES abertos):
+>
+> | Achado | Correção verificada |
+> |---|---|
+> | **4.1** — §9 do relatório contradizia §1/§8 | `FASE-A.1-…-EXECUCAO.md` §9 reescrita em 2026-08-03, com a nota de retratação no topo da seção e os quatro itens no estado real |
+> | **4.2** — decision afirmava o risco e a sua inexistência ao mesmo tempo | cabeçalho "ATUALIZAÇÃO" + seção "Estado final (2026-08-03)"; portão da D.2 marcado `⛔ PORTÃO LEVANTADO`; a afirmação "a URL não é descobrível" marcada `❌ FALSO, ver retratação` nos dois pontos |
+>
+> **O que não muda:** o score (9.2) e o corpo desta avaliação ficam como foram
+> escritos — são o registro do que foi medido na tentativa 3. As sugestões da §5
+> seguem abertas, em especial a de `frontend/playwright.prod.config.ts:9`, que a
+> própria avaliação já situava na D.4.
+
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.2 / threshold 8.5
+**Veredito (tentativa 3, como avaliado):** RESSALVAS · **Score:** 9.2 / threshold 8.5
+**Veredito final da fase:** APROVADO, por encerramento do owner — ver o bloco acima.
 
 **O BLOQUEANTE que segurou a fase por duas tentativas caiu — e não pela declaração
 do owner, mas por medição minha.** As tentativas 1 e 2 foram reprovadas porque "a

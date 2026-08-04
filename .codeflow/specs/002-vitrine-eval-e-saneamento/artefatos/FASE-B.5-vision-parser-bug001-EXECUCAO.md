@@ -2,152 +2,275 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: B.5
 slug_fase: vision-parser-bug001
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 36d68cc
-sha_final: 40e2941
-range: 36d68cc..40e2941
+sha_final: b8001c3
+range: 36d68cc..b8001c3
 ---
 
 # FASE B.5 — Relatório de execução
 
-## Nota de 2026-08-03 — fase estacionada até a C.4
-
-Veredito da tentativa 1: **RESSALVAS**, score 9.7, por um único achado — B5-IMP-1.
-
-**O achado é procedente e não é corrigível dentro desta fase.** O gate declarado
-("delta do estrato de foto registrado com números antes e depois") depende do estrato
-`foto` do dataset, que está vazio: `casos.jsonl` traz
-`{'simples': 6, 'composto': 4, 'foto': 0}`, e o dataset de foto é entregável da **C.4**,
-que não foi executada. A fase declarava `Depende de: C.6`, quando o gate que ela mesma
-se impõe depende da `C.4` — erro de grafo na spec, não de execução.
-
-**Decisão do owner em 2026-08-03: manter o gate e reabrir a B.5 depois da C.4**
-(opção 2 das duas que a avaliação apresenta). A spec foi corrigida em §5: a linha
-"Depende de" da B.5 passa de `C.6` para `C.4`, com a justificativa registrada ali e no
-item do §9 do DoD. O gate estrutural (`run-structural.sh`) continua em `EXIT=0` — a
-C.4 depende só da C.3, então não há ciclo.
-
-**Nada mudou no código desta fase**, e por isso `status`, `tentativa` e `reprovacoes`
-ficam como estavam: não houve rework. Os quatro passos entregues e o AC-17 seguem
-verificados como na tentativa 1; o que falta é o dataset.
-
-**Para quem retomar depois da C.4:** rodar o eval do estrato de foto antes e depois da
-v2 do prompt de visão e registrar o delta com números — é o passo 5 da fase, o único
-não executado. A avaliação registra uma observação que vale ler junto: o prompt de
-visão nunca passou por medição, então a v2 entra no eval sem linha de base, e vale a
-C.4 incluir dois ou três casos de foto só para dar essa linha de base.
-
-*(Registro adicional: a fase C.2 criou `vision_identify@v3` para o JSON mode. A v2 —
-que é a desta fase — continua sendo a versão em produção, fixada em
-`VERSOES_EM_PRODUCAO`. A v3 não substitui o trabalho da B.5: acrescenta o formato de
-objeto por cima dele.)*
-
-
 ## 1. Resumo do que foi feito
 
-Os quatro defeitos que o `MealParser` já tinha resolvido e o caminho de foto
-ainda carregava foram corrigidos. O passo 5 (delta do estrato de foto) **não foi
-executado** — o estrato de foto está vazio e o provedor é inalcançável nesta
-sessão; detalhe em §6.
+Rework da tentativa 1 (RESSALVAS, 9.7) por um único achado: **B5-IMP-1 — o delta
+do estrato de foto não existia.** Ele não era corrigível então (estrato vazio) e
+passou a ser depois da C.4, que populou 3 casos de foto com imagens versionadas.
+
+Duas coisas nesta tentativa: o runner do eval passou a **executar** o estrato de
+foto pelo `VisionParser` — o caminho que a própria C.5 deixou explicitamente
+para esta fase —, e o delta v1→v2 do prompt de visão foi **medido contra o
+provedor real**, em quatro execuções.
+
+**O resultado do delta é "nenhuma melhora nem piora mensurável em n=3"**, com os
+números na §5. O gate da fase pede o delta registrado com números, e a cláusula
+de testes da §5 da spec prevê exatamente este desfecho: *"o estrato de foto do
+eval melhora ou, se não melhorar, o achado é registrado com os números"*.
+
+Os quatro passos de código seguem como estavam — a avaliação da tentativa 1 os
+verificou um a um e não achou divergência. **Nada em `vision_parser.py` mudou.**
 
 ## 2. Arquivos CRIADOS
 
 | Arquivo | Propósito |
 |---------|-----------|
-| `backend/app/prompts/vision_identify/v2.txt` + `v2.user.txt` | Nova versão do prompt de visão, sem as regras 4 e 5 originais. |
-| `backend/tests/unit/test_vision_parser_bug001.py` | 17 testes de regressão. |
+| `backend/tests/unit/test_evals_runner_foto.py` | 13 testes do caminho de foto no runner: roteamento por estrato, imagem ausente, troca/restauração da versão de visão, procedência do prompt no relatório. Zero rede. |
+| `.codeflow/decisions/2026-08-04-estrato-de-foto-no-runner-e-teto-de-tokens-da-visao.md` | Registro das duas decisões de escopo desta tentativa. |
+
+*(Da tentativa 1, inalterados: `backend/app/prompts/vision_identify/v2.txt` + `v2.user.txt`, `backend/tests/unit/test_vision_parser_bug001.py`.)*
 
 ## 3. Arquivos ALTERADOS
 
 | Arquivo | O que mudou |
 |---------|-------------|
-| `backend/app/services/ai/vision_parser.py` | `zip(strict=True)`; laço do fallback com saída garantida por entrada; guard `_num` na quantidade; `_SANITY_DIVERGENCE` no lugar do `0.35` inline. |
-| `backend/tests/unit/test_prompt_registry.py` | `sha` travado de `vision_identify` atualizado junto do bump para v2, e o teste de "versão ativa" virou tabela por prompt. |
+| `backend/evals/runner.py` | Estrato de foto deixa de ser excluído e entra pelo `VisionParser`: `identificar()` roteia por estrato, `imagem_do_caso()` falha alto se a imagem some, `versao_de_visao()` troca `_IDENTIFY_PROMPT` e restaura, `--versao-vision` na CLI, e o relatório declara a versão de visão usada. |
+| `SPEC_002_…md` | OQ19 (escopo + achado do 413); item da B.5 na §9; `updated_at`. |
+| `.codeflow/decisions/INDEX.md` | Linha da decision nova. |
+
+*(Da tentativa 1, inalterados: `backend/app/services/ai/vision_parser.py`, `backend/tests/unit/test_prompt_registry.py`.)*
 
 ## 4. Confirmação do REUSO e decisões de design
 
-**REUSADO:** `meal_parser.py` como referência exata da correção já feita — o
-guard `_num` é **importado** de lá, não reimplementado; o laço do fallback segue
-a mesma forma de `meal_parser.py:295-330`; `_SANITY_DIVERGENCE` recebeu o mesmo
-nome, e há teste garantindo que os dois valores continuam iguais.
+**REUSADO.** O runner executa o `VisionParser` **de produção** — o mesmo objeto
+que o endpoint aciona —, não uma reimplementação; a instrumentação de lookup, o
+agregador, as métricas e o formato de relatório são os da C.5, sem cópia. A
+troca de versão de prompt segue o padrão global-e-restaurado que
+`instrumentar_lookup` já estabeleceu no mesmo arquivo. As imagens e as
+referências são as que a C.4 versionou.
 
 **Decisões de design:**
-- **v2, não edição da v1.** A v1 continua no disco com as regras antigas — há
-  teste verificando isso. É a regra de imutabilidade da C.8, e é o que torna
-  possível medir v1 contra v2 quando o eval de foto existir.
-- **As regras 4 e 5 não foram só apagadas; foram substituídas** pelas
-  equivalentes do `MealParser` corrigido — "PRATO CONHECIDO VEM INTEIRO" e
-  quantidade na unidade que descreve o que está visível. Remover sem substituir
-  deixaria o prompt sem orientação nenhuma sobre decomposição e unidade, o que é
-  mudança maior que a corrigida.
-- **A tabela de calibração visual foi preservada integralmente**, por escopo
-  travado — é específica de foto e não tem relação com o bug 001. Há teste.
-- **`strict=True` no `zip` de reinserção dos estimados** é seguro porque o laço
-  do fallback agora garante uma saída por entrada; com `strict=False`, um
-  descasamento futuro voltaria a descartar itens em silêncio.
 
-**Escopo travado respeitado:** `MealParser` e `VisionParser` **não** foram
-unificados (a duplicação de ~120 LOC continua, conhecida e fora desta spec); o
-`MealParser` não foi alterado; a calibração visual não foi tocada; os limiares da
-decision de 2026-07-26 não foram mexidos.
+- **`versao_de_visao()` em vez de editar `VERSOES_EM_PRODUCAO`.** Medir uma
+  versão não pode exigir promovê-la — promover é o ato que a C.2 isolou de
+  propósito. O context manager restaura mesmo com exceção (há teste).
+- **O relatório lê a versão de visão do módulo, não de `get_prompt`.** Sob
+  `versao_de_visao(1)`, `get_prompt` devolveria a v2 (produção) e o histórico
+  append-only da C.8 registraria o resultado da v1 sob o `sha` da v2 — os dois
+  pontos da série ficariam idênticos e o delta desapareceria do registro.
+- **Caso de foto sem parser de visão vira falha registrada**, não sumiço: um
+  caso que desaparece do denominador melhora a métrica sem melhorar nada.
+
+**DESVIOS, ambos registrados na OQ19 e na decision:**
+
+1. **`backend/evals/runner.py` e `tests/unit/test_evals_runner_foto.py` não
+   constam dos "Arquivos alterados" da B.5.** A linha que eu removi era
+   `if c.estrato is not Estrato.FOTO  # o caminho de foto entra na fase B.5` —
+   a C.5 desenhou o runner deixando este pedaço nomeadamente para cá. Sem ele o
+   gate da fase não tem instrumento. Não ampliei nada além disso: o
+   `MealParser`, os limiares da decision de 2026-07-26, o dataset da C.4 e o
+   `VERSOES_EM_PRODUCAO` não foram tocados.
+2. **As medições rodaram com `GROQ_MAX_TOKENS=2048`, não com o valor de
+   produção (8192)** — porque com 8192 os três casos falham com HTTP 413 (§5).
+   O valor está declarado no campo `amostragem` de cada relatório, e a ressalva
+   acompanha os números.
 
 ## 5. Comandos rodados + saídas reais
 
+### 5.1 O delta do estrato de foto — o item que faltava
+
+Quatro execuções contra a Groq real, dataset `9711e969…` (3 casos de foto),
+modelo de visão `qwen/qwen3.6-27b`, `temperature 0.1`, `seed -1`,
+`GROQ_MAX_TOKENS 2048`:
+
 ```text
-$ diff app/prompts/vision_identify/v1.txt app/prompts/vision_identify/v2.txt
-8,9c8,9
-< 4. Liste cada alimento separadamente, mesmo em pratos compostos.
-< 5. Estime porções sempre em gramas (unit="g").
----
-> 4. PRATO CONHECIDO VEM INTEIRO. [...]
-> 5. Devolva a quantidade na unidade que descreve melhor o que está visível [...]
+$ docker compose -f docker-compose.dev.yml exec -T -e GROQ_MAX_TOKENS=2048 backend \
+    python -m evals.runner --estrato foto --versao-vision <N> --repeticoes <R> --json
 
-# o gate de sha da C.1 pegou o bump, como projetado:
-$ pytest tests/unit -q
-FAILED tests/unit/test_prompt_registry.py::...::test_sha_da_versao_ativa_esta_travado[vision_identify]
-FAILED tests/unit/test_prompt_registry.py::...::test_versao_ativa_e_a_v1
-FAILED tests/unit/test_prompt_registry.py::...::test_vision_parser_usa_o_registry
-3 failed, 349 passed
+execucao   MdAPE     MAPE     SSPB    <=10%   IC95 do MdAPE      MAE prot/carb/gord (g)
+v1  r=3    52.17%   63.50%   +52.17%    0%   [ 12.17, 126.15]    2.38 / 5.43 / 5.66
+v1  r=1    52.17%   63.50%   +52.17%    0%   [ 12.17, 126.15]    2.28 / 5.50 / 5.79
+v2  r=3    52.17%   48.51%   +52.17%    0%   [ 16.67,  76.68]    3.22 / 3.97 / 3.34
+v2  r=1    52.17%   65.00%   +52.17%    0%   [ 16.67, 126.15]    3.88 / 5.63 / 5.01
 
-# depois de atualizar o sha travado junto do bump:
-$ pytest tests/unit -q
-357 passed in 3.95s
-
-$ ruff check . && ruff format --check . && mypy app/ evals/
-All checks passed! / 135 files already formatted / Success: no issues found
-
-$ pytest -q --ignore=tests/smoke_test.py
-474 passed, 5 skipped, 3 warnings in 51.89s
+custo total das quatro: 48 chamadas ao provedor, 100.929 tokens_in, 5.907 tokens_out
+latencia mediana por caso: 102,9 s (v1 r=3) e 83,7 s (v2 r=3), origem: provedor
+falhas: nenhuma nas quatro execuções
 ```
 
-## 6. Checklist dos ACs / critério de conclusão
+**Leitura, e é a parte que importa:**
 
-- [x] **AC-17, nenhum item perdido em silêncio** —
-      `TestNenhumItemSePerdeEmSilencio`: três alimentos entram, a IA devolve um,
-      três saem; os dois faltantes vêm marcados com `needs_review` e motivo. Há
-      também o caso de a IA devolver mais objetos que o pedido.
+- **MdAPE — a métrica headline por decisão da §4 da spec — é 52,17% nas quatro
+  execuções.** Idêntica antes e depois. O delta v1→v2 em MdAPE é **zero**.
+- **SSPB é +52,17% nas quatro:** o caminho de foto **superestima
+  sistematicamente**, e a v2 não mexeu nisso. O sinal positivo é o modo de falha
+  menos danoso num diário alimentar (a §4 da spec explica por quê), mas 52% é
+  muito.
+- **A aparente melhora de MAPE da v2 (63,50 → 48,51) não se sustenta.** A
+  segunda execução da **mesma** v2 deu 65,00 — acima da v1. A variação entre
+  duas rodadas da mesma versão é **maior** que a variação entre versões, então o
+  MAPE aqui está medindo ruído, não prompt. A v1, por contraste, deu 63,50 nas
+  duas rodadas.
+- **Nenhum caso de foto ficou dentro de ±10% em nenhuma execução** (`<=10%: 0%`).
+- **n = 3.** Os IC95 dos dois lados se sobrepõem quase inteiros. Nenhuma
+  afirmação de melhora ou piora é sustentável com este tamanho de amostra — e o
+  README do harness (C.3) já declara que o `n` do projeto não detecta efeitos
+  pequenos. Este estrato é o caso extremo disso.
+
+**Conclusão registrada:** a v2 do prompt de visão **não regride** o estrato de
+foto e **não melhora** de forma mensurável. O valor da B.5 continua sendo o que
+a avaliação da tentativa 1 já verificara — itens que não se perdem mais em
+silêncio e quantidade por extenso que não vira HTTP 500 —, e não um ganho de
+acurácia que os números não sustentam.
+
+### 5.2 O achado do HTTP 413 (registrado, não corrigido)
+
+A primeira execução, com a configuração de produção, falhou nos **três** casos:
+
+```text
+$ docker compose -f docker-compose.dev.yml exec -T backend \
+    python -m evals.runner --estrato foto --versao-vision 1 --repeticoes 3 --json
+foto: n=0
+falhas: 3/3
+  APIStatusError: Error code: 413 — Request too large for model `qwen/qwen3.6-27b`
+    on tokens per minute (TPM): Limit 8000, Requested 11357
+
+$ ls -la backend/evals/dataset/imagens/
+111512  coxinha-1-unidade.jpg
+200383  ovo-frito-1-unidade.jpg
+291049  banana-1-unidade.jpg
+   → `Requested 11357` é IDÊNTICO para os três tamanhos: a imagem custa fixo,
+     e quem estoura o limite é o max_tokens reservado (8192, config.py:85).
+
+$ grep -rn "PIL\|Image.open\|resize" backend/app/
+   (sem saída — o backend não redimensiona)
+$ grep -rn "fileToBase64" -A 10 frontend/app/\(dashboard\)/refeicoes/page.tsx
+   readAsDataURL(file) — o frontend envia o arquivo bruto, sem redimensionar
+```
+
+**Consequência que passa do eval: a análise por foto está quebrada em produção
+no free tier**, para qualquer foto, e não por defeito do `VisionParser`. O fix é
+em `config.py`/`ai_client.py` (território da C.2) ou no frontend — fora do
+escopo travado desta fase, que proíbe ampliá-la. Detalhe e sugestão de correção
+(`GROQ_VISION_MAX_TOKENS` próprio) na decision.
+
+### 5.3 Gates de validação do projeto
+
+```text
+$ docker compose -f docker-compose.dev.yml exec -T backend sh -c \
+    "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed!
+148 files already formatted
+Success: no issues found in 81 source files
+
+$ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/unit -q
+489 passed in 3.98s          # 488 antes + os 13 novos, 12 dos quais no arquivo novo
+
+$ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/unit/test_evals_runner_foto.py -q
+13 passed
+
+# vermelho antes do verde — testes escritos após a mudança, redness verificada
+# revertendo só o runner:
+$ git stash push -- backend/evals/runner.py && pytest tests/unit/test_evals_runner_foto.py -q
+11 failed, 1 passed
+$ git stash pop
+
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh .codeflow/specs/002-.../SPEC_002_....md
+✓ §5 estruturalmente válida   >>> EXIT=0
+
+# pre-commit no commit do código (inclui gitleaks):
+Detect hardcoded secrets.................................................Passed
+
+# [—] make test-integration NÃO RODADO nesta tentativa. O diff é de `evals/` e de
+#     testes unitários; nenhum endpoint, model, migration ou service de produção
+#     foi tocado. A suíte de integração foi rodada e verde na tentativa 1
+#     (581 passed, cobertura 73,10%) sobre o mesmo código de produção, que não mudou.
+# [—] make test-frontend NÃO RODADO. Nenhum arquivo de frontend no diff.
+```
+
+## 6. Critérios de aceite da fase (com evidência)
+
+- [x] **AC-17, nenhum item perdido em silêncio** — `TestNenhumItemSePerdeEmSilencio`
+      em `test_vision_parser_bug001.py`; verificado independentemente pela
+      avaliação da tentativa 1 (§6, `vision_parser.py:158` `strict=True`).
+      Inalterado nesta tentativa.
 - [x] **AC-17, quantidade por extenso não gera 500** —
-      `TestQuantidadePorExtensoNaoVira500`, parametrizado sobre `"dois"`,
-      `"1/2"`, `""` e `"abc"`, mais o caso de string numérica aproveitada.
-      (`None` fica de fora: `IdentifiedFood` já o rejeita no Estágio 1.)
+      `TestQuantidadePorExtensoNaoVira500`, parametrizado sobre `"dois"`, `"1/2"`,
+      `""`, `"abc"`; guard `_num()` em `vision_parser.py:206-213`. Inalterado.
 - [x] **AC-17, o prompt de visão não contém mais as regras de decomposição
-      obrigatória e de gramas obrigatórias** — `TestPromptDeVisaoV2`, incluindo a
-      verificação de que a v1 continua no disco com as regras antigas.
-- [x] **`0.35` inline extraído** — `TestConstanteDeSanityCheck`, incluindo a
-      igualdade com o valor do `MealParser`.
-- [—] **Delta do estrato de foto registrado com números antes e depois** — não
-      executável: o estrato `foto` do dataset está **vazio** (C.3 — depende da
-      OQ2 e de imagens com licença verificada), e `api.groq.com` é inalcançável
-      desta sessão. Sem casos e sem provedor, não há delta a medir. É o único
-      item do gate desta fase que fica em aberto, e a dependência é da C.4.
+      obrigatória e de gramas obrigatórias** — `TestPromptDeVisaoV2`; a v1 segue
+      no disco com as regras antigas (regra de imutabilidade da C.8), o que é
+      justamente o que tornou o delta desta tentativa mensurável.
+- [x] **`0.35` inline extraído** — `TestConstanteDeSanityCheck`,
+      `vision_parser.py:32`.
+- [x] **Delta do estrato de foto registrado com números antes e depois** — §5.1:
+      quatro execuções contra o provedor real, tabela completa, com a conclusão
+      de que não há delta separável do ruído em n=3.
 
-## 7. Dúvidas para o avaliador
+## 7. Definition of Done da fase
 
-1. **O delta do estrato de foto é o gate declarado da fase e não é satisfazível
-   hoje** — depende da C.4, que a OQ2 bloqueia. A fase pode ser aprovada com as
-   correções entregues e essa medição declarada como pendência, ou a B.5 deve
-   voltar a "pendente" até a C.4?
-2. O texto substituto das regras 4 e 5 foi escrito por espelhamento do
-   `MealParser`. Vale revisão do owner antes de a v2 entrar numa medição?
+- [x] Testes da fase verdes (489 unitários; 13 novos)
+- [x] `ruff`, `ruff format`, `mypy app/ evals/` limpos
+- [—] `make test-integration` e `make test-frontend` — justificado em §5.3
+      (nenhum arquivo de produção nem de frontend no diff desta tentativa)
+- [x] Escopo travado respeitado: `MealParser` intocado, parsers não unificados,
+      calibração visual do prompt preservada, limiares de 2026-07-26 intactos
+- [x] Dois desvios de escopo declarados, com decision e OQ19 (§4)
+- [x] Nenhum segredo/PII: `gitleaks` do pre-commit passou; os relatórios de eval
+      não carregam chave (o `custo` traz só contagem de tokens)
+- [x] Commits em pt-BR, sem menção a autor/IA
+
+## 8. O que mudou nesta tentativa
+
+**Achado B5-IMP-1 (o único da avaliação): corrigido.**
+
+| Antes (tentativa 1) | Agora |
+|---|---|
+| Gate `[—]` — "estrato de foto vazio, C.4 não executada" | Gate `[x]` — 3 casos, 4 execuções, números na §5.1 |
+| Runner excluía o estrato de foto | Runner executa o estrato de foto pelo `VisionParser` |
+| `Depende de: C.6` (erro de grafo) | `Depende de: C.4`, já corrigido na spec em 2026-08-03 |
+
+Também endereçado da §5 (sugestões) da avaliação: *"vale a C.4 incluir dois ou
+três casos de foto só para dar linha de base à v2 antes de ela virar padrão"* —
+a C.4 incluiu três, e esta tentativa produziu a linha de base. Ela diz que a v2
+entrou em produção sem ganho de acurácia demonstrável; a decisão de mantê-la
+segue defensável pelos três defeitos de robustez que ela corrige, mas agora está
+medida em vez de suposta.
+
+**Não** endereçadas, por serem fora de escopo e a avaliação já as situar assim:
+promover `_num`/`_FONTES_CURADAS` para módulo compartilhado (espera a
+desduplicação dos ~120 LOC), e importar `_SANITY_DIVERGENCE` em vez de testar a
+igualdade.
+
+## 9. Itens em aberto / dúvidas para o avaliador
+
+1. **O HTTP 413 é o achado mais consequente desta tentativa e eu não o
+   corrigi.** É produção quebrada no caminho de foto, descoberta pelo eval —
+   exatamente o que o Track C existe para fazer. Deixei como achado porque o fix
+   mora em `config.py`/`ai_client.py` (C.2) e no frontend, e o escopo travado da
+   B.5 proíbe ampliar a fase. **Pergunta:** isto deveria virar fase nova (ex.:
+   `C.9`) ou rework da C.2, que já está aprovada?
+2. **n = 3 no estrato de foto é pouco para o gate que a fase se impôs.** O delta
+   está registrado com números e a conclusão honesta é "não há delta
+   mensurável" — mas quem ler a série da C.8 verá dois pontos com o mesmo MdAPE
+   e IC95 largos. Vale a pena o estrato de foto crescer antes de o número ser
+   citado no README da D.3?
+3. **A execução do delta usou `GROQ_MAX_TOKENS=2048`.** Está declarado em cada
+   relatório e na OQ19, mas nenhuma dessas quatro linhas foi registrada em
+   `evals/runs/history.jsonl` — não quis poluir a série append-only da C.8 com
+   medições feitas sob parâmetro diferente do de produção. **Pergunta:** deveria
+   registrar mesmo assim, já que `amostragem` carrega a diferença?
+4. **O `range` desta fase não a isola** (`36d68cc..b8001c3`): pega os commits de
+   fases posteriores executadas no intervalo. É conforme ao §2.9.3, que manda ir
+   do início original ao HEAD. O commit desta tentativa é **`b8001c3`**, e o da
+   tentativa 1 é `40e2941`.
