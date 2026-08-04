@@ -103,6 +103,32 @@ docker compose exec backend alembic upgrade head
 | API | http://localhost:8000 |
 | Swagger | http://localhost:8000/docs |
 
+### 6. Conta de demonstração
+
+Para ver o dashboard com 30 dias de dados sem registrar nada à mão:
+
+```bash
+make seed-demo
+```
+
+| Campo | Valor |
+|---|---|
+| E-mail | `demo@caloria.app` |
+| Senha | `CalorIADemo2026!` |
+
+A conta traz refeições, evolução de peso, hidratação e humor dos últimos 30 dias.
+
+**Estas credenciais são públicas de propósito.** Elas abrem **apenas** esta conta,
+que carrega dados sintéticos, não tem privilégio administrativo e não enxerga dados
+de nenhum outro usuário — a API deriva o `user_id` do token em toda rota autenticada.
+Não são reusadas em serviço nenhum.
+
+**Reset.** `make seed-demo` é idempotente e é também o comando de reset: rodá-lo de
+novo devolve a conta ao estado publicado e apaga o que um visitante tenha registrado.
+A política é resetar a cada deploy e sob demanda; **a automação do reset periódico
+depende do deploy da Fase E.4**, que hoje roda local (ADR-009) e não tem agendador em
+pé — enquanto isso, o reset é manual.
+
 ---
 
 ## Estrutura do Projeto

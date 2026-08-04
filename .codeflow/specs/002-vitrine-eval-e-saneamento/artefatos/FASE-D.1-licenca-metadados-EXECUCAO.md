@@ -3,219 +3,194 @@ spec: 002-vitrine-eval-e-saneamento
 fase: D.1
 slug_fase: licenca-metadados
 status: rework
-tentativa: 3
-reprovacoes: 2
+tentativa: 4
+reprovacoes: 3
 sha_inicial: 7f9f59a
-sha_final: 03dc5e8bdeb01f0533945ef5b10979697669f491
-range: 7f9f59a..03dc5e8bdeb01f0533945ef5b10979697669f491
+sha_final: PENDENTE
+range: 7f9f59a..PENDENTE
 ---
 
 # FASE D.1 — Relatório de execução
 
-## Tentativa 3 — o que mudou
+## 0. Esta tentativa existe por autorização explícita do owner, no teto
 
-Veredito da tentativa 2: **RESSALVAS**, score 9.4. Um achado IMPORTANTE:
-**D1-IMP-1 — o AC-18 não fecha porque a API do GitHub reporta `licenseInfo: null`,
-e não vai reportar antes da D.2.**
+A fase chegou a `reprovacoes: 3` e o §2.11.4 a levou ao estado terminal de
+escalação ao owner. **O owner autorizou a quarta tentativa em 2026-08-04**, e a
+decisão está registrada em
+`.codeflow/decisions/2026-08-04-quarta-tentativa-da-d1-autorizada-no-teto.md` —
+não em autorização falada, que a constitution universal não aceita como saída de
+gate duro. A razão da escolha: encerrar por aceite (como se fez na A.1) e fazer o
+rework chegam ao mesmo estado de fase, mas só o rework deixa a spec sem
+contradizer a si mesma, que é o defeito que o achado nomeia.
 
-O avaliador nomeou duas saídas legítimas e recomendou a primeira (executar a D.2
-agora). **Escolhi a segunda, e a razão é que a primeira contraria decisão de owner
-vigente:** a OQ15, decidida um dia antes, tira a D.2 da posição declarada na §5 e a
-torna a última operação de branch da spec, para não publicar estado intermediário na
-branch que o mundo vê. Uma fase de execução não revoga decisão de owner para fechar o
-próprio gate.
-
-**O que mudou, então, foi a modelagem do AC — não o repositório.** A cláusula "licença
-MIT **detectada** pela API" migrou do AC-18 para o **AC-19**, que já é o AC da D.2:
-
-| AC | antes | depois |
-|---|---|---|
-| AC-18 (D.1) | licença detectada + description + topics + versão sincronizada | description + topics + **`LICENSE` versionado na branch de trabalho** + versão sincronizada |
-| AC-19 (D.2) | `main` alcança `dev` + tag/release | idem + **API reporta `licenseInfo` não nulo** |
-
-O GitHub deriva `licenseInfo` do **branch default**; `main` parou em 2026-04-29. Nenhuma
-ação no escopo da D.1 muda isso — o `LICENSE` está criado, correto e commitado. É o mesmo
-defeito de modelagem já corrigido nesta spec na Fase A.1, quando a cláusula sobre o HEAD
-das branches remotas migrou do AC-1 para o AC-2 por só ser satisfazível depois da A.2.
-
-Sem essa migração, a D.1 seguiria consumindo tentativas do teto do §2.11.4 (3 vereditos
-não-APROVADO → escalar ao owner) por um motivo que não é defeito de execução.
-
-**Arquivos tocados nesta tentativa:** `.codeflow/specs/.../SPEC_002_...md` (AC-18, AC-19,
-OQ18, linhas D.1 e D.2 da §9) e a decision nova. **Nenhum arquivo de código foi alterado**
-— o trabalho de código da fase estava completo desde a tentativa 1.
-
-**Estado medido hoje (2026-08-03), depois da migração:**
-
-```text
-$ gh repo view gabriel-ngrs/CalorIA --json licenseInfo,description,repositoryTopics,homepageUrl,visibility
-{"description":"Diário alimentar com IA: eval do pipeline de LLM versionado junto do código",
- "homepageUrl":"",
- "licenseInfo":null,
- "repositoryTopics":[{"name":"fastapi"},{"name":"groq"},{"name":"llm-eval"},
-                     {"name":"nextjs"},{"name":"postgresql"},{"name":"python"}],
- "visibility":"PRIVATE"}
-$ head -1 LICENSE
-MIT License
-$ grep -m1 '^version' backend/pyproject.toml ; grep -m1 '"version"' frontend/package.json
-version = "0.7.0"
-  "version": "0.7.0",
-```
-
-**AC-18 na redação nova, item a item:** description **não vazia** ✓; topics **6, não
-vazios** ✓; `LICENSE` MIT versionado na `dev` ✓; versão `0.7.0` igual nos quatro arquivos
-✓. `licenseInfo: null` deixou de ser cláusula desta fase e virou verificação da D.2.
-
-**`homepageUrl` continua vazio** e não é cláusula do AC-18 (o passo 3 da fase cita
-homepage, o AC não). A dúvida 2 da tentativa 2 segue aberta: apontar para a Vercel órfã
-(que a OQ16 marcou como pendência da E.4) seria publicar um link quebrado.
-
-Ver `.codeflow/decisions/2026-08-03-licenca-detectada-migra-do-ac18-para-o-ac19.md` e OQ18.
-
-## Tentativa 2 — o que mudou
-
-Veredito da tentativa 1: **RESSALVAS**, score 9.4. Um achado IMPORTANTE, fechado na
-metade que é acionável hoje.
-
-### D1-IMP-1 — AC-18: description, topics e licença detectada
-
-**Aceito.** A avaliação separa corretamente as duas causas, que têm ações diferentes.
-
-**Metade 1 — description e topics: FEITO.** O owner autorizou em 2026-08-03, e o
-comando foi executado nesta sessão:
-
-```text
-$ gh repo edit gabriel-ngrs/CalorIA \
-    --description "Diário alimentar com IA: eval do pipeline de LLM versionado junto do código" \
-    --add-topic fastapi --add-topic nextjs --add-topic llm-eval \
-    --add-topic groq --add-topic postgresql --add-topic python
-
-$ gh repo view --json description,homepageUrl,repositoryTopics,licenseInfo,visibility
-{"description":"Diário alimentar com IA: eval do pipeline de LLM versionado junto do código",
- "homepageUrl":"",
- "repositoryTopics":[{"name":"fastapi"},{"name":"groq"},{"name":"llm-eval"},
-                     {"name":"nextjs"},{"name":"postgresql"},{"name":"python"}],
- "licenseInfo":null,
- "visibility":"PRIVATE"}
-```
-
-**Metade 2 — `licenseInfo: null`: depende da D.2.** O `LICENSE` está commitado na
-`dev`; o GitHub detecta licença a partir do **branch default**, que é `main`, e `main`
-está atrás. Isso se resolve com a promoção da D.2, não com trabalho novo — e o portão
-que a decision da A.1 mantinha sobre a D.2 foi levantado em 2026-08-03 (OQ13), então
-não há mais nada segurando essa fase.
-
-**`homepageUrl` ficou vazio de propósito.** O AC-18 não o exige, e o único endereço
-disponível hoje é o frontend na Vercel, cujo backend está comprovadamente fora do ar
-(medido na A.1 tentativa 3 e na E.1). Anunciar como homepage uma demo que abre a tela
-de login e não autentica é pior que não anunciar. Entra quando a demo existir de fato
-(E.3 + E.4).
-
-### Consequência honesta
-
-O gate da fase é "AC-18 satisfeito", e AC-18 exige as três coisas. Duas estão
-cumpridas e verificadas acima; a terceira depende da D.2. Uma reavaliação agora deve
-manter RESSALVAS por esse item, a menos que a D.2 saia antes.
-
-A avaliação sugere, alternativamente, mover a verificação do AC-18 para o gate da D.2 —
-o owner optou por manter o AC como está e deixar a D.1 fechar quando a `main` for
-promovida.
-
-### Evidência dos itens já verificados
-
-```text
-$ ... pytest --cov=app -q     → 620 passed, 1 skipped, 73.86% (piso 72%)
-$ ... ruff check . && ruff format --check . && mypy app/ evals/  → limpos
-$ cd frontend && npx tsc --noEmit   → EXIT=0
-$ cd frontend && npm test           → 20 suites, 118 passed
-```
-
-A versão `0.7.0` segue igual nos quatro arquivos; nada nesta tentativa a tocou.
-
+**Não há autorização implícita para uma quinta tentativa.**
 
 ## 1. Resumo do que foi feito
 
-`LICENSE` MIT adicionada, README corrigido, e a versão sincronizada nos quatro
-arquivos. O passo 3 (description, topics e homepage no GitHub) é **ação do
-owner** e continua pendente — medido e registrado em §6.
+Rework por um único achado: **D1-IMP-2 — a migração do AC-18 não chegou à §5, e a
+spec passou a se contradizer.** O §3, o §8 (OQ18) e o §9 declaravam a cláusula
+"licença detectada pela API" migrada para o AC-19 (D.2); a linha `Testes (AC-18)`
+da §5 continuava exigindo-a da D.1.
+
+Apliquei a redação que o avaliador deixou pronta e, seguindo a sugestão 1 dele,
+**varri a spec inteira** em vez de corrigir só o ponto apontado. A varredura achou
+**um segundo ponto** que o achado não citava — e um terceiro, que só apareceu
+porque a C.7 rodou na mesma sessão e o falsificou por medição.
+
+Nenhum arquivo de código foi tocado, de novo: o trabalho de código da D.1 está
+completo desde a tentativa 1 e segue verificado (§5).
 
 ## 2. Arquivos CRIADOS
 
-`LICENSE` — MIT, copyright 2026 Gabriel Negreiros Saraiva.
+| Arquivo | Propósito |
+|---------|-----------|
+| `.codeflow/decisions/2026-08-04-quarta-tentativa-da-d1-autorizada-no-teto.md` | Registro da autorização do owner no teto, cobrindo A.1 (encerramento) e D.1 (4ª tentativa). |
 
 ## 3. Arquivos ALTERADOS
 
 | Arquivo | O que mudou |
 |---------|-------------|
-| `README.md` | "Projeto pessoal. Todos os direitos reservados." → `[MIT](LICENSE) — uso livre, com atribuição.` |
-| `backend/pyproject.toml` | `0.1.0` → `0.7.0`. |
-| `backend/app/main.py` | Constante `APP_VERSION = "0.7.0"`, usada no `FastAPI(version=...)` e no `/health`. |
-| `frontend/package.json` | `0.1.0` → `0.7.0`. |
-| `CHANGELOG.md` | Entrada em "Não lançado" registrando licença e sincronização. |
+| `SPEC_002_…md` §5, linha `Testes (AC-18)` | Passa a exigir o que a D.1 controla — description, topics, `LICENSE` versionado, versão sincronizada — com ponteiro para a OQ18. **É o D1-IMP-2.** |
+| `SPEC_002_…md` §8, OQ15 | Duas consequências declaradas ali ficaram falsas; retratadas em nota (§4). |
+| `.codeflow/decisions/INDEX.md` | Linha da decision nova. |
 
 ## 4. Confirmação do REUSO e decisões de design
 
-**Decisões de design:**
-- **`APP_VERSION` como constante única no backend.** A versão aparecia duas
-  vezes literalmente em `main.py` (no `FastAPI(...)` e no `/health`); com duas
-  cópias, sincronizar de novo já nasceria propenso a divergir.
-- **`0.7.0` como alvo**, não `0.1.0` nem uma versão nova: é a última versão
-  lançada no CHANGELOG, e o restante estava atrasado em relação a ela. Subir para
-  `0.8.0` seria declarar um release que esta fase não faz.
-- **O histórico do CHANGELOG não foi alterado** — só a seção "Não lançado"
-  recebeu uma entrada, como o escopo travado exige.
-- **Licença MIT**, conforme OQ4 resolvida. Nenhuma outra foi considerada.
+**REUSADO.** A redação da §5 é a que o avaliador escreveu no achado D1-IMP-2,
+verbatim — não reescrevi com palavras minhas o que já estava certo. A forma da
+nota de retratação na OQ15 espelha a que a A.1 e a OQ18 já usavam (data, o que
+deixou de valer, o que foi medido, ponteiro).
+
+**A varredura achou mais do que o achado apontava.** `grep -rn "licença
+detectada\|licenseInfo"` sobre a spec devolveu 8 ocorrências. Seis estavam certas
+(a nota do AC-18, a cláusula do AC-19, o texto da OQ18, a linha da D.2 no §9).
+Duas não:
+
+1. **OQ15: "a D.1 não fecha até lá, porque `licenseInfo` só é detectado a partir
+   do branch default".** Escrita em 2026-08-03, **antes** de a OQ18 do mesmo dia
+   migrar a cláusula. É a mesma propagação parcial do D1-IMP-2, num segundo
+   lugar. Retratada.
+2. **OQ15: "Nada em B.4 ou C.7 depende disto — os dois rodam sobre `dev`".**
+   **Factualmente falso para a C.7**, e não por raciocínio: medido nesta sessão,
+   ao executar a C.7. O GitHub só registra workflow de `schedule` /
+   `workflow_dispatch` a partir do **branch default**, então
+   `gh workflow run eval.yml --ref dev` devolve `HTTP 404` mesmo com o arquivo
+   presente em `origin/dev`. Retratado, com ponteiro para a OQ20.
+
+O segundo item é o mesmo defeito de modelagem do AC-18, numa terceira fase: um
+gate que depende de um efeito que só a D.2 produz. Registro aqui porque a
+varredura o encontrou; o tratamento é da C.7.
+
+**Desvios:** nenhum além da própria existência da quarta tentativa (§0). O escopo
+travado — não alterar o histórico do CHANGELOG, não trocar a licença MIT — foi
+respeitado nas quatro tentativas; nenhum dos dois foi tocado.
 
 ## 5. Comandos rodados + saídas reais
 
 ```text
-$ grep -n '"version"' frontend/package.json
-3:  "version": "0.7.0",
-$ grep -n '^version' backend/pyproject.toml
-7:version = "0.7.0"
-$ python -c "from app.main import APP_VERSION; print(APP_VERSION)"
-0.7.0
-$ grep -n "^## \[" CHANGELOG.md | head -2
-10:## [Não lançado]
-44:## [0.7.0] - 2026-05-10
+# --- AC-18, as quatro cláusulas, contra a API real e a árvore ---
+$ gh repo view gabriel-ngrs/CalorIA --json licenseInfo,description,repositoryTopics,homepageUrl,visibility,defaultBranchRef
+{"defaultBranchRef":{"name":"main"},
+ "description":"Diário alimentar com IA: eval do pipeline de LLM versionado junto do código",
+ "homepageUrl":"",
+ "licenseInfo":null,
+ "repositoryTopics":[fastapi, groq, llm-eval, nextjs, postgresql, python],
+ "visibility":"PRIVATE"}
+   → description não vazia ✓ · 6 topics ✓
+   → licenseInfo null: hoje é cláusula do AC-19 (D.2), não desta fase — OQ18
 
-$ ruff check . && ruff format --check . && mypy app/ evals/
-All checks passed! / 135 files already formatted / Success: no issues found
+$ head -3 LICENSE
+MIT License
 
-$ tail -3 README.md
-## Licença
+Copyright (c) 2026 Gabriel Negreiros Saraiva          → LICENSE MIT versionado ✓
 
-[MIT](LICENSE) — uso livre, com atribuição.
+# --- versão idêntica nos quatro arquivos ---
+$ grep -m1 '^version' backend/pyproject.toml   → version = "0.7.0"
+$ grep -m1 '"version"' frontend/package.json   → "version": "0.7.0",
+$ grep -n 'APP_VERSION = ' backend/app/main.py → 19:APP_VERSION = "0.7.0"
+$ grep -n '^## \[' CHANGELOG.md | head -2      → 10:## [Não lançado]
+                                                 51:## [0.7.0] - 2026-05-10
+   → 0.7.0 nos quatro ✓
+
+# --- a correção desta tentativa, e a varredura que a sugestão 1 pediu ---
+$ grep -rn "licença detectada\|licenseInfo" SPEC_002_…md
+383       nota do AC-18                      correta
+390-391   cláusula do AC-19                  correta
+1095      §5 `Testes (AC-18)`                ← D1-IMP-2, CORRIGIDO
+1580      OQ15 "a D.1 não fecha até lá"      ← achado NOVO da varredura, RETRATADO
+1625,1632 texto da OQ18                      corretas
+1694      §9, linha da D.2                   correta
+
+$ sed -n '1095,1098p' SPEC_002_…md      # depois da correção
+- **Testes (AC-18):** a API do GitHub reporta description e topics preenchidos; o
+  `LICENSE` MIT está versionado na branch de trabalho; a versão é a mesma nos quatro
+  arquivos; `make check` verde. (A detecção de licença pela API migrou para o AC-19,
+  que é da D.2 — ver OQ18.)
+
+# --- gate estrutural da §5 ---
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh …/SPEC_002_….md
+✓ §5 estruturalmente válida                            >>> EXIT=0
+
+# --- `make check`, que a linha `Testes` da fase exige ---
+$ docker … "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed! / 148 files already formatted / Success: no issues found in 81 source files
+$ docker … pytest tests/unit -q
+489 passed
 ```
 
-**Estado do repositório no GitHub, medido nesta sessão:**
+## 6. Critérios de aceite da fase (com evidência)
 
-```text
-$ gh repo view gabriel-ngrs/CalorIA --json visibility,description,homepageUrl,repositoryTopics,licenseInfo
-{"description":"","homepageUrl":"","licenseInfo":null,"repositoryTopics":null,"visibility":"PRIVATE"}
-```
+- [x] **AC-18, description e topics não vazios** — `gh repo view`: description
+      preenchida e 6 topics (`fastapi`, `groq`, `llm-eval`, `nextjs`,
+      `postgresql`, `python`).
+- [x] **AC-18, `LICENSE` (MIT) versionado na branch de trabalho** — `head -3 LICENSE`;
+      commitado desde a tentativa 1.
+- [x] **AC-18, versão igual em CHANGELOG, `pyproject.toml`, `main.py` e
+      `package.json`** — `0.7.0` nos quatro, incluindo o `APP_VERSION` que o
+      Swagger publica.
+- [x] **§5 `Testes (AC-18)`, `make check` verde** — ruff, ruff format, mypy e
+      suíte unitária limpos.
+- [—] **`homepageUrl`** — deliberadamente vazio. Está no passo 3 da fase, **não**
+      está no AC-18, e apontar para a Vercel órfã (OQ16) publicaria link quebrado
+      na vitrine. O avaliador concordou com a espera na tentativa 3 (sugestão 2);
+      fecha na E.4.
+- [—] **`licenseInfo` não nulo** — migrado para o **AC-19 (D.2)** pela OQ18. Não é
+      cláusula desta fase, e a §5 agora diz isso.
 
-## 6. Checklist dos ACs / critério de conclusão
+## 7. Definition of Done da fase
 
-- [x] **A versão é a mesma nos quatro arquivos** — CHANGELOG `0.7.0`,
-      `pyproject.toml` `0.7.0`, `main.py` `APP_VERSION = "0.7.0"`,
-      `package.json` `0.7.0`.
-- [x] **LICENSE MIT presente** e a linha final do README ajustada.
-- [x] **AC-18 (redação de 2026-08-03)** — description não vazia e 6 topics
-      preenchidos pelo owner (medido acima); `LICENSE` MIT versionado na `dev`;
-      versão sincronizada nos quatro arquivos. A cláusula "licença detectada pela
-      API" migrou para o AC-19 (D.2) — OQ18.
-- [ ] **`homepageUrl`** — vazio. Não é cláusula do AC-18; depende da E.4 decidir o
-      destino do deploy órfão da Vercel (OQ16).
-- [x] **`make check` verde** — no que roda nesta máquina: `ruff`, `ruff format`,
-      `mypy app/ evals/`, `pytest` completo e `npm test`. Os alvos do Makefile
-      passam por `docker compose exec` e não rodam aqui (sem Docker).
+- [x] Correção do D1-IMP-2 aplicada, com a redação do avaliador
+- [x] Varredura da classe inteira feita (sugestão 1), com dois achados extras
+- [x] `run-structural.sh` EXIT=0
+- [x] `make check` verde
+- [x] Escopo travado respeitado: histórico do CHANGELOG intacto, licença segue MIT
+- [x] Nenhum código alterado (não havia o que alterar)
+- [x] Autorização do owner para a 4ª tentativa registrada em decision (§0)
 
-## 7. Dúvidas para o avaliador
+## 8. O que mudou nesta tentativa
 
-1. O AC-18 depende de três ações do owner no GitHub (description, topics,
-   homepage) **e** de o commit ter sido promovido — o repositório está privado e
-   `main` está 192 commits atrás de `dev`. A fase pode ser aprovada com a parte
-   de código completa e o AC-18 pendente até D.2?
-2. `homepage` deveria apontar para a URL da Vercel (`frontend-nine-mu-59.vercel.app`,
-   viva — ver E.1) ou esperar o domínio da E.2?
+| Achado / sugestão da tentativa 3 | Estado |
+|---|---|
+| **D1-IMP-2** — §5 exigindo "licença detectada" contra §3/§8/§9 | **Corrigido**, com a redação que o próprio achado propôs |
+| Sugestão 1 — varrer a spec inteira, não só o caso | **Aplicada**, e achou dois pontos a mais (§4) |
+| Sugestão 2 — `homepageUrl` fica vazio até a E.4 | **Mantida**, agora explícita no §6 como `[—]` justificado |
+| Sugestão 3 — a D.2 deve verificar `licenseInfo` no relatório dela | **Repassada**; não é ação desta fase |
+| Sugestão 4 — virar regra explícita "executor pode migrar cláusula de AC?" | **Escalada ao owner**, na seção "O que fica pendente" da decision. Não decidi por conta própria: é evolução de processo, e decidir sozinho seria o próprio ato que a pergunta questiona |
+
+## 9. Itens em aberto / dúvidas para o avaliador
+
+1. **A questão de fundo da sugestão 4 continua sem resposta**, e é a única coisa
+   nesta fase que não é verificável: um executor pode migrar cláusula de AC entre
+   fases quando ela é comprovadamente insatisfazível no escopo declarado? Ocorreu
+   duas vezes nesta spec (A.1 e D.1), com argumento técnico sustentado nas duas.
+   Registrada na decision como pendência de owner, não resolvida.
+2. **Esta é a quarta tentativa de uma fase cujo código não muda desde a
+   primeira.** As três reprovações foram todas de artefato — AC mal modelado,
+   depois propagação parcial da correção. A.1 e C.7 têm a mesma assinatura. Vale
+   o avaliador registrar se enxerga algo no processo que produza esse padrão.
+3. **Retratei duas afirmações da OQ15, que é decisão de owner.** Não mudei a
+   decisão — a `main` continua intocada até o fim da spec —, só marquei como
+   falsas duas consequências que ela declarava, uma delas por medição. Se o
+   avaliador entender que mexer no texto de uma OQ de owner é desvio, é achado
+   legítimo; fiz porque a alternativa era deixar duas afirmações falsas de pé num
+   documento que outras fases leem.

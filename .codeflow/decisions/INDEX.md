@@ -10,6 +10,8 @@ Filtrar por tag antes de carregar decisions individuais.
 
 | data | título | status | tags |
 |------|--------|--------|------|
+| 2026-08-04 | [A senha da conta de demonstração é pública por desenho, e isenta nominalmente no gitleaks](2026-08-04-conta-demo-senha-publica-e-isencao-no-gitleaks.md) | ativa | seguranca, gitleaks, demo, vitrine, spec-002, fase-e3, fase-a3 |
+| 2026-08-04 | [Owner autoriza a 4ª tentativa da D.1 no teto do §2.11.4, e encerra a A.1](2026-08-04-quarta-tentativa-da-d1-autorizada-no-teto.md) | ativa | processo, spec-002, fase-a1, fase-d1, teto-de-tentativas, codeflow |
 | 2026-08-04 | [Estrato de foto entra no runner do eval, e o teto de tokens da visão estoura o TPM](2026-08-04-estrato-de-foto-no-runner-e-teto-de-tokens-da-visao.md) | ativa | eval, vision, runner, groq, rate-limit, spec-002, fase-b5, fase-c2, fase-c5 |
 | 2026-08-03 | ["Licença detectada pela API" migra do AC-18 (D.1) para o AC-19 (D.2)](2026-08-03-licenca-detectada-migra-do-ac18-para-o-ac19.md) | ativa | vitrine, licenca, github, spec-002, fase-d1, fase-d2 |
 | 2026-08-03 | [Dataset da C.4 — terceira fonte para o que a TACO não cobre, imagens versionadas e testes da C.3 atualizados](2026-08-03-dataset-c4-fontes-e-arquivos-alem-do-declarado.md) | ativa | eval, dataset, ground-truth, taco, ibge-pof, spec-002, fase-c4 |

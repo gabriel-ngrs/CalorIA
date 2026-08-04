@@ -1,14 +1,28 @@
 """
-Script de seed para o usuário Dev Test.
-Popula 30 dias de refeições, peso, hidratação e humor com dados realistas.
+Script de seed de conta com 30 dias de refeições, peso, hidratação e humor.
+
+Duas contas, o mesmo gerador:
+
+- **dev** (default) — `devteste@gmail.com`, a conta de desenvolvimento de sempre.
+  Precisa existir; o script não a cria.
+- **demo** (`--conta demo`) — a conta de demonstração pública da Fase E.3, cujas
+  credenciais são publicadas no README de propósito. Esta o script **cria** se
+  não existir, para que o seed seja executável do zero.
+
+Idempotente nos dois modos: os dados do usuário são apagados antes de serem
+regravados, e o gerador usa semente fixa — rodar duas vezes no mesmo dia deixa o
+banco no mesmo estado, sem duplicar nada.
 
 Uso (dentro do container ou com o banco acessível):
-    python scripts/seed_dev_user.py
+    python scripts/seed_dev_user.py                # conta de desenvolvimento
+    python scripts/seed_dev_user.py --conta demo   # conta de demonstração
 """
 
+import argparse
 import os
 import random
 import sys
+from dataclasses import dataclass
 from datetime import date, time, timedelta
 
 # Adiciona o diretório raiz ao path para importar os módulos do app
@@ -16,6 +30,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
+
+from app.core.security import hash_password
 
 DATABASE_URL = (
     os.getenv(
@@ -27,6 +43,39 @@ DATABASE_URL = (
 )
 
 engine = create_engine(DATABASE_URL, echo=False)
+
+
+@dataclass(frozen=True)
+class Conta:
+    """Identidade da conta semeada. `criar_se_faltar` só vale para a demo."""
+
+    email: str
+    nome: str
+    senha: str | None
+    criar_se_faltar: bool
+
+
+#: Senha da conta de demonstração. **É pública por desenho** — vai no README
+#: para que qualquer avaliador entre na demo (AC-26), e por isso está isenta
+#: nominalmente no `.gitleaks.toml`. Não coincide com credencial de serviço
+#: nenhum: reusar senha pessoal aqui é a violação BLOQUEANTE que o escopo
+#: travado da E.3 nomeia, e é o incidente que criou o Track A inteiro.
+SENHA_DEMO = "CalorIADemo2026!"
+
+CONTAS = {
+    "dev": Conta(
+        email="devteste@gmail.com",
+        nome="Dev Test",
+        senha=None,
+        criar_se_faltar=False,
+    ),
+    "demo": Conta(
+        email="demo@caloria.app",
+        nome="Conta Demo",
+        senha=SENHA_DEMO,
+        criar_se_faltar=True,
+    ),
+}
 
 # ---------------------------------------------------------------------------
 # Cardápio brasileiro realista
@@ -1023,6 +1072,55 @@ def get_user_id(session: Session, email: str) -> int:
     return result[0]
 
 
+def resolver_conta(session: Session, conta: Conta) -> int:
+    """Devolve o `user_id` da conta, criando-a quando a conta permite.
+
+    A criação é `UPDATE`-se-existe: rodar o seed duas vezes reescreve a senha
+    para a mesma publicada e devolve o mesmo `id`, em vez de estourar por e-mail
+    único. É o que torna o seed da demo repetível sem intervenção manual.
+    """
+    existente = session.execute(
+        text("SELECT id FROM users WHERE email = :email"), {"email": conta.email}
+    ).fetchone()
+
+    if not conta.criar_se_faltar:
+        if not existente:
+            raise ValueError(f"Usuário com email '{conta.email}' não encontrado.")
+        return existente[0]
+
+    assert conta.senha is not None, "conta que se cria precisa declarar senha"
+    if existente:
+        session.execute(
+            text(
+                "UPDATE users SET name = :nome, password_hash = :hash, "
+                "is_active = true WHERE id = :uid"
+            ),
+            {
+                "nome": conta.nome,
+                "hash": hash_password(conta.senha),
+                "uid": existente[0],
+            },
+        )
+        session.commit()
+        print(f"  Conta já existia — senha e nome reaplicados (id={existente[0]}).")
+        return existente[0]
+
+    novo_id = session.execute(
+        text(
+            "INSERT INTO users (email, name, password_hash, is_active) "
+            "VALUES (:email, :nome, :hash, true) RETURNING id"
+        ),
+        {
+            "email": conta.email,
+            "nome": conta.nome,
+            "hash": hash_password(conta.senha),
+        },
+    ).scalar()
+    session.commit()
+    print(f"  Conta criada (id={novo_id}).")
+    return int(novo_id)
+
+
 def clear_existing_data(session: Session, user_id: int) -> None:
     print(f"  Limpando dados existentes do usuário {user_id}...")
     session.execute(
@@ -1213,8 +1311,18 @@ def seed_weight(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Seed de conta com 30 dias de dados")
+    parser.add_argument(
+        "--conta",
+        choices=sorted(CONTAS),
+        default="dev",
+        help="qual conta semear (default: dev)",
+    )
+    args = parser.parse_args()
+    conta = CONTAS[args.conta]
+
     print("=" * 55)
-    print("  CalorIA — Seed de dados para Dev Test")
+    print(f"  CalorIA — Seed de dados para {conta.nome}")
     print("=" * 55)
 
     rng = random.Random(42)  # seed fixo para reprodutibilidade
@@ -1222,10 +1330,10 @@ def main() -> None:
     days = 30
 
     with Session(engine) as session:
-        # 1. Buscar usuário
-        print("\n→ Buscando usuário devteste@gmail.com...")
-        user_id = get_user_id(session, "devteste@gmail.com")
-        print(f"  Encontrado: user_id={user_id}")
+        # 1. Resolver usuário (a demo é criada se faltar)
+        print(f"\n→ Resolvendo usuário {conta.email}...")
+        user_id = resolver_conta(session, conta)
+        print(f"  user_id={user_id}")
 
         # 2. Limpar dados anteriores
         clear_existing_data(session, user_id)
@@ -1269,7 +1377,7 @@ def main() -> None:
         print(f"  Dias com refeições:  {days}")
         print(f"  Registros de peso:   {weight_reported_days}")
         print(f"  Peso inicial: 84.5 kg  →  final: ~{round(weight, 1)} kg")
-        print("\n  Acesse http://localhost:3000 e logue como devteste@gmail.com")
+        print(f"\n  Acesse http://localhost:3000 e logue como {conta.email}")
     print("=" * 55)
 
 

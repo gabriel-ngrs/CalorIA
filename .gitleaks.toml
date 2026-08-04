@@ -48,12 +48,19 @@ keywords = ["password", "passwd", "pwd", "senha"]
   aqui exige uma decisão consciente de que o valor não é credencial real.
   - `Playwright@123`: senha do cadastro descartável no e2e.
   - `NovaSenha123`: payload do teste de reset de senha (`reset-password.test.tsx`).
+  - `CalorIADemo2026!`: senha da conta de demonstração pública (Fase E.3). É
+    **pública por desenho** — o AC-26 exige que as credenciais estejam no README
+    para que um avaliador entre na demo. Não abre serviço nenhum além da conta
+    semeada por `backend/scripts/seed_dev_user.py --conta demo`, que não tem
+    privilégio administrativo e cujos dados são sintéticos. O escopo travado da
+    E.3 proíbe reusar senha pessoal aqui, e esta não é.
   """
   regexTarget = "match"
   regexes = [
     # Valores sintéticos, nominais.
     '''Playwright@123''',
     '''NovaSenha123''',
+    '''CalorIADemo2026!''',
     # Placeholders e interpolação — o valor INTEIRO tem de ser a referência, não
     # apenas começar com ela, senão `"$ecretP@ss"` seria isento junto com `"$DB_PASS"`.
     '''["']\$\{[^"']*\}["']''',      # "${DB_PASS}"

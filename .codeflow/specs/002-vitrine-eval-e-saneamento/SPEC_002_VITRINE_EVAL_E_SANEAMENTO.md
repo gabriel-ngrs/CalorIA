@@ -388,7 +388,10 @@ Cada princípio rastreia a uma regra real do repositório.
 - **AC-19** (FR-D2) — *Dado* `origin/main`, *quando* se compara com `origin/dev`,
   *então* não há commits de `dev` ausentes em `main`, e existe tag anotada com
   release publicada; *e* a API do GitHub passa a reportar a licença MIT detectada
-  (`licenseInfo` não nulo), que só o avanço do branch default produz.
+  (`licenseInfo` não nulo), que só o avanço do branch default produz; *e*
+  `gh workflow list` passa a registrar o `eval.yml`, que hoje devolve `HTTP 404`
+  pelo mesmo mecanismo — o GitHub só conhece workflow de `schedule`/
+  `workflow_dispatch` a partir do branch default (ver OQ20).
 - **AC-20** (FR-D3) — *Dado* o README, *quando* lido por alguém que não conhece o
   projeto, *então* ele traz comando único de execução que funciona, portas corretas,
   link da demo com credenciais de demonstração, diagrama Mermaid renderizável e
@@ -1092,8 +1095,10 @@ que é telemetria de execução, fica o que é registro de engenharia.
      anuncia 0.1.0.
   3. **Ação do owner:** preencher description, topics e homepage do repositório no
      GitHub, hoje todos vazios.
-- **Testes (AC-18):** a API do GitHub reporta licença detectada e metadados
-  preenchidos; a versão é a mesma nos quatro arquivos; `make check` verde.
+- **Testes (AC-18):** a API do GitHub reporta description e topics preenchidos; o
+  `LICENSE` MIT está versionado na branch de trabalho; a versão é a mesma nos quatro
+  arquivos; `make check` verde. (A detecção de licença pela API migrou para o AC-19,
+  que é da D.2 — ver OQ18.)
 - **Escopo travado / violações BLOQUEANTES:** não alterar o histórico do CHANGELOG.
   Não escolher licença diferente de MIT sem nova decisão do owner.
 - **Critério de conclusão (gate):** AC-18 satisfeito.
@@ -1577,10 +1582,18 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   muda — muda quando ela roda. Justificativa: a `main` é o branch que o mundo vê, e
   promover cedo publicaria um estado intermediário (Track C em rework, README ainda
   não reescrito na D.3, repositório ainda não podado na D.4, deploy indeterminado).
-  **Consequência aceita:** a D.1 não fecha até lá, porque `licenseInfo` só é detectado
-  a partir do branch default; D.3, D.4 e E.4 esperam junto, o que é coerente com a
-  dependência que já declaravam. Nada em B.4 ou C.7 depende disto — os dois rodam
-  sobre `dev`.
+  **Consequência aceita:** D.3, D.4 e E.4 esperam junto, o que é coerente com a
+  dependência que já declaravam.
+  > **Duas consequências desta OQ foram corrigidas depois (2026-08-04).**
+  > **(a)** "A D.1 não fecha até lá, porque `licenseInfo` só é detectado a partir do
+  > branch default" **deixou de valer** com a OQ18, que migrou essa cláusula para o
+  > AC-19 (D.2). A D.1 fecha pelo que ela controla.
+  > **(b)** "Nada em B.4 ou C.7 depende disto — os dois rodam sobre `dev`" é
+  > **factualmente falso** para a C.7, e foi medido: o GitHub só registra workflow de
+  > `schedule`/`workflow_dispatch` a partir do **branch default**, então
+  > `gh workflow run eval.yml --ref dev` devolve `HTTP 404` mesmo com o arquivo
+  > presente em `origin/dev`. O gate "execução agendada registrada" da C.7 depende da
+  > D.2 pelo mesmo mecanismo que o AC-18 dependia. Ver OQ20.
   Ver `.codeflow/decisions/2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md`.
 
 - **OQ16 — Topologia de deploy (passo 1 da E.2, e pendência aberta desde a OQ6).**
@@ -1657,6 +1670,36 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   413 existir — a ressalva acompanha o número na D.3 e no histórico da C.8.
   Ver `.codeflow/decisions/2026-08-04-estrato-de-foto-no-runner-e-teto-de-tokens-da-visao.md`.
 
+- **OQ20 — O gate "execução agendada registrada" da C.7 depende da D.2, e o limite
+  que morde é o diário.** **RESOLVIDO (2026-08-04).** Dois fatos, medidos:
+  **(a)** O `eval.yml` **está** em `origin/dev` e o secret `GROQ_API_KEY` **existe**
+  desde 2026-08-03 17:42Z — os dois impedimentos que a avaliação da tentativa 2
+  nomeou caíram. Ainda assim `gh workflow run eval.yml --ref dev` devolve
+  **`HTTP 404`**: o GitHub só registra workflow de `schedule`/`workflow_dispatch`
+  a partir do **branch default**, e a `main` está 255 commits atrás sem o arquivo.
+  É o **mesmo defeito de modelagem** do AC-18 (OQ18) e do AC-1 (A.1), numa terceira
+  fase: um gate que depende de um efeito que só a D.2 produz. Como a OQ15 é decisão
+  de owner vigente, a cláusula **de plataforma** do gate migra para a **D.2**, e a
+  C.7 fecha pela evidência substantiva, que é local e não depende do GitHub: a
+  execução completa contra o provedor real, sem casos vazios por quota, com a
+  agenda dimensionada pelo consumo medido.
+  **(b)** Executado o `eval.yml` local, passo a passo: **43 casos, 57 chamadas,
+  42.932 tokens, 4min40s de parede, zero 429 no runner**. O gate
+  (`evals.report verificar`) **reprovou com exit 1**, e corretamente — 3 casos
+  vazios (os de foto, pelo HTTP 413 da OQ19), MdAPE 33,33% acima do teto de 25% e
+  23% dentro de ±10% contra o piso de 50%. Em seguida a **bateria de invariância
+  morreu com 429 de `tokens per day`: limite 100.000, usados 99.768.** O limite
+  que morde no free tier é o **diário**, não o por-minuto, e uma rodada completa
+  (runner + invariância) **não cabe** num dia junto de qualquer outro uso. Isso
+  confirma a periodicidade **semanal** do `eval.yml` com número, e não por palpite
+  — que é o que o passo 4 da fase pede.
+  **Consequência registrada:** enquanto o 413 da OQ19 não for resolvido, toda
+  execução agendada vai reprovar por 3 casos vazios. Os limiares de
+  `evals/report.py` (`MDAPE_MAXIMO = 25.0`, `FRACAO_MINIMA_DENTRO_DE_10PCT = 0.50`)
+  foram calibrados sobre o dataset de 10 casos-semente; com os 43 da C.4 eles
+  reprovam a linha de base real. Recalibrar é decisão de owner com o número na
+  mão, não ajuste de conveniência — e **não** foi feito nesta fase.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1686,7 +1729,11 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [ ] **C.5** — AC-13; relatório com os três estratos, `n` e IC95.
 - [ ] **C.6** — AC-14; grupo do bug 001 presente; reprovações registradas como
       achado.
-- [ ] **C.7** — AC-15, NFR-2, NFR-3; execução agendada completa sem casos vazios.
+- [ ] **C.7** — AC-15, NFR-2, NFR-3; execução completa registrada. *(Executada
+      local em 2026-08-04, os passos do `eval.yml` um a um: 43 casos, 57 chamadas,
+      zero 429 no runner, gate `verificar` reprovando corretamente, e o consumo
+      medido — TPD 100k, 99.768 usados — confirmando a agenda semanal. A cláusula
+      de plataforma, `workflow_dispatch` no GitHub, migrou para a D.2 — ver OQ20.)*
 - [ ] **C.8** — AC-16; histórico com ao menos duas execuções reais.
 - [ ] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
       sincronizada). A detecção de licença pela API migrou para o AC-19, que é

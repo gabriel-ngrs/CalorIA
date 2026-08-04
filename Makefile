@@ -12,7 +12,7 @@
 .PHONY: help init check-deps \
         dev dev-d infra down reset prod prod-down build build-no-cache \
         status logs logs-backend logs-frontend logs-worker \
-        migrate migration migrate-history migrate-down psql seed seed-user \
+        migrate migration migrate-history migrate-down psql seed seed-user seed-demo \
         test test-backend test-backend-cov test-frontend test-unit test-integration \
         lint lint-backend lint-frontend lint-check fmt typecheck check \
         hooks shell-backend shell-frontend ps
@@ -227,6 +227,12 @@ seed:
 seed-user:
 	@echo "$(BLUE)Criando usuário de dev...$(NC)"
 	@$(COMPOSE_DEV) exec backend python scripts/seed_dev_user.py
+
+# Idempotente: é também o comando de RESET da demo. Rodar de novo devolve a
+# conta ao estado publicado, apagando o que um visitante tenha registrado.
+seed-demo:
+	@echo "$(BLUE)Semeando/resetando a conta de demonstração...$(NC)"
+	@$(COMPOSE_DEV) exec backend python scripts/seed_dev_user.py --conta demo
 
 # ==============================================================================
 # TESTES
