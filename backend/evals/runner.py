@@ -6,10 +6,14 @@ ranking do lookup, alimento casado, sanity check) são capturados pelo mesmo
 padrão de instrumentação de `scripts/instrument_meal_pipeline.py:118`, para que
 uma regressão possa ser diagnosticada sem reexecutar.
 
+O caso do estrato `foto` entra pelo `VisionParser`, com a imagem versionada no
+próprio dataset; os demais, pelo `MealParser`.
+
 Uso, dentro do container backend::
 
     python -m evals.runner                    # dataset inteiro
     python -m evals.runner --estrato simples  # um estrato
+    python -m evals.runner --estrato foto --versao-vision 1   # medir sem promover
 """
 
 from __future__ import annotations
@@ -17,11 +21,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import mimetypes
 import statistics
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -29,11 +36,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import settings
 from app.prompts import get_prompt
 from app.services.ai import food_lookup as food_lookup_mod
+from app.services.ai import vision_parser as vision_parser_mod
 from app.services.ai.ai_client import AIClient, UsoDaChamada
+from app.services.ai.food_lookup import IdentifiedFood
 from app.services.ai.meal_parser import MealParser
+from app.services.ai.vision_parser import VisionParser
 from evals import metrics
 from evals.cassettes import AIClientComCassette, gravacao_ligada
 from evals.schema import (
+    DATASET_DIR,
     CasoEval,
     Estrato,
     carregar_casos,
@@ -168,12 +179,64 @@ def instrumentar_lookup(coletor: ColetorDeEstagios) -> Any:
     return original_lookup
 
 
+def imagem_do_caso(caso: CasoEval) -> Path:
+    """Caminho absoluto da imagem de um caso do estrato `foto`.
+
+    Falha alto quando o arquivo não existe: um caso de foto sem imagem tem de
+    aparecer como falha da execução, não sumir do denominador do estrato.
+    """
+    if not caso.imagem_path:
+        raise ValueError(f"caso {caso.id!r} é do estrato foto e não tem imagem_path")
+    caminho = DATASET_DIR / caso.imagem_path
+    if not caminho.is_file():
+        raise FileNotFoundError(f"imagem do caso {caso.id!r} não existe: {caminho}")
+    return caminho
+
+
+@contextmanager
+def versao_de_visao(versao: int | None) -> Iterator[None]:
+    """Fixa a versão do prompt de identificação visual durante a execução.
+
+    O `VisionParser` resolve o prompt no import do módulo, então comparar duas
+    versões exige trocá-lo no módulo — mesmo padrão global-e-restaurado de
+    `instrumentar_lookup`. A alternativa seria editar `VERSOES_EM_PRODUCAO`,
+    que é o ato de **promover** um prompt, não o de medi-lo.
+    """
+    if versao is None:
+        yield
+        return
+    original = vision_parser_mod._IDENTIFY_PROMPT
+    vision_parser_mod._IDENTIFY_PROMPT = get_prompt("vision_identify", versao)
+    try:
+        yield
+    finally:
+        vision_parser_mod._IDENTIFY_PROMPT = original
+
+
+async def identificar(
+    caso: CasoEval, texto: MealParser, foto: VisionParser | None
+) -> list[IdentifiedFood]:
+    """Estágio 1 do caso, pelo caminho que o estrato determina.
+
+    O caso de foto entra pelo `VisionParser` de produção — é o parser que o
+    usuário aciona ao fotografar o prato, e é o que a B.5 corrigiu.
+    """
+    if caso.estrato is Estrato.FOTO:
+        if foto is None:
+            raise ValueError(f"caso {caso.id!r} é do estrato foto e exige um parser")
+        caminho = imagem_do_caso(caso)
+        mime = mimetypes.guess_type(caminho.name)[0] or "image/jpeg"
+        return await foto._identify_foods(caminho.read_bytes(), mime, CONTEXTO_NEUTRO)
+    return await texto._identify_foods(caso.descricao, CONTEXTO_NEUTRO)
+
+
 async def executar_caso(
     caso: CasoEval,
     parser: MealParser,
     db: AsyncSession,
     coletor: ColetorDeEstagios,
     repeticoes: int = REPETICOES_PADRAO,
+    parser_de_foto: VisionParser | None = None,
 ) -> ResultadoCaso:
     """Roda o pipeline real para um caso e mede o erro calórico.
 
@@ -183,15 +246,20 @@ async def executar_caso(
     """
     coletor.limpar()
     inicio = time.monotonic()
+    # Um caso de foto sem `parser_de_foto` vira falha do caso — `identificar`
+    # levanta e o `except` abaixo registra. O que não pode é o caso sumir.
+    do_caso: MealParser | VisionParser = (
+        parser_de_foto
+        if caso.estrato is Estrato.FOTO and parser_de_foto is not None
+        else parser
+    )
     try:
         medidas: list[float] = []
         itens = []
         identificados = []
         for _ in range(max(1, repeticoes)):
-            identificados = await parser._identify_foods(
-                caso.descricao, CONTEXTO_NEUTRO
-            )
-            itens = await parser._lookup_and_fill(identificados, db)
+            identificados = await identificar(caso, parser, parser_de_foto)
+            itens = await do_caso._lookup_and_fill(identificados, db)
             medidas.append(sum(item.calories for item in itens))
     except Exception as exc:  # a execução do conjunto não pode morrer num caso
         return ResultadoCaso(
@@ -372,17 +440,31 @@ def montar_relatorio(
         "latencia": _resumo_da_latencia(
             resultados, origem=(custo or _CUSTO_NAO_MEDIDO)["origem"]
         ),
-        "prompts": {
-            nome: {"versao": p.version, "sha": p.sha256}
-            for nome, p in (
-                ("meal_identify", get_prompt("meal_identify")),
-                ("meal_fallback", get_prompt("meal_fallback")),
-            )
-        },
+        "prompts": _prompts_usados(resultados),
         "agregado": asdict(resumir("agregado", resultados)),
         "por_estrato": {k: asdict(v) for k, v in por_estrato.items()},
         "falhas": [{"id": r.id, "erro": r.erro} for r in resultados if not r.executou],
     }
+
+
+def _prompts_usados(resultados: Sequence[ResultadoCaso]) -> dict[str, dict[str, Any]]:
+    """Versão e `sha` de cada prompt que a execução de fato acionou.
+
+    Os de visão entram só quando houve caso de foto, e são lidos do módulo —
+    não de `get_prompt` — para que uma execução sob `versao_de_visao` registre a
+    versão medida, e não a que está em produção. Sem isso o histórico da C.8
+    atribuiria o resultado de `vision_identify@v1` à v2.
+    """
+    usados = [
+        ("meal_identify", get_prompt("meal_identify")),
+        ("meal_fallback", get_prompt("meal_fallback")),
+    ]
+    if any(r.estrato == Estrato.FOTO.value for r in resultados):
+        usados += [
+            ("vision_identify", vision_parser_mod._IDENTIFY_PROMPT),
+            ("vision_fallback", vision_parser_mod._FALLBACK_PROMPT),
+        ]
+    return {nome: {"versao": p.version, "sha": p.sha256} for nome, p in usados}
 
 
 #: Custo publicado quando ninguém observou as chamadas — `montar_relatorio`
@@ -500,17 +582,19 @@ async def executar(
     *,
     usar_cassettes: bool = False,
     repeticoes: int = REPETICOES_PADRAO,
+    versao_vision: int | None = None,
 ) -> dict[str, Any]:
     """Executa o dataset (ou um estrato) contra o pipeline real.
 
     Com `usar_cassettes`, as respostas do provedor vêm do disco em vez da rede —
     é o que torna uma reexecução reprodutível e barata (NFR-5).
+
+    Com `versao_vision`, o estrato de foto roda sob a versão indicada do prompt
+    de identificação visual, em vez da que está em produção — é como se mede o
+    delta entre duas versões sem promover nenhuma.
     """
     casos = [
-        c
-        for c in carregar_casos()
-        if estrato is None or c.estrato.value == estrato
-        if c.estrato is not Estrato.FOTO  # o caminho de foto entra na fase B.5
+        c for c in carregar_casos() if estrato is None or c.estrato.value == estrato
     ]
     if not casos:
         raise SystemExit(f"nenhum caso executável para estrato={estrato!r}")
@@ -538,18 +622,29 @@ async def executar(
             origem = "provedor" if gravacao_ligada() else "replay"
         parser = MealParser(cliente)
         resultados = []
-        async with sessao() as db:
-            for indice, caso in enumerate(casos, start=1):
-                print(f"[{indice}/{len(casos)}] {caso.id}", file=sys.stderr)
-                resultados.append(
-                    await executar_caso(caso, parser, db, coletor, efetivas)
-                )
-        return montar_relatorio(
-            casos,
-            resultados,
-            repeticoes=efetivas,
-            custo=resumo_do_custo(contador, origem=origem),
-        )
+        with versao_de_visao(versao_vision):
+            parser_de_foto = VisionParser(cliente)
+            async with sessao() as db:
+                for indice, caso in enumerate(casos, start=1):
+                    print(f"[{indice}/{len(casos)}] {caso.id}", file=sys.stderr)
+                    resultados.append(
+                        await executar_caso(
+                            caso,
+                            parser,
+                            db,
+                            coletor,
+                            efetivas,
+                            parser_de_foto=parser_de_foto,
+                        )
+                    )
+            # Dentro do `with`: o relatório lê do módulo a versão de visão de
+            # fato usada, e fora dela leria a de produção.
+            return montar_relatorio(
+                casos,
+                resultados,
+                repeticoes=efetivas,
+                custo=resumo_do_custo(contador, origem=origem),
+            )
     finally:
         food_lookup_mod.lookup_food = lookup_original
         await engine.dispose()
@@ -578,6 +673,16 @@ def main() -> None:
             "grava (e chama a rede) apenas com EVAL_RECORD_CASSETTES=1"
         ),
     )
+    parser.add_argument(
+        "--versao-vision",
+        type=int,
+        default=None,
+        help=(
+            "versão do prompt `vision_identify` a usar no estrato de foto; "
+            "sem isto vale a versão em produção. Serve para medir uma versão "
+            "sem promovê-la"
+        ),
+    )
     args = parser.parse_args()
 
     relatorio = asyncio.run(
@@ -585,6 +690,7 @@ def main() -> None:
             args.estrato,
             usar_cassettes=args.cassettes,
             repeticoes=args.repeticoes,
+            versao_vision=args.versao_vision,
         )
     )
     if args.json:
