@@ -2,61 +2,78 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: E.2
 slug_fase: topologia-adr009
-tentativa: 1
-veredito: RESSALVAS
-score: 9.4
+tentativa: 2
+veredito: APROVADO
+score: 9.8
 threshold: 8.5
-range_avaliado: d43b1bc488fb63abc8994bbbbc98cf2271b150c0..70401f5c3397b95ffdb27fa7f4b6dcc33033b369
+range_avaliado: d43b1bc488fb63abc8994bbbbc98cf2271b150c0..091641c
 ---
 
 # FASE E.2 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.4 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.8 / threshold 8.5
 
-**A fase entrega o que se propôs, e a execução é limpa.** Reproduzi cada afirmação do
-relatório em vez de aceitá-la:
+**E2-IMP-1 está fechado nos três lugares que a avaliação pediu, e o terceiro — o que
+fecha a contradição dentro do próprio arquivo — era o que mais importava.** O achado
+era que o cabeçalho novo declarava "sem uso" sobre o compose que o `cd.yml` sobe, o que
+teria levado a D.4 a removê-lo e quebrar o CD por um caminho que ninguém associaria à
+poda. Fui conferir os dois lados.
 
-- Os cinco arquivos de orquestração declaram propósito no cabeçalho; três deles amarram
-  a declaração ao ADR-009 com o vocabulário oficial/legado.
-- ADR-009 presente (`architecture.md:169`), no formato dos existentes, e **nenhum ADR
-  anterior foi tocado** — o diff só acrescenta.
-- Os três composes passam em `docker compose config`, e os dois Caddyfiles retornam
-  `Valid configuration` no `caddy validate` (rodei via imagem `caddy:2-alpine`; a
-  validação de Caddyfile está acima do que o AC-25 pedia).
-- **Os quatro diffs de orquestração são exclusivamente comentário.** Filtrei linhas
-  não-comentário e não-vazias nos quatro arquivos: zero. Numa fase que mexe em compose
-  e proxy de produção, isso é a evidência que importa — nenhuma variável de ambiente,
-  porta ou serviço mudou.
-- Exatamente os 9 arquivos declarados, nem um a mais.
+O gatilho do achado é real, e está exatamente onde o relatório diz:
 
-As três decisões de design são conservadoras e bem fundamentadas, em especial trocar o
-host morto por `caloria.exemplo.com` em vez de outro host concreto: "um placeholder
-óbvio não mente" é a leitura certa do defeito que a E.1 encontrou.
+```text
+$ sed -n '38p' .github/workflows/cd.yml
+            docker compose -f docker-compose.backend.yml up -d --build
+```
 
-**O que impede o APROVADO é um item que o relatório não declara, e que contradiz a
-própria entrega da fase.** O `docker-compose.backend.yml` recebeu um cabeçalho dizendo
-*"Mantido como referência histórica, **sem uso**"* — e `.github/workflows/cd.yml:38`
-é justamente quem o usa. Pior: o ADR-009 afirma que *"o `cd.yml` do ADR-008 continua
-válido como desenho"*, quando o desenho dele é a topologia B, que este mesmo ADR
-aposenta. Detalhe em §4.
+E o cabeçalho corrigido deixou de mentir por omissão:
+
+```text
+# ATENÇÃO — ainda referenciado: `.github/workflows/cd.yml:38` sobe ESTE arquivo. O
+# CD está inerte (só `workflow_dispatch`, sem servidor), mas a referência existe.
+# Ordem obrigatória: a Fase E.4 troca a referência para `docker-compose.yml`; só
+# então a Fase D.4 pode remover este arquivo na poda. Remover antes quebra o CD.
+```
+
+O ADR-009 diz a mesma coisa, com a mesma ordem, em `docs/architecture.md:51-59`:
+
+```text
+- O `cd.yml` do ADR-008 continua válido **como desenho de pipeline** (SSH, `concurrency`,
+  migração antes de subir), mas **implementa a topologia aposentada**: seu passo de
+  deploy sobe `docker-compose.backend.yml` (`cd.yml:38`). Trocá-lo por
+  `docker-compose.yml` é trabalho da **Fase E.4** ...
+  **Consequência para a Fase D.4:** o `docker-compose.backend.yml` só pode ser removido
+  na poda **depois** que a E.4 corrigir essa referência ...
+```
+
+**A decisão de não editar o `cd.yml` está certa, e é a leitura correta do escopo.** O
+arquivo não está nos "Arquivos alterados" da E.2, e a E.4 já é dona da reativação do
+gatilho. Declarar a pendência com dono e ordem, em vez de invadir a fase vizinha, é o
+que a avaliação anterior pediu e é o que o princípio 7 (diff mínimo) manda. Confirmei
+que o `cd.yml` não foi tocado no range.
+
+**A resposta à dúvida 2 do relatório é: não, "desambiguar" não exige remover os legados
+agora — e removê-los agora quebraria o CD.** É a própria pendência do item 4 que prova
+isso. A ordem que a fase registrou (E.4 troca a referência → D.4 remove) é a única
+sequência segura, e ela agora está escrita nos dois arquivos que um leitor consultaria.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4 | Os 4 passos entregues; AC-25 verificado nas duas metades (cabeçalho em cada arquivo + ADR-009 presente); os 3 composes validam (§6). Gate "owner confirmou a topologia" registrado na OQ16 com as duas condições temporais. Escopo travado respeitado nos três itens: nenhum arquivo de orquestração deletado, **zero alteração funcional** (diffs comment-only, §6), ADRs existentes intocados. Desconto: o ADR entregue afirma algo falso sobre o `cd.yml` (§4) |
-| 2 | Arquitetura e direção de dependências | 3 | 4 | ADR-009 no lugar certo, no formato dos anteriores (Contexto/Decisão/Justificativa/Consequências), com a tabela das duas topologias e a medição da E.1 como fundamento. Desconto: a seção de consequências trata o `cd.yml` como compatível quando ele consome o par aposentado — e o `cd.yml` é justamente o consumidor dos arquivos que esta fase desambiguou |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Nenhuma credencial ou variável de produção alterada — provado pelo filtro de diff, não afirmado. O host morto virou placeholder explícito em vez de outro endereço concreto, e o `deploy.md` abre com aviso de que não há servidor no ar |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | O ADR-009 reusa o formato dos oito anteriores; os dois arquivos legados ganharam o **mesmo** estilo de cabeçalho que `docker-compose.yml` e `docker-compose.dev.yml` já usavam, em vez de um formato novo |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | A seção de checklist absorvida em `deploy.md` **não repete comandos**, e o relatório explica o porquê: foi a duplicação entre os dois documentos que deixou o host morto sobreviver em quatro lugares |
-| 6 | Local e nomes dos arquivos | 2 | 5 | Exatamente os 9 arquivos de "Arquivos alterados" da §5 — conferido pelo `--stat` do range |
-| 7 | Qualidade de código | 2 | 5 | Os cabeçalhos dizem o que o arquivo é, se está em uso e para onde vai; `docker-compose.backend.yml:13` até aponta o substituto ("Para subir o projeto, use `docker-compose.yml`") |
-| 8 | Testes e cobertura | 2 | 5 | Validação real dos 3 composes **e** dos 2 Caddyfiles — a segunda acima do que o AC-25 exige, e reproduzida por mim (§6) |
-| 9 | Migration safety | 2 | [—] | Nenhuma migration tocada; nenhum arquivo de código tocado |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4.5 | AC-25 satisfeito nas duas cláusulas: os **cinco** arquivos de orquestração declaram propósito em cabeçalho, e ADR-009 existe. Escopo travado respeitado — o único arquivo removido no range é `docs/deploy-checklist.md`, que é documento e cuja incorporação o passo 4 pede; nenhum arquivo de orquestração foi deletado. Meia nota porque o objetivo declarado é *"eliminar a ambiguidade"* e o que a fase entrega é a ambiguidade **documentada**, com a eliminação delegada a E.4/D.4 — a delegação é correta, mas o objetivo não fecha dentro da fase. |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | A correção declara a direção da dependência (`E.4 → D.4`) explicitamente e nos dois lados, em vez de deixá-la implícita. Recusar-se a editar `cd.yml` (arquivo da E.4) mantém a fronteira entre fases. |
+| 3 | Segurança / LGPD | 3 | 5 | O host morto sumiu: `grep -c "caloria-gabriel" docs/deploy.md` → **0**, substituído por `caloria.exemplo.com` (5 ocorrências). As únicas ocorrências de `duckdns` remanescentes são a instrução genérica de subdomínio gratuito, não o host antigo. Nenhuma credencial real no range — os matches de `password`/`gsk_` em `deploy.md:189,207` são placeholders (`SenhaForteAqui123!`, `gsk_...sua_chave_aqui`). |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | ADR-009 acrescentado depois do ADR-008, no formato dos oito anteriores; nenhum ADR existente tocado. A consolidação eliminou a duplicação `deploy.md` × `deploy-checklist.md`, que era a causa de o host errado estar registrado em quatro lugares. |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | Os cinco cabeçalhos seguem a mesma forma (identidade · papel · ADR de referência), o que torna a distinção oficial × legado legível de relance. |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Todos os arquivos tocados estão entre os "Arquivos alterados" declarados na §5. |
+| 7 | Qualidade de código | 2 | 5 | Mudança só de documento nesta tentativa, como o relatório declara — confirmei que nenhum arquivo de código entrou no diff da tentativa 2. |
+| 8 | Testes e cobertura | 2 | 5 | O teste que o AC-25 pede é `docker compose -f <cada arquivo> config`, e rodei os três: os três validam (os avisos são de variável de ambiente não definida, não erro de configuração). |
+| 9 | Migration safety | 2 | [—] | Nenhuma migration criada ou alterada. Dimensão excluída do cálculo. |
 
-Score = (3·4 + 3·4 + 3·5 + 3·5 + 2·5 + 2·5 + 2·5 + 2·5) / 20 · 2 = 94/20 · 2 = **9.4**
+**Score:** (4,5·3 + 5·3 + 5·3 + 5·3 + 5·2 + 5·2 + 5·2 + 5·2) / 20 = 98,5/20 = 4,925 → **9,8**
 
 ## 3. Achados BLOQUEANTES
 
@@ -64,201 +81,107 @@ Nenhum.
 
 ## 4. Achados IMPORTANTES
 
-**E2-IMP-1 — o cabeçalho novo diz "sem uso" sobre o arquivo que o `cd.yml` usa, e o
-ADR-009 declara o `cd.yml` compatível quando ele implementa a topologia aposentada.**
-
-**Onde:** `docker-compose.backend.yml:12` (*"Mantido como referência histórica, sem
-uso"*) e `docs/architecture.md:219-220` (*"O `cd.yml` do ADR-008 continua válido como
-desenho, e continua inerte enquanto não houver servidor"*), contra
-`.github/workflows/cd.yml:38`.
-
-**O defeito.** Medi:
-
-```text
-$ grep -n "docker compose" .github/workflows/cd.yml
-38:            docker compose -f docker-compose.backend.yml up -d --build
-$ git log --oneline d43b1bc..70401f5 -- .github/workflows/cd.yml
-(vazio — o arquivo não foi tocado nesta fase)
-$ sed -n '12,13p' docker-compose.backend.yml
-# Mantido como referência histórica, sem uso. Marcado para remoção na poda do
-# repositório (Fase D.4). Para subir o projeto, use `docker-compose.yml`.
-```
-
-Três artefatos apontando um para o outro com afirmações incompatíveis:
-
-| artefato | afirma |
-|---|---|
-| `docker-compose.backend.yml:12` | "sem uso", removível na D.4 |
-| `cd.yml:38` | é o arquivo que o deploy sobe |
-| `architecture.md:219` | o `cd.yml` "continua válido como desenho" |
-| `cd.yml:3-4` | "a topologia de produção ainda não foi decidida (spec 002, **Fase E.2**)" |
-
-O último é o mais direto: o cabeçalho do `cd.yml` cita **esta fase** como a decisão
-pendente, e essa decisão acabou de sair. O comentário nasceu correto e ficou obsoleto no
-instante em que a E.2 fechou.
-
-**Por que é IMPORTANTE.** O Objetivo declarado da fase é *"eliminar a ambiguidade dos
-arquivos de orquestração"*. Um cabeçalho que afirma "sem uso" sobre um arquivo que uma
-pipeline ativa consome não elimina ambiguidade — cria uma pior, porque agora o arquivo
-**mente com autoridade**. E a D.4 vai ler "marcado para remoção" e remover o compose que
-o `cd.yml` referencia, deixando o deploy quebrado por um caminho que ninguém vai
-associar à poda.
-
-**Por que não é BLOQUEANTE, e sou específico.** Verifiquei o gatilho antes de calibrar:
-`cd.yml:9-10` está em `workflow_dispatch:` apenas — o `push: branches: [main]` está
-comentado. Ou seja, a promoção da D.2 **não** dispara deploy nenhum, e não há servidor
-para deployar. O risco é de artefato e de sequência, não de produção hoje.
-
-**Correção sugerida** — o `cd.yml` **não** está nos arquivos declarados desta fase, então
-a correção certa não é editá-lo aqui, e sim declarar a pendência. Três opções, e a
-escolha é do owner:
-
-1. **Registrar como quarto item aberto** no relatório da E.2, junto dos três que já
-   estão lá, e apontar a Fase E.4 (que já é dona da reativação do gatilho) como
-   responsável por trocar `docker-compose.backend.yml` por `docker-compose.yml` em
-   `cd.yml:38`. Mais barato e mais coerente com o escopo declarado.
-2. **Corrigir a frase do ADR-009** para dizer o que é verdade: o `cd.yml` implementa a
-   topologia B e precisa ser ajustado na E.4 — em vez de "continua válido como desenho".
-   Uma linha, e evita que a E.4 herde a premissa errada.
-3. **Acrescentar ao cabeçalho de `docker-compose.backend.yml`** a ressalva de que o
-   `cd.yml` ainda o referencia até a E.4. Remove a contradição sem tocar em workflow.
-
-Recomendo **1 + 2**: são de artefato, cabem no escopo da fase, e fecham a contradição
-onde ela nasceu.
+Nenhum. **E2-IMP-1** está fechado, verificado nos três pontos no §1.
 
 ## 5. Sugestões
 
-- **A D.4 precisa saber disto antes de podar.** O bloco da D.4 na §5 manda remover o que
-  está marcado; se o `cd.yml` não for ajustado antes, a poda quebra o deploy por um
-  caminho indireto. Um `Depende de` ou uma linha no escopo travado da D.4 evitaria.
-- **`docker-compose.dev.yml` é o único dos cinco cujo cabeçalho não cita o ADR-009.** Ele
-  declara propósito ("Desenvolvimento / hot reload"), então o AC-25 está satisfeito — e o
-  arquivo está fora do escopo declarado, de modo que não tocá-lo foi a decisão certa.
-  Registro só para que a leitura lado a lado não pareça esquecimento.
-- **Sobre o desvio do CHANGELOG declarado no relatório:** a conclusão está certa (fora do
-  escopo desta fase), mas a justificativa citada não. O escopo travado da D.1 diz "não
-  alterar o **histórico** do CHANGELOG", o que veda reescrever entradas passadas, não
-  acrescentar em `## [Não lançado]`. O argumento que sustenta a decisão é o outro que o
-  relatório dá — o arquivo não está na lista da fase.
-- **O frontend órfão na Vercel está bem registrado** (ADR-009 e relatório), e concordo com
-  a leitura de que é ação do owner. Reforço a urgência relativa: é o que um visitante vê
-  hoje, e a D.2 torna o repositório público.
+1. **Item 1 do relatório (frontend órfão na Vercel) merece virar ação antes da D.2, não
+   depois.** O relatório está certo em não agir — é serviço externo e decisão do owner —
+   mas a ordem importa: a D.2 é o que faz o repositório virar vitrine pública, e hoje o
+   que um visitante encontra é uma tela de login cuja API não existe. Já está na OQ16
+   como pendência da E.4; vale só puxar a decisão para antes da promoção.
+2. **`docs/deploy.md` continua com o passo a passo escrito no console da Hetzner**
+   (item 3 do relatório). A abertura resolve o enquadramento com honestidade ("o
+   provedor usado como exemplo é a Hetzner Cloud, mas qualquer VPS com Docker serve"),
+   então não é imprecisão — é só o corpo ainda não ser agnóstico. Concordo com o
+   encaminhamento para a D.3.
+3. **Quando a E.4 trocar a referência do `cd.yml`, remover também o aviso do cabeçalho
+   de `docker-compose.backend.yml`.** O bloco "ATENÇÃO — ainda referenciado" é correto
+   hoje e vira desinformação no minuto seguinte à troca. Vale entrar como passo
+   explícito da E.4, junto com a troca — é o mesmo tipo de descompasso entre documento
+   e realidade que originou o E2-IMP-1.
 
 ## 6. Comandos rodados + saídas reais
 
+Rodados por mim, na ponta da branch `dev`. Árvore limpa antes e depois.
+
 ```text
-# --- Passo 1: gate estrutural da §5 ---
-$ bash ~/.codeflow/framework/core/scripts/run-structural.sh .codeflow/specs/…/SPEC_002….md
-✓ grafo de dependências acíclico
+$ git merge-base --is-ancestor 091641c HEAD
+d43b1bc4...: ANCESTRAL   |   091641c: ANCESTRAL
+$ git status --porcelain
+(vazio)
+
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh .../SPEC_002_...md
 ✓ §5 estruturalmente válida
->>> EXIT=0
 
-# --- Passo 2: ancestralidade, escopo do diff, árvore limpa ---
-$ git status --porcelain | wc -l
-0
-$ git merge-base --is-ancestor d43b1bc… HEAD   → ANCESTRAL
-$ git merge-base --is-ancestor 70401f5… HEAD   → ANCESTRAL
-$ git diff --stat d43b1bc..70401f5 -- . ':(exclude).codeflow/specs/*/artefatos/*'
- Caddyfile | 6 +- · Caddyfile.backend | 11 ++ · README.md | 16 +- · Roadmap.md | 7 +
- docker-compose.backend.yml | 15 ++ · docker-compose.yml | 11 +- · docs/architecture.md | 55 ++
- docs/deploy-checklist.md | 152 --- · docs/deploy.md | 53 +-
- 9 files changed, 158 insertions(+), 168 deletions(-)
-   → exatamente os 9 arquivos declarados na §5                                 ✓
+# AC-25, cláusula 2 — cada compose valida
+$ docker compose -f docker-compose.yml         config -q   → OK
+$ docker compose -f docker-compose.backend.yml config -q   → OK
+$ docker compose -f docker-compose.dev.yml     config -q   → OK
+(avisos de VAPID_* não definidos; nenhum erro de configuração)
 
-# --- escopo travado: nenhuma mudança funcional nos arquivos de orquestração ---
-$ for f in docker-compose.yml Caddyfile docker-compose.backend.yml Caddyfile.backend; do
-    git diff d43b1bc..70401f5 -- $f | grep -E "^[+-]" | grep -vE "^(\+\+\+|---)" \
-      | grep -vE "^[+-]\s*#" | grep -vE "^[+-]\s*$"; done
-(vazio nos quatro)
-   → zero alteração de serviço, porta, env ou credencial                       ✓
+# AC-25, cláusula 1 — cada arquivo de orquestração declara seu propósito
+docker-compose.yml         # CalorIA — stack COMPLETA em host único · TOPOLOGIA OFICIAL (ADR-009)
+docker-compose.dev.yml     # CalorIA — Docker Compose (Desenvolvimento)
+docker-compose.backend.yml # CalorIA — apenas o BACKEND · LEGADO da topologia dividida (ADR-009)
+Caddyfile                  # CalorIA — Caddyfile · par oficial do `docker-compose.yml` (ADR-009)
+Caddyfile.backend          # CalorIA — proxy só da API · LEGADO da topologia dividida (ADR-009)
 
-# --- AC-25, metade "cada arquivo declara seu propósito" ---
-$ head -2 docker-compose.yml         → CalorIA — stack COMPLETA em host único · TOPOLOGIA OFICIAL (ADR-009)
-$ head -2 docker-compose.dev.yml     → CalorIA — Docker Compose (Desenvolvimento)
-$ head -2 docker-compose.backend.yml → CalorIA — apenas o BACKEND · LEGADO da topologia dividida (ADR-009)
-$ head -2 Caddyfile                  → CalorIA — Caddyfile · par oficial do `docker-compose.yml` (ADR-009)
-$ head -2 Caddyfile.backend          → CalorIA — proxy só da API · LEGADO da topologia dividida (ADR-009)
-   → os cinco declaram                                                         ✓
-
-# --- AC-25, metade "ADR-009 presente" e ADRs anteriores intocados ---
-$ grep -n "^## ADR-00" docs/architecture.md | tail -2
-155:## ADR-008 — CI/CD com GitHub Actions
-169:## ADR-009 — Topologia self-hosted em host único                            ✓
-$ git diff d43b1bc..70401f5 -- docs/architecture.md | grep -E "^[-+]## ADR"
-+## ADR-009 — Topologia self-hosted em host único
-   → só adição; nenhum ADR existente reescrito                                 ✓
-
-# --- AC-25, validação dos composes ---
-$ docker compose -f docker-compose.yml config          → config OK
-$ docker compose -f docker-compose.dev.yml config      → config OK
-$ docker compose -f docker-compose.backend.yml config  → config OK              ✓
-
-# --- acima do pedido: os Caddyfiles também validam (reproduzi) ---
-$ docker run --rm -v $PWD/Caddyfile:/etc/caddy/Caddyfile:ro -e APP_DOMAIN=caloria.exemplo.com \
-    caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-Valid configuration
-$ ... Caddyfile.backend ...
-Valid configuration                                                             ✓
-   (o binário `caddy` não existe no host; usei a imagem oficial)
-
-# --- passo 4: consolidação e host morto ---
-$ ls docs/deploy-checklist.md
-No such file or directory                                                       ✓
-$ head -12 docs/deploy.md | tail -4
-> **Estado em 2026-08-03 — não há servidor no ar.** … o projeto **roda localmente**…
-> Onde você ler `caloria.exemplo.com`, troque pelo seu domínio.                 ✓
-$ grep -rn "caloria-gabriel.duckdns.org" --include="*.md" --include="*.yml" . | grep -v .codeflow
-docker-compose.backend.yml:10  # …não resolve mais nem em DNS.
-docs/architecture.md:182       # …não resolve sequer em DNS.
-   → só menções que o declaram morto; nenhuma configuração aponta para ele      ✓
-$ git diff d43b1bc..70401f5 -- Roadmap.md | head -8
-+> **Adiado por decisão do owner (2026-08-03).** … ADR-009 — host único …        ✓
-
-# --- o achado 4.1 ---
-$ grep -n "docker compose" .github/workflows/cd.yml
-38:            docker compose -f docker-compose.backend.yml up -d --build
-$ sed -n '9,10p' .github/workflows/cd.yml
+# o gatilho do E2-IMP-1
+$ sed -n '38p' .github/workflows/cd.yml
+            docker compose -f docker-compose.backend.yml up -d --build
+$ sed -n '7,10p' .github/workflows/cd.yml
+#   push:
+#     branches: [main]
 on:
-  workflow_dispatch:        ← o `push: branches: [main]` está comentado (:7-8)
-$ sed -n '3,4p' .github/workflows/cd.yml
-# produção ainda não foi decidida (spec 002, Fase E.2). A reativação do gatilho
-   → o comentário cita esta fase como pendência; a pendência acabou de fechar
+  workflow_dispatch:
+# confirma que o CD está inerte: nem a promoção da D.2 dispara deploy
 
-$ git status --porcelain | wc -l
-0
+# escopo travado: nenhum arquivo de orquestração removido
+$ git diff --diff-filter=D --name-only d43b1bc..091641c
+docs/deploy-checklist.md
+# único removido, e é o documento que o passo 4 manda incorporar ao deploy.md
+
+# host morto e segredos
+$ grep -c "caloria-gabriel" docs/deploy.md          → 0
+$ grep -c "caloria.exemplo.com" docs/deploy.md      → 5
+$ git diff d43b1bc..HEAD | grep -iE "^\+.*(gsk_[A-Za-z0-9]{20}|@gmail\.com)"
+(vazio)
 ```
 
 ## 7. Itens da fase / DoD não atendidos
 
-| Item (§5 / §9 da spec) | Estado |
-|---|---|
-| Passo 1 — topologia decidida com o owner | Atendido (OQ16, com as duas condições temporais) |
-| Passo 2 — ADR-009 em `docs/architecture.md` | Atendido; formato dos anteriores, nenhum reescrito |
-| Passo 3 — desambiguar composes e Caddyfiles por cabeçalho | Atendido nos cinco arquivos |
-| Passo 4 — consolidar `deploy.md` + `deploy-checklist.md`, atualizar Roadmap 9.2 | Atendido; o checklist não repete comandos, de propósito |
-| AC-25 — cada arquivo declara propósito; ADR-009 presente; composes validam | Atendido |
-| Gate — owner confirmou a topologia | Atendido (OQ16) |
-| Escopo travado — sem deletar orquestração em uso, sem tocar credencial/env, sem reescrever ADR | Atendido nos três, com evidência de diff |
-| **Coerência do que a fase declarou** | **PARCIAL** — "sem uso" e "cd.yml continua válido" são incompatíveis com `cd.yml:38` (achado 4.1) |
+Nenhum.
+
+- **§9 "E.2 — AC-25; ADR-009 escrito; owner confirmou a topologia"** — os três. O ADR-009
+  está em `docs/architecture.md` depois do ADR-008, e a decisão do owner (host único,
+  self-hosted, local por enquanto) está registrada nele.
+- **Passo 1 (decidir a topologia com o owner)** — feito, com os fatos da E.1 como base.
+- **Passo 2 (ADR-009)** — presente, com a tabela das duas topologias e as consequências.
+- **Passo 3 (desambiguar por cabeçalho)** — os cinco arquivos declaram propósito e
+  posição (oficial × legado). O passo autoriza "renomear **e/ou** dar cabeçalho"; a via
+  do cabeçalho foi a escolhida, e é a que não quebra referência.
+- **Passo 4 (consolidar `deploy.md` + `deploy-checklist.md`, atualizar Roadmap 9.2)** —
+  o checklist virou seção final do `deploy.md` e o arquivo duplicado saiu; Roadmap 9.2
+  declara o deploy adiado por decisão.
+- **Escopo travado** — nenhum arquivo de orquestração em uso removido; nenhuma
+  credencial ou variável alterada.
+
+**Pendência registrada, com dono, que não é item faltante desta fase:** `cd.yml:38`
+segue apontando para o compose legado. Está declarada no §7 item 4 do relatório, no
+ADR-009 e no cabeçalho do próprio compose, com a ordem obrigatória E.4 → D.4. É o
+tratamento correto para trabalho que pertence a outra fase.
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **Nenhuma divergência no que o relatório afirma.** Reproduzi as validações dos três
-   composes e dos dois Caddyfiles, o `--stat` dos 9 arquivos, a ausência do
-   `deploy-checklist.md` e a presença do ADR-009. Tudo confere.
+Nenhuma. Conferi cada afirmação verificável da tentativa 2 e todas batem:
 
-2. **Omissão, não erro: o `cd.yml`.** O relatório declara três itens em aberto — o
-   frontend órfão na Vercel, os legados esperando a D.4, e o `deploy.md` ainda escrito em
-   cima da Hetzner — e os três estão corretos. Falta o quarto, que é o único que
-   contradiz uma afirmação da própria entrega (achado 4.1).
-
-3. **O ADR-009 afirma que "o `cd.yml` do ADR-008 continua válido como desenho".** O ADR-008
-   descreve o CD como "SSH → git pull → docker compose up → alembic ao mergear na `main`",
-   e o `cd.yml` implementa isso sobre `docker-compose.backend.yml` — a topologia B. Dizer
-   que o desenho continua válido depois de aposentar a topologia B é a divergência de
-   fato desta fase.
-
-4. **Correção de justificativa, sem efeito no resultado:** o relatório atribui a não
-   atualização do CHANGELOG ao escopo travado da D.1. Essa regra veda reescrever o
-   histórico, não acrescentar em `## [Não lançado]`. A decisão continua certa pelo outro
-   motivo que o próprio relatório dá — o arquivo não está na lista da fase.
+| Afirmação do relatório | Verificação |
+|---|---|
+| `cd.yml:38` sobe `docker-compose.backend.yml` | confere, na linha 38 exata |
+| o cabeçalho deixou de dizer "sem uso" e passou a avisar da referência | confere, com a ordem obrigatória E.4 → D.4 escrita |
+| o ADR-009 declara o `cd.yml` como desenho válido sobre topologia aposentada | confere, `docs/architecture.md:51-59` |
+| os três composes validam | confere, rodei os três |
+| o CD está inerte (só `workflow_dispatch`) | confere, `push: branches: [main]` comentado |
+| nenhum arquivo de código tocado nesta tentativa | confere |
+| host morto trocado por `caloria.exemplo.com` | confere — 0 ocorrências do host antigo, 5 do exemplo |
