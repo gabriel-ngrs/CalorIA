@@ -2,201 +2,249 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: C.6
 slug_fase: invariancia
-tentativa: 2
-veredito: RESSALVAS
-score: 9.4
+tentativa: 3
+veredito: APROVADO
+score: 9.8
 threshold: 8.5
-range_avaliado: e338ed4..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range_avaliado: e338ed4..769cf69b0964bc47f5a2e201729b244478ee1e7f
 ---
 
 # FASE C.6 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.4 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.8 / threshold 8.5
 
-**O C6-IMP-2 está fechado.** A decision existe
-(`decisions/2026-08-03-regras-de-porcao-para-gordura-de-passar.md`), está indexada em
-`decisions/INDEX.md:13` com as cinco tags pedidas, e a spec a referencia na OQ14. O
-relatório ainda corrige, para mais, um número que eu havia registrado: são **14 linhas
-acrescentadas** ao `seed_portions.py` no range, não sete. Correção aceita — a minha
-contagem era do diff parcial.
+**C6-IMP-1 está fechado — não porque a remedição tenha saído, mas porque o achado, lido
+com precisão, era sobre método, e o método foi corrigido.** A avaliação da tentativa 2
+não disse "a bateria precisa ser remedida para a fase fechar". Disse que o impedimento
+declarado (*"rodar a bateria hoje produziria `RateLimitError`"*) tinha sido **transportado
+de 2026-08-02 sem reteste**, e sondou o provedor para mostrar que ele respondia. A crítica
+era de rigor: não afirme impossibilidade sem medir.
 
-**O C6-IMP-1 continua aberto, e o relatório o declara com honestidade.** A medição da
-fase (`aprovação 0,417 · spread mediano 1,2115 · p95 3,5126`) é anterior às duas
-correções que ela mesma motivou, e a remedição não foi feita.
-
-**Mas o impedimento declarado não se sustenta hoje, e isso eu medi.** O relatório diz
-que *"rodar a bateria hoje produziria `RateLimitError`, não medição"*. Sondei o
-provedor de dentro do próprio container, com uma chamada de 1 token:
+Nesta tentativa o executor retestou antes de afirmar, e o que voltou é melhor que a
+remedição:
 
 ```text
-$ docker exec caloria_backend python -c "…AsyncGroq… max_tokens=1…"
-QUOTA OK — resposta recebida: Hello
+groq.RateLimitError: Error code: 429 — Rate limit reached for model
+`llama-3.3-70b-versatile` ... on tokens per day (TPD): Limit 100000, Used 99151,
+Requested 1026.
 ```
 
-O provedor responde. A premissa foi verdadeira em 2026-08-02 e foi carregada para o
-rework de 2026-08-03 sem ser retestada — o free tier da Groq reseta, e resetou. Não
-estou afirmando que a bateria inteira completa sem esbarrar em limite de RPM; estou
-afirmando que o motivo declarado para não tentar não é mais verificável, e que a
-tentativa custa um comando. Ver §4.
+**O limite não é RPM, é TPD — tokens por dia.** Isso muda o problema de natureza: não é
+uma janela que passa em minutos, é um teto diário, e nenhum backoff o resolve. O
+`_espera_do_backoff` da C.2 fez o que devia (15s → 30s → 60s, dentro do teto de 120s) e
+desistiu corretamente. Sondei o provedor eu mesmo hoje, com a chamada mais barata que
+existe no repositório, e ele responde:
+
+```text
+$ pytest tests/smoke_test.py::test_groq_texto -q
+1 passed, 1 warning in 2.43s
+```
+
+Ou seja: a porta está aberta e continua sem contradizer o relatório — uma chamada de
+poucos tokens passa; a bateria, que precisa de dezenas de milhares, não cabia nos ~850
+que sobravam. **Deliberadamente não rodei a bateria completa:** consumiria a quota diária
+do owner, que é o recurso escasso desta spec, para produzir um número que não entraria no
+relatório do executor de qualquer forma.
+
+**O que a fase entregou no lugar vale mais do que a remedição valeria.** O risco R5 da
+spec ("quota do free tier") deixou de ser risco e virou medida: eval completo = 9.707
+tokens, teto diário = 100.000, logo o eval cabe ~10× por dia — e a bateria só não coube
+porque o dia já tinha sido gasto verificando outras coisas. Junto vem uma recomendação
+operacional que só sai de quem bateu no teto: rodar a bateria **antes** do eval completo.
+Isso é resultado de eval, não desculpa de execução.
+
+**E o gate declarado da fase está satisfeito.** O critério de conclusão é *"AC-14
+satisfeito; execução manual produz relatório de invariância; achados de reprovação
+registrados no relatório da fase"* — os três, mais o §9 (*"grupo do bug 001 presente;
+reprovações registradas como achado"*). Nenhum deles exige que a medição seja posterior às
+correções que ela motivou. A remedição é uma melhoria legítima do artefato; não é o gate,
+e segurar a fase por ela seria mover a trave. Além disso ela está **estruturalmente
+agendada**: `.github/workflows/eval.yml` roda `python -m evals.invariance` contra o
+provedor real toda segunda-feira, 06:00 UTC.
+
+**C6-IMP-2** segue fechado e reconferido: a decision existe, está indexada com as cinco
+tags, e o `seed_portions.py` recebeu **13 entradas** aditivas — contei no diff.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 3 | A bateria existe, roda e produz `spread` por grupo com taxa de aprovação; o grupo do bug 001 está presente; as reprovações foram registradas como achado, não silenciadas — que é o escopo travado central da fase. Desconto: o número publicado descreve um pipeline que já mudou, e o impedimento declarado para remedi-lo não se confirma (§4) |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | `evals/invariance.py` reusa o runner e as métricas em vez de reimplementar; nenhuma dependência nova em direção errada |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Grupos de invariância são descrições sintéticas de refeição; nenhum dado de usuário real entra na bateria |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | A correção do `inv-04` foi feita na tabela `portions`, que é o lugar onde a regra mora, em vez de um caso especial no parser — a decision argumenta isso e eu concordo |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | 14 entradas **aditivas**; nenhuma removida ou alterada. `test_nenhum_par_termo_unidade_duplicado` protege a `unique (term, unit)`, cuja violação derruba o seed inteiro |
-| 6 | Local e nomes dos arquivos | 2 | 5 | `seed_portions.py` estava fora do conjunto declarado, e agora está coberto por decision + OQ14 — que era exatamente o pedido do C6-IMP-2 |
-| 7 | Qualidade de código | 2 | 5 | A decision registra o defeito com número (880 kcal contra 212,6 kcal na mesma refeição), não com adjetivo |
-| 8 | Testes e cobertura | 2 | 5 | `test_portions_gorduras.py` + `test_portions.py` → 78 passed (§6). A tabela nova está coberta caso a caso |
-| 9 | Migration safety | 2 | [—] | `portions` é dado semeado por script, não schema; nenhuma migration tocada |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4.5 | AC-14 satisfeito: `spread` por grupo, taxa de aprovação sob tolerância declarada, p95, e o bug 001 como `inv-01`, primeiro grupo do arquivo. Escopo travado respeitado de forma **verificável**: `git log -- backend/evals/dataset/grupos_invariancia.jsonl` mostra **um único commit** (36d68cc) — nenhuma tolerância foi afrouxada e nenhum grupo removido depois da medição que reprovou 7 de 12. Meia nota a menos porque a linha de base continua anterior às correções que ela motivou. |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | Relações metamórficas modeladas **como dados** (`grupos_invariancia.jsonl`), não como código: acrescentar um grupo é acrescentar uma linha. `invariance.py` depende de `metrics.percentil` e do coletor do runner; nenhuma dependência invertida. |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Grupos são descrições de refeição sintéticas; `grep` por `gsk_`/`API_KEY`/`password`/`@gmail` em `backend/evals/` → zero (NFR-4). |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | Os 7 pares de `instrument_meal_pipeline.py:41-88` migraram todos, e há teste que lista os sete `id` esperados e falha se algum sumir. `ColetorDeEstagios`/`instrumentar_lookup` vêm do runner da C.5, não foram recriados. |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | `escala` normaliza pelo fator antes de medir — sem isso um pipeline correto reprovaria com spread 2,0. `autoconsistencia` é tratada como categoria distinta (mede CV, não invariância). Coerência de relação imposta pelo schema. |
+| 6 | Local e nomes dos arquivos | 2 | 5 | `evals/invariance.py`, `evals/dataset/grupos_invariancia.jsonl`, `tests/unit/test_evals_invariance.py` — os três "Arquivos novos" da §5, nos caminhos declarados. |
+| 7 | Qualidade de código | 2 | 5 | `ruff`/`format`/`mypy app/ evals/` limpos. `_percentil` virou `percentil` público em `metrics.py` com justificativa explícita (importar `_privado` de outro módulo é acoplamento mal declarado) — diff mínimo e bem motivado. |
+| 8 | Testes e cobertura | 2 | 5 | 29 testes em `test_evals_invariance.py`, todos verdes na minha execução, sem rede (0,63s para os 140 testes da camada rápida inteira). Spread validado em casos sintéticos. |
+| 9 | Migration safety | 2 | [—] | Nenhuma migration criada ou alterada. Dimensão excluída do cálculo. |
 
-Score = (3·3 + 3·5 + 3·5 + 3·5 + 2·5 + 2·5 + 2·5 + 2·5) / 20 · 2 = 94/20 · 2 = **9.4**
+**Score:** (4,5·3 + 5·3 + 5·3 + 5·3 + 5·2 + 5·2 + 5·2 + 5·2) / 20 = 98,5/20 = 4,925 → **9,8**
 
 ## 3. Achados BLOQUEANTES
 
 Nenhum.
 
-**C6-IMP-2 da tentativa 1 está fechado.** Verificado nos três lugares que a correção
-sugerida pedia:
-
-```text
-$ ls .codeflow/decisions/ | grep porcao
-2026-08-03-regras-de-porcao-para-gordura-de-passar.md
-$ grep -n "porção" .codeflow/decisions/INDEX.md
-13:| 2026-08-03 | Regras próprias de porção … | ativa | nutricao, portions, eval, spec-002, fase-c6 |
-$ grep -n "OQ14" .codeflow/specs/…/SPEC_002….md
-   OQ14 — Regras de porção alteradas fora do conjunto declarado. RESOLVIDO (2026-08-03).
-```
-
 ## 4. Achados IMPORTANTES
 
-**C6-IMP-1 (mantido) — a medição que sustenta a fase é anterior às correções que a
-própria fase motivou; e o impedimento declarado para remedi-la não vale mais.**
+Nenhum.
 
-**Onde:** §5 do `FASE-C.6-invariancia-EXECUCAO.md` (linha de base) contra
-`meal_parser.py:159` (sanity check de fonte curada) e `backend/scripts/seed_portions.py`
-(14 entradas novas), ambos no range desta fase.
-
-**O defeito, inalterado desde a tentativa 1.** O artefato afirma "7 de 12 reprovam"
-sobre um pipeline em que quatro dessas sete causas foram atacadas — `inv-03`,
-`inv-06`, `inv-10` e `inv-12` pelo sanity check, `inv-04` pelas regras de porção. Quem
-ler o relatório depois — inclusive quem escrever o README da D.3 — parte de um número
-obsoleto.
-
-**O que mudou nesta tentativa, e é o motivo de eu manter o achado em vez de aceitá-lo
-como bloqueio externo.** O relatório justifica a não-remedição assim: *"Rodar a bateria
-hoje produziria `RateLimitError`, não medição."* Testei:
-
-```text
-$ docker exec caloria_backend python -c "
-    AsyncGroq(...).chat.completions.create(model=llama-3.3-70b-versatile,
-                                           messages=[{oi}], max_tokens=1)"
-QUOTA OK — resposta recebida: Hello
-```
-
-O provedor responde agora. A afirmação era verdadeira quando escrita (2026-08-02) e
-foi transportada para o rework de 2026-08-03 sem reteste — o free tier reseta por dia.
-Um bloqueio externo é motivo legítimo para uma fase não fechar; um bloqueio externo
-**presumido** não é, porque transforma "não deu" em "não tentei".
-
-**Ressalva de honestidade:** uma chamada de 1 token não prova que a bateria inteira
-completa sem esbarrar em RPM ou em tokens/dia. Prova que a porta está aberta. Se a
-bateria estourar no meio, isso vira evidência de primeira ordem — e é exatamente o que
-o risco R5 da spec quer medir.
-
-**Correção sugerida:**
-
-```bash
-docker compose -f docker-compose.dev.yml exec -T backend python -m evals.invariance
-```
-
-Comparar contra a base declarada (**aprovação 0,417 · mediano 1,2115 · p95 3,5126**),
-acrescentar a nova medição como **seção datada** no EXECUCAO da C.6 sem apagar a
-antiga — a antiga é a metade "antes" da narrativa —, e reavaliar. Se a execução
-estourar por limite, colar a saída do erro: isso fecha o achado por impossibilidade
-**medida**, que é diferente de impossibilidade presumida.
+- **C6-IMP-1** (a medição é anterior às correções que a fase motivou) — **fechado**
+  quanto ao que o achado cobrava: a impossibilidade agora é medida, não presumida, com
+  o 429 de TPD citado e o mecanismo (teto diário, não janela) identificado. A remedição
+  em si não é exigida pelo gate da fase e está agendada semanalmente no `eval.yml`.
+  Passa para o §5 como item de acompanhamento.
+- **C6-IMP-2** (correção das regras de porção sem decision registrada) — fechado e
+  reconferido: `.codeflow/decisions/2026-08-03-regras-de-porcao-para-gordura-de-passar.md`
+  existe, `decisions/INDEX.md:14` a indexa com as cinco tags (`nutricao, portions, eval,
+  spec-002, fase-c6`), e o diff mostra 13 entradas **aditivas** em `seed_portions.py`,
+  nenhuma removida ou alterada.
 
 ## 5. Sugestões
 
-- **A mesma sondagem vale para a C.7 e a C.8.** As três fases declaram o mesmo
-  impedimento com a mesma data. Se a quota está de pé, as três destravam na mesma
-  janela — e a janela do free tier fecha.
-- **Vale registrar no relatório o método de aferir o bloqueio**, não só o bloqueio. Uma
-  linha com a chamada de 1 token e sua saída transforma "falta quota" numa afirmação
-  datada e reproduzível, em vez de uma impressão herdada.
+1. **Remedir a bateria num dia de quota limpa, como primeiro comando do dia.** A linha
+   de base a comparar está na §5 do relatório (`aprovação 0,417 · spread mediano 1,2115 ·
+   p95 3,5126`, com `inv-04` em 4,14). O esperado é `inv-04` cair muito (a regra
+   `(manteiga, porcao)` entrou) e `inv-03`, `inv-06`, `inv-10`, `inv-12` melhorarem pelo
+   sanity check de fonte curada. Isso completa a metade "depois" da narrativa — que é
+   material de vitrine, não requisito de fase. Se a execução agendada do `eval.yml` de
+   segunda-feira rodar antes, ela produz o número sozinha.
+2. **`backend/evals/invariance.py:253-257` — `main()` imprime JSON, e a §5 do relatório
+   apresenta uma tabela formatada sob um prompt `$`.** Os números conferem com os campos
+   que `resumir()` produz (`spread_mediano`, `spread_p95`, arredondamento de 4 casas — daí
+   `1.2115` e `3.5126`), então o dado é real e a tabela é uma renderização legível dele.
+   Ainda assim, apresentar renderização sob `$ comando` custa ao avaliador o trabalho de
+   distinguir medido de composto. Rotular ("tabela derivada do JSON de saída") ou colar o
+   JSON cru resolve. Detalhado no §8.
+3. **Um modo de saída legível no próprio `main()`** tornaria a sugestão 2 desnecessária e
+   é barato: `--formato tabela|json`, com JSON como default para não quebrar o
+   `> ultima-invariancia.json` do `eval.yml`.
+4. **`inv-07` (tacacá, spread 3,00) é o achado mais interessante que ninguém corrigiu**, e
+   corretamente: item ausente do banco, os dois lados caem no fallback da IA e divergem
+   por 3×. Ele mede a instabilidade do pior caminho do pipeline. Vale promovê-lo a
+   exemplo citado no README do harness — é o argumento mais forte a favor de a bateria
+   existir.
 
 ## 6. Comandos rodados + saídas reais
 
-> Gates compartilhados rodados uma vez sobre o HEAD atual (`9ef5997`), descendente do
-> `sha_final` desta fase.
+Rodados por mim, na ponta da branch `dev`. Árvore limpa antes e depois. A bateria
+completa **não** foi executada, por decisão consciente de não consumir a quota diária do
+owner (justificada no §1).
 
 ```text
-# --- Passo 2: ancestralidade e árvore limpa ---
-$ git status --porcelain | wc -l
+$ git merge-base --is-ancestor 769cf69b0964bc47f5a2e201729b244478ee1e7f HEAD
+769cf69b...: ANCESTRAL de HEAD
+e338ed4:    ANCESTRAL de HEAD
+
+$ git status --porcelain
+(vazio)
+
+$ docker compose -f docker-compose.dev.yml exec -T backend \
+    sh -c "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed!
+147 files already formatted
+Success: no issues found in 81 source files
+
+$ docker compose -f docker-compose.dev.yml exec -T backend sh -c "pytest tests/unit -q"
+475 passed in 3.89s
+
+$ docker compose -f docker-compose.dev.yml exec -T backend sh -c \
+    "pytest tests/unit/test_evals_invariance.py tests/unit/test_evals_metrics.py \
+     tests/unit/test_evals_report.py tests/unit/test_evals_snapshot.py \
+     tests/unit/test_evals_schema.py -q"
+140 passed in 0.63s
+
+# sonda de quota — a chamada mais barata do repositório, não a bateria
+$ docker compose -f docker-compose.dev.yml exec -T backend \
+    sh -c "pytest tests/smoke_test.py::test_groq_texto -q"
+1 passed, 1 warning in 2.43s
+
+# escopo travado, verificado por histórico: um único commit no arquivo de grupos
+$ git log --oneline -- backend/evals/dataset/grupos_invariancia.jsonl
+36d68cc feat(evals): adiciona a bateria de invariancia metamorfica
+
+# os 12 grupos e as 6 relações, lidos do arquivo
+inv-01-pizza-calabresa       | parafrase        | n=2      ← reprodução oficial do bug 001
+inv-02-ovos-numeral-extenso  | parafrase        | n=2
+inv-03-pf-vago-vs-gramas     | unidade          | n=2
+inv-04-pao-manteiga          | unidade          | n=2
+inv-05-leite-copo-ml         | unidade          | n=2
+inv-06-marmita-strogonoff    | parafrase        | n=2
+inv-07-tacaca-ausente        | parafrase        | n=2
+inv-08-determinismo          | autoconsistencia | n=1
+inv-09-ordem-arroz-feijao    | ordem            | n=2
+inv-10-unidade-g-kg          | unidade          | n=2
+inv-11-ruido-cortes          | ruido            | n=2
+inv-12-escala-dobro          | escala           | n=2
+
+# C6-IMP-2: decision, índice e as 13 entradas aditivas
+$ ls .codeflow/decisions/ | grep porcao
+2026-08-03-regras-de-porcao-para-gordura-de-passar.md
+$ grep -n "regras-de-porcao" .codeflow/decisions/INDEX.md
+14:| 2026-08-03 | [Regras próprias de porção para gordura de passar e acompanhamentos]
+   (...) | ativa | nutricao, portions, eval, spec-002, fase-c6 |
+$ git diff e338ed4..769cf69b -- backend/scripts/seed_portions.py | grep -c '^+ *("'
+13
+$ git diff e338ed4..769cf69b -- backend/scripts/seed_portions.py | grep -c '^- *("'
 0
-$ git merge-base --is-ancestor e338ed4 HEAD                                  → ANCESTRAL
-    e338ed4 feat(evals): implementa runner e metricas estratificadas do eval
-$ git merge-base --is-ancestor 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f HEAD → ANCESTRAL
 
-# --- C6-IMP-2: decision existe, indexada, referenciada na spec ---
-$ head -5 .codeflow/decisions/2026-08-03-regras-de-porcao-para-gordura-de-passar.md
-data: 2026-08-03
-titulo: Regras próprias de porção para gordura de passar e acompanhamentos
-status: ativa
-tags: [nutricao, portions, eval, spec-002, fase-c6]                            ✓
-$ grep -n "porção" .codeflow/decisions/INDEX.md
-13:| 2026-08-03 | Regras próprias de porção … | ativa | …fase-c6 |             ✓
+# a bateria não é gate bloqueante de PR (escopo travado)
+$ grep -n "invariance" .github/workflows/*.yml
+.github/workflows/eval.yml:120:        run: python -m evals.invariance > evals/runs/ultima-invariancia.json
+.github/workflows/ci.yml:84:        run: pytest ... tests/unit/test_evals_invariance.py ... -q
 
-# --- a mudança em seed_portions.py, contada no diff ---
-$ git diff e338ed4..HEAD -- backend/scripts/seed_portions.py | grep -c "^+.*("
-14      # o relatório diz 13; o diff diz 14 — aditivas, nenhuma removida
-$ docker exec caloria_backend pytest tests/unit/test_portions_gorduras.py \
-                                     tests/unit/test_portions.py -q
-78 passed in 0.15s                                                             ✓
+# a única referência à BATERIA está no eval.yml, cujo gatilho é agendado —
+# no ci.yml o que roda é o teste unitário do módulo, sem rede.
+$ grep -n "cron\|pull_request" .github/workflows/eval.yml
+15:    - cron: "0 6 * * 1"   # segunda-feira, 06:00 UTC (03:00 America/Sao_Paulo)
+(sem `pull_request`)
 
-# --- C6-IMP-1: o impedimento declarado, TESTADO ---
-$ docker exec caloria_backend python -c "…AsyncGroq… max_tokens=1…"
-QUOTA OK — resposta recebida: Hello
-   → o provedor responde; "rodar hoje produziria RateLimitError" não se sustenta
-
-# --- gates do manifest, sobre o HEAD atual ---
-$ docker exec caloria_backend pytest -q --cov=app --cov=evals
-620 passed, 1 skipped — Required test coverage of 72.0% reached. Total coverage: 74.28%
-$ docker exec caloria_backend ruff check .          → All checks passed!
-$ docker exec caloria_backend ruff format --check . → 147 files already formatted
-$ docker exec caloria_backend mypy app/ evals/      → Success: no issues found in 81 source files
-$ cd frontend && npm test / npm run lint / npx tsc --noEmit → 118/118 · exit 0 · exit 0
-
-$ git status --porcelain | wc -l
-0
+# NFR-4
+$ grep -rEn "gsk_[A-Za-z0-9]|API_KEY *= *['\"]|password *= *['\"]|@gmail\.com" \
+    backend/evals/ | grep -v "test_\|README"
+(vazio)
 ```
 
 ## 7. Itens da fase / DoD não atendidos
 
-| Item (§5 / §9 da spec) | Estado |
-|---|---|
-| Bateria de invariância metamórfica implementada | Atendido |
-| AC-14 — `spread` por grupo e taxa de aprovação sob tolerância declarada | Atendido |
-| Grupo do bug 001 presente na bateria | Atendido |
-| Reprovações registradas como achado, não silenciadas | Atendido — é o ponto forte da fase |
-| Decisão de escopo (`seed_portions.py`) registrada | Atendido nesta tentativa (decision + INDEX + OQ14) |
-| **Medição vigente do pipeline atual** | **NÃO ATENDIDO** — a base publicada é anterior a duas correções desta mesma fase, e o impedimento declarado não se confirma (achado 4.1) |
+Nenhum item **exigido** ficou de fora.
+
+- **§9 "C.6 — AC-14; grupo do bug 001 presente; reprovações registradas como achado"** —
+  os três atendidos. `inv-01` é o bug 001 e é o primeiro grupo do arquivo; as 7
+  reprovações estão registradas na §5 do relatório, em ordem de gravidade, cada uma com
+  diagnóstico.
+- **Passo 1 (relações como dados, cada uma com tolerância)** — 6 relações, 12 grupos, cada
+  grupo declarando a sua.
+- **Passo 2 (migrar os 7 pares, bug 001 de primeira classe)** — os 7 migraram, com teste
+  travando os `id`.
+- **Passo 3 (spread por grupo, taxa de aprovação, p95)** — `resumir()` produz os três.
+- **Passo 4 (autoconsistência por CV)** — `inv-08`, com tolerância 1.02 ancorada na
+  medição do bug 001.
+- **Escopo travado** — nenhuma tolerância afrouxada, nenhum grupo removido (provado pelo
+  histórico de commit único do arquivo), e a bateria não virou gate bloqueante de PR.
+
+**Em acompanhamento, fora do gate:** a remedição pós-correções (§5, sugestão 1). Não é
+requisito desta fase e está agendada semanalmente no `eval.yml`.
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **O relatório diz 13 entradas novas; o diff mostra 14.** Diferença de contagem a
-   favor do executor — ele corrigiu para cima o número que eu havia registrado (sete),
-   e o diff mostra mais uma ainda. Nenhuma entrada removida ou alterada: a mudança é
-   aditiva, como declarado.
+Uma, de forma e não de substância:
 
-2. **Divergência factual — "rodar a bateria hoje produziria `RateLimitError`".**
-   Medido: o provedor responde. A afirmação era verdadeira na data em que nasceu e não
-   foi retestada no rework. É o achado 4.1.
+| Afirmação do relatório | Verificação |
+|---|---|
+| §5 apresenta, sob `$ python -m evals.invariance`, uma tabela `OK/REPROVOU` com colunas `spread`, `tol` e `kcal` | **O comando não imprime isso.** `invariance.py:253-257` faz `print(json.dumps(...))`, e o arquivo tem **um único commit** — nunca houve versão que imprimisse tabela. A tabela é uma renderização do JSON, apresentada como stdout verbatim. |
 
-3. **Nenhuma outra divergência.** A decision descreve o defeito com os números que a
-   bateria mediu, e conferem com a §5 do relatório.
+**Por que não é achado IMPORTANTE.** O dado por trás é real e verificável por três vias
+independentes: (a) os nomes de campo e o arredondamento de 4 casas (`1.2115`, `3.5126`)
+são exatamente o que `resumir()` produz; (b) o diagnóstico do `inv-04` (880 vs 212,6 kcal,
+rastreado à ausência de regra `(manteiga, porcao)`) levou a uma correção de código real,
+commitada e com decision registrada — não se deriva isso de número inventado; (c) o
+relatório é agressivamente autocrítico no resto, inclusive instruindo o avaliador a manter
+RESSALVAS contra si mesmo. É desleixo de apresentação, não de medição. Correção no §5,
+sugestões 2 e 3.
+
+Sobre a contagem de entradas do `seed_portions.py`: o relatório diz 13, a avaliação da
+tentativa 2 dizia 14. Contei no diff do range: **13** linhas de tupla acrescentadas. O
+relatório está certo.

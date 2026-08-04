@@ -2,214 +2,190 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: B.4
 slug_fase: cobertura
-tentativa: 2
-veredito: RESSALVAS
-score: 9.7
+tentativa: 3
+veredito: APROVADO
+score: 9.9
 threshold: 8.5
-range_avaliado: 8660f40..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+range_avaliado: 8660f40..bbbf03a2ba1371b3c5933acf72917eae84b333dd
 ---
 
 # FASE B.4 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.7 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.9 / threshold 8.5
 
-**O achado da tentativa 1 está fechado, e fechado exatamente como pedido.** O `..%`
-de `backend/pyproject.toml:116` virou `73%`, e a segunda metade da linha deixou de
-remeter ao `fail_under` — passou a declarar a medição (`medido: 73,10%`), que era o
-ponto. Verifiquei o arquivo, não o relatório.
+**B4-IMP-2 está fechado, e fechado no único lugar onde podia ser fechado: no GitHub
+Actions.** O achado da tentativa 2 fazia uma distinção correta — verificar o piso
+dentro do container prova que a flag funciona, não que o job remoto reprova o build.
+Fui conferir o run citado pela API, não pelo relatório:
 
-**O que impede o APROVADO é um item novo, e ele não estava visível na tentativa 1:**
-o gate declarado da fase é *"AC-9 satisfeito; **CI verde com o gate ativo**"*, e o
-gate **nunca rodou no CI**. Não é questão de aguardar um push futuro — o `ci.yml` que
-está no GitHub hoje sequer contém a flag. Medi: `origin/dev` está em `da08121`
-(2026-08-02 16:48), **38 commits atrás** do `dev` local. Detalhe em §4.
+```text
+run 30837561079 · headSha bbbf03a2ba1371b3c5933acf72917eae84b333dd
+workflow: CI · conclusion: success
+Backend — lint e testes ... success   (14 passos, todos success)
+Frontend — lint e build .. success
+```
 
-Registro que a avaliação da tentativa 1 não classificou este item como IMPORTANTE,
-tratando-o como ação do owner. Estou aplicando aqui o mesmo critério que as avaliações
-da C.7 e da D.1 já aplicavam nas fases delas — gate declarado e não satisfeito é
-IMPORTANTE. A inconsistência estava entre as avaliações anteriores, não entre elas e
-esta; e o executor não tem culpa dela.
+E a linha que importa, extraída do log real do job:
 
-Tudo o mais da fase verifica, e verifica bem: o piso está ativo, reprova de verdade
-quando a cobertura cai, os 12 endpoints estão cobertos, e há 5 casos de autorização
-cruzada onde a fase pedia um.
+```text
+Backend — lint e testes  Testes  Required test coverage of 72% reached. Total coverage: 73.86%
+Backend — lint e testes  Testes  620 passed, 4 skipped, 5 warnings in 60.48s (0:01:00)
+```
+
+O `headSha` do run é exatamente o `sha_final` do range, e a citação do relatório é
+verbatim. O gate está no job remoto, o job rodou, e passou com o piso ativo. Isso
+fecha a segunda metade do §9 ("piso ativo **e CI verde**"), que era o que faltava.
+
+**A diferença de contagem que o executor registrou em vez de esconder tem explicação
+completa, e eu a fechei.** Container: `623 passed, 1 skipped`. CI: `620 passed, 4
+skipped`. Os três a mais que pulam no runner são de `tests/smoke_test.py`, que tem
+`pytestmark = pytest.mark.skipif` de módulo em `smoke_test.py:47` condicionado a uma
+chave Groq real (`gsk_`) — e o CI define `GROQ_API_KEY: fake-key-for-tests` de
+propósito. São 4 testes no módulo; no container 3 passam e 1 pula por banco de dev
+indisponível (`smoke_test.py:184`). Fecha exatamente: 624 coletados nos dois lados.
+
+**Isso responde a uma pergunta que o relatório não fez e que importa mais que a
+contagem:** os 5 testes de `test_golden_set.py` **não** estão entre os que pulam no
+CI. O gate da NFR-6 — que já esteve morto uma vez dentro desta fase — está vivo no
+runner do GitHub, não só no container.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4 | AC-9 verificado por mim nas duas metades: o gate ativo passa (`Required test coverage of 72.0% reached. Total coverage: 74.28%`) e **reprova de fato** (`FAIL Required test coverage of 72% not reached. Total coverage: 65.23%`, §6). 36 testes nos 12 endpoints, verdes. Escopo travado respeitado: `push.py` não refatorado, piso (72) abaixo do medido (74,28), nenhum teste sem asserção. Desconto: o gate "CI verde com o gate ativo" não está satisfeito (§4) |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | Testes de integração sobre a API pública dos routers; nenhum router redesenhado, como o escopo travado manda |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | 5 casos de autorização cruzada, leitura **e** escrita, nos dois routers (`test_push.py:119,171,198`; `test_reminders.py:36,106`). A fase pedia "ao menos um". `test_push.py:53-57` documenta que `vapid-public-key` é público **por desenho**, em vez de o teste "corrigir" o código — a conduta certa |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | Fixtures `client`, `anon_client`, `db`, `test_user` de `tests/conftest.py` reusadas; nenhuma fixture nova criada |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | Testes seguem a forma das demais suítes de integração (classes por router, `AsyncClient`) |
-| 6 | Local e nomes dos arquivos | 2 | 5 | Exatamente os arquivos declarados em "Arquivos novos/alterados" da §5 |
-| 7 | Qualidade de código | 2 | 5 | O bloco `[tool.coverage.report]` registra o *porquê* do piso e o histórico com número em cada linha — que é o propósito declarado dele |
-| 8 | Testes e cobertura | 2 | 5 | Suíte completa no container: `620 passed, 1 skipped`, cobertura 74,28% contra piso 72% (§6) |
-| 9 | Migration safety | 2 | [—] | Nenhuma migration alterada pela fase |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | AC-9 nos dois lados: piso ativo em `.github/workflows/ci.yml:98` (`--cov-fail-under=72`) e `backend/pyproject.toml:122` (`fail_under = 72`); 12 endpoints cobertos. Escopo travado respeitado — `git diff 8660f40..bbbf03a2 -- backend/app/api/v1/push.py backend/app/api/v1/reminders.py` sai **vazio**. |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | Nenhum router refatorado; testes em `tests/integration/`, camada correta. `test_push.py:1-7` declara por escrito que cobre sem redesenhar. |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | 5 testes de autorização cruzada (`test_push.py:119,171,198`; `test_reminders.py:36,106,133`), leitura **e** escrita nos dois routers — a fase pedia "ao menos um". Num diário alimentar é vazamento de dado de saúde que eles barram. |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | Fixtures `client`, `anon_client`, `db`, `test_user` de `tests/conftest.py`; nenhuma fixture nova criada. |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | Classes `TestX` com métodos em pt-BR, espelhando a suíte de integração existente. |
+| 6 | Local e nomes dos arquivos | 2 | 5 | `tests/integration/test_push.py` e `test_reminders.py` — exatamente os "Arquivos novos" da §5. |
+| 7 | Qualidade de código | 2 | 5 | `ruff check .` → `All checks passed!`; `ruff format --check .` → `147 files already formatted`; `mypy app/ evals/` → `Success: no issues found in 81 source files`. |
+| 8 | Testes e cobertura | 2 | 4.5 | Os testes asseguram comportamento, não inflam número — `test_e_publico_por_desenho` (`test_push.py:52`) documenta o comportamento real em vez de o teste "corrigir" o código. Meia nota a menos porque o agregado de 73,86% ainda esconde módulos rasos (`push_service.py` 29%, `tasks/reports.py` 32%) — fora do escopo desta fase, mas é o que a dimensão mede. |
+| 9 | Migration safety | 2 | [—] | Nenhuma migration criada ou alterada no range (NFR-7). Dimensão excluída do cálculo. |
 
-Score = (3·4 + 3·5 + 3·5 + 3·5 + 2·5 + 2·5 + 2·5 + 2·5) / 20 · 2 = 97/20 · 2 = **9.7**
+**Score:** (5·3 + 5·3 + 5·3 + 5·3 + 5·2 + 5·2 + 5·2 + 4,5·2) / 20 = 99/20 = 4,95 → **9,9**
 
 ## 3. Achados BLOQUEANTES
 
 Nenhum.
 
-**B4-IMP-1 da tentativa 1 está fechado.** `backend/pyproject.toml:116-117`:
-
-```text
-#   2026-08-02  73%  após o schema de teste vir das migrations, que destravou
-#                    os 5 testes do golden set (medido: 73,10%)
-```
-
-O número entrou e a remissão ao `fail_under` saiu. É a correção exata que a avaliação
-pediu, num commit de 2 linhas (`549950c`).
-
 ## 4. Achados IMPORTANTES
 
-**B4-IMP-2 — o gate declarado da fase ("CI verde com o gate ativo") não foi satisfeito,
-e não é questão de esperar: o gate não existe no remoto.**
+Nenhum.
 
-**Onde:** Critério de conclusão da B.4 (`SPEC_002...md`, bloco da Fase B.4) e §9 do DoD
-(*"B.4 — AC-9; piso de cobertura ativo **e CI verde**"*), contra o estado real de
-`origin/dev`.
-
-**O defeito.** Medi:
-
-```text
-$ git log --format='%h %ad %s' --date=short -1 origin/dev
-da08121 2026-08-02 docs(specs): aplica rework das cinco fases do track a apos avaliacao
-$ git rev-list --count origin/dev..dev
-38
-$ git show origin/dev:.github/workflows/ci.yml | grep -c "cov-fail-under"
-0
-$ gh run list --branch dev --limit 3
-success  docs(specs): aplica rework das cinco fases...  CI  dev  push  2026-08-02T16:48:46Z
-```
-
-O `--cov-fail-under=72` está em `.github/workflows/ci.yml:98` **no repositório local**,
-e a última execução de CI no GitHub foi sobre um commit cujo `ci.yml` não tinha a flag.
-Logo, "o CI falha quando a cobertura cai abaixo do piso" nunca foi exercitado no CI —
-só localmente, no container, que é evidência boa mas não é o gate que a fase declarou.
-
-**Por que é IMPORTANTE e não sugestão.** É o critério de conclusão que a própria fase
-se impôs, e o §9 o repete. Verificar o piso no container prova que a flag funciona; não
-prova que o job do GitHub Actions reprova o build — que é o que transforma cobertura de
-"métrica observada" em gate, o Objetivo declarado da fase.
-
-**Por que não é BLOQUEANTE.** Nada no código está errado, o comportamento está
-demonstrado no mesmo par Postgres 16 + Redis que o CI usa, e o que falta é uma ação do
-owner de um comando.
-
-**Correção.** `git push origin dev`, conferir o job `backend` verde no Actions com a
-flag ativa, e anexar a saída (ou o link da execução) como seção datada no EXECUCAO da
-B.4. É a única pendência da fase.
+- **B4-IMP-1** (placeholder `..%` no histórico de medições) — fechado na tentativa 2
+  e ainda fechado: `backend/pyproject.toml:116-117` traz `2026-08-02  73%  ...
+  (medido: 73,10%)`, com a medição separada do piso.
+- **B4-IMP-2** ("CI verde com o gate ativo") — fechado, verificado contra o run real
+  pela API do GitHub, no §1 acima.
 
 ## 5. Sugestões
 
-- **O relatório mistura quatro medições de cobertura sem dizer qual é a vigente.** §1
-  diz 72%, §5 diz 71,98%, §6 diz 71,92%, o bloco de "Tentativa 2" diz 73,86% — e eu medi
-  74,28%. Todas são verdadeiras em momentos diferentes, e o relatório explica a subida,
-  mas quem ler a §1 primeiro sai com o número errado. Vale um "medição vigente" no topo,
-  com data.
-- **A dúvida 2 do relatório merece resposta explícita:** sim, manter
-  `continue-on-error: true` no upload ao Codecov é a leitura correta do passo 4 — ele
-  autoriza mantê-lo "caso contrário" e aplicar o gate localmente, que é o que
-  `ci.yml:98` faz. Vale fechar a dúvida no relatório para não reabrir depois.
+1. **`backend/pyproject.toml:110-122`** — o bloco de histórico documenta a margem
+   ("existia para absorver os testes que pulavam") como se a variação tivesse
+   acabado. Não acabou: os 4 testes de `smoke_test.py` pulam no CI e não no
+   container. Não afeta a cobertura (o módulo é de smoke e não conta para `app/`),
+   mas uma linha registrando isso pouparia a próxima investigação.
+2. **Dúvida 2 do relatório — sim, é a leitura correta.** O `continue-on-error: true`
+   do upload ao Codecov foi mantido dentro da autorização explícita do passo 4, já
+   que o gate real é o `--cov-fail-under` no próprio job. Nada a mudar.
+3. As §§5 e 6 do relatório ainda carregam os números da tentativa 1 (piso 70%,
+   medido 72%), superados pelas seções de tentativa 2 e 3 no topo. É consequência do
+   contrato de arquivo único do §2.9 e a leitura cronológica funciona, mas um
+   marcador "(números da tentativa 1)" no cabeçalho dessas seções evitaria a
+   confusão para quem ler de baixo para cima.
 
 ## 6. Comandos rodados + saídas reais
 
-> Gates compartilhados rodados uma vez sobre o HEAD atual (`c20529b`), descendente do
-> `sha_final` desta fase; as verificações específicas da B.4 vêm na sequência.
+Rodados por mim, na ponta da branch `dev`, contra os containers de dev (Postgres 16 +
+Redis, os mesmos serviços do CI). Árvore limpa antes e depois.
 
 ```text
-# --- Passo 2: ancestralidade do range e árvore limpa ---
-$ git branch --show-current
-dev
-$ git status --porcelain | wc -l
-0
-$ git merge-base --is-ancestor 8660f40 HEAD                                  → ANCESTRAL
-    8660f40 feat(evals): adiciona camada rapida com cassettes e serie temporal versionada
-$ git merge-base --is-ancestor 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f HEAD → ANCESTRAL
+$ git merge-base --is-ancestor bbbf03a2ba1371b3c5933acf72917eae84b333dd HEAD
+bbbf03a2ba1371b3c5933acf72917eae84b333dd: ANCESTRAL de HEAD
+8660f40: ANCESTRAL de HEAD
 
-# --- a correção da tentativa 2, lida do arquivo ---
-$ sed -n '111,120p' backend/pyproject.toml
-#   2026-05-10  62%  auditoria
-#   2026-08-02  72%  fase B.4 (testes de push/reminders), piso posto em 70%
-#   2026-08-02  73%  após o schema de teste vir das migrations, que destravou
-#                    os 5 testes do golden set (medido: 73,10%)
-fail_under = 72                                                              ← B4-IMP-1 ✓
-$ git show 549950c --stat
- backend/pyproject.toml | 4 ++--
+$ git status --porcelain
+(vazio)
 
-# --- AC-9, metade "o gate passa" ---
-$ docker exec caloria_backend pytest -q --cov=app --cov=evals --cov-report=term
-TOTAL                                      3869    995    74%
-Required test coverage of 72.0% reached. Total coverage: 74.28%
-620 passed, 1 skipped, 5 warnings in 101.82s                                 ✓
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh \
+    .codeflow/specs/002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md
+✓ ids de fase únicos (26 fases)
+✓ heading de cada fase casa com o bullet `id`
+✓ grafo de dependências acíclico
+✓ §5 estruturalmente válida
+EXIT=0
 
-# --- AC-9, metade "o gate reprova" (limitando à suíte unitária) ---
-$ docker exec caloria_backend pytest tests/unit --cov=app --cov-fail-under=72 -q
-TOTAL                                      3244   1128    65%
-FAIL Required test coverage of 72% not reached. Total coverage: 65.23%
-472 passed in 6.10s                                                          ✓
+$ docker compose -f docker-compose.dev.yml exec -T backend \
+    sh -c "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed!
+147 files already formatted
+Success: no issues found in 81 source files
 
-# --- AC-9, cobertura dos 12 endpoints ---
-$ docker exec caloria_backend pytest tests/integration/test_push.py \
-                                     tests/integration/test_reminders.py -q
-36 passed, 2 warnings in 24.92s                                              ✓
-$ grep -n "de_outro_usuario" backend/tests/integration/test_{push,reminders}.py | wc -l
-5      # autorização cruzada, leitura e escrita, nos dois routers            ✓
-$ sed -n '53,57p' backend/tests/integration/test_push.py
-async def test_e_publico_por_desenho(self, anon_client: AsyncClient) -> None:
-    """A chave pública VAPID é pública: o service worker a busca antes do login."""
-    assert (await anon_client.get("/api/v1/push/vapid-public-key")).status_code == 200
+$ docker compose -f docker-compose.dev.yml exec -T backend \
+    sh -c "pytest --cov=app --cov-report=term --cov-fail-under=72 -q"
+TOTAL                                      3244    848    74%
+Required test coverage of 72% reached. Total coverage: 73.86%
+623 passed, 1 skipped, 5 warnings in 122.93s (0:02:02)
 
-# --- o gate de CI: NÃO satisfeito (achado 4.1) ---
-$ git log --format='%h %ad %s' --date=short -1 origin/dev
-da08121 2026-08-02 docs(specs): aplica rework das cinco fases do track a apos avaliacao
-$ git rev-list --count origin/dev..dev
-38
-$ git show origin/dev:.github/workflows/ci.yml | grep -c "cov-fail-under"
-0
-$ grep -n "cov-fail-under" .github/workflows/ci.yml
-98:        run: pytest --cov=app --cov-report=xml --cov-fail-under=72 -q      ← só local
+# o gate no runner do GitHub, conferido pela API — não pelo relatório
+$ gh run view 30837561079 --json headSha,conclusion,workflowName
+{"conclusion":"success",
+ "headSha":"bbbf03a2ba1371b3c5933acf72917eae84b333dd",
+ "workflowName":"CI"}
 
-# --- demais gates do manifest, sobre o HEAD atual ---
-$ docker exec caloria_backend ruff check .          → All checks passed!
-$ docker exec caloria_backend ruff format --check . → 147 files already formatted
-$ docker exec caloria_backend mypy app/ evals/      → Success: no issues found in 81 source files
-$ cd frontend && npm test         → 20 suites, 118/118 passed
-$ cd frontend && npm run lint     → exit 0 (1 Warning pré-existente, Plasma.tsx:156)
-$ cd frontend && npx tsc --noEmit → exit 0
+$ gh run view 30837561079 --log | grep -iE "Required test coverage|passed"
+Backend  Lint — ruff                      All checks passed!
+Backend  Eval — camada rápida (sem rede)  140 passed in 0.76s
+Backend  Testes  Required test coverage of 72% reached. Total coverage: 73.86%
+Backend  Testes  620 passed, 4 skipped, 5 warnings in 60.48s (0:01:00)
+Frontend Testes  Test Suites: 20 passed, 20 total
+Frontend Testes  Tests:       118 passed, 118 total
 
-$ git status --porcelain | wc -l
-0
+# escopo travado: os dois routers e os limiares do golden set não foram tocados
+$ git diff --stat 8660f40..bbbf03a2 -- backend/app/api/v1/push.py \
+    backend/app/api/v1/reminders.py backend/tests/integration/test_golden_set.py
+(vazio)
+
+# origem dos 3 skips extras no CI
+$ grep -n "skipif" backend/tests/smoke_test.py
+47:pytestmark = pytest.mark.skipif(   # exige GROQ_API_KEY real (gsk_)
+$ grep -c "^def test\|^async def test" backend/tests/smoke_test.py
+4
+
+# frontend (DoD global)
+$ cd frontend && npm run lint && npx tsc --noEmit
+(1 warning em components/auth/Plasma.tsx — react-hooks/exhaustive-deps; zero erros)
+TSC_OK
 ```
 
 ## 7. Itens da fase / DoD não atendidos
 
-| Item (§5 / §9 da spec) | Estado |
-|---|---|
-| Passo 1 — cobertura remedida e registrada | Atendido (62% → 74,28% hoje, medido por mim) |
-| Passo 2 — testes de integração dos 12 endpoints + autorização cruzada | Atendido (36 testes; 5 casos cruzados, pedia 1) |
-| Passo 3 — `fail_under` com o medido arredondado para baixo | Atendido (`fail_under = 72`, medido 74,28) |
-| Passo 4 — `continue-on-error` mantido com gate local | Atendido (`ci.yml:98`, `:105`) |
-| AC-9 — o gate falha quando a cobertura cai | Atendido, demonstrado nas duas direções |
-| **Gate — CI verde com o gate ativo** | **NÃO ATENDIDO** — o `ci.yml` do remoto não tem a flag; 38 commits não empurrados (achado 4.1) |
+Nenhum.
+
+- **§9 "B.4 — AC-9; piso de cobertura ativo e CI verde"** — atendido nas duas
+  metades: piso ativo (`fail_under = 72` + `--cov-fail-under=72`) e CI verde com ele
+  no run 30837561079, sobre o próprio `sha_final`.
+- **Passo 1 (remedir, não presumir)** — remedido a cada tentativa; hoje 73,86%,
+  contra os 62% da auditoria de maio.
+- **Passo 2 (12 endpoints + autorização cruzada)** — 26 testes em `test_push.py` e
+  os de `test_reminders.py` cobrem os dois routers, com 5 casos de autorização
+  cruzada onde a fase pedia um.
+- **Passo 3 (piso = medido arredondado para baixo)** — 72 contra 73,86 medido. Piso,
+  não meta, com o histórico das medições comentado no `pyproject.toml`.
+- **Passo 4 (`continue-on-error`)** — mantido, dentro da autorização explícita.
+- **NFR-6** — os 5 testes de `test_golden_set.py` rodam e passam, no container e no
+  CI (não estão entre os skips do runner).
+- **NFR-7** — nenhuma migration tocada.
 
 ## 8. Divergências entre o relatório e o código real
 
-1. **Nenhuma divergência no código.** A correção do `..%` está no arquivo, é de 2 linhas,
-   e o commit `549950c` toca só `backend/pyproject.toml`.
+Nenhuma divergência material. As três afirmações verificáveis da tentativa 3 batem:
 
-2. **O relatório declara o gate de CI como "dependente de um push, que é ação do owner"**
-   (§"Fora do escopo desta correção"). Verdadeiro, mas incompleto: não é só que o push não
-   ocorreu — o `ci.yml` publicado é anterior à flag, e são 38 commits de defasagem, não um.
-   Quem lê o relatório imagina uma pendência de minutos; a medição mostra que o CI está
-   cego para todo o Track C e metade do B desde 2026-08-02.
-
-3. **Números de cobertura divergem entre seções do relatório** (72 / 71,98 / 71,92 / 73,86)
-   e do que medi hoje (74,28). Não é defeito — são medições reais de momentos diferentes,
-   e o relatório explica a subida. Registro para quem comparar as saídas.
+| Afirmação do relatório | Verificação |
+|---|---|
+| run 30837561079, commit bbbf03a, `success` | confere pela API do GitHub — `headSha` idêntico ao `sha_final` |
+| `Required test coverage of 72% reached. Total coverage: 73.86%` | confere no log do job, palavra por palavra |
+| `620 passed, 4 skipped` no CI vs `623 passed, 1 skipped` no container | confere; a causa o relatório declarou não ter investigado — investiguei, é o módulo `smoke_test.py`, e está no §1 |
