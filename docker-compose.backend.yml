@@ -9,8 +9,12 @@
 # servidor sair do ar — a Fase E.1 (2026-08-02) mediu que o host
 # `caloria-gabriel.duckdns.org` não resolve mais nem em DNS.
 #
-# Mantido como referência histórica, sem uso. Marcado para remoção na poda do
-# repositório (Fase D.4). Para subir o projeto, use `docker-compose.yml`.
+# Mantido como referência histórica. Para subir o projeto, use `docker-compose.yml`.
+#
+# ATENÇÃO — ainda referenciado: `.github/workflows/cd.yml:38` sobe ESTE arquivo. O
+# CD está inerte (só `workflow_dispatch`, sem servidor), mas a referência existe.
+# Ordem obrigatória: a Fase E.4 troca a referência para `docker-compose.yml`; só
+# então a Fase D.4 pode remover este arquivo na poda. Remover antes quebra o CD.
 # =============================================================================
 
 services:

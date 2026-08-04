@@ -216,8 +216,15 @@ de um CDN gratuito, e esse preço só se justifica com tráfego que este projeto
 - `docs/deploy.md` vira o **único** guia de deploy; `docs/deploy-checklist.md` foi
   incorporado a ele. Dois documentos descrevendo o mesmo procedimento foi como o host
   errado acabou registrado em quatro lugares.
-- O `cd.yml` do ADR-008 continua válido como desenho, e continua inerte enquanto não
-  houver servidor.
+- O `cd.yml` do ADR-008 continua válido **como desenho de pipeline** (SSH, `concurrency`,
+  migração antes de subir), mas **implementa a topologia aposentada**: seu passo de
+  deploy sobe `docker-compose.backend.yml` (`cd.yml:38`). Trocá-lo por
+  `docker-compose.yml` é trabalho da **Fase E.4**, que já é dona da reativação do
+  gatilho. Enquanto isso ele está inerte — o `push: branches: [main]` segue comentado e
+  só resta `workflow_dispatch`, de modo que nem a promoção da D.2 dispara deploy.
+  **Consequência para a Fase D.4:** o `docker-compose.backend.yml` só pode ser removido
+  na poda **depois** que a E.4 corrigir essa referência; removê-lo antes quebra o CD por
+  um caminho difícil de associar à poda.
 
 ---
 
