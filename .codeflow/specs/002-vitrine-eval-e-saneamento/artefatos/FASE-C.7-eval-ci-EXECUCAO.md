@@ -6,8 +6,8 @@ status: rework
 tentativa: 3
 reprovacoes: 2
 sha_inicial: 40e2941
-sha_final: PENDENTE
-range: 40e2941..PENDENTE
+sha_final: 208d85d
+range: 40e2941..208d85d
 ---
 
 # FASE C.7 — Relatório de execução
