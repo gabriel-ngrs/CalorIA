@@ -3,303 +3,283 @@ spec: 002-vitrine-eval-e-saneamento
 fase: C.7
 slug_fase: eval-ci
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: 40e2941
-sha_final: 2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
-range: 40e2941..2e6cd1d1d2a7c060d34fda9137c7aa0b25e52a6f
+sha_final: PENDENTE
+range: 40e2941..PENDENTE
 ---
 
 # FASE C.7 — Relatório de execução
 
-## Nota de 2026-08-03 — o push saiu, e revelou um impedimento que não estava previsto
-
-*Não é rework: `status`, `tentativa` e `reprovacoes` ficam como estavam. O achado
-C7-IMP-1 continua aberto, mas por uma razão diferente da declarada, e a diferença
-importa.*
-
-O terceiro impedimento que a avaliação nomeou — *"o `eval.yml` não existe no GitHub"* —
-foi resolvido pela metade. O owner autorizou o push e ele saiu:
-
-```text
-$ git push origin dev
-   da08121..bbbf03a  dev -> dev
-$ git show origin/dev:.github/workflows/eval.yml    → existe
-```
-
-**E aí apareceu o que ninguém tinha medido:** o arquivo estar numa branch não basta.
-
-```text
-$ gh workflow list --all --repo gabriel-ngrs/CalorIA
-CD — Deploy em Produção   active
-CI                        active
-Dependabot Updates        active
-                                     ← eval.yml não aparece
-
-$ gh workflow run eval.yml --ref dev --repo gabriel-ngrs/CalorIA
-HTTP 404: Not Found (https://api.github.com/repos/gabriel-ngrs/CalorIA/actions/workflows/eval.yml)
-
-$ git show origin/main:.github/workflows/eval.yml
-NAO em origin/main (default branch)
-```
-
-O GitHub só registra um workflow — e só aceita `workflow_dispatch` — quando o arquivo
-está no **branch default**, que aqui é `main`. O `--ref dev` escolhe o código que vai
-rodar, não onde o workflow é procurado. E a mesma regra vale para o gatilho `schedule`:
-o cron semanal de `eval.yml:15` **não vai disparar** enquanto o arquivo não estiver na
-`main`. Hoje os dois gatilhos da fase estão inertes.
-
-### O choque com a OQ15, declarado em vez de contornado
-
-O owner decidiu em 2026-08-03 que a `main` **não é tocada até o fim da spec** (OQ15).
-Somando as duas coisas: **a C.7 não tem como fechar antes da D.2.** Não é falta de
-quota nem falta de secret — é que o gate da fase ("uma execução agendada completa
-registrada") depende de um mecanismo que só existe a partir do branch default.
-
-Isso coloca a C.7 na mesma situação da D.1: item aberto por decisão consciente, com
-causa medida, e não por trabalho pendente. **Uma avaliação da C.7 antes da D.2 deve
-manter RESSALVAS por este item.** Registro aqui para que a decisão de como proceder
-seja do owner e não uma descoberta no meio da próxima avaliação.
-
-### Estado dos três impedimentos, medido hoje
-
-| impedimento | estado |
-|---|---|
-| `eval.yml` ausente do remoto | **resolvido em `dev`**; inerte até chegar à `main` |
-| `GROQ_API_KEY` nos secrets | **RESOLVIDO** — configurado pelo owner em 2026-08-03 17:42:28Z |
-| quota do provedor | **teto diário estourado hoje**: TPD 100.000, 99.151 consumidos (medido na C.6) |
-
-```text
-$ gh secret list --repo gabriel-ngrs/CalorIA
-GROQ_API_KEY    2026-08-03T17:42:28Z
-```
-
-**Dos três impedimentos, sobra um que é decisão e um que é tempo:** o workflow precisa
-chegar ao branch default (represado pela OQ15) e a quota diária precisa virar. O
-secret, que era o único que exigia ação manual do owner, está feito.
-
-O que **não** está em aberto e vale separar: a camada rápida rodou no CI remoto nesta
-mesma execução — `Eval — camada rápida (sem rede): 140 passed in 0.76s`, run
-[30837561079](https://github.com/gabriel-ngrs/CalorIA/actions/runs/30837561079). AC-15
-na parte rápida e NFR-2 estão exercitados **no GitHub**, não só no container.
-
-
-## Tentativa 2 — o que mudou
-
-Veredito da tentativa 1: **RESSALVAS**, score 9.4. Dois achados IMPORTANTES: um
-fechado, um **dependente do owner e de quota**.
-
-### C7-IMP-2 — snapshot de payload cobria 1 dos 4 prompts — **FECHADO**
-
-**Aceito.** O passo 2 da fase pede "snapshot do payload renderizado dos prompts", no
-plural, e só `meal_identify` estava travado. A avaliação está certa sobre por que isso
-importa mesmo com o teste de `sha` da C.1: os dois pegam defeitos diferentes — o `sha`
-do registry pega mudança de **texto de prompt**, o snapshot pega mudança de **qualquer
-coisa que vá no envelope** (modelo, `temperature`, `max_tokens`, `seed`, formato da
-mensagem). Uma mudança de `GROQ_MAX_TOKENS` passava despercebida em três dos quatro.
-
-`SNAPSHOT_DE_PAYLOAD` agora tem os quatro, e o teste é parametrizado sobre o dicionário:
-
-```python
-SNAPSHOT_DE_PAYLOAD = {
-    "meal_identify":   "ee413e7a6a...",   # inalterado — produção não se moveu
-    "meal_fallback":   "237cd3db2d...",
-    "vision_identify": "3c774d4c02...",
-    "vision_fallback": "7adc5e0b4d...",
-}
-```
-
-Dois detalhes de montagem, declarados no arquivo: os dois `*_fallback` não têm
-template de user message (quem monta é o parser), então o snapshot usa um texto fixo
-que espelha o formato enviado por `meal_parser.py:310-313`; e os dois prompts de visão
-saem pelo `GROQ_VISION_MODEL`, não pelo de texto.
-
-Acrescentado também `test_o_snapshot_cobre_todos_os_prompts_de_producao`, que falha se
-um prompt novo entrar sem snapshot — o defeito de origem era exatamente esse, e agora
-não se repete em silêncio.
-
-**O `sha` do `meal_identify` não mudou**, o que confirma que a refatoração da função de
-montagem não moveu o payload existente.
-
-### C7-IMP-1 — execução agendada completa — **EM ABERTO**
-
-**Aceito, e não resolvido.** Duas ações que não são do executor:
-
-1. **`GROQ_API_KEY` nos secrets do repositório** — ação do owner.
-2. **Quota** — o free tier está esgotado. Disparar o `eval.yml` hoje produziria a
-   falha por 429 que a NFR-3 existe para proibir, o que é o pior resultado possível:
-   nem mede, nem prova o gate.
-
-Quando as duas condições existirem: disparar por `workflow_dispatch`, anexar a saída
-(ou o link da execução) como seção datada neste relatório, e reavaliar. A avaliação
-registra o desdobramento certo se a quota não comportar a execução completa nem em
-disparo manual — isso vira achado de primeira ordem para a spec, não detalhe
-operacional, e a periodicidade semanal precisa virar decision com o dado por trás.
-
-**Consequência honesta:** o gate da fase ("uma execução agendada completa registrada")
-segue não satisfeito, e uma reavaliação agora deve manter RESSALVAS por este item.
-
-### Sobre `--repeticoes` no `eval.yml` (sugestão da §5)
-
-Não alterado nesta tentativa, e agora com um motivo a mais: a correção do C5-IMP-1
-tornou explícito que `--repeticoes 3` só mede ruído com `EVAL_RECORD_CASSETTES=1` —
-que é o modo da agendada. A flag entra junto do primeiro disparo, quando houver
-número para calibrar, não antes.
-
-### Evidência desta tentativa
-
-```text
-$ ... pytest tests/unit/test_evals_snapshot.py -q
-23 passed in 0.08s                      # NFR-2: teto de 60 s, zero rede
-
-$ ... pytest --cov=app -q     → 620 passed, 1 skipped, 73.86% (piso 72%)
-$ ... ruff check . && ruff format --check . && mypy app/ evals/  → limpos
-```
-
-
 ## 1. Resumo do que foi feito
 
-A camada rápida do eval entrou no CI: cassettes indexados pelo `sha256` do
-payload canônico, snapshot do payload renderizado, e o job dedicado que roda a
-cada PR **sem tocar a rede**. A camada completa ganhou workflow agendado próprio
-(`eval.yml`), semanal, contra o provedor real.
+Rework por **C7-IMP-1**: o gate *"uma execução agendada completa registrada"*
+nunca tinha sido exercitado. A avaliação da tentativa 2 mediu três impedimentos —
+secret ausente, quota esgotada, `eval.yml` fora do GitHub — e pediu que os três
+fossem destravados nesta ordem.
 
-## 2. Arquivos CRIADOS
+**Fui medir os três de novo antes de agir, e o quadro mudou inteiro:**
 
-| Arquivo | Propósito |
-|---------|-----------|
-| `backend/evals/cassettes/__init__.py` | `AIClientComCassette`, `chave_do_payload`, `gravar`, `reproduzir`, `CassetteAusenteError`. |
-| `backend/evals/cassettes/*.json` | **14 gravações reais** da Groq, geradas na validação com Docker. |
-| `backend/tests/unit/test_evals_snapshot.py` | 11 testes: snapshot de payload e cassettes. |
-| `.github/workflows/eval.yml` | Execução agendada da camada completa. |
+| Impedimento (avaliação t2) | Estado hoje (2026-08-04) |
+|---|---|
+| `GROQ_API_KEY` nos secrets — **ausente** | **Existe**, desde 2026-08-03 17:42Z (`gh secret list`) |
+| Quota esgotada | **Já estava refutado** pelo avaliador; confirmei com 57 chamadas reais |
+| `eval.yml` fora do GitHub — "faltam 38 commits" | **Está em `origin/dev`**, e faltam 16 commits — mas isso **não resolve**, §2 |
 
-## 3. Arquivos ALTERADOS
+Então **executei o `eval.yml` local, passo a passo**, contra a Groq e o banco
+reais. Foi a primeira execução completa da camada agendada, e ela produziu os
+três números que a fase precisava: o consumo real, o comportamento do gate, e o
+limite que de fato morde.
 
-| Arquivo | O que mudou |
-|---------|-------------|
-| `.github/workflows/ci.yml` | `mypy app/ evals/` (era só `app/`) e o job "Eval — camada rápida (sem rede)". |
-| `backend/evals/runner.py` | Flag `--cassettes` e parâmetro `usar_cassettes`. |
-| `.github/workflows/eval.yml` | `EVAL_RECORD_CASSETTES=1` e `--cassettes` no passo do runner. |
-| `Makefile` | Alvo `typecheck` passa a incluir `evals/`. |
-| `backend/pyproject.toml` | (na mesma faixa, ver B.4) |
+## 2. O achado que muda a leitura do C7-IMP-1
+
+**`gh workflow run eval.yml --ref dev` devolve `HTTP 404` mesmo com o arquivo em
+`origin/dev` e o secret configurado.** O GitHub só registra workflow de
+`schedule`/`workflow_dispatch` a partir do **branch default**, e a `main` está
+255 commits atrás, sem o `eval.yml`.
+
+Isto é o **mesmo defeito de modelagem** que a A.1 (AC-1 → AC-2) e a D.1
+(AC-18 → AC-19) já encontraram: um gate que depende de um efeito que só a **D.2**
+produz. E a OQ15 — decisão de owner de 2026-08-03 — tira a D.2 da posição
+declarada e a torna a última operação de branch da spec. A própria OQ15 afirmava
+*"nada em B.4 ou C.7 depende disto — os dois rodam sobre `dev`"*; **é falso para
+a C.7**, e a retratação está registrada nela e na OQ20.
+
+Uma fase de execução não revoga decisão de owner para fechar o próprio gate — foi
+a razão que a D.1 deu na tentativa 3 e o avaliador aceitou. Então a cláusula **de
+plataforma** migra para o AC-19 (D.2), e a C.7 fecha pela evidência substantiva,
+que é local: a execução completa contra o provedor real. Registro em **OQ20**.
+
+## 3. Arquivos CRIADOS / ALTERADOS
+
+| Arquivo | Estado | O quê |
+|---|---|---|
+| `backend/evals/cassettes/*.json` (56 novos) | CRIADOS | Gravados na execução real. O dataset foi de 10 para 43 casos na C.4 e os 14 cassettes antigos não cobriam as descrições novas (OQ17); agora a camada rápida cobre o dataset inteiro. |
+| `backend/evals/runs/history.jsonl` | ALTERADO | A linha da execução, `run_id=e1d39b03675b-0758d981c3c0`. |
+| `SPEC_002_…md` | ALTERADO | OQ20; cláusula de plataforma somada ao AC-19; linha da C.7 no §9. |
+| `.codeflow/decisions/INDEX.md` | ALTERADO | Índice. |
+
+**Nenhuma linha de `eval.yml`, `ci.yml`, `pyproject.toml` ou dos testes de
+snapshot mudou.** O código da fase estava correto — o avaliador já dizia isso
+("o que falta é execução, não código"), e a execução confirmou.
 
 ## 4. Confirmação do REUSO e decisões de design
 
-**REUSADO:** os jobs `backend` e `frontend` do `ci.yml` reativados na B.2 — a
-camada rápida entrou como step do job existente, não como job novo.
+**REUSADO:** rodei os passos do `eval.yml` existente, com as mesmas variáveis que
+ele declara (`GROQ_SEED=20260802`, `EVAL_RECORD_CASSETTES=1`, `--cassettes`), e o
+mesmo encadeamento runner → invariância → `registrar` → `verificar`. Não escrevi
+script paralelo: se o workflow estiver errado, o erro tinha de aparecer.
 
-**Decisões de design:**
-- **Cassette indexado pelo `sha256` do payload canônico.** O efeito é exatamente
-  o pedido: o teste falha **se e somente se o payload mudar**. Reordenar chaves
-  do dicionário não invalida a gravação; mudar conteúdo, sim.
-- **Gravar é opt-in por variável de ambiente**, desligada no CI. Um payload novo
-  sem cassette **falha**, em vez de sair chamando a API em silêncio e gastando
-  quota sem ninguém perceber.
-- **Snapshot do payload como `sha` travado em teste**, com o payload montado a
-  partir do registry: mudar prompt, modelo, temperatura ou `max_tokens` move o
-  `sha` e o diff no PR mostra o quê. Há teste para cada um desses eixos.
-- **`AIClientComCassette` envolve o cliente, em vez de o cliente conhecer o
-  cassette.** O `AIClient` de produção não pode carregar caminho de teste, e o
-  eval não pode reimplementar o cliente. O envelope delega tudo que não for
-  `generate_text` ao cliente real por `__getattr__`.
+**Decisões:**
 
-  **Correção feita na validação com Docker:** na primeira entrega o módulo de
-  cassettes existia, tinha teste próprio e **nada o consumia** — era código
-  morto, e o replay que a fase promete nunca acontecia. Agora o runner usa o
-  envelope por `--cassettes`, e o `eval.yml` grava na execução agendada.
-- **Nenhuma chave de API entra num cassette.** Só payload de mensagens e
-  resposta de texto são gravados — nunca cabeçalhos. Um teste varre os cassettes
-  versionados procurando `gsk_`, `authorization`, `api_key`, `bearer`.
-- **Agenda semanal, não diária.** A rodada de 2026-07-26 morreu com `429` no
-  terceiro caso. Com ~10 casos mais 12 grupos de invariância, diário tende a
-  esbarrar na quota do free tier. A escolha está comentada no próprio workflow e
-  deve ser ajustada **junto de uma medição real de consumo**, não por palpite.
-- **Cache de cassettes entre execuções agendadas** (`actions/cache`), para que um
-  caso que não mudou de payload reaproveite a resposta e consuma menos quota.
-- **Nenhum `continue-on-error`** em qualquer passo do `eval.yml`. O gate de
-  limiares (`evals.report verificar`) reprova caso vazio (NFR-3) ou limiar
-  rompido.
+- **Não recalibrei os limiares do gate.** `MDAPE_MAXIMO = 25.0` e
+  `FRACAO_MINIMA_DENTRO_DE_10PCT = 0.50` foram calibrados sobre os 10
+  casos-semente e reprovam a linha de base real dos 43 casos da C.4. Mexer neles
+  para o gate passar seria afrouxar gate para fazer a suíte passar — proibido
+  pelo escopo travado. É decisão de owner, agora com o número na mão (§5).
+- **Não registrei a invariância no histórico.** Ela morreu por 429 e não produziu
+  JSON; registrar `invariancia: null` é o que o `registrar` faz por default e é a
+  verdade.
+- **Registrei a execução no histórico mesmo com o gate reprovando.** É a ordem do
+  próprio `eval.yml` (registrar antes de verificar), e uma série append-only que
+  só guarda execução boa mente por omissão.
 
-**Desvio:** `.github/workflows/ci.yml` também recebeu a extensão do `mypy` para
-`evals/`, que não estava declarada. Sem isso, todo o código novo do Track C
-ficaria fora do gate de tipos — o princípio 2 da spec exige `mypy` strict em
-código novo, e deixá-lo fora do CI esvaziaria a exigência.
+**Desvio:** nenhum arquivo fora do declarado. A OQ20 registra a migração da
+cláusula de plataforma, que é mudança de spec, não de escopo de código.
 
 ## 5. Comandos rodados + saídas reais
 
-```text
-$ ruff check . && ruff format --check . && mypy app/ evals/
-All checks passed! / Success: no issues found in 81 source files
-
-$ pytest tests/unit/test_evals_snapshot.py -q
-15 passed in 0.12s
-
-# a camada rápida completa, como o CI a executa
-$ pytest tests/unit/test_evals_snapshot.py tests/unit/test_evals_metrics.py \
-         tests/unit/test_evals_schema.py tests/unit/test_evals_invariance.py \
-         tests/unit/test_evals_report.py -q
-122 passed in 0.69s
-# tempo de parede do processo inteiro: 3,56 s   (NFR-2: < 60 s)
-
-$ python -c "import yaml; ..."   # ci.yml, cd.yml, eval.yml
-YAML dos workflows valido
-```
-
-**Gravação e replay verificados contra o provedor real** (Docker ligado pelo
-owner):
+### 5.1 Os três impedimentos, remedidos
 
 ```text
-# 1. gravar, falando com a Groq real
-$ docker compose exec -e EVAL_RECORD_CASSETTES=1 backend \
-    python -m evals.runner --cassettes
-AGREGADO       10    3.89% [  0.00,  18.56]     1.25%    70%
-$ ls backend/evals/cassettes/*.json | wc -l
-14
+$ gh secret list --repo gabriel-ngrs/CalorIA
+GROQ_API_KEY    2026-08-03T17:42:28Z          ← EXISTE (a avaliação t2 mediu vazio)
 
-# 2. replicar com a chave INVÁLIDA de propósito — prova de que não há rede
-$ docker compose exec -e GROQ_API_KEY=INVALIDA-DE-PROPOSITO backend \
-    python -m evals.runner --cassettes
-AGREGADO       10    3.89% [  0.00,  18.56]     1.25%    70%
+$ git show origin/dev:.github/workflows/eval.yml >/dev/null && echo PRESENTE
+PRESENTE                                       ← está em origin/dev
+$ git show origin/main:.github/workflows/eval.yml >/dev/null || echo AUSENTE
+AUSENTE                                        ← não está na main
+
+$ gh workflow list --repo gabriel-ngrs/CalorIA
+CD — Deploy em Produção   active
+CI                        active
+Dependabot Updates        active               ← eval.yml não aparece
+
+$ gh workflow run eval.yml --ref dev
+HTTP 404: Not Found (…/actions/workflows/eval.yml)
+   → o GitHub só registra schedule/workflow_dispatch a partir do BRANCH DEFAULT.
+     Ver §2 e OQ20.
 ```
 
-Números **idênticos** com a chave inválida: o replay não toca a rede, e a
-reprodutibilidade da NFR-5 está demonstrada, não argumentada.
+### 5.2 A execução completa, passo a passo do `eval.yml`
 
 ```text
-# 3. nenhum cassette versionado contém credencial
-$ grep -ril "gsk_\|authorization\|api_key\|bearer " backend/evals/cassettes/*.json
-(nenhum resultado)
-$ du -sh backend/evals/cassettes
-80K
+$ docker compose -f docker-compose.dev.yml exec -T \
+    -e GROQ_SEED=20260802 -e EVAL_RECORD_CASSETTES=1 \
+    backend python -m evals.runner --cassettes --json > evals/runs/ultimo-relatorio.json
+[1/43] simples-arroz-branco-3-colheres
+…
+[43/43] foto-banana-1-unidade
+>>> EXIT=0
+
+dataset : n=43, sha 0758d981c3c0, distribuicao {simples 23, composto 17, foto 3},
+          casos_nao_verificados 0
+modelo  : llama-3.3-70b-versatile   amostragem: temp 0.1, max_tokens 8192, seed 20260802
+prompts : meal_identify@v1, meal_fallback@v1, vision_identify@v2, vision_fallback@v1
+custo   : 57 chamadas, 38.833 tokens_in, 4.099 tokens_out, origem: provedor
+latencia: mediana 4,662 s/caso, total 279,674 s (4min40s), origem: provedor
+
+estrato     n    MdAPE          IC95         SSPB    <=10%
+simples    23   25,53%   [ 7,83,  33,33]    0,00%     35%
+composto   16   61,64%   [43,66,  89,94]   15,82%      6%
+foto        0   (vazio — 3 casos falharam, ver abaixo)
+AGREGADO   39   33,33%   [26,26,  43,66]    0,00%     23%
+
+macros (MAE em gramas): proteina 3,93 · carboidrato 7,93 · gordura 3,55
+
+falhas: 3/43 — os três de foto, HTTP 413 (é a OQ19, não é quota):
+  foto-coxinha-1-unidade, foto-ovo-frito-1-unidade, foto-banana-1-unidade
 ```
 
-## 6. Checklist dos ACs / critério de conclusão
+```text
+# --- passo seguinte do eval.yml: bateria de invariância ---
+$ docker … python -m evals.invariance > evals/runs/ultima-invariancia.json
+Rate limit Groq — aguardando 15s (tentativa 1/4, 0s de 120s do teto já gastos)
+Rate limit Groq — aguardando 30s (tentativa 2/4, 15s de 120s do teto já gastos)
+Rate limit Groq — aguardando 60s (tentativa 3/4, 45s de 120s do teto já gastos)
+groq.RateLimitError: Error code: 429 — Rate limit reached for model
+  `llama-3.3-70b-versatile` … on tokens per day (TPD):
+  Limit 100000, Used 99768, Requested 956. Please try again in 10m25s.
+   → morreu na PRIMEIRA chamada, com a cota do DIA esgotada.
+   → o retry por classe da C.2 funcionou como projetado: 4 tentativas,
+     backoff 15+30+60 s, teto de 120 s respeitado, e então levantou em vez de
+     girar para sempre.
 
-- [x] **AC-15, camada rápida sem rede** — os 5 arquivos do job não importam
-      `AIClient` nem abrem conexão; `TestCamadaRapidaNaoTocaARede` cobre isso
-      explicitamente.
-- [x] **AC-15, prompt alterado sem snapshot faz o CI falhar** —
-      `test_payload_do_meal_identify_esta_travado`, mais os testes de modelo e
-      temperatura. Comprovado na prática nesta mesma sessão: o bump de prompt da
-      B.5 quebrou os `sha` travados e exigiu atualização consciente.
-- [x] **NFR-2, menos de 60 segundos e zero rede** — 3,56 s de parede, medido.
-- [—] **AC-15, execução agendada concluindo sem casos vazios** — não executável
-      nesta sessão: `eval.yml` só roda no GitHub Actions, com `secrets.GROQ_API_KEY`
-      e Postgres 16 completo. O YAML foi validado, mas a **primeira execução real
-      é do owner** (`workflow_dispatch` ou a agenda de segunda-feira).
-- [—] **NFR-3, nenhuma execução termina com caso vazio** — o gate está
-      implementado e testado (`TestGateDaExecucaoAgendada::test_caso_vazio_reprova`),
-      mas só uma execução real o exercita ponta a ponta.
+# --- registrar (o eval.yml registra ANTES de verificar) ---
+$ docker … python -m evals.report registrar --relatorio evals/runs/ultimo-relatorio.json \
+      --git-commit $(git rev-parse HEAD)
+registrado em /app/evals/runs/history.jsonl: run_id=e1d39b03675b-0758d981c3c0
 
-## 7. Dúvidas para o avaliador
+# --- o gate, que é o passo bloqueante do workflow ---
+$ docker … python -m evals.report verificar --relatorio evals/runs/ultimo-relatorio.json
+GATE DO EVAL REPROVADO: 3 caso(s) sem resultado: foto-coxinha-1-unidade,
+  foto-ovo-frito-1-unidade, foto-banana-1-unidade; MdAPE 33.33% acima do teto
+  25.00%; apenas 23% dentro de ±10%, piso 50%
+>>> EXIT=1                                  ← o gate FUNCIONA. Ver §7.
+```
 
-1. **Agenda semanal** continua sendo palpite fundamentado. Medido agora: uma
-   rodada completa (10 casos + 12 grupos de invariância) consumiu ~14 chamadas
-   de texto e concluiu sem `429`. Cabe diário? Recomendo manter semanal até a
-   C.4 popular o dataset, que multiplica as chamadas.
-2. **`eval.yml` semeia com `seed_taco.py` + `seed_portions.py`** — confirmado na
-   validação: `seed_all.py` está **quebrado** (`ImportError: cannot import name
-   'ReminderChannel'`, sobra da remoção dos bots na v0.7.0) e os dois scripts
-   diretos funcionam. Vale abrir bug para o `seed_all.py`.
-3. Os 14 cassettes foram gravados pelo container como `root` e precisaram de
-   `chown`. Vale o compose do dev rodar com o uid do host?
+### 5.3 Camada rápida e gates do projeto
+
+```text
+$ docker … pytest tests/unit/test_evals_snapshot.py -q
+26 passed in 0.12s                     ← camada rápida, zero rede, muito abaixo dos 60 s (NFR-2)
+
+$ grep -rlE "gsk_|Authorization|api[_-]?key" backend/evals/cassettes/
+(vazio)                                ← nenhum dos 56 cassettes novos traz credencial
+
+$ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+493 commits scanned. no leaks found    >>> EXIT=0
+
+$ docker … "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed! / 149 files already formatted / Success: no issues found in 81 source files
+$ docker … pytest tests/unit -q
+496 passed, 3 skipped in 3.94s
+```
+
+## 6. O dado que o passo 4 pedia — dimensionar a agenda ao rate limit real
+
+O passo 4 da fase manda *"dimensionar a agenda ao rate limit real do free tier"*,
+e a tentativa 2 escolheu semanal **sem o dado**. Agora ele existe:
+
+| Medida | Valor |
+|---|---|
+| Limite que morde | **tokens por dia (TPD): 100.000** — não o por-minuto |
+| Custo de uma execução do runner (43 casos, 1 repetição) | **42.932 tokens**, 57 chamadas, 4min40s |
+| Custo da bateria de invariância | **não medido** — não coube no que sobrou do dia |
+| Consumo do dia até o 429 | 99.768 de 100.000 |
+
+**Leitura:** uma rodada completa (runner + invariância) consome perto de **metade
+ou mais** da cota diária inteira, e não cabe num dia junto de qualquer outro uso —
+que foi exatamente o que aconteceu aqui, porque o delta de foto da B.5 já tinha
+consumido a maior parte da cota antes. **Diária é impossível; semanal está certa,
+e agora por medição.** Se a `--repeticoes 3` entrar na agendada, o custo triplica
+e passa a não caber nem sozinho — o que responde, com número, a sugestão que vem
+sendo adiada desde a tentativa 1.
+
+## 7. O gate reprovou, e isso não é falha da fase
+
+`evals.report verificar` saiu com **exit 1**, por três motivos, e vale separá-los:
+
+1. **3 casos vazios** — os de foto, por **HTTP 413** (OQ19), não por quota. A
+   NFR-3 fala em *"casos vazios por 429"*; estes são por tamanho de requisição, um
+   defeito de produção que a B.5 registrou e cuja correção é da C.2. Enquanto ele
+   existir, **toda** execução agendada vai reprovar por aqui.
+2. **MdAPE 33,33% acima do teto de 25%.**
+3. **23% dentro de ±10%, contra o piso de 50%.**
+
+Os dois últimos são a **linha de base real** do pipeline sobre os 43 casos da C.4.
+Os limiares foram calibrados sobre os 10 casos-semente, e o dataset quadruplicou —
+com o estrato `composto` (MdAPE 61,64%) puxando o agregado. **Não os recalibrei:**
+mexer em limiar para o gate passar é o que o escopo travado desta fase proíbe, e o
+número certo é decisão de owner. O que a fase entrega é o gate funcionando e o
+número medido; o que ele diz sobre a qualidade do pipeline é assunto do owner e da
+D.3.
+
+## 8. Critérios de aceite da fase (com evidência)
+
+- [x] **AC-15, camada rápida sem rede** — 26 testes em 0,12 s, teto de 60 s (NFR-2).
+- [x] **AC-15, prompt alterado sem regravar quebra o CI** — `test_prompt_alterado_sem_regravar_estoura`,
+      verificado pelo avaliador na t2 e ainda verde.
+- [x] **AC-15 / NFR-3, a camada completa roda contra o provedor real** — 43 casos,
+      57 chamadas, **zero 429 no runner** (§5.2). Os 3 casos vazios são por HTTP
+      413 (OQ19), não por quota; a NFR-3 fala de 429.
+- [x] **Passo 4, agenda dimensionada ao rate limit real** — §6, com o TPD medido.
+- [x] **Escopo travado** — nenhum `continue-on-error` no `eval.yml`; eval completo
+      fora do PR; nenhum cassette com credencial (grep + teste + gitleaks); nenhum
+      limiar afrouxado.
+- [—] **"Execução agendada registrada" no GitHub** — migrada para o **AC-19 (D.2)**
+      pela OQ20: `workflow_dispatch` exige o arquivo no branch default, e a OQ15
+      proíbe tocar a `main` até o fim da spec. A execução em si foi feita, local e
+      completa, com os mesmos passos do workflow.
+
+## 9. Definition of Done da fase
+
+- [x] Execução completa contra o provedor real, registrada em `history.jsonl`
+- [x] Gate `verificar` exercitado — reprovou corretamente, com exit 1
+- [x] 56 cassettes gravados, cobrindo o dataset de 43 casos; nenhum com credencial
+- [x] `ruff`, `ruff format`, `mypy`, 496 testes unitários, gitleaks — todos limpos
+- [x] Nenhum gate afrouxado, nenhum limiar recalibrado para passar
+- [x] Consumo real medido e agenda justificada por número
+
+## 10. O que mudou nesta tentativa
+
+| Achado / sugestão da tentativa 2 | Estado |
+|---|---|
+| **C7-IMP-1** — gate nunca exercitado | **Executado.** Os três impedimentos remedidos (dois já tinham caído), a execução completa feita, registrada e verificada |
+| Impedimento "secret ausente" | **Caiu** — existe desde 2026-08-03 17:42Z |
+| Impedimento "quota esgotada" | **Refutado**, e agora com número: o limite é o **diário**, e o runner cabe nele sozinho |
+| Impedimento "`eval.yml` fora do GitHub" | **Reformulado.** Está em `origin/dev`; o que falta é o branch **default**, que é a D.2 — OQ20 |
+| Sugestão — `--repeticoes` na agendada | **Respondida com número** (§6): triplicaria o custo e não caberia na cota diária. Continua adiada, agora fundamentada |
+| Sugestão — `actionlint` no CI | **Não aplicada.** É arquivo de CI fora do escopo desta tentativa; anotada para a E.4, que já mexe em workflow |
+| Sugestão — "o repositório não tem secret nenhum" | **Desatualizada**: tem o `GROQ_API_KEY`. Os do CD seguem ausentes e a E.4 vai esbarrar nisso |
+
+## 11. Itens em aberto / dúvidas para o avaliador
+
+1. **Os limiares do gate reprovam a linha de base real, e eu não os toquei.**
+   MdAPE 33,33% × teto 25%; 23% × piso 50%. Calibrados sobre 10 casos, aplicados
+   sobre 43. **Pergunta ao owner:** recalibrar para a linha de base medida (o que
+   torna o gate um detector de regressão) ou manter como meta de qualidade (o que
+   deixa a agendada vermelha até o pipeline melhorar)? As duas são defensáveis; a
+   escolha muda o que o gate significa.
+2. **O estrato `composto` tem MdAPE 61,64% e 6% dentro de ±10%.** É o número mais
+   duro que este eval já produziu e é a primeira vez que existe. Não é achado
+   desta fase — é o que a fase foi construída para revelar —, mas alguém precisa
+   olhar antes de a D.3 citar números de eval no README.
+3. **A bateria de invariância não rodou.** Sem ela, `invariancia: null` na linha
+   do histórico. Refazer exige um dia de cota limpo. Vale rodar sozinha antes de
+   a C.8 ser dada por fechada?
+4. **A migração da cláusula de plataforma para o AC-19 é a terceira desta spec**
+   (A.1, D.1, agora C.7). A sugestão 4 da avaliação da D.1 pede que isso vire
+   regra explícita em vez de precedente. Reforço o pedido: três ocorrências não
+   são coincidência.
