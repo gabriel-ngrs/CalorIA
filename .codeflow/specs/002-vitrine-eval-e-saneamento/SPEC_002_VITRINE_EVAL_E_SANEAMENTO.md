@@ -376,11 +376,19 @@ Cada princípio rastreia a uma regra real do repositório.
   visão não contém mais as regras de decomposição obrigatória e de gramas
   obrigatórias.
 - **AC-18** (FR-D1) — *Dado* o repositório, *quando* se consulta a API do GitHub,
-  *então* há licença MIT detectada, description e topics não vazios; e a versão é a
-  mesma em CHANGELOG, `pyproject.toml`, `main.py` e `package.json`.
+  *então* description e topics não vazios; *e* o arquivo `LICENSE` (MIT) está
+  versionado na branch de trabalho; e a versão é a mesma em CHANGELOG,
+  `pyproject.toml`, `main.py` e `package.json`.
+  > **Nota (2026-08-03).** A cláusula "licença **detectada** pela API" migrou para
+  > o AC-19. O GitHub deriva `licenseInfo` do **branch default**, então nenhuma
+  > ação dentro do escopo da D.1 a satisfaz: ela depende da promoção da D.2, que a
+  > OQ15 moveu para o fim da spec. É o mesmo defeito de modelagem já corrigido na
+  > Fase A.1, quando a cláusula sobre o HEAD das branches remotas migrou do AC-1
+  > para o AC-2. Ver OQ18.
 - **AC-19** (FR-D2) — *Dado* `origin/main`, *quando* se compara com `origin/dev`,
   *então* não há commits de `dev` ausentes em `main`, e existe tag anotada com
-  release publicada.
+  release publicada; *e* a API do GitHub passa a reportar a licença MIT detectada
+  (`licenseInfo` não nulo), que só o avanço do branch default produz.
 - **AC-20** (FR-D3) — *Dado* o README, *quando* lido por alguém que não conhece o
   projeto, *então* ele traz comando único de execução que funciona, portas corretas,
   link da demo com credenciais de demonstração, diagrama Mermaid renderizável e
@@ -1612,6 +1620,21 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   descrições novas até a próxima gravação.
   Ver `.codeflow/decisions/2026-08-03-dataset-c4-fontes-e-arquivos-alem-do-declarado.md`.
 
+- **OQ18 — AC-18 exigia da D.1 um efeito que só a D.2 produz.**
+  **RESOLVIDO (2026-08-03).** A cláusula "licença MIT **detectada** pela API"
+  migrou do AC-18 para o **AC-19**. Medido: `licenseInfo: null`, porque o GitHub
+  deriva a licença do **branch default** e a `main` parou em 2026-04-29 — o
+  `LICENSE` está criado e correto na `dev`. Até a OQ15 isso era espera curta; com
+  a D.2 movida para o fim da spec, virou uma cláusula que a D.1 não pode fechar,
+  consumindo tentativas do teto do §2.11.4 por um motivo que não é defeito de
+  execução. O AC-18 fica com o que a D.1 controla (description, topics, `LICENSE`
+  versionado, versão sincronizada) e o AC-19 ganha a verificação de
+  `licenseInfo`. **Mesmo defeito de modelagem já corrigido na A.1**, quando a
+  cláusula do HEAD remoto migrou do AC-1 para o AC-2. A alternativa recomendada
+  pelo avaliador — executar a D.2 agora — foi descartada por contrariar a OQ15,
+  que é decisão de owner vigente.
+  Ver `.codeflow/decisions/2026-08-03-licenca-detectada-migra-do-ac18-para-o-ac19.md`.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1642,9 +1665,11 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
       achado.
 - [ ] **C.7** — AC-15, NFR-2, NFR-3; execução agendada completa sem casos vazios.
 - [ ] **C.8** — AC-16; histórico com ao menos duas execuções reais.
-- [ ] **D.1** — AC-18.
-- [ ] **D.2** — AC-19; proteção de `main` configurada. *(Executada por último, por
-      decisão do owner — OQ15.)*
+- [ ] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
+      sincronizada). A detecção de licença pela API migrou para o AC-19, que é
+      da D.2 — ver OQ18.
+- [ ] **D.2** — AC-19 (incl. licença detectada pela API); proteção de `main`
+      configurada. *(Executada por último, por decisão do owner — OQ15.)*
 - [ ] **D.3** — AC-20; execução limpa a partir do README validada.
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
 - [ ] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
