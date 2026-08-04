@@ -112,9 +112,9 @@ class TestCarregamentoDoArquivo:
             assert caso.fonte_referencia
             assert caso.fonte_url
 
-    def test_semente_e_honesta_sobre_nao_ter_sido_verificada(self) -> None:
-        """A C.3 não confere números na publicação — a C.4 confere."""
-        assert all(not c.verificada for c in carregar_casos())
+    def test_todo_caso_foi_conferido_na_publicacao(self) -> None:
+        """A C.3 não conferia números na publicação; a C.4 conferiu todos."""
+        assert all(c.verificada for c in carregar_casos())
 
     def test_id_duplicado_reprova(self, tmp_path: Path) -> None:
         linha = CasoEval.model_validate(_CASO_MINIMO).model_dump_json()
@@ -151,8 +151,18 @@ class TestIdentidadeDoDataset:
 
 
 class TestDistribuicao:
-    def test_reporta_os_tres_estratos_mesmo_vazios(self) -> None:
+    def test_reporta_os_tres_estratos_mesmo_vazios(self, tmp_path: Path) -> None:
         """Um estrato vazio tem de aparecer como zero, não sumir do relatório."""
-        distribuicao = distribuicao_por_estrato(carregar_casos())
+        arquivo = tmp_path / "casos.jsonl"
+        arquivo.write_text(
+            CasoEval.model_validate(_CASO_MINIMO).model_dump_json() + "\n",
+            encoding="utf-8",
+        )
+        distribuicao = distribuicao_por_estrato(carregar_casos(arquivo))
         assert set(distribuicao) == {"simples", "composto", "foto"}
         assert distribuicao["foto"] == 0
+
+    def test_dataset_versionado_cobre_os_tres_estratos(self) -> None:
+        """Depois da C.4 nenhum estrato pode estar vazio (FR-C3)."""
+        distribuicao = distribuicao_por_estrato(carregar_casos())
+        assert all(quantidade > 0 for quantidade in distribuicao.values())

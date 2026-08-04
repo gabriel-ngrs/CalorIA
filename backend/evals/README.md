@@ -20,7 +20,8 @@ e no agregado, contra referências de fonte externa citável.
 - **Preferência ou utilidade percebida.** Não há juiz de qualidade de texto aqui.
 - **Latência e custo como critério de aprovação.** São registrados no histórico
   (`runs/history.jsonl`), não usados como gate.
-- **O comportamento com foto**, enquanto o estrato `foto` estiver vazio (ver
+- **O comportamento com foto.** O estrato `foto` existe desde a C.4, mas o runner
+  de texto não o executa — quem mede o caminho de imagem é a fase B.5 (ver
   "Estado do dataset").
 
 Esta seção segue o padrão de honestidade estabelecido por
@@ -60,31 +61,86 @@ foi medido, então não muda o `sha`.
 
 ## Estado do dataset
 
-**Semente, não conjunto de avaliação.** Os 10 casos de `dataset/casos.jsonl`
-existem para exercitar o runner e nascem todos com `verificada: false`: os
-valores vieram da TACO 4ª edição mas **não** foram conferidos linha a linha
-contra a publicação.
+**Populado na fase C.4 (2026-08-03).** `dataset/casos.jsonl` tem **43 casos**,
+todos com `verificada: true` — cada número foi conferido contra a linha real da
+publicação citada.
 
-**OQ2 resolvida em 2026-08-02:** o ground truth é **IBGE POF 2011** (*Tabela de
-Medidas Referidas para os Alimentos Consumidos no Brasil*, medida caseira →
-gramas) combinado com **TACO 4ª edição** (gramas → kcal e macros). Duas fontes
-independentes entre si e independentes do projeto, ambas citáveis por terceiro e
-nenhuma derivada da tabela `portions` daqui.
+| Estrato | `n` | O que cobre |
+|---|---|---|
+| `simples` | 23 | alimento único em medida caseira (concha, colher de servir, unidade, fatia, copo) |
+| `composto` | 17 | prato pronto que a fonte curada tem inteiro (feijoada, estrogonofe, pizza, baião de dois, yakisoba, …) |
+| `foto` | 3 | imagem de item contável, com licença conferida |
 
-**Limitação a declarar em qualquer número que saia deste harness:** a TACO mede
-alimentos preparados em condição padronizada de laboratório e a POF reporta
-medidas *referidas* por entrevistados. Nenhuma das duas descreve a refeição
-específica de um usuário — a métrica compara o pipeline contra uma referência
-**populacional**, não contra a verdade de um prato individual. Esse é o teto de
-precisão do eval.
+**As duas fontes (OQ2, resolvida em 2026-08-02):**
 
-A fase **C.4** está **desbloqueada**. Enquanto ela não roda:
+| Papel | Publicação |
+|---|---|
+| medida caseira → gramas | IBGE, POF 2008-2009, *Tabela de Medidas Referidas para os Alimentos Consumidos no Brasil* (2011) — [liv50000.pdf](https://biblioteca.ibge.gov.br/visualizacao/livros/liv50000.pdf) |
+| gramas → kcal e macros | TACO 4ª edição (NEPA/UNICAMP, 2011) — [nepa.unicamp.br/taco](https://www.nepa.unicamp.br/taco/) |
+| gramas → kcal e macros, **só onde a TACO não cobre o item** | IBGE, POF 2008-2009, *Tabelas de Composição Nutricional dos Alimentos Consumidos no Brasil* (2011) — [liv50002.pdf](https://biblioteca.ibge.gov.br/visualizacao/livros/liv50002.pdf) |
 
-- nenhum número deste harness sustenta afirmação pública de qualidade;
-- o estrato `foto` está vazio — depende da OQ2 e de imagens com licença
-  verificada;
-- `distribuicao_por_estrato()` reporta a composição real a cada execução, para
-  que um relatório nunca esconda um estrato vazio.
+Duas fontes independentes entre si e independentes do projeto, citáveis por
+terceiro, e nenhuma derivada da tabela de porções daqui. A terceira entra em dois
+casos (pizza de calabresa e leite integral): a TACO não tem pizza, e a linha de
+leite integral da TACO vem sem valores (`*`).
+
+**Como auditar um caso sem confiar no projeto.** O campo `notas` de cada caso traz
+o alimento e a **página** em cada publicação, mais a conta de gramas. Exemplo:
+
+```
+TACO 4a ed., alimento no 3 (Arroz, tipo 1, cozido), p. 29: 128 kcal/100 g;
+medida: IBGE POF 2008-2009, Tabela de Medidas Referidas, p. 35 (45 g x 3 = 135 g)
+```
+
+`fonte_url` aponta para a publicação da **composição** (de onde vem o kcal/100 g),
+porque o schema carrega uma URL por caso; a publicação da medida está em `notas`.
+
+### Limitações — o teto de precisão deste dataset
+
+1. **A referência é populacional, não individual.** A TACO mede alimentos
+   preparados em condição padronizada de laboratório e a POF reporta medidas
+   *referidas* por entrevistados. Nenhuma das duas descreve a refeição específica
+   de um usuário. Um erro medido aqui é erro contra a média, não contra a verdade
+   do prato.
+2. **A porção é a medida padrão, não a porção servida.** "Uma concha de feijão"
+   vale 140 g na POF; a concha de quem escreveu a frase pode ter 100 g ou 180 g.
+   Essa variação entra na métrica como se fosse erro do pipeline.
+3. **Fruta com casca.** Para itens em que a POF dá a unidade inteira (laranja,
+   180 g) e a TACO reporta por 100 g de **parte comestível**, a base de massa das
+   duas fontes não é exatamente a mesma. Os casos afetados dizem isso em `notas`.
+4. **As duas fontes discordam entre si onde as duas cobrem.** Feijoada é 117
+   kcal/100 g na TACO e 181,59 na POF — receitas diferentes. A regra adotada é
+   fixa: TACO quando a TACO cobre; POF só onde não cobre. Trocar a regra move a
+   métrica sem que o pipeline tenha mudado.
+5. **O estrato `foto` é o mais frágil e o menor (`n = 3`).** A referência é
+   `unidades contadas na imagem × medida padrão da POF`; a massa do item
+   fotografado não é conhecida. É um piso de erro irredutível, e um `n` desse
+   tamanho sustenta descrição, não comparação (ver "Poder estatístico").
+6. **Casos perdidos por falta de fonte.** A semente da C.3 tinha "lasanha de
+   carne ao forno" a 168 kcal/100 g sem fonte externa: a TACO só traz a massa
+   fresca cozida e a POF traz "lasanha pronta light", que é outro produto. O caso
+   foi **removido** em vez de mantido com número não auditável.
+
+### Imagens do estrato `foto`
+
+Baixadas do Wikimedia Commons, licença conferida via API antes de versionar,
+nenhuma com pessoa identificável. Atribuição:
+
+| Arquivo | Origem | Licença | Autor |
+|---|---|---|---|
+| `dataset/imagens/coxinha-1-unidade.jpg` | [File:Coxinha.jpg](https://commons.wikimedia.org/wiki/File:Coxinha.jpg) | domínio público | Tom B |
+| `dataset/imagens/ovo-frito-1-unidade.jpg` | [File:Ovo frito da Padaria Nova Arcoverde…](https://commons.wikimedia.org/wiki/File:Ovo_frito_da_Padaria_Nova_Arcoverde_em_Pinheiros,_S%C3%A3o_Paulo,_Brasil.jpg) | CC BY 4.0 | Mtvdanilo |
+| `dataset/imagens/banana-1-unidade.jpg` | [File:Liat Portal for Foodie Disorder - A Single Banana.jpg](https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_A_Single_Banana.jpg) | CC BY-SA 4.0 | HaJunkiyada |
+
+O runner ignora o estrato `foto` (`runner.py`): o caminho de imagem entra na fase
+B.5, que é quem mede o `VisionParser`.
+
+### Consumo de quota
+
+O dataset saiu de 10 para 43 casos, dos quais 40 são executáveis pelo runner de
+texto — cerca de **4× mais chamadas** por execução completa do que a camada
+agendada media antes. `distribuicao_por_estrato()` continua reportando a
+composição real a cada execução, para que nenhum relatório esconda um estrato.
 
 ## Escolha das métricas
 
@@ -189,7 +245,8 @@ evals/
 ├── __init__.py
 ├── schema.py                       # contrato do caso (C.3)
 ├── dataset/
-│   ├── casos.jsonl                 # casos-semente (C.3) → populado na C.4
+│   ├── casos.jsonl                 # 43 casos com ground truth externo (C.4)
+│   ├── imagens/                    # estrato `foto`, licença conferida (C.4)
 │   └── grupos_invariancia.jsonl    # relações metamórficas (C.6)
 ├── metrics.py                      # funções puras: MdAPE, SSPB, MAE, IC95 (C.5)
 ├── runner.py                       # executa o pipeline por caso e agrega (C.5)

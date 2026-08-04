@@ -220,16 +220,18 @@ class TestAgregacaoDoRunner:
         relatorio = montar_relatorio(casos, resultados)
 
         assert set(relatorio["por_estrato"]) == {"simples", "composto", "foto"}
-        assert relatorio["por_estrato"]["foto"]["n"] == 0
+        for estrato in ("simples", "composto", "foto"):
+            assert relatorio["por_estrato"][estrato]["n"] > 0
         assert relatorio["dataset"]["sha"]
-        assert relatorio["dataset"]["casos_nao_verificados"] == len(casos)
+        assert relatorio["dataset"]["casos_nao_verificados"] == 0
         assert relatorio["prompts"]["meal_identify"]["sha"]
         assert relatorio["agregado"]["mdape"] == pytest.approx(10.0)
 
     def test_relatorio_em_texto_mostra_estrato_vazio(self) -> None:
+        """Estrato sem resultado aparece como vazio em vez de sumir do relatório."""
         from evals.runner import formatar_texto
 
-        casos = carregar_casos()
+        casos = [c for c in carregar_casos() if c.estrato.value != "foto"]
         resultados = [
             _resultado(c.id, c.estrato.value, c.referencia_kcal, c.referencia_kcal)
             for c in casos
