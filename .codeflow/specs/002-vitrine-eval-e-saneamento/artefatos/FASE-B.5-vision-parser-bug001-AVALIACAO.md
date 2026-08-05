@@ -2,54 +2,60 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: B.5
 slug_fase: vision-parser-bug001
-tentativa: 2
-veredito: RESSALVAS
-score: 9.7
+tentativa: 3
+veredito: APROVADO
+score: 9.8
 threshold: 8.5
-range_avaliado: 36d68cc..b8001c3
+range_avaliado: 36d68cc..3655892
 ---
 
 # FASE B.5 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.7 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.8 / threshold 8.5 — zero BLOQUEANTES, zero
+IMPORTANTES.
 
-**O achado que segurava a fase caiu, e caiu por medição.** O B5-IMP-1 da tentativa 1
-era "o delta do estrato de foto não existe". Agora existe: o runner executa o
-estrato de foto pelo `VisionParser` de produção, e o delta v1→v2 está no relatório
-com quatro execuções contra o provedor real. Verifiquei o código linha a linha, os
-testes rodam verdes aqui, e o escopo travado foi respeitado — `vision_parser.py`,
-`meal_parser.py` e os limiares de 2026-07-26 não têm uma linha alterada nesta
-tentativa (`git show b8001c3 --stat`: só `runner.py` e o arquivo de teste novo).
+**O B5-IMP-2 está fechado, e fechado melhor do que eu havia pedido.** Eu sugeri
+descrever o estado atual; o rework fez isso **e** recusou a saída fácil de apagar o
+bullet. A recusa está certa e vale registrar: o item continua na lista *"o que este
+eval NÃO mede"*, com o sujeito corrigido — o que o harness não mede hoje não é "o
+caminho de foto", é **"o caminho de foto na configuração de produção"**, porque lá
+ele estoura em 413. Apagar o bullet teria trocado uma afirmação falsa por uma
+omissão igualmente enganosa, e o rework enxergou isso sozinho.
 
-**A conclusão do delta é honesta e eu a endosso:** MdAPE 52,17% e SSPB +52,17% nas
-quatro execuções, IC95 sobrepostos, `n = 3`. Não há delta separável do ruído, e o
-relatório diz isso em vez de vender melhora. É o desfecho que a própria §5 da spec
-previa ("ou, se não melhorar, o achado é registrado com os números").
+**A varredura de classe que a avaliação pediu foi feita e eu a refiz.**
+`grep -n "ignora\|não executa\|entra na fase"` sobre `backend/evals/README.md`
+volta vazio. As duas menções restantes a B.5 em código e doc estão corretas:
+`README.md:24` ("o runner **executa** o estrato `foto` desde a B.5") e
+`runner.py:222` ("é o que a B.5 corrigiu"), ambas no tempo verbal certo. As
+ocorrências em `docs/auditoria/` são numeração de seção (`## B.5 Pydantic`,
+`### B.5 Type checking strict`), sem relação — confirmei uma a uma.
 
-**O que impede o APROVADO é um efeito colateral desta tentativa:** o README do
-harness (`backend/evals/README.md`), que é a peça onde a C.3 declara o que o eval
-mede e o que **não** mede, ficou factualmente falso em dois pontos ao afirmar que o
-runner não executa o estrato de foto — exatamente o que esta fase mudou. É a mesma
-classe de defeito que custou quatro tentativas à D.1 (documento contradizendo o
-estado real), e por isso não a trato como cosmética.
+**O diff desta tentativa é exatamente o que deveria ser:** dois arquivos, um deles o
+próprio relatório. Nenhuma linha de código, nenhuma ampliação oportunista. `ruff`,
+`ruff format`, `mypy app/ evals/` e os 496 testes unitários seguem verdes, rodados
+por mim.
+
+Com isto, o gate da fase está inteiro: AC-17 verificado desde a tentativa 1, delta
+do estrato de foto medido com números na tentativa 2, e a documentação coerente com
+o que o código faz na tentativa 3.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4 | Gate "delta registrado com números" atendido (EXECUCAO §5.1). Escopo travado intacto: `git show b8001c3 --stat` toca só `backend/evals/runner.py` e `backend/tests/unit/test_evals_runner_foto.py`. Desconto: `backend/evals/README.md:23-25,135` ficou falso (§4) |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | `runner.py:196-213` `versao_de_visao()` troca e restaura `_IDENTIFY_PROMPT` sem tocar `VERSOES_EM_PRODUCAO` — medir não exige promover; `runner.py:216-231` `identificar()` roteia por estrato |
-| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | `gitleaks detect --config .gitleaks.toml` → 496 commits, no leaks (§6). Relatórios de eval carregam só contagem de tokens; nenhuma imagem ou PII nova |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | `runner.py:229` chama o `VisionParser` de produção (`foto._identify_foods`), não uma reimplementação; o padrão global-e-restaurado espelha `instrumentar_lookup`, no mesmo arquivo |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | Identificadores em pt-BR, como o princípio 8 da spec fixou para `backend/evals/`; `_prompts_usados()` lê do módulo (`runner.py:452-469`) para não atribuir resultado da v1 ao `sha` da v2 |
-| 6 | Local e nomes dos arquivos | 2 | 5 | Teste em `backend/tests/unit/test_evals_runner_foto.py`, junto dos demais `test_evals_*`; nomes de teste descrevem comportamento, não implementação |
-| 7 | Qualidade de código | 2 | 5 | `ruff check` + `ruff format --check` + `mypy app/ evals/` limpos (§6); comentários explicam o "por quê" (`runner.py:249-250`, `:637-638`), não o "o quê" |
-| 8 | Testes e cobertura | 2 | 5 | 13 testes rodados por mim em 0,19 s; cobrem roteamento por estrato, imagem ausente, restauração sob exceção e procedência do prompt no relatório |
-| 9 | Migration safety (se aplicável) | 2 | [—] | Nenhuma migration no diff (NFR-7 preservada) |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | AC-17 (3 cláusulas) verificado na t1; gate do delta atendido na t2 (EXECUCAO §5.1); B5-IMP-2 fechado em `3655892`. Escopo travado intacto nas três tentativas: `git diff 36d68cc..3655892 -- backend/app/services/ai/meal_parser.py` vazio |
+| 2 | Arquitetura e direção de dependências | 3 | 5 | `runner.py:196-213` `versao_de_visao()` mede sem promover; `:216-231` roteia por estrato. Nada mudou nesta tentativa e nada precisava mudar |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | Diff só de markdown; `gitleaks` limpo sobre o histórico (t2, §6); nenhum segredo, PII ou URL de produção nos textos novos |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | O README passou a documentar `--versao-vision` apontando para a CLI existente, sem duplicar a explicação que já vive no docstring de `runner.py:196-203` |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | O bullet permanece na seção de honestidade que o `eval_golden_set.py:14-27` estabeleceu como padrão do projeto — corrigido no sujeito, não removido |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Correção no arquivo certo (`backend/evals/README.md`), nas duas ocorrências; relatório atualizado com §0 datando a tentativa |
+| 7 | Qualidade de código | 2 | 5 | `ruff check` + `ruff format --check` + `mypy app/ evals/` limpos (§6); o exemplo de CLI no README é executável como está |
+| 8 | Testes e cobertura | 2 | 4 | Os 13 testes do caminho de foto seguem verdes (0,19 s). Desconto: nenhum teste guarda a coerência README × runner, e é a segunda vez nesta spec que documentação e código divergem — a própria E.3 mostrou o padrão que resolveria isso (§5, sugestão 1) |
+| 9 | Migration safety (se aplicável) | 2 | [—] | Nenhuma migration em nenhuma das três tentativas (NFR-7 preservada) |
 
-Score = 97 / 20 × 2 = **9.7**.
+Score = 98 / 20 × 2 = **9.8**.
 
 ## 3. Achados BLOQUEANTES
 
@@ -57,78 +63,84 @@ Nenhum.
 
 ## 4. Achados IMPORTANTES
 
-### B5-IMP-2 — o README do harness afirma o oposto do que o runner faz agora
-
-`backend/evals/README.md:23-25`:
-
-> - **O comportamento com foto.** O estrato `foto` existe desde a C.4, mas o runner
->   de texto não o executa — quem mede o caminho de imagem é a fase B.5 (ver
->   "Estado do dataset").
-
-`backend/evals/README.md:135`:
-
-> O runner ignora o estrato `foto` (`runner.py`): o caminho de imagem entra na fase
-> B.5, que é quem mede o `VisionParser`.
-
-Os dois eram verdadeiros até `b8001c3` e deixaram de ser **nele**. O primeiro está
-dentro da lista *"o que este eval NÃO mede"* — a seção que o próprio README
-apresenta como seu padrão de honestidade —, o que torna o erro pior do que uma
-desatualização qualquer: o documento hoje nega uma capacidade que o harness tem, e
-quem confiar nele concluirá que o caminho de foto segue sem instrumento.
-
-**Correção sugerida** (diff mínimo, sem tocar código):
-
-- `:23-25` — substituir por algo como: *"**O caminho de foto entra pelo `VisionParser`
-  desde a B.5** (`runner.py`), com `n = 3` — o estrato menor e mais frágil do
-  dataset. Na configuração de produção ele falha com HTTP 413 (OQ19), então nenhum
-  número dele vale como linha de base de produção enquanto isso durar."*
-- `:135` — descrever o estado atual e citar `--versao-vision` como a forma de medir
-  uma versão sem promovê-la.
-
-Já que a varredura será aberta, vale aplicá-la à classe inteira, como o avaliador da
-D.1 pediu na tentativa 3: `grep -rn "foto" backend/evals/README.md` e
-`grep -rn "fase B.5\|B\.5" backend/ docs/` devolvem os pontos a conferir.
+Nenhum. O B5-IMP-2 da tentativa 2 é o último achado da fase e está fechado
+(verificação em §6).
 
 ## 5. Sugestões
 
-1. **As quatro execuções do delta não sobrevivem à sessão.**
-   `backend/evals/runs/ultimo-relatorio.json` está em `.gitignore:139` e é
-   sobrescrito a cada rodada; as quatro linhas da §5.1 existem só em prosa.
-   Respondendo à **dúvida 3** do relatório: **não** registraria em `history.jsonl` —
-   o campo `amostragem` até carrega o `max_tokens`, mas a série da C.8 é lida como
-   "a linha do tempo da configuração de produção", e quatro pontos a 2048 a
-   contaminam. Melhor anexar os quatro JSON como artefato da fase
-   (`artefatos/B.5-delta-foto-v<N>-r<R>.json`): versionado, auditável, e sem mentir
-   sobre ser produção.
-2. **Dúvida 1 (o HTTP 413).** Concordo com não ter corrigido — o fix mora em
-   `config.py`/`ai_client.py` e no frontend, e ampliar a B.5 violaria o escopo
-   travado. Minha recomendação ao owner é **fase nova**, não rework da C.2: a C.2
-   está aprovada e fechada, o defeito tem duas frentes (teto de tokens da visão **e**
-   redimensionamento no cliente), e uma fase própria deixa rastro na §5 em vez de
-   reabrir fase concluída. A OQ19 já traz o diagnóstico pronto.
-3. **Dúvida 2 (`n = 3` antes de a D.3 citar números).** Sim, vale crescer o estrato —
-   mas depois do 413: mais casos sob `GROQ_MAX_TOKENS=2048` só aumentam o `n` de uma
-   configuração que não é a de produção.
-4. **`VisionParser(cliente)` é instanciado mesmo sem caso de foto** (`runner.py:626`).
-   Inofensivo hoje (o construtor não faz I/O); se um dia fizer, execuções só de texto
-   passam a pagar por isso.
-5. **Dúvida 4 (o `range` não isola a fase).** Está certo como está — o §2.9.3 manda
-   ir do `sha_inicial` original ao HEAD. Avaliei por conteúdo, atribuindo cada commit
-   à fase que o declara.
+Nenhuma bloqueia; as três primeiras são carregadas das tentativas anteriores e
+seguem válidas.
+
+1. **Um teste que trave a coerência entre o README do harness e o runner.** É a
+   sugestão nova, e nasce do próprio B5-IMP-2: a divergência doc × código já
+   ocorreu duas vezes nesta spec, e das duas vezes só um leitor humano a pegou. A
+   E.3 resolveu o caso análogo com três asserções triviais
+   (`test_seed_demo.py::TestCredenciaisPublicadas`). O equivalente aqui seria um
+   teste que falhe se `backend/evals/README.md` voltar a afirmar que o runner
+   ignora o estrato de foto — algo como assertar que o README não contém
+   `"ignora o estrato"` enquanto `Estrato.FOTO` for roteável em `runner.py`. Cabe
+   em 10 linhas e vale para a próxima vez que alguém mexer no runner.
+2. **As quatro execuções do delta continuam sem artefato durável**
+   (`runs/ultimo-relatorio.json` é ignorado pelo git e já foi sobrescrito). Segue
+   valendo a recomendação da t2: anexar os quatro JSON como
+   `artefatos/B.5-delta-foto-v<N>-r<R>.json`, e **não** registrá-los no
+   `history.jsonl`, cuja série é lida como configuração de produção.
+3. **`VisionParser(cliente)` é instanciado mesmo sem caso de foto**
+   (`runner.py:626`). Inofensivo hoje.
+4. **O 413 (OQ19) é a dívida que esta fase deixa aberta e não podia fechar.** Minha
+   recomendação ao owner segue a mesma: fase nova, não rework da C.2. Enquanto ele
+   existir, o estrato de foto do eval mede uma configuração que não é a de
+   produção — e agora o README diz isso, que era o ponto.
 
 ## 6. Comandos rodados + saídas reais
 
 ```text
-$ git merge-base --is-ancestor b8001c3 HEAD && echo "b8001c3 ANCESTRAL OK"
-b8001c3 ANCESTRAL OK
+$ git merge-base --is-ancestor 3655892 HEAD && echo "3655892 ANCESTRAL OK"
+3655892 ANCESTRAL OK
 
-$ git show b8001c3 --stat
- backend/evals/runner.py                      | 162 +++++++++++++++----
- backend/tests/unit/test_evals_runner_foto.py | 229 +++++++++++++++++++++++++++
- 2 files changed, 363 insertions(+), 28 deletions(-)
-   → `vision_parser.py`, `meal_parser.py` e os prompts NÃO estão no diff:
-     o escopo travado da fase foi respeitado
+# --- o diff desta tentativa, inteiro ---
+$ git diff 4e9b54d..HEAD --stat
+ .../FASE-B.5-vision-parser-bug001-EXECUCAO.md      | 37 +++++++++++++++++++---
+ backend/evals/README.md                            | 23 +++++++++++---
+ 2 files changed, 51 insertions(+), 9 deletions(-)
+   → um arquivo de documentação e o próprio relatório. Zero código
 
+# --- o B5-IMP-2, ponto a ponto ---
+$ sed -n '23,28p' backend/evals/README.md
+- **O caminho de foto na configuração de produção.** O runner **executa** o
+  estrato `foto` desde a B.5, pelo `VisionParser` de produção — mas com
+  `n = 3`, o estrato menor e mais frágil do dataset. E com o `GROQ_MAX_TOKENS`
+  de produção as três chamadas falham com **HTTP 413** (OQ19): o teto de saída
+  reservado estoura o limite por minuto antes de a imagem chegar. Enquanto isso
+  durar, nenhum número deste estrato vale como linha de base de produção.
+
+$ sed -n '138,149p' backend/evals/README.md
+O runner **executa** o estrato `foto` (`runner.py`), roteando o caso pelo
+`VisionParser` de produção … Para medir uma versão do prompt de visão **sem
+promovê-la** em `VERSOES_EM_PRODUCAO`, use `--versao-vision`:
+    python -m evals.runner --estrato foto --versao-vision 1   # antes
+    python -m evals.runner --estrato foto --versao-vision 2   # depois
+   → confere com a CLI real (`runner.py:676-686`) e com `_prompts_usados`
+     (`runner.py:452-469`), que lê a versão do módulo e não de `get_prompt`
+
+# --- a varredura de classe, refeita por mim ---
+$ grep -n "ignora\|não executa\|entra na fase" backend/evals/README.md
+(vazio)
+$ grep -rn "B\.5" docs/ backend/ --include=*.md --include=*.py | grep -v ".venv\|artefatos/"
+docs/auditoria/02-backend.md:104:## B.5 Pydantic — `from_attributes`      ← numeração
+docs/auditoria/plano.md:190:### B.5 Type checking strict                   ← numeração
+backend/evals/README.md:24: … o runner **executa** o estrato `foto` desde a B.5   ← correta
+backend/evals/runner.py:222: … é o que a B.5 corrigiu                       ← correta
+backend/tests/unit/test_evals_runner_foto.py:1,5,227                        ← corretas
+backend/tests/unit/test_prompt_registry.py:28                               ← correta
+
+# --- escopo travado, verificado sobre o range inteiro da fase ---
+$ git diff 36d68cc..3655892 --stat -- backend/app/services/ai/meal_parser.py
+(vazio)                                 ← `MealParser` intocado nas três tentativas
+$ git diff 36d68cc..3655892 --stat -- backend/app/services/ai/vision_parser.py
+ backend/app/services/ai/vision_parser.py | (alterado só na t1, já avaliada)
+
+# --- gates do projeto, rodados agora ---
 $ docker compose -f docker-compose.dev.yml exec -T backend sh -c \
     "ruff check . && ruff format --check . && mypy app/ evals/"
 All checks passed!
@@ -136,81 +148,46 @@ All checks passed!
 Success: no issues found in 81 source files
 
 $ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/unit -q
-496 passed, 3 skipped in 4.01s
-
-$ docker compose -f docker-compose.dev.yml exec -T backend \
-    pytest tests/unit/test_evals_snapshot.py tests/unit/test_evals_runner_foto.py \
-           tests/unit/test_seed_demo.py -q
-46 passed, 3 skipped in 0.19s
-   → os 3 pulados são os de coerência README×script da E.3, que o container não
-     alcança (monta só `backend/`); nenhum é desta fase
-
-$ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/integration/ -q
-145 passed, 5 warnings in 86.98s
-   → o relatório marcou `[—]`; rodei mesmo assim e está verde
-
-$ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
-496 commits scanned. no leaks found                    >>> EXIT=0
-
-$ bash ~/.codeflow/framework/core/scripts/run-structural.sh \
-    .codeflow/specs/002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md
-✓ §5 estruturalmente válida                            >>> EXIT=0
-
-# --- o achado do §4, medido ---
-$ grep -n "ignora o estrato\|não o executa" backend/evals/README.md
-23:- **O comportamento com foto.** O estrato `foto` existe desde a C.4, mas o runner
-24:  de texto não o executa — quem mede o caminho de imagem é a fase B.5
-135:O runner ignora o estrato `foto` (`runner.py`): o caminho de imagem entra na fase
-
-# --- o 413 do EXECUCAO §5.2, confirmado em artefato versionado ---
-$ python3 -c "import json;print(json.loads(open('backend/evals/runs/history.jsonl').read().splitlines()[-1])['falhas'][0]['erro'][:160])"
-APIStatusError: Error code: 413 - Request too large for model `qwen/qwen3.6-27b` …
-  on tokens per minute (TPM): Limit 8000, Requested 11508
+496 passed, 3 skipped in 4.04s
 
 $ git status --short
 (vazio — árvore limpa ao fim da avaliação)
 ```
 
-**Não rodei:** `npm run lint` / `npx tsc --noEmit` — nenhum arquivo de frontend no
-diff desta tentativa. `[—]` justificado.
+**Não rodei nesta tentativa:** `pytest tests/integration/` (145 passed rodados por
+mim na avaliação da t2, sobre o mesmo código de produção, que não mudou) e os gates
+de frontend (nenhum arquivo de frontend no diff). `[—]` justificados.
 
 ## 7. Itens da fase / DoD não atendidos
 
+Nenhum.
+
 | Item (§5 / §9) | Estado |
 |---|---|
-| AC-17 — nenhum item perdido em silêncio | ✓ verificado na t1; código inalterado |
-| AC-17 — quantidade por extenso não vira 500 | ✓ idem |
-| AC-17 — prompt de visão sem as regras 4 e 5 | ✓ idem |
-| Passo 5 / gate — delta do estrato de foto com números antes e depois | ✓ EXECUCAO §5.1, quatro execuções reais |
+| AC-17 — nenhum item perdido em silêncio | ✓ t1 |
+| AC-17 — quantidade por extenso não vira 500 | ✓ t1 |
+| AC-17 — prompt de visão sem as regras 4 e 5 | ✓ t1 |
+| Passo 3 — `0.35` extraído para constante nomeada | ✓ t1 |
+| Passo 5 / gate — delta do estrato de foto com números antes e depois | ✓ t2, EXECUCAO §5.1 |
 | §9 global — decisão de escopo registrada em §8 ou decision | ✓ OQ19 + decision de 2026-08-04 |
-| §9 global — documentação coerente com o estado real | ✗ `backend/evals/README.md` (§4) |
+| §9 global — documentação coerente com o estado real | ✓ **t3**, `3655892` |
 
-O desvio de arquivo (`runner.py` fora dos "Arquivos alterados" da fase) **não** é
-achado: a linha removida era `if c.estrato is not Estrato.FOTO  # o caminho de foto
-entra na fase B.5`, escrita pela C.5 para atribuir esse trabalho a esta fase, e a
-extensão está registrada em OQ19 e em decision, como o §9 global exige.
+Fora do gate, e por decisão registrada: o HTTP 413 (OQ19) segue aberto e é da C.2 /
+frontend / fase nova — não desta fase.
 
 ## 8. Divergências entre o relatório e o código real
 
-Nenhuma divergência material. Duas notas de precisão:
-
-1. **"489 passed"** (EXECUCAO §5.3) contra **496 passed, 3 skipped** aqui — os 7 a
-   mais são testes da E.3, commitados depois de `b8001c3`. Idem "148 files already
-   formatted" × 149.
-2. **`Requested 11357`** (EXECUCAO §5.2) contra **`Requested 11508`** no
-   `history.jsonl`: execuções diferentes. O ponto do achado — número idêntico entre
-   imagens de 111 KB e 291 KB, logo o custo é o `max_tokens` reservado e não o
-   tamanho da foto — se sustenta nas duas.
-
-O que **não pude verificar** foram as quatro linhas da tabela do delta (§5.1): o
-`ultimo-relatorio.json` é ignorado pelo git e foi sobrescrito pela execução da C.7.
-Verifiquei o que as cerca — o código que as produz, o `413` no artefato versionado,
-a coerência interna da tabela — e nada as contradiz. É o motivo da sugestão 1.
+Nenhuma. As três afirmações verificáveis da §0 do EXECUCAO reproduzem aqui: as duas
+correções no README estão onde ele diz, o `grep` da classe volta vazio, e nenhuma
+linha de código mudou. O frontmatter está conforme o §2.9.6 — `status: rework`,
+`tentativa: 3`, `reprovacoes: 2`, `sha_inicial` preservado do original e
+`range: 36d68cc..3655892` coerente com os dois campos.
 
 ---
 
-**Próximo passo:** RESSALVAS **não** conclui a fase (ARTIFACTS_SPEC §2.11.3). Colar
-esta avaliação no chat executor, corrigir o B5-IMP-2 e reavaliar em chat zerado.
-**Atenção ao teto:** o EXECUCAO traz `reprovacoes: 1`; este veredito leva a `2`, e o
-§2.11.4 manda parar e escalar ao owner antes de uma quarta tentativa. A correção
-pedida aqui são duas frases num README — cabe folgada na terceira.
+**Fase concluída.** APROVADO é o único veredito que fecha uma fase (§2.11.3). A B.5
+chegou ao fim sem estourar o teto: três tentativas, `reprovacoes: 2`, e a terceira
+gastou dois pontos de documentação em vez de código — porque o código já estava
+certo desde a primeira, verificado por dois avaliadores independentes. Nada aqui
+bloqueia a C.8 nem a D.3; a dívida que a fase deixa (o 413) está nomeada, medida e
+na mesa do owner.
