@@ -20,9 +20,12 @@ e no agregado, contra referências de fonte externa citável.
 - **Preferência ou utilidade percebida.** Não há juiz de qualidade de texto aqui.
 - **Latência e custo como critério de aprovação.** São registrados no histórico
   (`runs/history.jsonl`), não usados como gate.
-- **O comportamento com foto.** O estrato `foto` existe desde a C.4, mas o runner
-  de texto não o executa — quem mede o caminho de imagem é a fase B.5 (ver
-  "Estado do dataset").
+- **O caminho de foto na configuração de produção.** O runner **executa** o
+  estrato `foto` desde a B.5, pelo `VisionParser` de produção — mas com
+  `n = 3`, o estrato menor e mais frágil do dataset. E com o `GROQ_MAX_TOKENS`
+  de produção as três chamadas falham com **HTTP 413** (OQ19): o teto de saída
+  reservado estoura o limite por minuto antes de a imagem chegar. Enquanto isso
+  durar, nenhum número deste estrato vale como linha de base de produção.
 
 Esta seção segue o padrão de honestidade estabelecido por
 `backend/scripts/eval_golden_set.py:14-27`, que já declarava o que sua métrica
@@ -132,8 +135,18 @@ nenhuma com pessoa identificável. Atribuição:
 | `dataset/imagens/ovo-frito-1-unidade.jpg` | [File:Ovo frito da Padaria Nova Arcoverde…](https://commons.wikimedia.org/wiki/File:Ovo_frito_da_Padaria_Nova_Arcoverde_em_Pinheiros,_S%C3%A3o_Paulo,_Brasil.jpg) | CC BY 4.0 | Mtvdanilo |
 | `dataset/imagens/banana-1-unidade.jpg` | [File:Liat Portal for Foodie Disorder - A Single Banana.jpg](https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_A_Single_Banana.jpg) | CC BY-SA 4.0 | HaJunkiyada |
 
-O runner ignora o estrato `foto` (`runner.py`): o caminho de imagem entra na fase
-B.5, que é quem mede o `VisionParser`.
+O runner **executa** o estrato `foto` (`runner.py`), roteando o caso pelo
+`VisionParser` de produção — o mesmo que o usuário aciona ao fotografar o prato.
+Para medir uma versão do prompt de visão **sem promovê-la** em
+`VERSOES_EM_PRODUCAO`, use `--versao-vision`:
+
+```bash
+python -m evals.runner --estrato foto --versao-vision 1   # antes
+python -m evals.runner --estrato foto --versao-vision 2   # depois
+```
+
+O relatório declara a versão de visão de fato usada, e não a de produção — sem
+isso o histórico atribuiria o resultado de uma versão ao `sha` da outra.
 
 ### Consumo de quota
 
