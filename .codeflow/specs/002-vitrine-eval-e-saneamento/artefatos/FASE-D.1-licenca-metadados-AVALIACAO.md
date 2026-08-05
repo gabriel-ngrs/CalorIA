@@ -2,176 +2,106 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: D.1
 slug_fase: licenca-metadados
-tentativa: 3
-veredito: RESSALVAS
-score: 9.5
+tentativa: 4
+veredito: APROVADO
+score: 9.7
 threshold: 8.5
-range_avaliado: 7f9f59a..03dc5e8bdeb01f0533945ef5b10979697669f491
+range_avaliado: 7f9f59a..208d85d
 ---
 
 # FASE D.1 — Avaliação independente
 
 ## 1. Veredito e score
 
-**Veredito:** RESSALVAS · **Score:** 9.5 / threshold 8.5
+**Veredito:** APROVADO · **Score:** 9.7 / threshold 8.5 — zero BLOQUEANTES, zero
+IMPORTANTES.
 
-**A migração do AC está tecnicamente certa, e eu a verifiquei antes de julgá-la.** Uma
-fase que edita o critério de aceite que a estava reprovando merece o escrutínio mais
-duro que eu consiga aplicar, então não aceitei o argumento — fui medir se a cláusula
-era mesmo insatisfazível dentro do escopo da D.1:
+**Fui verificar o AC-18 cláusula por cláusula contra as fontes, não contra o
+relatório**, porque uma fase na quarta tentativa merece o escrutínio mais duro que
+eu consiga aplicar. As quatro passam:
 
-```text
-$ gh repo view gabriel-ngrs/CalorIA --json licenseInfo,defaultBranchRef,description,repositoryTopics
-{"defaultBranchRef":{"name":"main"}, "licenseInfo":null,
- "description":"Diário alimentar com IA: eval do pipeline de LLM versionado junto do código",
- "repositoryTopics":[fastapi, groq, llm-eval, nextjs, postgresql, python]}
+| Cláusula do AC-18 | Verificação minha |
+|---|---|
+| description não vazia | `gh repo view` → *"Diário alimentar com IA: eval do pipeline de LLM versionado junto do código"* |
+| topics não vazios | 6: `fastapi`, `groq`, `llm-eval`, `nextjs`, `postgresql`, `python` |
+| `LICENSE` MIT versionado na branch de trabalho | `head -3 LICENSE` → "MIT License" |
+| versão igual nos quatro arquivos | `0.7.0` em `pyproject.toml`, `package.json`, `main.py:19` e `CHANGELOG.md:51` |
 
-$ git ls-tree origin/main --name-only | grep -i license
-(LICENSE AUSENTE em origin/main)
+**E o achado que reprovava a fase está fechado.** O D1-IMP-2 era a §5 exigindo
+"licença detectada pela API" depois de a OQ18 tê-la migrado para o AC-19. A linha
+`Testes (AC-18)` foi reescrita e hoje pede só o que a D.1 controla; a varredura que
+o avaliador da t3 sugeriu foi feita de verdade, e é o que mais me convenceu: ela
+achou **um segundo ponto que o achado não citava** (a OQ15 afirmando "a D.1 não
+fecha até lá") e **um terceiro por medição** ("nada em C.7 depende disto", falso).
+Rodei o mesmo `grep` e as oito ocorrências de `licença detectada|licenseInfo` estão
+todas coerentes agora — nenhuma exige da D.1 o que só a D.2 produz.
 
-$ git rev-list --count origin/main..dev
-255
-```
-
-O branch default é `main`; a `main` está **255 commits atrás** e **não contém o
-`LICENSE`**. O GitHub deriva `licenseInfo` do branch default. Logo, nenhuma ação dentro
-dos "Arquivos alterados" da D.1 faz a API detectar a licença — o AC-18 pedia da D.1 um
-efeito que só a promoção da D.2 produz. Isso é defeito de modelagem do AC, não de
-execução, e a recusa em "executar a D.2 agora" está certa: a OQ15 é decisão de owner de
-um dia antes, e uma fase de execução não revoga decisão de owner para destravar o
-próprio gate.
-
-O precedente invocado existe mesmo — a nota do **AC-2** registra a migração equivalente
-vinda do AC-1 na Fase A.1, pelo mesmo motivo. E a mudança está registrada onde deve:
-decision indexada em `decisions/INDEX.md:13` e **OQ18** em §8. Ressalva de leitura: a
-A.1 nunca recebeu `APROVADO` — foi encerrada por aceite do owner no teto do §2.11.4 —,
-então o precedente é de forma, não de veredito.
-
-**O que impede o APROVADO é que a migração foi aplicada pela metade, e a metade que
-faltou é justamente a que a próxima pessoa vai ler.** O commit `03dc5e8` atualizou o
-AC-18 e o AC-19 (§3), a OQ18 (§8) e as linhas D.1/D.2 do §9 — mas **não** tocou o bloco
-da fase na §5, que continua dizendo:
-
-```text
-SPEC_002…md:1095-1096
-- **Testes (AC-18):** a API do GitHub reporta licença detectada e metadados
-  preenchidos; a versão é a mesma nos quatro arquivos; `make check` verde.
-```
-
-A spec agora se contradiz: o §9 diz *"a detecção de licença pela API migrou para o
-AC-19, que é da D.2"* e o §5 continua exigindo "licença detectada" da D.1. A linha
-`Testes` da §5 não é ponteiro decorativo — nesta spec ela carrega conteúdo próprio, e é
-o que executor e avaliador leem para saber o que a fase tem de provar.
-
-**O que pesa nesse achado é a simetria com o que esta mesma sessão consertou.** O
-E2-IMP-1, fechado hoje, era exatamente isto: um arquivo declarando um estado que outro
-arquivo contradiz, esperando que uma fase posterior tropece nele. A correção lá foi
-aplicada nos três lugares, e com razão. Aqui o mesmo padrão ficou aberto, na própria
-spec, e a próxima avaliação da D.1 que ler a §5 reprova por uma cláusula que o §3 diz
-não ser mais dela.
-
-**Nota sobre a consequência.** Este é o terceiro veredito não-APROVADO da fase, então o
-§2.11.4 leva ao estado terminal de escalação ao owner, sem rework automático. Isso não
-é punição e, nas circunstâncias, é o desfecho adequado: a fase só ficou fechável porque
-o executor editou o próprio critério de aceite, e uma decisão dessa natureza é
-exatamente o tipo que a máquina de estados manda levar a um humano. A correção
-pendente, se o owner mandar aplicá-la, é **uma linha** — está no §4 com a redação
-pronta.
-
-**O resto da fase verifica inteiro, e verifiquei tudo:** description não vazia, 6
-topics, `LICENSE` MIT versionado na branch de trabalho, e a versão `0.7.0` idêntica nos
-quatro arquivos, incluindo o `APP_VERSION` de `main.py:19` que o Swagger publica.
+O padrão que a fase pede que eu registre (dúvida 2 do relatório) está na §5.
 
 ## 2. Scorecard
 
 | # | Dimensão | Peso | Nota (0–5) | Evidência (arquivo:linha ou saída) |
 |---|----------|------|------------|------------------------------------|
-| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 4 | AC-18 (redação nova) satisfeito nas quatro cláusulas, medidas por mim contra a API real e a árvore. Escopo travado respeitado: histórico do CHANGELOG intacto, licença MIT sem troca. Nota reduzida porque a migração que tornou o AC satisfazível ficou incompleta e deixou a §5 em contradição com o §3 (D1-IMP-2). |
-| 2 | Arquitetura e direção de dependências | 3 | 5 | A migração põe a cláusula na fase que de fato a produz (D.2/AC-19), o que corrige a direção da dependência em vez de mascará-la. Nenhum código tocado — correto, porque o trabalho de código estava completo desde a tentativa 1. |
-| 3 | Segurança / LGPD | 3 | 5 | Repositório segue `PRIVATE`, como o AC-1 exige até o fim da A.2. Nenhum segredo no range; o `LICENSE` traz nome do owner, que é o esperado num arquivo de licença. |
-| 4 | Reusar/espelhar, não duplicar | 3 | 5 | Reusou o precedente da A.1 (AC-1 → AC-2) em vez de inventar mecanismo novo, e o citou explicitamente na nota do AC-18 e na decision. |
-| 5 | Padrões de domínio/aplicação | 2 | 5 | A nota de migração no AC-18 segue a forma da nota já existente no AC-2 (data, motivo medido, ponteiro para a OQ). |
-| 6 | Local e nomes dos arquivos | 2 | 5 | Só spec + decision + INDEX tocados nesta tentativa, coerente com o que o relatório declara. |
-| 7 | Qualidade de código | 2 | 4 | Nesta tentativa o "código" é a spec, e a edição ficou inconsistente consigo mesma: quatro dos cinco pontos de menção atualizados, um deixado para trás. `make check` verde (rodei). |
-| 8 | Testes e cobertura | 2 | 5 | A verificação que o AC pede é a consulta à API do GitHub e a comparação das quatro versões; ambas rodadas por mim e confirmadas. Suíte completa verde: 624 passed, cobertura 73,86% ≥ 72%. |
-| 9 | Migration safety | 2 | [—] | Nenhuma migration criada ou alterada. Dimensão excluída do cálculo. |
+| 1 | Conformidade com a fase — ACs e escopo travado | 3 | 5 | AC-18 verificado nas quatro cláusulas (§1, saídas em §6). Escopo travado intacto: `git log -p -- CHANGELOG.md` sem reescrita de histórico; licença segue MIT |
+| 2 | Arquitetura e direção de dependências | 3 | [—] | Nenhum código nesta tentativa; nada a acoplar |
+| 3 | Segurança / LGPD / multi-tenant | 3 | 5 | `gitleaks` sobre 496 commits → no leaks; nenhum e-mail pessoal ou credencial nos textos alterados (§6) |
+| 4 | Reusar/espelhar, não duplicar | 3 | 5 | A redação da §5 é a que o avaliador da t3 deixou pronta, verbatim; a nota de retratação na OQ15 espelha a forma já usada na OQ18 e na A.1 |
+| 5 | Padrões de domínio/aplicação | 2 | 5 | Correção feita na spec (fonte de verdade), com ponteiro para a OQ que a originou — o mesmo rito das migrações anteriores |
+| 6 | Local e nomes dos arquivos | 2 | 5 | Decision em `.codeflow/decisions/2026-08-04-quarta-tentativa-da-d1-autorizada-no-teto.md`, indexada em `decisions/INDEX.md` |
+| 7 | Qualidade de código | 2 | 4 | O artefato ficou correto e legível. Desconto pelo que a fase deixa em aberto **no nível da spec**: a FR-D1 lista "homepage" e nenhum AC a cobre — deferida com boa razão, mas segue órfã (§5) |
+| 8 | Testes e cobertura | 2 | [—] | Nada testável além do `make check`, que a linha `Testes` da fase exige e que rodei verde (§6) |
+| 9 | Migration safety (se aplicável) | 2 | [—] | Nenhuma migration no diff |
 
-**Score:** (4·3 + 5·3 + 5·3 + 5·3 + 5·2 + 5·2 + 4·2 + 5·2) / 20 = 95/20 = 4,75 → **9,5**
+Score = 73 / 15 × 2 = **9.7**.
 
 ## 3. Achados BLOQUEANTES
 
-Nenhum. Considerei se "editar o AC que reprova a própria fase" seria BLOQUEANTE por
-si, e não é: o defeito de modelagem é real e medido, existe precedente na mesma spec,
-e a mudança está registrada em decision + OQ18, que é o caminho que a constitution
-universal exige para override de gate ("decision arquitetural registrada", não
-autorização falada).
+Nenhum.
 
 ## 4. Achados IMPORTANTES
 
-### D1-IMP-2 — a migração do AC-18 não chegou à §5, e a spec passou a se contradizer
-
-**Onde:** `.codeflow/specs/002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md:1095-1096`
-
-```text
-- **Testes (AC-18):** a API do GitHub reporta licença detectada e metadados
-  preenchidos; a versão é a mesma nos quatro arquivos; `make check` verde.
-```
-
-O commit `03dc5e8` atualizou §3 (AC-18 e AC-19), §8 (OQ18) e §9 (linhas D.1 e D.2), e
-deixou este ponto com a redação antiga. Resultado: o §9 declara que a detecção de
-licença migrou para a D.2 e o §5 continua exigindo-a da D.1.
-
-**Por que não é cosmético.** É a linha que o executor e o avaliador leem para saber o
-que a fase precisa provar, e ela contém conteúdo próprio, não só um ponteiro para o §3.
-Uma reavaliação futura que leia a §5 reprova a D.1 por uma cláusula que o §3 diz não ser
-mais dela — que é precisamente o ciclo que consumiu as três tentativas desta fase. É
-também o mesmo padrão que o E2-IMP-1 corrigiu hoje: um lugar declarando um estado que
-outro contradiz, à espera de que uma fase posterior tropece.
-
-**Correção sugerida** — uma linha, alinhada ao texto que o §9 já usa:
-
-```text
-- **Testes (AC-18):** a API do GitHub reporta description e topics preenchidos; o
-  `LICENSE` MIT está versionado na branch de trabalho; a versão é a mesma nos quatro
-  arquivos; `make check` verde. (A detecção de licença pela API migrou para o AC-19,
-  que é da D.2 — ver OQ18.)
-```
+Nenhum. O D1-IMP-2 da tentativa 3 está fechado, e a varredura fechou dois pontos
+que ninguém tinha pedido.
 
 ## 5. Sugestões
 
-1. **Ao aplicar a correção, varrer a spec inteira por "licença detectada".** O erro
-   desta tentativa não foi a decisão, foi a propagação parcial; um `grep` fecha a
-   classe inteira em vez do caso.
-2. **`homepageUrl` continua vazio, e concordo em deixá-lo assim.** O passo 3 da fase
-   cita homepage, o AC-18 não, e apontar para a Vercel órfã — que a OQ16 registrou como
-   pendência da E.4 — seria publicar link quebrado na vitrine. Responde à dúvida 2 da
-   tentativa 2: a espera está certa; o lugar de fechar isso é a E.4, junto com a decisão
-   sobre o frontend órfão.
-3. **Quando a D.2 rodar, verificar o AC-19 nas duas metades novas.** A cláusula migrada
-   traz uma verificação que a D.2 não tinha antes (`licenseInfo` não nulo); vale ela
-   entrar explicitamente no relatório da D.2, senão a migração só desloca o buraco.
-4. **Para a escalação ao owner:** o que precisa de decisão humana aqui não é a linha da
-   §5 — é confirmar (ou não) que um executor pode migrar cláusula de AC entre fases
-   quando ela é comprovadamente insatisfazível no escopo declarado. A D.1 fez isso duas
-   vezes nesta spec pela mesma mecânica (A.1 antes, D.1 agora) e nas duas o argumento se
-   sustentou tecnicamente. Vale virar regra explícita da spec, em vez de precedente
-   reconstruído a cada vez.
+1. **`homepageUrl` continua vazio, e a FR-D1 o pede.** Concordo com a deferição —
+   apontar para a Vercel órfã publicaria link quebrado —, e o avaliador da t3 já
+   havia concordado. Mas registro para o owner que isso **não** está coberto por AC
+   nenhum: a FR-D1 diz "LICENSE MIT, description, topics, **homepage** e versão
+   sincronizada", e o AC-18 não menciona homepage. Quando a E.4 publicar a URL,
+   convém fechar o laço acrescentando a cláusula ao AC-19 ou ao AC-27 — senão a
+   FR-D1 fica sem verificação até o fim da spec.
+2. **Sobre a dúvida 2 — "vale o avaliador registrar se enxerga algo no processo que
+   produza esse padrão".** Enxergo, e é específico: as três fases com a mesma
+   assinatura (A.1, D.1, C.7) têm ACs cujo sujeito é o **GitHub**, não o
+   repositório local. Tudo que a §3 escreve como "a API do GitHub reporta X" só é
+   satisfazível a partir do branch default, e o branch default está congelado por
+   decisão de owner até o fim da spec. Não é falha de execução nem de avaliação: é
+   um AC escrito contra um sistema externo cujo estado outra fase controla. A regra
+   preventiva cabe numa frase, e vale para a próxima spec: **um AC não deve
+   depender de efeito produzido por uma fase da qual a sua não depende no grafo.**
+   Onde isso for inevitável, a cláusula nasce na fase que produz o efeito.
+3. **Sobre a dúvida 1 — "um executor pode migrar cláusula de AC?"** Escalar em vez
+   de decidir sozinho foi a atitude certa. Minha contribuição: separar as duas
+   perguntas. *Migrar* (a cláusula continua exigida, muda de dono) é reversível e
+   auditável, e me parece admissível com decision registrada. *Descartar* (a
+   cláusula deixa de ser exigida) é outra coisa e deveria exigir owner sempre —
+   avaliei a C.7 nesta mesma leva e ali a segunda coisa aconteceu sem rito. A regra
+   que falta não é "pode ou não pode", é **destino nomeado e nada some em silêncio**.
+4. **Sobre a dúvida 3 (retratar texto de OQ de owner).** Não é desvio. A OQ15
+   permanece com a decisão intacta — a `main` segue intocada —, e o que foi marcado
+   como falso eram duas *consequências* declaradas, uma delas refutada por medição.
+   Deixar afirmação falsa de pé num documento que outras fases leem seria pior; a
+   forma usada (nota datada, sem apagar o original) é a correta.
 
 ## 6. Comandos rodados + saídas reais
 
-Rodados por mim, na ponta da branch `dev`. Árvore limpa antes e depois.
-
 ```text
-$ git merge-base --is-ancestor 03dc5e8bdeb01f0533945ef5b10979697669f491 HEAD
-7f9f59a: ANCESTRAL   |   03dc5e8b...: ANCESTRAL
-$ git status --porcelain
-(vazio)
+$ git merge-base --is-ancestor 208d85d HEAD && echo "208d85d ANCESTRAL OK"
+208d85d ANCESTRAL OK
 
-$ bash ~/.codeflow/framework/core/scripts/run-structural.sh .../SPEC_002_...md
-✓ §5 estruturalmente válida
-EXIT=0
-
-# AC-18, cláusula por cláusula, contra a API real
+# --- AC-18, as quatro cláusulas, verificadas por mim ---
 $ gh repo view gabriel-ngrs/CalorIA --json licenseInfo,description,repositoryTopics,homepageUrl,visibility,defaultBranchRef
 {"defaultBranchRef":{"name":"main"},
  "description":"Diário alimentar com IA: eval do pipeline de LLM versionado junto do código",
@@ -180,80 +110,90 @@ $ gh repo view gabriel-ngrs/CalorIA --json licenseInfo,description,repositoryTop
  "repositoryTopics":[{"name":"fastapi"},{"name":"groq"},{"name":"llm-eval"},
                      {"name":"nextjs"},{"name":"postgresql"},{"name":"python"}],
  "visibility":"PRIVATE"}
-   → description não vazia ✓ · 6 topics ✓ · licenseInfo null (agora cláusula do AC-19)
+   → description ✓ · 6 topics ✓ · licenseInfo null é cláusula do AC-19 (D.2), não desta fase
 
 $ head -3 LICENSE
 MIT License
 
 Copyright (c) 2026 Gabriel Negreiros Saraiva
-   → LICENSE MIT versionado na branch de trabalho ✓
 
-# versão idêntica nos quatro arquivos
-$ grep -m1 '^version' backend/pyproject.toml        → version = "0.7.0"
-$ grep -m1 '"version"' frontend/package.json        → "version": "0.7.0",
-$ grep -n APP_VERSION backend/app/main.py           → 19:APP_VERSION = "0.7.0"  (usado em 44 e 96)
-$ grep -m3 -n "^## \[" CHANGELOG.md                 → 51:## [0.7.0] - 2026-05-10
-   → 0.7.0 nos quatro ✓
+$ grep -m1 '^version' backend/pyproject.toml   → version = "0.7.0"
+$ grep -m1 '"version"' frontend/package.json   → "version": "0.7.0",
+$ grep -n 'APP_VERSION' backend/app/main.py    → 19:APP_VERSION = "0.7.0"
+                                                 44:    version=APP_VERSION,
+$ grep -n '^## \[' CHANGELOG.md | head -2      → 10:## [Não lançado]
+                                                 51:## [0.7.0] - 2026-05-10
+   → 0.7.0 nos quatro, inclusive o que o Swagger publica
 
-# o mecanismo que torna a cláusula migrada insatisfazível na D.1
-$ git ls-tree origin/main --name-only | grep -i license
-(LICENSE AUSENTE em origin/main)
-$ git rev-list --count origin/main..dev
-255
-$ git log --oneline -1 origin/main
-2ff130c chore(release): merge dev → main — Space Grotesk global + tsconfig + gitignore
+# --- a correção do D1-IMP-2, e a varredura ---
+$ grep -n "licença detectada\|licenseInfo" .codeflow/specs/.../SPEC_002_*.md
+383   nota do AC-18 (migração)                        correta
+391   cláusula do AC-19                               correta
+1588  OQ15, retratação (a)                            corrigida nesta tentativa
+1638  texto da OQ18                                   correta
+1645  texto da OQ18                                   correta
+1741  §9, linha da D.2                                correta
+   → a §5 `Testes (AC-18)` NÃO aparece mais: era o D1-IMP-2, e está fechado
+$ sed -n '1098,1101p' .codeflow/specs/.../SPEC_002_*.md
+- **Testes (AC-18):** a API do GitHub reporta description e topics preenchidos; o
+  `LICENSE` MIT está versionado na branch de trabalho; a versão é a mesma nos quatro
+  arquivos; `make check` verde. (A detecção de licença pela API migrou para o AC-19,
+  que é da D.2 — ver OQ18.)
 
-# registro da mudança
-$ grep -n "licenca-detectada" .codeflow/decisions/INDEX.md
-13:| 2026-08-03 | "Licença detectada pela API" migra do AC-18 (D.1) para o AC-19 (D.2) | ativa | …
-$ grep -n "OQ18" .../SPEC_002_...md
-1623:- **OQ18 — AC-18 exigia da D.1 um efeito que só a D.2 produz.** RESOLVIDO (2026-08-03).
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh \
+    .codeflow/specs/002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md
+✓ ids de fase únicos (26 fases) … ✓ §5 estruturalmente válida     >>> EXIT=0
 
-# o achado: a §5 não acompanhou
-$ sed -n '1095,1096p' .../SPEC_002_...md
-- **Testes (AC-18):** a API do GitHub reporta licença detectada e metadados
-  preenchidos; a versão é a mesma nos quatro arquivos; `make check` verde.
-$ git show --stat 03dc5e8 | tail -4
- ...-licenca-detectada-migra-do-ac18-para-o-ac19.md | 84 ++++++++++++
- .codeflow/decisions/INDEX.md                       |  1 +
- .../SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md          | 37 ++++++--
+# --- `make check`, que a linha `Testes` da fase exige ---
+$ docker compose -f docker-compose.dev.yml exec -T backend sh -c \
+    "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed! / 149 files already formatted / Success: no issues found in 81 source files
+$ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/unit -q
+496 passed, 3 skipped in 4.01s
+$ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/integration/ -q
+145 passed, 5 warnings in 86.98s
 
-# `make check` verde (a §5 pede)
-$ docker … "ruff check . && ruff format --check . && mypy app/ evals/"
-All checks passed! / 147 files already formatted / Success: no issues found in 81 source files
-$ docker … "pytest --cov=app --cov-fail-under=72 -q"
-Required test coverage of 72% reached. Total coverage: 73.86%
-624 passed, 1 skipped in 114.44s
-$ cd frontend && npm run lint && npx tsc --noEmit
-(1 warning react-hooks/exhaustive-deps; zero erros) · TSC_OK
+$ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+496 commits scanned. no leaks found     >>> EXIT=0
+
+# --- escopo travado ---
+$ git diff 7f9f59a..208d85d -- CHANGELOG.md | wc -l
+0                                       ← histórico do CHANGELOG intocado nas quatro tentativas
+$ grep -c "MIT" LICENSE
+(licença segue MIT; nenhuma troca)
+
+$ git status --short
+(vazio — árvore limpa ao fim da avaliação)
 ```
+
+**Não rodei:** `npm run lint` / `npx tsc --noEmit` — a tentativa não toca frontend
+(o `package.json` foi alterado na t1, já avaliada). `[—]` justificado.
 
 ## 7. Itens da fase / DoD não atendidos
 
-- **§5, linha `Testes (AC-18)`** — **não atendida na letra**, porque continua exigindo
-  "licença detectada" depois de o §3 e o §9 declararem a cláusula migrada. É o
-  D1-IMP-2; o gate formal (`Critério de conclusão: AC-18 satisfeito`) resolve para o
-  AC-18 novo e está satisfeito, mas a spec não pode afirmar as duas coisas.
-- **Passo 1 (LICENSE MIT + linha final do README)** — `LICENSE` presente e correto.
-- **Passo 2 (sincronizar versão)** — `0.7.0` nos quatro arquivos, verificado.
-- **Passo 3 (ação do owner: description, topics, homepage)** — description e topics
-  feitos; `homepageUrl` deliberadamente vazio, fora do AC-18 e justificado (§5,
-  sugestão 2).
-- **§9 "D.1 — AC-18 (description, topics, `LICENSE` versionado e versão sincronizada)"**
-  — atendido nas quatro cláusulas.
+Nenhum, dentro do gate declarado ("AC-18 satisfeito"). Fora dele, dois itens
+seguem abertos **por decisão registrada**, e nenhum pertence a esta fase:
+
+- `licenseInfo` não nulo → AC-19 (D.2), pela OQ18.
+- `homepageUrl` → passo 3 da fase, sem AC que o cubra; deferido para a E.4 com o
+  aval do avaliador da t3. Ver sugestão 1.
 
 ## 8. Divergências entre o relatório e o código real
 
-Nenhuma divergência factual — o relatório é preciso no que afirma. A lacuna é de
-omissão, não de afirmação falsa: ele declara "arquivos tocados nesta tentativa:
-`SPEC_002…md` (AC-18, AC-19, OQ18, linhas D.1 e D.2 da §9)" e essa lista está
-**correta**; o problema é que a §5 deveria estar nela.
+Nenhuma. Conferi cada saída colada no EXECUCAO §5 contra a fonte real e todas
+reproduzem, com uma diferença explicada: o relatório registra "148 files already
+formatted" e "489 passed", eu obtive 149 e 496 — os arquivos e testes da E.3,
+commitados depois. Nada que altere a conclusão.
 
-| Afirmação do relatório | Verificação |
-|---|---|
-| `licenseInfo: null`, description e 6 topics preenchidos | confere, na API, campo a campo |
-| GitHub deriva a licença do branch default; `main` parou atrás | confere — default = `main`, sem `LICENSE`, 255 commits atrás |
-| `LICENSE` MIT commitado; 0.7.0 nos quatro arquivos | confere nos quatro, incl. `APP_VERSION` de `main.py:19` |
-| precedente da migração AC-1 → AC-2 na A.1 | existe, na nota do AC-2 — com a ressalva de que a A.1 fechou por aceite do owner no teto, não por `APROVADO` |
-| decision + OQ18 registradas | conferem, indexadas |
-| nenhum arquivo de código alterado na tentativa 3 | confere |
+Registro também, por completude, que o commit `181fb5c` mistura material de três
+fases (E.3, D.1 e C.7). A atribuição está clara nos respectivos relatórios e não
+prejudicou a auditoria, mas commits por fase teriam feito o `range` de cada uma
+significar alguma coisa.
+
+---
+
+**Fase concluída.** APROVADO é o único veredito que fecha a fase (§2.11.3), e este é
+o dela: quatro tentativas, três delas gastas com um AC mal modelado, e a última
+resolvendo o defeito em vez de contorná-lo. A autorização do owner para esta quarta
+tentativa está registrada em decision, como o §2.11.4 exige — não houve override
+conversacional de gate.
