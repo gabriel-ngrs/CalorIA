@@ -3,14 +3,42 @@ spec: 002-vitrine-eval-e-saneamento
 fase: B.5
 slug_fase: vision-parser-bug001
 status: rework
-tentativa: 2
-reprovacoes: 1
+tentativa: 3
+reprovacoes: 2
 sha_inicial: 36d68cc
-sha_final: b8001c3
-range: 36d68cc..b8001c3
+sha_final: 3655892
+range: 36d68cc..3655892
 ---
 
 # FASE B.5 — Relatório de execução
+
+## 0. Tentativa 3 — a última antes do teto
+
+Veredito da tentativa 2: **RESSALVAS**, score 9.7, por um único achado —
+**B5-IMP-2**: o README do harness afirmava, na seção *"o que este eval NÃO
+mede"*, que o runner ignora o estrato de foto. Verdadeiro até `b8001c3` e falso
+**nele** — a própria mudança desta fase.
+
+O achado é procedente e a correção é de documentação. Aplicada em `3655892`:
+
+| Onde | Antes | Agora |
+|---|---|---|
+| `backend/evals/README.md:23-25` | *"o runner de texto não o executa — quem mede o caminho de imagem é a fase B.5"* | O runner **executa** o estrato desde a B.5, com `n = 3`, e com a ressalva do HTTP 413 na configuração de produção (OQ19) |
+| `backend/evals/README.md:135` | *"O runner ignora o estrato `foto`"* | Descreve o roteamento pelo `VisionParser` e documenta `--versao-vision` como a forma de medir sem promover |
+
+**Por que o item continua na lista "não mede", com outra redação.** O avaliador
+sugeriu descrever o estado atual, e a tentação era simplesmente apagar o bullet.
+Não apaguei: o que o eval de fato **não** mede hoje é o caminho de foto *na
+configuração de produção* — porque lá ele falha com 413. Trocar "não executa" por
+silêncio deixaria o leitor com a impressão oposta, igualmente falsa.
+
+**Varredura da classe, como a avaliação pediu.** `grep -n "ignora\|não executa\|
+entra na fase"` sobre o README volta vazio; as demais menções a B.5 em `backend/`
+e `docs/` descrevem o que a fase fez, no passado, e estão corretas. As ocorrências
+em `docs/auditoria/` são numeração de seção, sem relação.
+
+**`reprovacoes: 2` — o teto do §2.11.4 se fecha no próximo veredito não-APROVADO.**
+Nada de código mudou nesta tentativa.
 
 ## 1. Resumo do que foi feito
 
@@ -44,6 +72,7 @@ verificou um a um e não achou divergência. **Nada em `vision_parser.py` mudou.
 
 | Arquivo | O que mudou |
 |---------|-------------|
+| `backend/evals/README.md` | **(t3)** Corrige as duas afirmações que negavam o estrato de foto — é o B5-IMP-2. |
 | `backend/evals/runner.py` | Estrato de foto deixa de ser excluído e entra pelo `VisionParser`: `identificar()` roteia por estrato, `imagem_do_caso()` falha alto se a imagem some, `versao_de_visao()` troca `_IDENTIFY_PROMPT` e restaura, `--versao-vision` na CLI, e o relatório declara a versão de visão usada. |
 | `SPEC_002_…md` | OQ19 (escopo + achado do 413); item da B.5 na §9; `updated_at`. |
 | `.codeflow/decisions/INDEX.md` | Linha da decision nova. |
