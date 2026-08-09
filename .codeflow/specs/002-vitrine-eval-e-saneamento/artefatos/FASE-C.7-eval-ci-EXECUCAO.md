@@ -3,283 +3,253 @@ spec: 002-vitrine-eval-e-saneamento
 fase: C.7
 slug_fase: eval-ci
 status: rework
-tentativa: 3
-reprovacoes: 2
+tentativa: 4
+reprovacoes: 3
 sha_inicial: 40e2941
-sha_final: 208d85d
-range: 40e2941..208d85d
+sha_final: b838c86
+range: 40e2941..b838c86
 ---
 
 # FASE C.7 — Relatório de execução
 
 ## 1. Resumo do que foi feito
 
-Rework por **C7-IMP-1**: o gate *"uma execução agendada completa registrada"*
-nunca tinha sido exercitado. A avaliação da tentativa 2 mediu três impedimentos —
-secret ausente, quota esgotada, `eval.yml` fora do GitHub — e pediu que os três
-fossem destravados nesta ordem.
+Rework da tentativa 3, **autorizado pelo owner no teto do §2.11.4** — a avaliação
+anterior fechou o terceiro veredito não-APROVADO e a fase entrou no estado
+terminal de escalação. A autorização está registrada em
+`.codeflow/decisions/2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md` e na
+OQ21(b), porque gate duro não admite override conversacional.
 
-**Fui medir os três de novo antes de agir, e o quadro mudou inteiro:**
+Dois achados, nenhum deles de código de produção:
 
-| Impedimento (avaliação t2) | Estado hoje (2026-08-04) |
-|---|---|
-| `GROQ_API_KEY` nos secrets — **ausente** | **Existe**, desde 2026-08-03 17:42Z (`gh secret list`) |
-| Quota esgotada | **Já estava refutado** pelo avaliador; confirmei com 57 chamadas reais |
-| `eval.yml` fora do GitHub — "faltam 38 commits" | **Está em `origin/dev`**, e faltam 16 commits — mas isso **não resolve**, §2 |
+| Achado | O quê | Caminho |
+|---|---|---|
+| **C7-BLQ-1** | a cláusula "sem casos vazios" saiu do gate da fase sem destino, enquanto o AC-15 seguia exigindo-a | **caminho 2** do avaliador: migração explícita, com decision e destino nomeado |
+| **C7-IMP-3** | a medição de quota do passo 4 não foi propagada ao README do harness nem ao cabeçalho do `eval.yml` | escrita nos dois lugares |
 
-Então **executei o `eval.yml` local, passo a passo**, contra a Groq e o banco
-reais. Foi a primeira execução completa da camada agendada, e ela produziu os
-três números que a fase precisava: o consumo real, o comportamento do gate, e o
-limite que de fato morde.
+**Nada de código mudou nesta tentativa** — nem `evals/`, nem os testes, nem os
+passos do `eval.yml`. O que mudou foi a coerência da spec e a documentação que o
+passo 4 da fase pedia. A execução completa contra o provedor real, que é a
+evidência substantiva da fase, é a da tentativa 3 e segue válida: o avaliador a
+conferiu linha a linha contra o `history.jsonl` versionado e não achou divergência.
 
-## 2. O achado que muda a leitura do C7-IMP-1
+## 2. C7-BLQ-1 — o que eu aceito do achado, e o que fiz
 
-**`gh workflow run eval.yml --ref dev` devolve `HTTP 404` mesmo com o arquivo em
-`origin/dev` e o secret configurado.** O GitHub só registra workflow de
-`schedule`/`workflow_dispatch` a partir do **branch default**, e a `main` está
-255 commits atrás, sem o `eval.yml`.
+**Aceito integralmente.** A tentativa 3 derrubou duas cláusulas da linha da C.7 na
+§9 e só tratou uma. A de plataforma foi para o AC-19 com rito (OQ20) — o avaliador
+endossou. A de "sem casos vazios" não foi para lugar nenhum, e o AC-15 continuava
+exigindo-a. O relatório da t3 marcou o item `[x]` reinterpretando "casos vazios"
+pela redação da **NFR-3** ("por `429`"), que é outro requisito com outro
+qualificador. Isso é afrouxar o critério de conclusão da fase durante a execução
+da fase, e é o defeito que a D.1 levou quatro tentativas para eliminar.
 
-Isto é o **mesmo defeito de modelagem** que a A.1 (AC-1 → AC-2) e a D.1
-(AC-18 → AC-19) já encontraram: um gate que depende de um efeito que só a **D.2**
-produz. E a OQ15 — decisão de owner de 2026-08-03 — tira a D.2 da posição
-declarada e a torna a última operação de branch da spec. A própria OQ15 afirmava
-*"nada em B.4 ou C.7 depende disto — os dois rodam sobre `dev`"*; **é falso para
-a C.7**, e a retratação está registrada nela e na OQ20.
+O avaliador ofereceu três caminhos. Segui o **2**, que é o recomendado:
 
-Uma fase de execução não revoga decisão de owner para fechar o próprio gate — foi
-a razão que a D.1 deu na tentativa 3 e o avaliador aceitou. Então a cláusula **de
-plataforma** migra para o AC-19 (D.2), e a C.7 fecha pela evidência substantiva,
-que é local: a execução completa contra o provedor real. Registro em **OQ20**.
+**Destino nomeado — o bug 003.** Criei
+`.codeflow/bugs/003-http-413-no-estrato-de-foto.md`, que é quem corrige o HTTP 413
+da OQ19, com condição de fechamento explícita: *ao corrigir, a exceção sai do
+AC-15*. O avaliador sugeriu "a fase que corrigir o 413"; ela não existe e não podia
+ser criada aqui — o fix é em `config.py`/`ai_client.py` (escopo da C.2, concluída)
+e no frontend, o **Track C está fechado em 8 fases** (ARTIFACTS_SPEC §2.8.6, regra
+3) e criar fase é trabalho de `/create-spec`, não de execução. O registro de bugs é
+o artefato vivo do projeto onde a cláusula não se perde.
+
+**Exceção nominada, não tolerância genérica.** O AC-15 passa a admitir uma **lista
+fechada de três `id`s** — `foto-coxinha-1-unidade`, `foto-ovo-frito-1-unidade`,
+`foto-banana-1-unidade`. Qualquer caso vazio fora dessa lista, por qualquer motivo,
+segue reprovando o AC. Não é a reinterpretação da t3 com outra roupa: a diferença é
+que agora está na letra do AC, com destino, e não na prosa de um relatório.
+
+**§3, §5 e §9 dizem a mesma coisa** — o teste que a D.1 estabeleceu. Inclui o
+"Testes (AC-15)" e o "Critério de conclusão" do bloco da fase na §5, que a t3 não
+tinha tocado e que ainda diziam "o workflow agendado conclui sem casos vazios",
+contradizendo o que a OQ20 já havia migrado.
 
 ## 3. Arquivos CRIADOS / ALTERADOS
 
 | Arquivo | Estado | O quê |
 |---|---|---|
-| `backend/evals/cassettes/*.json` (56 novos) | CRIADOS | Gravados na execução real. O dataset foi de 10 para 43 casos na C.4 e os 14 cassettes antigos não cobriam as descrições novas (OQ17); agora a camada rápida cobre o dataset inteiro. |
-| `backend/evals/runs/history.jsonl` | ALTERADO | A linha da execução, `run_id=e1d39b03675b-0758d981c3c0`. |
-| `SPEC_002_…md` | ALTERADO | OQ20; cláusula de plataforma somada ao AC-19; linha da C.7 no §9. |
-| `.codeflow/decisions/INDEX.md` | ALTERADO | Índice. |
+| `.codeflow/bugs/003-http-413-no-estrato-de-foto.md` | CRIADO | O destino nomeado da cláusula. Sintoma medido, camadas do defeito, condição de fechamento |
+| `.codeflow/bugs/INDEX.md` | ALTERADO | Linha 003 + `proximo_numero: 004`, conforme a convenção de enumeração do próprio índice |
+| `.codeflow/decisions/2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md` | CRIADO | O rito que faltou na t3 |
+| `.codeflow/decisions/2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md` | CRIADO | A autorização do owner no teto do §2.11.4 |
+| `.codeflow/decisions/INDEX.md` | ALTERADO | Duas linhas + `atualizado` |
+| `SPEC_002_…md` | ALTERADO | AC-15 (§3) + nota; "Testes" e "Critério de conclusão" da C.7 (§5); OQ21; retificação na OQ20; linha da C.7 (§9); `updated_at` e `related_bugs` |
+| `backend/evals/README.md` | ALTERADO | **C7-IMP-3:** seção "Medição de 2026-08-04 — por que a agenda é semanal" |
+| `.github/workflows/eval.yml` | ALTERADO | **C7-IMP-3:** cabeçalho (comentário) com a medição no lugar do pedido por ela |
 
-**Nenhuma linha de `eval.yml`, `ci.yml`, `pyproject.toml` ou dos testes de
-snapshot mudou.** O código da fase estava correto — o avaliador já dizia isso
-("o que falta é execução, não código"), e a execução confirmou.
+**Não tocado:** `evals/runner.py`, `evals/report.py`, `evals/cassettes/`,
+`history.jsonl`, os testes de snapshot, os passos do `eval.yml`, `ci.yml`,
+`pyproject.toml`. Nenhum limiar foi recalibrado (§7).
 
-## 4. Confirmação do REUSO e decisões de design
+## 4. Desvios do conjunto declarado de arquivos
 
-**REUSADO:** rodei os passos do `eval.yml` existente, com as mesmas variáveis que
-ele declara (`GROQ_SEED=20260802`, `EVAL_RECORD_CASSETTES=1`, `--cassettes`), e o
-mesmo encadeamento runner → invariância → `registrar` → `verificar`. Não escrevi
-script paralelo: se o workflow estiver errado, o erro tinha de aparecer.
+Os "Arquivos alterados" da fase na §5 são `.github/workflows/ci.yml` e
+`backend/pyproject.toml`; os novos, `evals/cassettes/`,
+`tests/unit/test_evals_snapshot.py` e `.github/workflows/eval.yml`. Esta tentativa
+tocou **fora** dessa lista, e declaro cada caso:
 
-**Decisões:**
+1. **`SPEC_002_…md`, `.codeflow/decisions/`, `.codeflow/bugs/`** — são o próprio
+   remédio do BLOQUEANTE, que é um defeito de coerência de spec. Não há como
+   corrigi-lo sem editar a spec. Precedente aceito na t3 (OQ20) e na D.1 (OQ18).
+2. **`backend/evals/README.md`** — o **passo 4 da própria fase** manda "registrar
+   a decisão no README do harness". Está no texto da fase mesmo não estando na
+   lista de arquivos; é o achado C7-IMP-3.
+3. **`.github/workflows/eval.yml`** — está na lista ("Arquivos novos"). A mudança é
+   só de comentário de cabeçalho; nenhuma linha de comportamento do workflow mudou
+   (§5.2 abaixo prova o YAML e o cron intactos).
 
-- **Não recalibrei os limiares do gate.** `MDAPE_MAXIMO = 25.0` e
-  `FRACAO_MINIMA_DENTRO_DE_10PCT = 0.50` foram calibrados sobre os 10
-  casos-semente e reprovam a linha de base real dos 43 casos da C.4. Mexer neles
-  para o gate passar seria afrouxar gate para fazer a suíte passar — proibido
-  pelo escopo travado. É decisão de owner, agora com o número na mão (§5).
-- **Não registrei a invariância no histórico.** Ela morreu por 429 e não produziu
-  JSON; registrar `invariancia: null` é o que o `registrar` faz por default e é a
-  verdade.
-- **Registrei a execução no histórico mesmo com o gate reprovando.** É a ordem do
-  próprio `eval.yml` (registrar antes de verificar), e uma série append-only que
-  só guarda execução boa mente por omissão.
-
-**Desvio:** nenhum arquivo fora do declarado. A OQ20 registra a migração da
-cláusula de plataforma, que é mudança de spec, não de escopo de código.
+Nenhum dos três amplia o escopo funcional da fase. As decisions registram as
+divergências, como o self-review exige.
 
 ## 5. Comandos rodados + saídas reais
 
-### 5.1 Os três impedimentos, remedidos
+### 5.1 Gate estrutural da §5, antes e depois das edições na spec
 
 ```text
-$ gh secret list --repo gabriel-ngrs/CalorIA
-GROQ_API_KEY    2026-08-03T17:42:28Z          ← EXISTE (a avaliação t2 mediu vazio)
-
-$ git show origin/dev:.github/workflows/eval.yml >/dev/null && echo PRESENTE
-PRESENTE                                       ← está em origin/dev
-$ git show origin/main:.github/workflows/eval.yml >/dev/null || echo AUSENTE
-AUSENTE                                        ← não está na main
-
-$ gh workflow list --repo gabriel-ngrs/CalorIA
-CD — Deploy em Produção   active
-CI                        active
-Dependabot Updates        active               ← eval.yml não aparece
-
-$ gh workflow run eval.yml --ref dev
-HTTP 404: Not Found (…/actions/workflows/eval.yml)
-   → o GitHub só registra schedule/workflow_dispatch a partir do BRANCH DEFAULT.
-     Ver §2 e OQ20.
-```
-
-### 5.2 A execução completa, passo a passo do `eval.yml`
-
-```text
-$ docker compose -f docker-compose.dev.yml exec -T \
-    -e GROQ_SEED=20260802 -e EVAL_RECORD_CASSETTES=1 \
-    backend python -m evals.runner --cassettes --json > evals/runs/ultimo-relatorio.json
-[1/43] simples-arroz-branco-3-colheres
-…
-[43/43] foto-banana-1-unidade
+$ bash ~/.codeflow/framework/core/scripts/run-structural.sh \
+    .codeflow/specs/002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md
+✓ ids de fase únicos (26 fases)
+✓ heading de cada fase casa com o bullet `id`
+✓ todos os slugs são kebab-case
+✓ wave: multi com ao menos um id `<TRACK>.<n>`
+✓ todo `id` em "Depende de" existe na §5
+✓ cada track tem 3–8 fases
+✓ grafo de dependências acíclico
+✓ §5 estruturalmente válida
 >>> EXIT=0
-
-dataset : n=43, sha 0758d981c3c0, distribuicao {simples 23, composto 17, foto 3},
-          casos_nao_verificados 0
-modelo  : llama-3.3-70b-versatile   amostragem: temp 0.1, max_tokens 8192, seed 20260802
-prompts : meal_identify@v1, meal_fallback@v1, vision_identify@v2, vision_fallback@v1
-custo   : 57 chamadas, 38.833 tokens_in, 4.099 tokens_out, origem: provedor
-latencia: mediana 4,662 s/caso, total 279,674 s (4min40s), origem: provedor
-
-estrato     n    MdAPE          IC95         SSPB    <=10%
-simples    23   25,53%   [ 7,83,  33,33]    0,00%     35%
-composto   16   61,64%   [43,66,  89,94]   15,82%      6%
-foto        0   (vazio — 3 casos falharam, ver abaixo)
-AGREGADO   39   33,33%   [26,26,  43,66]    0,00%     23%
-
-macros (MAE em gramas): proteina 3,93 · carboidrato 7,93 · gordura 3,55
-
-falhas: 3/43 — os três de foto, HTTP 413 (é a OQ19, não é quota):
-  foto-coxinha-1-unidade, foto-ovo-frito-1-unidade, foto-banana-1-unidade
 ```
 
+### 5.2 O `eval.yml` continua íntegro (só comentário mudou)
+
 ```text
-# --- passo seguinte do eval.yml: bateria de invariância ---
-$ docker … python -m evals.invariance > evals/runs/ultima-invariancia.json
-Rate limit Groq — aguardando 15s (tentativa 1/4, 0s de 120s do teto já gastos)
-Rate limit Groq — aguardando 30s (tentativa 2/4, 15s de 120s do teto já gastos)
-Rate limit Groq — aguardando 60s (tentativa 3/4, 45s de 120s do teto já gastos)
-groq.RateLimitError: Error code: 429 — Rate limit reached for model
-  `llama-3.3-70b-versatile` … on tokens per day (TPD):
-  Limit 100000, Used 99768, Requested 956. Please try again in 10m25s.
-   → morreu na PRIMEIRA chamada, com a cota do DIA esgotada.
-   → o retry por classe da C.2 funcionou como projetado: 4 tentativas,
-     backoff 15+30+60 s, teto de 120 s respeitado, e então levantou em vez de
-     girar para sempre.
+$ python3 -c "import yaml; d=yaml.safe_load(open('.github/workflows/eval.yml')); \
+    print('jobs:', list(d['jobs'].keys()), '| cron:', d[True]['schedule'])"
+jobs: ['eval'] | cron: [{'cron': '0 6 * * 1'}]        ← inalterado
 
-# --- registrar (o eval.yml registra ANTES de verificar) ---
-$ docker … python -m evals.report registrar --relatorio evals/runs/ultimo-relatorio.json \
-      --git-commit $(git rev-parse HEAD)
-registrado em /app/evals/runs/history.jsonl: run_id=e1d39b03675b-0758d981c3c0
-
-# --- o gate, que é o passo bloqueante do workflow ---
-$ docker … python -m evals.report verificar --relatorio evals/runs/ultimo-relatorio.json
-GATE DO EVAL REPROVADO: 3 caso(s) sem resultado: foto-coxinha-1-unidade,
-  foto-ovo-frito-1-unidade, foto-banana-1-unidade; MdAPE 33.33% acima do teto
-  25.00%; apenas 23% dentro de ±10%, piso 50%
->>> EXIT=1                                  ← o gate FUNCIONA. Ver §7.
+$ git diff 40e2941..HEAD --stat -- .github/workflows/eval.yml
+ .github/workflows/eval.yml | 9 ++++++---     ← só o bloco de comentário 9-12
 ```
 
-### 5.3 Camada rápida e gates do projeto
+### 5.3 Coerência do AC-15 entre §3, §5 e §9 — o teste da D.1
 
 ```text
-$ docker … pytest tests/unit/test_evals_snapshot.py -q
-26 passed in 0.12s                     ← camada rápida, zero rede, muito abaixo dos 60 s (NFR-2)
+$ grep -n "casos vazios" SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md
+294:  sem abortar: nenhuma execução pode terminar com casos vazios por `429`.   ← NFR-3, intacta
+369:  completa roda contra o provedor real e conclui sem casos vazios **além dos
+373:  > **Nota (2026-08-08).** A cláusula "conclui sem casos vazios" **sem
+1054:  conclui sem casos vazios além dos nominados no bug 003 (os três de foto, por
+1720:- **OQ21 — A cláusula "sem casos vazios" saiu do gate da C.7 sem destino …
+1783:      `workflow_dispatch` no GitHub, para a D.2 (OQ20); a de "sem casos vazios"
 
-$ grep -rlE "gsk_|Authorization|api[_-]?key" backend/evals/cassettes/
-(vazio)                                ← nenhum dos 56 cassettes novos traz credencial
+   §3 (369)  → "sem casos vazios além dos nominados no bug 003"
+   §5 (1054) → "sem casos vazios além dos nominados no bug 003"
+   §9 (1778) → "sem casos vazios além dos três de foto nominados no bug 003"
+   → as três dizem a mesma coisa. A NFR-3 (294) segue com a redação dela ("por
+     429"), que é outro requisito e não foi tocada.
+```
+
+### 5.4 Gates do projeto
+
+```text
+$ docker compose -f docker-compose.dev.yml exec -T backend sh -c \
+    "ruff check . && ruff format --check . && mypy app/ evals/"
+All checks passed!
+149 files already formatted
+Success: no issues found in 81 source files
+
+$ docker compose -f docker-compose.dev.yml exec -T backend pytest tests/unit -q
+496 passed, 3 skipped in 4.32s
+
+$ docker compose -f docker-compose.dev.yml exec -T backend \
+    pytest tests/unit/test_evals_snapshot.py -q
+26 passed in 0.22s                     ← camada rápida, zero rede, teto de 60 s (NFR-2)
 
 $ gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
-493 commits scanned. no leaks found    >>> EXIT=0
-
-$ docker … "ruff check . && ruff format --check . && mypy app/ evals/"
-All checks passed! / 149 files already formatted / Success: no issues found in 81 source files
-$ docker … pytest tests/unit -q
-496 passed, 3 skipped in 3.94s
+500 commits scanned. no leaks found     >>> EXIT=0
 ```
 
-## 6. O dado que o passo 4 pedia — dimensionar a agenda ao rate limit real
+**Frontend `[—]`:** nenhum arquivo de frontend no diff (o diff é markdown, mais um
+comentário de YAML), então `npm run lint` / `npx tsc --noEmit` não têm o que provar
+nesta tentativa. Rodaram verdes na t3 e nada os afeta aqui.
 
-O passo 4 da fase manda *"dimensionar a agenda ao rate limit real do free tier"*,
-e a tentativa 2 escolheu semanal **sem o dado**. Agora ele existe:
+**Não rodei** uma nova execução completa contra a Groq. Não haveria o que medir:
+nenhuma linha de código do pipeline ou do harness mudou, então o resultado seria o
+mesmo da t3 — e queimar a cota diária prejudicaria a C.8 e a bateria de invariância
+que ainda falta. A execução da t3 é a evidência da fase, e foi verificada de forma
+independente contra `history.jsonl`.
 
-| Medida | Valor |
-|---|---|
-| Limite que morde | **tokens por dia (TPD): 100.000** — não o por-minuto |
-| Custo de uma execução do runner (43 casos, 1 repetição) | **42.932 tokens**, 57 chamadas, 4min40s |
-| Custo da bateria de invariância | **não medido** — não coube no que sobrou do dia |
-| Consumo do dia até o 429 | 99.768 de 100.000 |
+## 6. Critérios de aceite da fase (com evidência)
 
-**Leitura:** uma rodada completa (runner + invariância) consome perto de **metade
-ou mais** da cota diária inteira, e não cabe num dia junto de qualquer outro uso —
-que foi exatamente o que aconteceu aqui, porque o delta de foto da B.5 já tinha
-consumido a maior parte da cota antes. **Diária é impossível; semanal está certa,
-e agora por medição.** Se a `--repeticoes 3` entrar na agendada, o custo triplica
-e passa a não caber nem sozinho — o que responde, com número, a sugestão que vem
-sendo adiada desde a tentativa 1.
-
-## 7. O gate reprovou, e isso não é falha da fase
-
-`evals.report verificar` saiu com **exit 1**, por três motivos, e vale separá-los:
-
-1. **3 casos vazios** — os de foto, por **HTTP 413** (OQ19), não por quota. A
-   NFR-3 fala em *"casos vazios por 429"*; estes são por tamanho de requisição, um
-   defeito de produção que a B.5 registrou e cuja correção é da C.2. Enquanto ele
-   existir, **toda** execução agendada vai reprovar por aqui.
-2. **MdAPE 33,33% acima do teto de 25%.**
-3. **23% dentro de ±10%, contra o piso de 50%.**
-
-Os dois últimos são a **linha de base real** do pipeline sobre os 43 casos da C.4.
-Os limiares foram calibrados sobre os 10 casos-semente, e o dataset quadruplicou —
-com o estrato `composto` (MdAPE 61,64%) puxando o agregado. **Não os recalibrei:**
-mexer em limiar para o gate passar é o que o escopo travado desta fase proíbe, e o
-número certo é decisão de owner. O que a fase entrega é o gate funcionando e o
-número medido; o que ele diz sobre a qualidade do pipeline é assunto do owner e da
-D.3.
-
-## 8. Critérios de aceite da fase (com evidência)
-
-- [x] **AC-15, camada rápida sem rede** — 26 testes em 0,12 s, teto de 60 s (NFR-2).
-- [x] **AC-15, prompt alterado sem regravar quebra o CI** — `test_prompt_alterado_sem_regravar_estoura`,
-      verificado pelo avaliador na t2 e ainda verde.
-- [x] **AC-15 / NFR-3, a camada completa roda contra o provedor real** — 43 casos,
-      57 chamadas, **zero 429 no runner** (§5.2). Os 3 casos vazios são por HTTP
-      413 (OQ19), não por quota; a NFR-3 fala de 429.
-- [x] **Passo 4, agenda dimensionada ao rate limit real** — §6, com o TPD medido.
+- [x] **AC-15, camada rápida sem rede e < 60 s** — 26 testes em 0,22 s (§5.4).
+- [x] **AC-15, prompt alterado sem regravar quebra o CI** —
+      `test_prompt_alterado_sem_regravar_estoura`, verde; verificado pelo avaliador
+      na t2 e novamente na t3.
+- [x] **AC-15, a camada completa roda contra o provedor real e conclui sem casos
+      vazios além dos nominados no bug 003** — 43 casos, 57 chamadas, 42.932
+      tokens (t3, `history.jsonl` `run_id=e1d39b03675b-0758d981c3c0`). Os três
+      vazios são **exatamente** os três `id`s da lista nominada; nenhum vazio fora
+      dela. A exceção está na letra do AC desde este rework, com destino no bug
+      003 e decision registrada — não é reinterpretação.
+- [x] **NFR-2** — 0,22 s contra o teto de 60 s.
+- [x] **NFR-3, nenhum caso vazio por `429`** — zero 429 no runner (t3, §5.2 do
+      relatório anterior). O 429 que apareceu foi na bateria de invariância, depois
+      do runner, e não produziu caso vazio no relatório.
+- [x] **Passo 4, agenda dimensionada ao rate limit real** — TPD 100.000 medido.
+- [x] **Passo 4, decisão registrada no README do harness** — **C7-IMP-3 corrigido**:
+      `backend/evals/README.md`, seção "Medição de 2026-08-04 — por que a agenda é
+      semanal", com o quadro e a conclusão. O cabeçalho do `eval.yml` deixou de
+      pedir a medição que já existe.
 - [x] **Escopo travado** — nenhum `continue-on-error` no `eval.yml`; eval completo
-      fora do PR; nenhum cassette com credencial (grep + teste + gitleaks); nenhum
-      limiar afrouxado.
+      fora do PR; nenhum cassette com credencial (gitleaks, 500 commits); **nenhum
+      limiar recalibrado**.
 - [—] **"Execução agendada registrada" no GitHub** — migrada para o **AC-19 (D.2)**
-      pela OQ20: `workflow_dispatch` exige o arquivo no branch default, e a OQ15
-      proíbe tocar a `main` até o fim da spec. A execução em si foi feita, local e
-      completa, com os mesmos passos do workflow.
+      pela OQ20, com argumento medido e aceite explícito do avaliador da t3.
 
-## 9. Definition of Done da fase
+## 7. O que eu deliberadamente não fiz
 
-- [x] Execução completa contra o provedor real, registrada em `history.jsonl`
-- [x] Gate `verificar` exercitado — reprovou corretamente, com exit 1
-- [x] 56 cassettes gravados, cobrindo o dataset de 43 casos; nenhum com credencial
-- [x] `ruff`, `ruff format`, `mypy`, 496 testes unitários, gitleaks — todos limpos
-- [x] Nenhum gate afrouxado, nenhum limiar recalibrado para passar
-- [x] Consumo real medido e agenda justificada por número
+- **Não recalibrei os limiares.** `MDAPE_MAXIMO = 25.0` e
+  `FRACAO_MINIMA_DENTRO_DE_10PCT = 0.50` seguem reprovando a linha de base medida
+  (MdAPE 33,33%; 23% dentro de ±10%). É decisão de owner e está na mesa (§9); o
+  avaliador endossou a recusa em ajustá-los, e ampliá-la para "agora eu ajusto"
+  seria o oposto do que este rework corrige.
+- **Não corrigi o HTTP 413.** É o caminho 3 do avaliador e exige tocar
+  `config.py`/`ai_client.py` e o frontend — fora do escopo travado da fase. Está
+  registrado no bug 003, que é a forma de não perdê-lo.
+- **Não rodei a bateria de invariância.** Precisa de um dia de cota limpa; segue
+  como a dúvida 3, agora endereçada à C.8.
+- **Não criei fase nova para o 413.** Track C fechado em 8 fases, e editar o plano
+  de fases da spec que estou executando é exatamente o auto-afrouxamento que o
+  BLOQUEANTE condena.
 
-## 10. O que mudou nesta tentativa
+## 8. O que mudou nesta tentativa
 
-| Achado / sugestão da tentativa 2 | Estado |
+| Achado da avaliação t3 | Estado |
 |---|---|
-| **C7-IMP-1** — gate nunca exercitado | **Executado.** Os três impedimentos remedidos (dois já tinham caído), a execução completa feita, registrada e verificada |
-| Impedimento "secret ausente" | **Caiu** — existe desde 2026-08-03 17:42Z |
-| Impedimento "quota esgotada" | **Refutado**, e agora com número: o limite é o **diário**, e o runner cabe nele sozinho |
-| Impedimento "`eval.yml` fora do GitHub" | **Reformulado.** Está em `origin/dev`; o que falta é o branch **default**, que é a D.2 — OQ20 |
-| Sugestão — `--repeticoes` na agendada | **Respondida com número** (§6): triplicaria o custo e não caberia na cota diária. Continua adiada, agora fundamentada |
-| Sugestão — `actionlint` no CI | **Não aplicada.** É arquivo de CI fora do escopo desta tentativa; anotada para a E.4, que já mexe em workflow |
-| Sugestão — "o repositório não tem secret nenhum" | **Desatualizada**: tem o `GROQ_API_KEY`. Os do CD seguem ausentes e a E.4 vai esbarrar nisso |
+| **C7-BLQ-1** — cláusula "sem casos vazios" sem destino | **Corrigido pelo caminho 2.** Bug 003 criado como destino nomeado; AC-15 com exceção nominada de três `id`s; §3, §5 e §9 alinhados; OQ21 e duas decisions registradas |
+| **C7-IMP-3** — medição não propagada ao README do harness | **Corrigido.** Seção nova no `backend/evals/README.md` com o quadro medido; cabeçalho do `eval.yml` atualizado (43 casos, medição de 2026-08-04) |
+| §8.1 — `[x]` de "AC-15 / NFR-3" sustentado por evidência de NFR-3 | **Corrigido.** Os dois viraram itens separados no §6, cada um com a evidência que lhe cabe |
+| §8.2 — "nenhum gate afrouxado" convivia com o gate da fase perdendo cláusula | **Corrigido.** O §7 declara o que não foi tocado; o §2 declara o que a t3 afrouxou e como foi reparado |
+| §8.3 — "por quota" apareceu pela primeira vez na OQ20, sem base no AC-15 | **Corrigido.** Retificação registrada na própria OQ20, apontando a OQ21 como o que dá base à redação |
+| Sugestão 1 — separar limiar de regressão de meta de qualidade | **Registrada, não aplicada.** Decisão de owner; a leitura do avaliador está preservada na decision do teto |
+| Sugestão 2 — D.3 não citar só o estrato bom | **Registrada** no bug 003 e na decision, para a D.3 herdar |
+| Sugestão 3 — rodar invariância antes de fechar a C.8 | **Repassada** à C.8; não cabe nesta fase |
+| Sugestão 4 — virar regra explícita do framework | **Reforçada** na seção final da decision da migração. É a terceira ocorrência (A.1, D.1, C.7); segue sendo evolução de processo, não trabalho de fase |
+| Sugestão 5 — `actionlint` no CI | **Não aplicada**, anotada para a E.4 |
 
-## 11. Itens em aberto / dúvidas para o avaliador
+## 9. Itens em aberto / dúvidas para o avaliador
 
-1. **Os limiares do gate reprovam a linha de base real, e eu não os toquei.**
-   MdAPE 33,33% × teto 25%; 23% × piso 50%. Calibrados sobre 10 casos, aplicados
-   sobre 43. **Pergunta ao owner:** recalibrar para a linha de base medida (o que
-   torna o gate um detector de regressão) ou manter como meta de qualidade (o que
-   deixa a agendada vermelha até o pipeline melhorar)? As duas são defensáveis; a
-   escolha muda o que o gate significa.
-2. **O estrato `composto` tem MdAPE 61,64% e 6% dentro de ±10%.** É o número mais
-   duro que este eval já produziu e é a primeira vez que existe. Não é achado
-   desta fase — é o que a fase foi construída para revelar —, mas alguém precisa
-   olhar antes de a D.3 citar números de eval no README.
-3. **A bateria de invariância não rodou.** Sem ela, `invariancia: null` na linha
-   do histórico. Refazer exige um dia de cota limpo. Vale rodar sozinha antes de
-   a C.8 ser dada por fechada?
-4. **A migração da cláusula de plataforma para o AC-19 é a terceira desta spec**
-   (A.1, D.1, agora C.7). A sugestão 4 da avaliação da D.1 pede que isso vire
-   regra explícita em vez de precedente. Reforço o pedido: três ocorrências não
-   são coincidência.
+1. **Os limiares do gate** seguem sem decisão. MdAPE 33,33% × teto 25%; 23% × piso
+   50%. A leitura do avaliador (separar limiar de regressão de meta de qualidade)
+   está registrada na decision do teto. Não a apliquei: mexer em limiar num rework
+   cujo achado é justamente "não afrouxe critério durante a execução" seria
+   contraditório.
+2. **O bug 003 é destino suficiente?** É a pergunta que mais quero ver contestada.
+   Um registro de bug tem menos força de gate que um AC de fase — mas nenhuma fase
+   desta spec pode fechar a cláusula, e o Track C está no limite de 8. Se o
+   avaliador julgar que o destino precisa ser um AC, ele terá de ser de uma spec
+   nova, e isso é `/create-spec`.
+3. **O estrato `composto`** (MdAPE 61,64%, 6% dentro de ±10%) segue sem dono. É o
+   produto da fase, não defeito dela, mas a D.3 esbarra nele.
+4. **Quatro tentativas.** A autorização do owner é explícita quanto a não haver
+   quinta implícita. Se algo aqui não fechar, a fase volta à mesa dele.
