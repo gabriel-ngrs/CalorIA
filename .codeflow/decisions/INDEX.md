@@ -1,7 +1,7 @@
 ---
 versão: 1.0
 status: estável
-atualizado: 2026-08-03
+atualizado: 2026-08-08
 ---
 
 # Índice de decisões
@@ -10,6 +10,8 @@ Filtrar por tag antes de carregar decisions individuais.
 
 | data | título | status | tags |
 |------|--------|--------|------|
+| 2026-08-08 | [A cláusula "sem casos vazios" do AC-15 migra da C.7 para o bug 003](2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md) | ativa | eval, modelagem-de-ac, spec-002, fase-c7, fase-c2, bug-003, vision, rate-limit |
+| 2026-08-08 | [Owner autoriza a 4ª tentativa da C.7 no teto do §2.11.4](2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md) | ativa | processo, spec-002, fase-c7, teto-de-tentativas, codeflow |
 | 2026-08-04 | [A senha da conta de demonstração é pública por desenho, e isenta nominalmente no gitleaks](2026-08-04-conta-demo-senha-publica-e-isencao-no-gitleaks.md) | ativa | seguranca, gitleaks, demo, vitrine, spec-002, fase-e3, fase-a3 |
 | 2026-08-04 | [Owner autoriza a 4ª tentativa da D.1 no teto do §2.11.4, e encerra a A.1](2026-08-04-quarta-tentativa-da-d1-autorizada-no-teto.md) | ativa | processo, spec-002, fase-a1, fase-d1, teto-de-tentativas, codeflow |
 | 2026-08-04 | [Estrato de foto entra no runner do eval, e o teto de tokens da visão estoura o TPM](2026-08-04-estrato-de-foto-no-runner-e-teto-de-tokens-da-visao.md) | ativa | eval, vision, runner, groq, rate-limit, spec-002, fase-b5, fase-c2, fase-c5 |

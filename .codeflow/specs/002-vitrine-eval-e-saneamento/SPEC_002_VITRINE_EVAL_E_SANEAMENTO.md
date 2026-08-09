@@ -13,10 +13,10 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-04
+updated_at: 2026-08-08
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
-related_bugs: [001]
+related_bugs: [001, 003]
 quality_gate:
   scorer: phase-evaluator
   threshold: 8.5
@@ -366,7 +366,20 @@ Cada princípio rastreia a uma regra real do repositório.
 - **AC-15** (FR-C6) — *Dado* um PR, *quando* o CI executa, *então* a camada rápida
   do eval roda sem chamadas de rede e falha se o payload enviado ao provedor mudar
   sem atualização do snapshot. *E dado* a execução agendada, *então* a camada
-  completa roda contra o provedor real e conclui sem casos vazios.
+  completa roda contra o provedor real e conclui sem casos vazios **além dos
+  nominados no bug 003** — hoje os três do estrato de foto
+  (`foto-coxinha-1-unidade`, `foto-ovo-frito-1-unidade`, `foto-banana-1-unidade`),
+  que falham por HTTP 413.
+  > **Nota (2026-08-08).** A cláusula "conclui sem casos vazios" **sem
+  > qualificador** migrou para o **bug 003**
+  > (`.codeflow/bugs/003-http-413-no-estrato-de-foto.md`), que é quem corrige o
+  > HTTP 413 medido na OQ19. Nenhuma fase desta spec pode fechá-la: o fix é em
+  > `config.py`/`ai_client.py` (escopo da C.2, já concluída) e no frontend, e o
+  > Track C está fechado em 8 fases. É o mesmo defeito de modelagem já corrigido no
+  > AC-1 (A.1) e no AC-18 (D.1) — um gate que depende de efeito fora do escopo de
+  > quem responde por ele. Enquanto o bug 003 estiver aberto os três vazios são
+  > exceção **nominada**, não tolerância genérica: qualquer caso vazio fora dessa
+  > lista reprova o AC. Ver OQ21.
 - **AC-16** (FR-C7) — *Dado* duas execuções completas em commits diferentes, *quando*
   se lê `evals/runs/history.jsonl`, *então* cada linha amarra métricas a
   `git_commit`, versões de prompt com `sha`, modelo e `sha` do dataset.
@@ -1037,14 +1050,18 @@ que é telemetria de execução, fica o que é registro de engenharia.
      morreu com `429` no terceiro caso; se a quota não comportar execução diária,
      usar periodicidade maior e registrar a decisão no README do harness.
 - **Testes (AC-15):** a camada rápida roda sem rede e em menos de 60 segundos;
-  alterar um prompt sem atualizar o snapshot faz o CI falhar; o workflow agendado
-  conclui sem casos vazios.
+  alterar um prompt sem atualizar o snapshot faz o CI falhar; a camada completa
+  conclui sem casos vazios além dos nominados no bug 003 (os três de foto, por
+  HTTP 413 — ver a nota do AC-15 e a OQ21).
 - **Escopo travado / violações BLOQUEANTES:** não gravar cassette contendo chave de
   API — sanitizar cabeçalhos antes de versionar. Não rodar o eval completo por PR.
   Não silenciar falha do workflow agendado com `continue-on-error`. Não versionar
   imagens de comida de terceiros sem verificar a licença.
 - **Critério de conclusão (gate):** AC-15 e NFR-2 e NFR-3 satisfeitos; uma execução
-  agendada completa registrada.
+  completa contra o provedor real registrada em `history.jsonl`. Duas cláusulas
+  deste gate migraram, cada uma com destino nomeado: a de **plataforma** (o
+  workflow registrado no GitHub) para o AC-19 / D.2, pela OQ20; a de **"sem casos
+  vazios" sem qualificador** para o bug 003, pela OQ21.
 
 ### Fase C.8 — Série temporal versionada e relatório *(M)*
 
@@ -1682,7 +1699,10 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   de owner vigente, a cláusula **de plataforma** do gate migra para a **D.2**, e a
   C.7 fecha pela evidência substantiva, que é local e não depende do GitHub: a
   execução completa contra o provedor real, sem casos vazios por quota, com a
-  agenda dimensionada pelo consumo medido.
+  agenda dimensionada pelo consumo medido. *(Retificação de 2026-08-08: o
+  qualificador "por quota" aparecia aqui sem base no AC-15, que exigia "sem casos
+  vazios" sem qualificador algum. A **OQ21** deu destino à cláusula e alinhou a
+  redação de §3, §5 e §9 — só a partir dela este parágrafo é coerente com o AC.)*
   **(b)** Executado o `eval.yml` local, passo a passo: **43 casos, 57 chamadas,
   42.932 tokens, 4min40s de parede, zero 429 no runner**. O gate
   (`evals.report verificar`) **reprovou com exit 1**, e corretamente — 3 casos
@@ -1693,12 +1713,41 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   (runner + invariância) **não cabe** num dia junto de qualquer outro uso. Isso
   confirma a periodicidade **semanal** do `eval.yml` com número, e não por palpite
   — que é o que o passo 4 da fase pede.
-  **Consequência registrada:** enquanto o 413 da OQ19 não for resolvido, toda
-  execução agendada vai reprovar por 3 casos vazios. Os limiares de
+  **Consequência registrada:** enquanto o 413 da OQ19 não for resolvido
+  (rastreado no **bug 003** desde a OQ21), toda execução agendada vai reprovar por
+  3 casos vazios. Os limiares de
   `evals/report.py` (`MDAPE_MAXIMO = 25.0`, `FRACAO_MINIMA_DENTRO_DE_10PCT = 0.50`)
   foram calibrados sobre o dataset de 10 casos-semente; com os 43 da C.4 eles
   reprovam a linha de base real. Recalibrar é decisão de owner com o número na
   mão, não ajuste de conveniência — e **não** foi feito nesta fase.
+
+- **OQ21 — A cláusula "sem casos vazios" saiu do gate da C.7 sem destino, e o
+  teto da C.7 foi destravado pelo owner.** **RESOLVIDO (2026-08-08).** Duas
+  decisões de owner, tomadas juntas porque a segunda só existe por causa da
+  primeira.
+  **(a) A cláusula.** A tentativa 3 reescreveu a linha da C.7 na §9 e derrubou
+  **duas** cláusulas de uma vez. A de plataforma migrou para o AC-19 com
+  argumento medido (OQ20) — legítimo. A de **"sem casos vazios"** não migrou para
+  lugar nenhum, enquanto o AC-15 seguia exigindo-a: a spec passou a pedir e não
+  pedir a mesma coisa, que é o defeito que a D.1 levou quatro tentativas para
+  eliminar (`C7-BLQ-1`). A cláusula agora tem **destino nomeado**: o **bug 003**
+  (`.codeflow/bugs/003-http-413-no-estrato-de-foto.md`), que é quem corrige o HTTP
+  413 da OQ19. Ela não some da spec — muda de dono, como em OQ18. O AC-15 passa a
+  admitir os três vazios de foto como exceção **nominada** (lista fechada de três
+  `id`s); qualquer vazio fora dessa lista segue reprovando. §3, §5 e §9 foram
+  alinhados na mesma redação.
+  **Por que um bug e não uma fase:** o fix é em `config.py`/`ai_client.py` (escopo
+  da C.2, já concluída) e no frontend, o Track C está fechado em 8 fases
+  (ARTIFACTS_SPEC §2.8.6, regra 3), e criar fase é trabalho de `/create-spec`, não
+  de execução. O registro de bugs é o artefato vivo do projeto onde a cláusula não
+  se perde.
+  **(b) O teto.** A avaliação da tentativa 3 (REPROVADO, score 8.9) fechou o
+  terceiro veredito não-APROVADO e a C.7 entrou no estado terminal do §2.11.4. O
+  owner autorizou a quarta tentativa em 2026-08-08. É a segunda vez nesta spec
+  (D.1, OQ13/A.1), e vale o mesmo limite: se a quarta avaliação não aprovar, não
+  há autorização implícita para uma quinta.
+  Ver `.codeflow/decisions/2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md`
+  e `.codeflow/decisions/2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md`.
 
 ## 9. Definition of Done (gate por etapa)
 
@@ -1729,11 +1778,14 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [ ] **C.5** — AC-13; relatório com os três estratos, `n` e IC95.
 - [ ] **C.6** — AC-14; grupo do bug 001 presente; reprovações registradas como
       achado.
-- [ ] **C.7** — AC-15, NFR-2, NFR-3; execução completa registrada. *(Executada
-      local em 2026-08-04, os passos do `eval.yml` um a um: 43 casos, 57 chamadas,
-      zero 429 no runner, gate `verificar` reprovando corretamente, e o consumo
-      medido — TPD 100k, 99.768 usados — confirmando a agenda semanal. A cláusula
-      de plataforma, `workflow_dispatch` no GitHub, migrou para a D.2 — ver OQ20.)*
+- [ ] **C.7** — AC-15, NFR-2, NFR-3; execução completa registrada, **sem casos
+      vazios além dos três de foto nominados no bug 003**. *(Executada local em
+      2026-08-04, os passos do `eval.yml` um a um: 43 casos, 57 chamadas, zero 429
+      no runner, gate `verificar` reprovando corretamente, e o consumo medido —
+      TPD 100k, 99.768 usados — confirmando a agenda semanal. Duas cláusulas
+      migraram, cada uma com destino nomeado: a de plataforma,
+      `workflow_dispatch` no GitHub, para a D.2 (OQ20); a de "sem casos vazios"
+      sem qualificador, para o bug 003 (OQ21).)*
 - [ ] **C.8** — AC-16; histórico com ao menos duas execuções reais.
 - [ ] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
       sincronizada). A detecção de licença pela API migrou para o AC-19, que é
