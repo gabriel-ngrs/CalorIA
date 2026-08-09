@@ -1,7 +1,7 @@
 ---
 versão: 1.1
 status: estável
-atualizado: 2026-07-29
+atualizado: 2026-08-09
 proximo_numero: 003
 ---
 
@@ -13,8 +13,8 @@ prefixo da pasta e do slug, e também o campo `id` no frontmatter da spec.
 
 | # | slug (pasta) | título | domínio | status | criada |
 |---|--------------|--------|---------|--------|--------|
-| 001 | [001-backlog-features-qa-v1](001-backlog-features-qa-v1/SPEC_001_BACKLOG_FEATURES_QA_V1.md) | Backlog de features do QA (lote bugs-teste-v1): hidratação CRUD, perfil/TDEE, persistência de IA, recuperação de senha | fullstack | draft | 2026-07-02 |
-| 002 | [002-vitrine-eval-e-saneamento](002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md) | Vitrine técnica: eval do pipeline de IA, esteira de qualidade reativada, saneamento do histórico e replanejamento do deploy | fullstack | draft | 2026-07-29 |
+| 001 | [001-backlog-features-qa-v1](001-backlog-features-qa-v1/SPEC_001_BACKLOG_FEATURES_QA_V1.md) | Backlog de features do QA (lote bugs-teste-v1): hidratação CRUD, perfil/TDEE, persistência de IA, recuperação de senha | fullstack | active | 2026-07-02 |
+| 002 | [002-vitrine-eval-e-saneamento](002-vitrine-eval-e-saneamento/SPEC_002_VITRINE_EVAL_E_SANEAMENTO.md) | Vitrine técnica: eval do pipeline de IA, esteira de qualidade reativada, saneamento do histórico e replanejamento do deploy | fullstack | active | 2026-07-29 |
 
 ## Convenção de enumeração (LER ANTES DE CRIAR UMA SPEC)
 

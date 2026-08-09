@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-08
+updated_at: 2026-08-09
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001, 003]
@@ -1753,32 +1753,38 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 
 ### Gate por fase
 
+> `[x]` = fase **concluída** pela regra do ARTIFACTS_SPEC §2.11.3: existe
+> `FASE-<id>-*-AVALIACAO.md` com `veredito: APROVADO` na mesma `tentativa` do
+> EXECUCAO. Não é marcação a olho — deriva dos artefatos. Sincronizado em
+> 2026-08-09: 22 das 26 fases concluídas; abertas D.2, D.3, D.4 e E.4, nenhuma
+> com execução registrada.
+
 - [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
       a credencial; `make test-frontend` verde. *(Encerrada por aceite do owner em
       2026-08-03, no teto do §2.11.4 — ver OQ13.)*
-- [ ] **A.2** — varredura sobre todo o histórico com zero achados; documentos de
+- [x] **A.2** — varredura sobre todo o histórico com zero achados; documentos de
       auditoria reescritos sem PII nem caminho de extração; PRs do Dependabot
       tratados.
-- [ ] **A.3** — AC-3; `pre-commit run --all-files` verde; CI verde.
-- [ ] **B.1** — AC-5; `pytest tests/unit/` sem infraestrutura; contagem de testes
+- [x] **A.3** — AC-3; `pre-commit run --all-files` verde; CI verde.
+- [x] **B.1** — AC-5; `pytest tests/unit/` sem infraestrutura; contagem de testes
       coletados inalterada (199 testes unitários).
-- [ ] **B.2** — AC-6; execução verde no GitHub Actions com os gatilhos restaurados.
-- [ ] **B.3** — AC-7 e AC-8; `make test-integration` verde.
-- [ ] **B.4** — AC-9; piso de cobertura ativo e CI verde.
-- [ ] **B.5** — AC-17; delta do estrato de foto registrado com números.
+- [x] **B.2** — AC-6; execução verde no GitHub Actions com os gatilhos restaurados.
+- [x] **B.3** — AC-7 e AC-8; `make test-integration` verde.
+- [x] **B.4** — AC-9; piso de cobertura ativo e CI verde.
+- [x] **B.5** — AC-17; delta do estrato de foto registrado com números.
       *(Medido em 2026-08-04, tentativa 2: quatro execuções contra o provedor real,
       MdAPE 52,17% e SSPB +52,17% em todas as quatro — nenhum delta separável do
       ruído em n=3. Achado do HTTP 413 na configuração de produção em OQ19.)*
-- [ ] **C.1** — AC-10; testes existentes dos parsers passam **sem modificação**.
-- [ ] **C.2** — AC-11; suíte de IA verde sem modificação nos testes existentes.
-- [ ] **C.3** — AC-12; README do harness com a análise de poder.
-- [ ] **C.4** — OQ2 resolvida e registrada; dataset completo validando; limitações
+- [x] **C.1** — AC-10; testes existentes dos parsers passam **sem modificação**.
+- [x] **C.2** — AC-11; suíte de IA verde sem modificação nos testes existentes.
+- [x] **C.3** — AC-12; README do harness com a análise de poder.
+- [x] **C.4** — OQ2 resolvida e registrada; dataset completo validando; limitações
       documentadas. *(Executada em 2026-08-03: 43 casos verificados, três estratos
       populados; extensões de fonte e de arquivos em OQ17.)*
-- [ ] **C.5** — AC-13; relatório com os três estratos, `n` e IC95.
-- [ ] **C.6** — AC-14; grupo do bug 001 presente; reprovações registradas como
+- [x] **C.5** — AC-13; relatório com os três estratos, `n` e IC95.
+- [x] **C.6** — AC-14; grupo do bug 001 presente; reprovações registradas como
       achado.
-- [ ] **C.7** — AC-15, NFR-2, NFR-3; execução completa registrada, **sem casos
+- [x] **C.7** — AC-15, NFR-2, NFR-3; execução completa registrada, **sem casos
       vazios além dos três de foto nominados no bug 003**. *(Executada local em
       2026-08-04, os passos do `eval.yml` um a um: 43 casos, 57 chamadas, zero 429
       no runner, gate `verificar` reprovando corretamente, e o consumo medido —
@@ -1786,19 +1792,19 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
       migraram, cada uma com destino nomeado: a de plataforma,
       `workflow_dispatch` no GitHub, para a D.2 (OQ20); a de "sem casos vazios"
       sem qualificador, para o bug 003 (OQ21).)*
-- [ ] **C.8** — AC-16; histórico com ao menos duas execuções reais.
-- [ ] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
+- [x] **C.8** — AC-16; histórico com ao menos duas execuções reais.
+- [x] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
       sincronizada). A detecção de licença pela API migrou para o AC-19, que é
       da D.2 — ver OQ18.
 - [ ] **D.2** — AC-19 (incl. licença detectada pela API); proteção de `main`
       configurada. *(Executada por último, por decisão do owner — OQ15.)*
 - [ ] **D.3** — AC-20; execução limpa a partir do README validada.
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
-- [ ] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
-- [ ] **D.6** — AC-23.
-- [ ] **E.1** — AC-24.
-- [ ] **E.2** — AC-25; ADR-009 escrito; owner confirmou a topologia.
-- [ ] **E.3** — AC-26.
+- [x] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
+- [x] **D.6** — AC-23.
+- [x] **E.1** — AC-24.
+- [x] **E.2** — AC-25; ADR-009 escrito; owner confirmou a topologia.
+- [x] **E.3** — AC-26.
 - [ ] **E.4** — AC-27; deploy automático verificado ponta a ponta.
 
 ### Itens globais transversais
