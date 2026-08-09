@@ -155,6 +155,32 @@ texto — cerca de **4× mais chamadas** por execução completa do que a camada
 agendada media antes. `distribuicao_por_estrato()` continua reportando a
 composição real a cada execução, para que nenhum relatório esconda um estrato.
 
+#### Medição de 2026-08-04 — por que a agenda é semanal
+
+A periodicidade do `eval.yml` foi dimensionada por medição, não por estimativa.
+Uma execução completa contra a Groq, com o dataset de 43 casos:
+
+| Medida | Valor |
+|---|---|
+| Limite que morde | **tokens por dia (TPD): 100.000** — não o por-minuto |
+| Uma execução do runner (43 casos, 1 repetição) | **42.932 tokens** (38.833 in + 4.099 out), 57 chamadas, 4min40s |
+| Bateria de invariância | **não medida** — não coube no que sobrou do dia |
+| Consumo do dia até o `429` | 99.768 de 100.000 |
+
+O `429` que interrompeu a bateria de invariância foi de **tokens por dia**, não de
+tokens por minuto:
+
+```text
+Rate limit reached for model `llama-3.3-70b-versatile` … on tokens per day (TPD):
+  Limit 100000, Used 99768, Requested 956.
+```
+
+**Conclusão:** uma rodada completa (runner + invariância) consome perto de metade
+ou mais da cota diária e não cabe num dia junto de qualquer outro uso. **Diária é
+impossível; semanal cabe.** Rodar a agendada com `--repeticoes 3` triplicaria o
+custo do runner e não caberia nem sozinha — é o número que sustenta manter a
+repetição fora da agenda.
+
 ## Escolha das métricas
 
 ### Por que MdAPE (mediana), e não MAPE (média)

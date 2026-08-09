@@ -7,9 +7,12 @@ name: Eval do pipeline de IA
 # gate — é ruído. A camada rápida (cassettes + snapshot de payload, em
 # `tests/unit/test_evals_snapshot.py`) é a que roda a cada PR, sem rede.
 #
-# Periodicidade semanal, não diária: com ~10 casos, mais os grupos de
-# invariância, uma rodada diária no free tier tende a esbarrar na quota. Ajustar
-# junto de uma medição real de consumo, não por palpite.
+# Periodicidade semanal, não diária, por medição (2026-08-04): o limite que morde
+# é o de tokens por DIA (TPD 100.000). Uma execução do runner sobre os 43 casos do
+# dataset custa 42.932 tokens em 57 chamadas, e a bateria de invariância na
+# sequência morreu com `429` de TPD (99.768 usados). Uma rodada completa não cabe
+# num dia junto de qualquer outro uso. Detalhe em `backend/evals/README.md`,
+# seção "Consumo de quota".
 on:
   schedule:
     - cron: "0 6 * * 1" # segunda-feira, 06:00 UTC (03:00 America/Sao_Paulo)
