@@ -1805,7 +1805,7 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 > `[x]` = fase **concluída** pela regra do ARTIFACTS_SPEC §2.11.3: existe
 > `FASE-<id>-*-AVALIACAO.md` com `veredito: APROVADO` na mesma `tentativa` do
 > EXECUCAO. Não é marcação a olho — deriva dos artefatos. Sincronizado em
-> 2026-08-09: 22 das 26 fases concluídas; abertas D.2, D.3, D.4 e E.4, nenhuma
+> 2026-08-09: 23 das 26 fases concluídas; abertas D.3, D.4 e E.4, nenhuma
 > com execução registrada.
 
 - [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
@@ -1845,8 +1845,11 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [x] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
       sincronizada). A detecção de licença pela API migrou para o AC-19, que é
       da D.2 — ver OQ18.
-- [ ] **D.2** — AC-19 (incl. licença detectada pela API); proteção de `main`
-      configurada. *(Executada por último, por decisão do owner — OQ15.)*
+- [x] **D.2** — AC-19 (incl. licença detectada pela API); proteção de `main`
+      configurada. *(Executada por último, por decisão do owner — OQ15. Aprovada na
+      tentativa 2: a tentativa 1 fechou com RESSALVAS por duas decisões de escopo sem
+      registro durável e por `enforce_admins: false`, corrigidos com a OQ22 e com
+      `enforce_admins: true`.)*
 - [ ] **D.3** — AC-20; execução limpa a partir do README validada.
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
 - [x] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
