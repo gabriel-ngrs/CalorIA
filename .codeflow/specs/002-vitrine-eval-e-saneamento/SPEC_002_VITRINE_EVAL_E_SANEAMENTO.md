@@ -1749,6 +1749,55 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   Ver `.codeflow/decisions/2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md`
   e `.codeflow/decisions/2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md`.
 
+- **OQ22 — As três decisões de escopo da Fase D.2, que viviam só num artefato que a
+  D.4 apaga.** **RESOLVIDO (2026-08-09).** A D.2 tomou três decisões que o item
+  global da DoD manda registrar aqui ou numa decision, e nenhuma tinha ido para
+  lugar nenhum: elas existiam apenas no `FASE-D.2-release-v070-EXECUCAO.md`, que é
+  exatamente o tipo de arquivo que o **AC-21 manda a D.4 remover do
+  versionamento**. O achado é da avaliação da tentativa 1 (IMP-1). O que motiva o
+  registro não é forma: a tag `v0.7.0` é pública e permanente, e a explicação dela
+  desapareceria na poda. `gera_decision: no` impede o executor de criar decision,
+  não de abrir OQ — caminho já usado pela B.5 (OQ19) e pela C.7 (OQ21).
+
+  **(a) A tag `v0.7.0` cobre mais do que a entrada de 0.7.0 do CHANGELOG promete.**
+  Ela aponta para `defe1dc`, que contém tanto `## [0.7.0] - 2026-05-10` (a migração
+  para Groq) quanto **toda a seção `[Não lançado]`** — as 22 fases desta spec. A
+  alternativa era cortar `v0.8.0`, e o custo foi apresentado ao owner antes da
+  escolha: editar o `CHANGELOG.md` e os quatro arquivos de versão, o que contraria
+  o `Arquivos alterados: nenhum` da própria §5 da D.2 e desfaz a sincronização em
+  `0.7.0` que a **D.1 acabara de fazer e que o AC-18 cobra**. Decisão do owner:
+  manter `v0.7.0`. **Mitigação aplicada e verificável:** as notas do release trazem
+  seção própria — *"Também incluído nesta tag (seção [Não lançado] do CHANGELOG)"* —
+  declarando o conteúdo extra item a item, de modo que o leitor da release não
+  precisa do artefato de execução para entender o que a tag carrega. **Consequência
+  registrada:** o próximo corte de versão deve ser `v0.8.0` com o CHANGELOG
+  fechando `[Não lançado]`, e a `v0.7.0` fica com a semântica de *"primeira tag
+  publicada do projeto"*, não de *"conteúdo da entrada 0.7.0"*.
+
+  **(b) Os passos 3 e 5 da D.2 estão marcados "Ação do owner" e foram executados
+  pelo agente.** Merge do PR #27, configuração da proteção de branch e virada para
+  público. Autorização perguntada e dada explicitamente antes de cada ato; o owner
+  revisou o PR pela descrição e pelo CI verde. A leitura adotada é **funcional** —
+  "ação do owner" designa de quem é a *decisão*, não de quem são as mãos —, e ela
+  vale para esta spec inteira daqui em diante, incluindo o que restar de ação do
+  owner na D.3, D.4 e E.4. **Salvaguarda que acompanha a leitura:** o ato
+  irreversível (privado → público) foi precedido de varredura de segredos sobre
+  todo o histórico, e é essa varredura, não a identidade de quem digita, que
+  protege o repositório.
+
+  **(c) A proteção da `main` não exige revisor, e `enforce_admins` estava desligado
+  — o segundo virou.** O `enforce_admins: false` foi corrigido para **`true`** no
+  rework da tentativa 2, e a justificativa que o sustentava era **falsa**: alegava
+  que a `main` ficaria "inadministrável", quando sem `required_pull_request_reviews`
+  o owner segue abrindo e mergeando o próprio PR com o CI verde — foi o que
+  aconteceu no PR #27. O que `enforce_admins: true` retira é o push direto e o
+  force-push na `main`, que é o objeto da proteção. **O que fica deliberadamente de
+  fora é a revisão obrigatória de PR**, e essa sim é defensável: o Roadmap 9.1 pede
+  "PR obrigatório + CI obrigatório", não revisor obrigatório, e num projeto de um
+  único desenvolvedor a exigência de um segundo aprovador não teria quem a cumprisse.
+  A válvula de escape do owner continua existindo e agora é explícita — desligar a
+  proteção por API é um ato registrado, não uma porosidade permanente.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
