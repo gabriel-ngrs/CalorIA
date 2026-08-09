@@ -1,0 +1,15 @@
+   Building caloria-backend @ file:///home/gabriel/projetos/CalorIA/backend
+Downloading ruff (10.8MiB)
+Downloading mypy (13.0MiB)
+      Built caloria-backend @ file:///home/gabriel/projetos/CalorIA/backend
+ Downloaded ruff
+ Downloaded mypy
+Uninstalled 2 packages in 25ms
+Installed 10 packages in 73ms
+app/services/ai/ai_client.py:69: error: Dict entry 1 has incompatible type "str": "list[object]"; expected "str": "str"  [dict-item]
+app/services/ai/ai_client.py:79: error: Argument "messages" to "create" of "AsyncCompletions" has incompatible type "list[dict[str, str]]"; expected "Iterable[ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam | ChatCompletionToolMessageParam | ChatCompletionFunctionMessageParam]"  [arg-type]
+app/services/ai/ai_client.py:106: error: Argument "messages" to "create" of "AsyncCompletions" has incompatible type "list[dict[str, str]]"; expected "Iterable[ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam | ChatCompletionToolMessageParam | ChatCompletionFunctionMessageParam]"  [arg-type]
+app/services/ai/ai_client.py:135: error: Call to untyped function "from_url" in typed context  [no-untyped-call]
+app/services/ai/ai_client.py:136: error: Returning Any from function declared to return "str | None"  [no-any-return]
+app/services/ai/ai_client.py:143: error: Call to untyped function "from_url" in typed context  [no-untyped-call]
+Found 6 errors in 1 file (checked 67 source files)

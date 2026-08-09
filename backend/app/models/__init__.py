@@ -7,6 +7,7 @@ from app.models.meal import Meal
 from app.models.meal_item import MealItem
 from app.models.mood_log import MoodLog
 from app.models.notification import Notification
+from app.models.portion import Portion
 from app.models.profile import UserProfile
 from app.models.push_subscription import PushSubscription
 from app.models.reminder import Reminder
@@ -26,4 +27,5 @@ __all__ = [
     "AIConversation",
     "PushSubscription",
     "Notification",
+    "Portion",
 ]

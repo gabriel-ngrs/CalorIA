@@ -69,6 +69,44 @@ export function useLogHydration() {
   });
 }
 
+export function useDeleteHydration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/api/v1/hydration/${id}`);
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hydration"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Registro removido");
+    },
+    onError: () => toast.error("Erro ao remover registro"),
+  });
+}
+
+export function useUpdateHydration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      id: number;
+      amount_ml?: number;
+      date?: string;
+      time?: string;
+    }) => {
+      const { id, ...body } = payload;
+      const { data } = await api.put(`/api/v1/hydration/${id}`, body);
+      return data as HydrationLog;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["hydration"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Registro atualizado", { description: `${data.amount_ml} ml salvos.` });
+    },
+    onError: () => toast.error("Erro ao atualizar registro"),
+  });
+}
+
 // ─── Mood ────────────────────────────────────────────────────────────────────
 
 export function useMoodLogs() {

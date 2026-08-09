@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.deps import get_current_user_id, get_db
 from app.schemas.reminder import ReminderCreate, ReminderResponse
 from app.services.reminder_service import ReminderService
@@ -43,6 +44,14 @@ async def create_reminders_batch(
     if not items:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lista vazia"
+        )
+    if len(items) > settings.REMINDERS_BATCH_MAX_ITEMS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Máximo de {settings.REMINDERS_BATCH_MAX_ITEMS} lembretes por "
+                f"requisição (recebidos {len(items)})"
+            ),
         )
     reminders = await ReminderService(db).create_many(user_id, items)
     return [ReminderResponse.model_validate(r) for r in reminders]

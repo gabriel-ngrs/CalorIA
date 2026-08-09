@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    create_reset_token,
     decode_token,
     hash_password,
     verify_password,
@@ -104,3 +105,18 @@ class TestDecodeToken:
         )
         with pytest.raises(JWTError):
             decode_token(token)
+
+
+class TestCreateResetToken:
+    def test_tipo_e_reset(self) -> None:
+        payload = decode_token(create_reset_token(1))
+        assert payload["type"] == "reset"
+        assert payload["sub"] == "1"
+
+    def test_emissoes_geram_tokens_distintos(self) -> None:
+        # Cada emissão deve ser única (jti), mesmo dentro do mesmo segundo —
+        # senão o single-use por blacklist invalidaria um segundo reset legítimo.
+        a = create_reset_token(1)
+        b = create_reset_token(1)
+        assert a != b
+        assert decode_token(a)["jti"] != decode_token(b)["jti"]

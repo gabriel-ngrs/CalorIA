@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
-  AlertTriangle,
   Bot,
   CalendarIcon,
   Camera,
@@ -32,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { describeAnalyzeError } from "@/lib/aiErrors";
 import {
   Dialog,
   DialogContent,
@@ -67,7 +67,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Meal, MealItemCreate, MealType, ParsedFoodItem } from "@/types";
+import { AnalysisReview } from "@/components/refeicoes/AnalysisReview";
+import type {Meal, MealType, ParsedFoodItem} from "@/types";
+import { toMealItemCreate } from "@/lib/mealItems";
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: "Café da manhã",
@@ -146,6 +148,45 @@ function MacroPill({ icon, value, unit, color }: {
     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", color)}>
       {icon}
       {value.toFixed(0)}{unit}
+    </span>
+  );
+}
+
+// ── Indicador de origem do valor nutricional ──────────────────────────────────
+
+/** Rótulo curto da fonte do dado, por `data_source` do MealItem. */
+const SOURCE_DOT: Record<string, { label: string; className: string }> = {
+  taco:          { label: "Tabela",  className: "text-emerald-500 bg-emerald-500/10 border-emerald-500/25" },
+  usda:          { label: "USDA",    className: "text-emerald-500 bg-emerald-500/10 border-emerald-500/25" },
+  fatsecret:     { label: "FS",      className: "text-sky-500 bg-sky-500/10 border-sky-500/25" },
+  openfoodfacts: { label: "OFF",     className: "text-sky-500 bg-sky-500/10 border-sky-500/25" },
+  ai_estimated:  { label: "IA",      className: "text-amber-500 bg-amber-500/10 border-amber-500/25" },
+};
+
+/**
+ * Mostra de onde veio o número nutricional do item já gravado.
+ *
+ * Sem isto, uma refeição salva não sabe dizer se as calorias vieram da tabela
+ * nutricional ou de uma estimativa do modelo — e o usuário não tem como
+ * calibrar a confiança no próprio diário.
+ */
+function SourceDot({ source }: { source: string | null }) {
+  if (!source) return null;
+  const meta = SOURCE_DOT[source];
+  if (!meta) return null;
+  return (
+    <span
+      title={
+        source === "ai_estimated"
+          ? "Estimado pela IA — sem correspondência no banco nutricional"
+          : "Valor do banco nutricional"
+      }
+      className={cn(
+        "px-1 py-px rounded text-[9px] font-medium border shrink-0",
+        meta.className
+      )}
+    >
+      {meta.label}
     </span>
   );
 }
@@ -323,8 +364,14 @@ function MealCard({ meal, onEdit, onDelete, deleting }: {
           {meal.items.map((item) => (
             <div key={item.id} className="flex items-center justify-between py-1.5 gap-2">
               <div className="min-w-0">
-                <span className="text-sm text-foreground/90 truncate block">{item.food_name}</span>
-                <span className="text-xs text-muted-foreground">{item.quantity}{item.unit}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-sm text-foreground/90 truncate">{item.food_name}</span>
+                  <SourceDot source={item.data_source} />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {item.quantity}{item.unit}
+                  {item.raw_input && ` · você disse "${item.raw_input}"`}
+                </span>
               </div>
               <div className="text-right shrink-0">
                 <span className="text-xs font-medium text-foreground/80">{item.calories.toFixed(0)} kcal</span>
@@ -413,16 +460,30 @@ export default function RefeicoesPage() {
   const [editMeal, setEditMeal] = useState<Meal | null>(null);
   const [editMealType, setEditMealType] = useState<MealType>("lunch");
   const [editNotes, setEditNotes] = useState("");
+  // Itens editáveis apenas em estado local: remover a lixeira só altera este
+  // array; a exclusão só é persistida ao clicar em "Salvar" (BUG 6).
+  const [editItems, setEditItems] = useState<Meal["items"]>([]);
 
   function openEdit(meal: Meal) {
     setEditMeal(meal);
     setEditMealType(meal.meal_type);
     setEditNotes(meal.notes ?? "");
+    setEditItems(meal.items);
     setEditOpen(true);
   }
 
   async function handleSaveEdit() {
     if (!editMeal) return;
+    // Persiste as remoções pendentes (itens que estavam na refeição e foram
+    // retirados no modal) e só então salva tipo/notas.
+    const remainingIds = new Set(editItems.map((it) => it.id));
+    const removedIds = editMeal.items
+      .filter((it) => !remainingIds.has(it.id))
+      .map((it) => it.id);
+
+    for (const itemId of removedIds) {
+      await deleteMealItem.mutateAsync({ mealId: editMeal.id, itemId });
+    }
     await updateMeal.mutateAsync({
       id: editMeal.id,
       data: { meal_type: editMealType, notes: editNotes || undefined },
@@ -499,18 +560,7 @@ export default function RefeicoesPage() {
     await createMeal.mutateAsync({
       meal_type: mealType,
       date: filterDate,
-      items: parsedItems.map(
-        (it): MealItemCreate => ({
-          food_name: it.food_name,
-          quantity: it.quantity,
-          unit: it.unit,
-          calories: it.calories,
-          protein: it.protein,
-          carbs: it.carbs,
-          fat: it.fat,
-          fiber: it.fiber,
-        })
-      ),
+      items: parsedItems.map(toMealItemCreate),
     });
     setOpen(false);
     setParsedItems(null);
@@ -728,7 +778,7 @@ export default function RefeicoesPage() {
               {(analyzeMeal.isError || analyzePhoto.isError) && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  Erro ao analisar. Verifique sua conexão e tente novamente.
+                  {describeAnalyzeError(analyzeMeal.error ?? analyzePhoto.error)}
                 </div>
               )}
 
@@ -749,62 +799,15 @@ export default function RefeicoesPage() {
                 </Button>
               )}
 
-              {/* Resultado da análise */}
+              {/* Resultado da análise — mostra a origem de cada número */}
               {parsedItems && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Itens identificados
-                    </p>
-                    <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      ✨ Analisado por IA
-                    </span>
-                  </div>
-
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    {parsedItems.map((item, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "flex items-center justify-between px-3 py-2.5 text-sm",
-                          i > 0 && "border-t border-border/50"
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {item.confidence < 0.6 && (
-                            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <span className="font-medium truncate block">{item.food_name}</span>
-                            <span className="text-xs text-muted-foreground">{item.quantity}{item.unit}</span>
-                          </div>
-                        </div>
-                        <span className="text-orange-400 font-semibold shrink-0 ml-2">
-                          {item.calories.toFixed(0)} kcal
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex justify-between text-sm font-semibold px-1">
-                    <span className="text-muted-foreground">Total estimado</span>
-                    <span className="text-orange-400">
-                      {parsedItems.reduce((s, it) => s + it.calories, 0).toFixed(0)} kcal
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <Button variant="outline" onClick={() => setParsedItems(null)} className="flex-1">
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      Reanalisar
-                    </Button>
-                    <Button onClick={handleSave} disabled={createMeal.isPending} className="flex-1">
-                      {!createMeal.isPending && <Check className="h-3.5 w-3.5 mr-1.5" />}
-                      {createMeal.isPending ? "Salvando..." : "Salvar"}
-                    </Button>
-                  </div>
-                </div>
+                <AnalysisReview
+                  items={parsedItems}
+                  onChange={setParsedItems}
+                  onReanalyze={() => setParsedItems(null)}
+                  onSave={handleSave}
+                  saving={createMeal.isPending}
+                />
               )}
             </div>
           </DialogContent>
@@ -838,13 +841,13 @@ export default function RefeicoesPage() {
             </div>
 
             {/* Alimentos da refeição */}
-            {editMeal && editMeal.items.length > 0 && (
+            {editMeal && editItems.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Alimentos
                 </Label>
                 <div className="rounded-lg border border-border divide-y divide-border/50 overflow-hidden">
-                  {editMeal.items.map((item) => (
+                  {editItems.map((item) => (
                     <div key={item.id} className="flex items-center justify-between px-3 py-2">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{item.food_name}</p>
@@ -854,8 +857,7 @@ export default function RefeicoesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 ml-2"
-                        disabled={deleteMealItem.isPending}
-                        onClick={() => deleteMealItem.mutate({ mealId: editMeal.id, itemId: item.id })}
+                        onClick={() => setEditItems((prev) => prev.filter((i) => i.id !== item.id))}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -882,9 +884,9 @@ export default function RefeicoesPage() {
               <Button variant="outline" onClick={() => setEditOpen(false)} className="flex-1">
                 Cancelar
               </Button>
-              <Button onClick={handleSaveEdit} disabled={updateMeal.isPending} className="flex-1">
-                {!updateMeal.isPending && <Check className="h-3.5 w-3.5 mr-1.5" />}
-                {updateMeal.isPending ? "Salvando..." : "Salvar"}
+              <Button onClick={handleSaveEdit} disabled={updateMeal.isPending || deleteMealItem.isPending} className="flex-1">
+                {!(updateMeal.isPending || deleteMealItem.isPending) && <Check className="h-3.5 w-3.5 mr-1.5" />}
+                {updateMeal.isPending || deleteMealItem.isPending ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </div>

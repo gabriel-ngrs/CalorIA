@@ -315,7 +315,7 @@ def _make_profile(
     user_id: int = 1,
     current_weight: float | None = 80.0,
     height_cm: float | None = 175.0,
-    age: int | None = 30,
+    birth_date: date | None = None,
     sex: Any = None,
     activity_level: Any = None,
 ) -> MagicMock:
@@ -327,7 +327,8 @@ def _make_profile(
     p.user_id = user_id
     p.current_weight = current_weight
     p.height_cm = height_cm
-    p.age = age
+    # ≈30 anos, relativo ao ano corrente para o teste não apodrecer na virada de ano
+    p.birth_date = birth_date or date(date.today().year - 30, 1, 1)
     p.sex = sex or Sex.MALE
     p.activity_level = activity_level or ActivityLevel.SEDENTARY
     p.tdee_calculated = None

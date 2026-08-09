@@ -1,0 +1,153 @@
+# Regras de varredura de segredos do CalorIA — spec 002, Fase A.3.
+#
+# Por que este arquivo existe: as regras default do gitleaks casam segredos com FORMA
+# reconhecível (chaves de API, tokens, chaves privadas). O incidente que originou o
+# Track A foi uma SENHA PESSOAL e um e-mail pessoal hardcoded num teste — nenhum dos
+# dois tem forma reconhecível, e `gitleaks detect --log-opts="--all"` retornava
+# "no leaks found" sobre um histórico que continha a credencial em 11 commits.
+#
+# As regras abaixo fecham essa classe. Elas casam o PADRÃO (atribuição de senha,
+# e-mail de provedor de consumo), nunca o valor concreto — escrever a credencial real
+# aqui seria commitá-la, que é exatamente o problema que se quer evitar.
+#
+# Sobre as allowlists: o escopo travado da Fase A.3 proíbe "desabilitar o gate com
+# allowlist ampla para fazer a suíte passar". Cada isenção abaixo é por regra, nomeia
+# um valor sintético específico ou um diretório de dado de terceiro, e vem justificada.
+# Nenhuma isenta o repositório inteiro nem uma regra inteira.
+
+title = "CalorIA — regras de segredo"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "caloria-senha-hardcoded"
+description = "Senha em texto claro atribuída a variável ou constante"
+# Sem \b inicial e com sufixo opcional: casa `SENHA_ADMIN`, `admin_password`,
+# `db_pwd` — não só a palavra-chave colada no `=`.
+# O regex casa QUALQUER valor sem espaços; descartar placeholder é trabalho da
+# allowlist abaixo, não da classe de caracteres.
+#
+# Duas tentativas anteriores erraram, e o registro fica porque o modo de errar se
+# repete: excluir `$ { } < > [ ]` do valor inteiro deixava `Pa$$w0rd123` escapar;
+# excluí-los só da primeira posição deixava `$ecretP@ss` escapar E, ao permitir
+# espaços no resto, passou a acusar prosa (`password: "not configured yet"`) como
+# segredo. Separar "o que é senha" (regex) de "o que é placeholder" (allowlist)
+# resolve os dois de uma vez.
+#
+# `\S` no valor é deliberado: senha real não tem espaço, prosa tem. Senha com espaço
+# (passphrase) é um ponto cego assumido — ver `## Pontos cegos` no fim do arquivo.
+regex = '''(?i)(?:password|passwd|pwd|senha)[a-z0-9_]*\s*[:=]\s*["'][^"'\s\n]{8,}["']'''
+keywords = ["password", "passwd", "pwd", "senha"]
+
+  [rules.allowlist]
+  description = """
+  Senhas sintéticas de teste, isentas uma a uma e não por caminho — cada nova entrada
+  aqui exige uma decisão consciente de que o valor não é credencial real.
+  - `Playwright@123`: senha do cadastro descartável no e2e.
+  - `NovaSenha123`: payload do teste de reset de senha (`reset-password.test.tsx`).
+  - `CalorIADemo2026!`: senha da conta de demonstração pública (Fase E.3). É
+    **pública por desenho** — o AC-26 exige que as credenciais estejam no README
+    para que um avaliador entre na demo. Não abre serviço nenhum além da conta
+    semeada por `backend/scripts/seed_dev_user.py --conta demo`, que não tem
+    privilégio administrativo e cujos dados são sintéticos. O escopo travado da
+    E.3 proíbe reusar senha pessoal aqui, e esta não é.
+  """
+  regexTarget = "match"
+  regexes = [
+    # Valores sintéticos, nominais.
+    '''Playwright@123''',
+    '''NovaSenha123''',
+    '''CalorIADemo2026!''',
+    # Placeholders e interpolação — o valor INTEIRO tem de ser a referência, não
+    # apenas começar com ela, senão `"$ecretP@ss"` seria isento junto com `"$DB_PASS"`.
+    '''["']\$\{[^"']*\}["']''',      # "${DB_PASS}"
+    '''["']\{\{[^"']*\}\}["']''',    # "{{SENHA}}"
+    '''["']%\([^"']*\)s["']''',      # "%(pass)s"
+    '''["']\$[A-Za-z_][A-Za-z0-9_]*["']''',  # "$DB_PASS"
+    '''["']<[^"']*>["']''',          # "<senha do usuario>"
+    '''["']\[[A-Z0-9_-]+\]["']''',   # "[REDIGIDO]" — só CAIXA ALTA; "[MinhaSenha9]" continua sendo detectada
+  ]
+
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "caloria-senha-preenchida-em-teste"
+description = "Senha em texto claro preenchida num teste de UI — o padrão exato do AUD-038"
+# Mesmo desenho da regra anterior: o regex casa qualquer valor sem espaços, e é a
+# allowlist que descarta placeholder.
+regex = '''(?i)(?:senha|password|pwd)[^\n]{0,40}?\.fill\(\s*["'][^"'\s\n]{6,}["']'''
+keywords = ["fill("]
+
+  [rules.allowlist]
+  description = """
+  Valores que não são credenciais, isentos um a um:
+  - `senhaerrada`: senha propositalmente errada no teste de rejeição.
+  - `[REDIGIDO]`: placeholder da redação dos documentos (Fase A.2).
+  - `SENHA-REDIGIDA`: texto de substituição gravado pelo `git filter-repo` na purga
+    do histórico. É literalmente o valor que tomou o lugar da credencial — isentá-lo
+    é a consequência lógica de a purga ter funcionado.
+  - `senha123`: senha sintética de um teste e2e de março/2026, viva só no histórico.
+  """
+  regexTarget = "match"
+  regexes = [
+    # Valores sintéticos, nominais.
+    '''senhaerrada''',
+    '''SENHA-REDIGIDA''',
+    '''senha123''',
+    # Placeholders — mesmos padrões da regra `caloria-senha-hardcoded`.
+    '''["']\$\{[^"']*\}["']''',
+    '''["']\{\{[^"']*\}\}["']''',
+    '''["']%\([^"']*\)s["']''',
+    '''["']\$[A-Za-z_][A-Za-z0-9_]*["']''',
+    '''["']<[^"']*>["']''',
+    '''["']\[[A-Z0-9_-]+\]["']''',   # cobre `[REDIGIDO]`
+  ]
+
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "caloria-email-pessoal"
+description = "E-mail pessoal de provedor de consumo hardcoded (PII)"
+regex = '''[A-Za-z0-9._%+-]+@(?:gmail|googlemail|hotmail|outlook|live|yahoo|icloud|proton|protonmail|bol|uol|terra)\.[A-Za-z]{2,}(?:\.[A-Za-z]{2,})?'''
+keywords = ["@gmail", "@googlemail", "@hotmail", "@outlook", "@live", "@yahoo", "@icloud", "@proton", "@bol", "@uol", "@terra"]
+
+  [rules.allowlist]
+  description = """
+  Duas isenções, ambas verificáveis:
+  1. `devteste@gmail.com` — conta sintética de desenvolvimento semeada por
+     `backend/scripts/seed_dev_user.py`. Não é caixa real e não pertence a ninguém.
+  2. `auditcaloria@gmail.com` — conta criada para a auditoria de março/2026, citada
+     em `docs/audit-report-2026-03-13.md`. Não é caixa pessoal.
+  3. `data/` — os CSVs do banco nutricional são dado bruto do Open Food Facts, que
+     traz o e-mail do contribuidor em algumas linhas. É PII de terceiro dentro de um
+     dataset público de origem externa, não credencial do projeto; a limpeza dessa
+     tabela é a Roadmap 10.3, fora desta spec.
+  """
+  regexTarget = "match"
+  regexes = [
+    '''devteste@gmail\.com''',
+    '''auditcaloria@gmail\.com''',
+  ]
+  paths = [
+    '''^data/''',
+  ]
+
+# ---------------------------------------------------------------------------
+# Pontos cegos assumidos
+#
+# Declarados de propósito: um gate cujo limite não está escrito passa a ser
+# confundido com garantia.
+#
+# 1. **Senha contendo espaço** (passphrase, ex.: `"correct horse battery staple"`).
+#    A regra exige valor sem espaço, porque permitir espaço faz prosa comum
+#    (`password: "not configured yet"`) virar achado, e um gate que grita à toa é
+#    desligado. Trade-off consciente em favor da precisão.
+# 2. **Valor inteiro entre `<...>`** — tratado como placeholder. Uma senha real
+#    escrita como `"<MinhaSenha>"` escaparia; é convenção forte o bastante para
+#    valer o risco.
+# 3. **Senha em variável cujo nome não contenha** `password`/`passwd`/`pwd`/`senha`
+#    (ex.: `TOKEN_USUARIO = "..."`). Fora do alcance desta regra por construção;
+#    quem cobre esse caso são as regras default do gitleaks, por forma do valor.

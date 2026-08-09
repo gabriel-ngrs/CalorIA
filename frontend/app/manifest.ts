@@ -7,8 +7,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Diário alimentar inteligente com IA",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#1a2a30",
-    theme_color: "#527787",
+    // Espelham o design system atual (`app/globals.css`): `--background` do
+    // light mode e `--primary`. Os valores anteriores (#1a2a30 / #527787) eram
+    // de uma paleta descontinuada e destoavam do app instalado.
+    background_color: "#EAEEF4",
+    theme_color: "#10B981",
     orientation: "portrait-primary",
     icons: [
       {

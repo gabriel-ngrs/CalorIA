@@ -7,12 +7,93 @@ import re
 logger = logging.getLogger(__name__)
 
 
+#: Chave do array quando o prompt declara topo em **objeto**. O JSON mode da API
+#: (`response_format={"type": "json_object"}`) recusa array no topo, então as
+#: versões de prompt que o usam devolvem `{"itens": [...]}`. Ver
+#: `app.prompts._TOPO_OBJETO`.
+_CHAVE_DOS_ITENS = "itens"
+
+
+def _lista_do_topo(dados: object, bruto: str) -> list[dict[str, object]]:
+    """Normaliza as duas formas de topo aceitas: array e objeto com `itens`."""
+    if isinstance(dados, list):
+        return dados
+    if isinstance(dados, dict):
+        itens = dados.get(_CHAVE_DOS_ITENS)
+        if isinstance(itens, list):
+            return itens
+        # O modelo às vezes renomeia a chave. Com um único valor de lista no
+        # objeto a intenção é inequívoca, e aceitar é melhor que devolver vazio
+        # — que perderia a refeição inteira em silêncio.
+        listas = [v for v in dados.values() if isinstance(v, list)]
+        if len(listas) == 1:
+            return listas[0]
+    raise json.JSONDecodeError("resposta sem array de itens", bruto, 0)
+
+
 def extract_json_from_ai_response(text: str) -> list[dict[str, object]]:
-    """Extrai lista JSON da resposta do Gemini, tolerante a blocos de markdown."""
+    """Extrai a lista JSON da resposta da IA.
+
+    Tolera três coisas que os modelos costumam acrescentar em volta do JSON:
+
+    1. **Cercas de markdown** (` ```json `).
+    2. **Blocos de raciocínio** `<think>…</think>` — modelos com reasoning
+       exposto (o caso do `qwen`, adotado depois de a Groq descontinuar o modelo
+       de visão anterior) escrevem o raciocínio antes da resposta, e o
+       `json.loads` estourava na primeira letra.
+    3. **Texto solto antes ou depois do array**, do tipo "Aqui está o JSON:".
+
+    Aceita o topo em array (versões v1 dos prompts) e em objeto com a chave
+    `itens` (versões com JSON mode), continuando a ser a rede de segurança que
+    a spec pede mesmo com o formato garantido pela API.
+
+    Levanta `json.JSONDecodeError` quando não há array algum — os parsers
+    dependem desse tipo para transformar a falha em erro 422 legível.
+    """
     text = text.strip()
+    # Remove blocos de raciocínio, inclusive um `<think>` sem fechamento
+    # (resposta truncada no limite de tokens).
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<think>.*", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"```(?:json)?\s*", "", text)
     text = re.sub(r"```\s*", "", text)
-    return json.loads(text.strip())  # type: ignore[no-any-return]
+    text = text.strip()
+
+    try:
+        return _lista_do_topo(json.loads(text), text)
+    except json.JSONDecodeError:
+        # Último recurso: recorta do primeiro '[' ao último ']'. Resolve o
+        # "Aqui está o JSON:" sem mascarar uma resposta sem JSON nenhum.
+        inicio, fim = text.find("["), text.rfind("]")
+        if inicio == -1 or fim <= inicio:
+            raise
+        return _lista_do_topo(json.loads(text[inicio : fim + 1]), text)
+
+
+#: Tolerância de divergência entre calorias declaradas e calculadas por Atwater.
+ATWATER_TOLERANCIA = 0.10
+
+
+def atwater_kcal(protein: float, carbs: float, fat: float) -> float:
+    """Calorias pelos fatores de Atwater: proteína×4 + carboidrato×4 + gordura×9."""
+    return protein * 4.0 + carbs * 4.0 + fat * 9.0
+
+
+def coerencia_atwater(
+    calories: float, protein: float, carbs: float, fat: float
+) -> tuple[bool, float]:
+    """(coerente?, kcal calculado) para um conjunto de macros.
+
+    Usado como verificação — no caminho do banco marca o item para revisão em
+    vez de sobrescrever o valor, porque ali o banco é a fonte de verdade.
+    """
+    calculado = atwater_kcal(protein, carbs, fat)
+    if calories <= 0:
+        return (calculado <= 0, calculado)
+    return (
+        abs(calculado - calories) <= calories * ATWATER_TOLERANCIA,
+        calculado,
+    )
 
 
 def correct_calories(items: list) -> list:  # type: ignore[type-arg]
@@ -21,12 +102,27 @@ def correct_calories(items: list) -> list:  # type: ignore[type-arg]
     A IA às vezes diverge entre calorias e macros. Este pós-processamento
     garante consistência matemática: calories = protein×4 + carbs×4 + fat×9.
     Aceita qualquer lista de objetos com os atributos esperados.
+
+    Cobre também o caso em que a IA **omite** `calories`: antes a correção só
+    rodava quando `calories > 0`, então um item com macros reais e calorias
+    ausentes era gravado com 0 kcal e sumia do total do dia.
     """
 
     corrected = []
     for item in items:
-        calculated = item.protein * 4.0 + item.carbs * 4.0 + item.fat * 9.0
-        if item.calories > 0 and abs(calculated - item.calories) > item.calories * 0.10:
+        calculated = atwater_kcal(item.protein, item.carbs, item.fat)
+
+        if item.calories <= 0 and calculated > 0:
+            logger.warning(
+                "Calorias ausentes em '%s' (macros presentes): usando %.1f kcal de Atwater.",
+                item.food_name,
+                calculated,
+            )
+            item = item.model_copy(update={"calories": round(calculated, 1)})
+        elif (
+            item.calories > 0
+            and abs(calculated - item.calories) > item.calories * ATWATER_TOLERANCIA
+        ):
             logger.warning(
                 "Divergência calórica em '%s': IA=%s kcal, calculado=%.1f kcal. Usando calculado.",
                 item.food_name,
@@ -34,5 +130,6 @@ def correct_calories(items: list) -> list:  # type: ignore[type-arg]
                 calculated,
             )
             item = item.model_copy(update={"calories": round(calculated, 1)})
+
         corrected.append(item)
     return corrected

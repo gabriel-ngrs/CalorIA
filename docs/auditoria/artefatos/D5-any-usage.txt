@@ -1,0 +1,6 @@
+frontend/components/dashboard/QuickAddModals.tsx:180:    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+frontend/components/dashboard/QuickAddModals.tsx:187:    rec.onresult = (e: any) => {
+frontend/components/dashboard/QuickAddModals.tsx:195:    rec.onerror = (e: any) => { setIsRecording(false); if (e.error !== "aborted") setSpeechError("Erro no microfone. Verifique as permissões."); };
+frontend/app/(dashboard)/refeicoes/page.tsx:445:    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+frontend/app/(dashboard)/refeicoes/page.tsx:455:    recognition.onresult = (event: any) => {
+frontend/app/(dashboard)/refeicoes/page.tsx:463:    recognition.onerror = (event: any) => {

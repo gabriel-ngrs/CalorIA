@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "Você é especialista em alimentação brasileira.\nSua ÚNICA tarefa é IDENTIFICAR o que foi comido e em que quantidade o usuário disse.\nVocê NÃO calcula valores nutricionais finais — um banco nutricional faz isso depois.\n\nREGRAS ABSOLUTAS — nunca viole:\n1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.\n2. PRATO CONHECIDO VEM INTEIRO. Se a descrição nomeia um prato brasileiro\n   reconhecível (pizza de calabresa, feijoada, lasanha, strogonoff, escondidinho,\n   moqueca, baião de dois, yakissoba, hot dog, açaí na tigela, parmegiana,\n   coxinha, pastel, sanduíche de rede), devolva UM item com o nome do prato.\n   NÃO o decomponha em ingredientes — o banco tem o prato montado.\n   Só decomponha quando a descrição for uma combinação livre de alimentos\n   (\"arroz com feijão e um bife\") ou quando o prato não tiver nome próprio.\n3. QUANTIDADE NA UNIDADE DO USUÁRIO. Devolva o número e a unidade exatamente\n   como a pessoa se expressou: \"8 fatias\" → quantity=8, unit=\"fatia\";\n   \"um prato de arroz\" → quantity=1, unit=\"prato\"; \"150g de frango\" →\n   quantity=150, unit=\"g\"; \"2 colheres de azeite\" → quantity=2, unit=\"colher de sopa\".\n   NÃO converta para gramas. NÃO estime gramas. A conversão é feita fora daqui.\n   Se a descrição citar a mesma porção de dois jeitos (\"1 pizza grande de 8 fatias\"),\n   use a forma mais específica — aqui, 8 fatias.\n4. Se a pessoa não disser quantidade, use quantity=1 e a unidade caseira mais\n   natural para o alimento (\"prato\" para arroz, \"unidade\" para ovo, \"fatia\" para pizza).\n5. preparation: só quando for informação real de preparo (grelhado, frito, cozido,\n   assado, refogado, empanado, cru). Se não houver preparo relevante, use null.\n   NUNCA escreva \"não aplicável\", \"natural\", \"nenhum\" — use null.\n6. kcal_estimate: sua estimativa de calorias totais da porção. É um SINAL AUXILIAR\n   de checagem, não o valor final. Quando houver o alimento no banco, o banco vence.\n\nFORMATO OBRIGATÓRIO (array JSON):\n[\n  {\n    \"food_name\": \"pizza de calabresa\",\n    \"quantity\": 8,\n    \"unit\": \"fatia\",\n    \"preparation\": null,\n    \"confidence\": 0.85,\n    \"kcal_estimate\": 2160\n  }\n]\n\nconfidence: 0.9 = porção exata informada pelo usuário; 0.8 = porção caseira clara;\n0.6 = muito incerta.",
+        "role": "system"
+      },
+      {
+        "content": "CONTEXTO DO USUÁRIO (use para calibrar porções):\nusuário sem histórico\n\nDESCRIÇÃO DA REFEIÇÃO:\numa escumadeira de salpicao de frango\n\nRetorne SOMENTE o array JSON com a identificação dos alimentos.",
+        "role": "user"
+      }
+    ],
+    "model": "llama-3.3-70b-versatile",
+    "prompt_ref": "meal_identify@v1",
+    "prompt_sha": "f1334ef6072f8ef9aa6973346f21bb94650292128e96fe53bbbc261a133b632e",
+    "seed": 20260802,
+    "temperature": null
+  },
+  "resposta": "[\n  {\n    \"food_name\": \"salpicao de frango\",\n    \"quantity\": 1,\n    \"unit\": \"escumadeira\",\n    \"preparation\": null,\n    \"confidence\": 0.8,\n    \"kcal_estimate\": 400\n  }\n]"
+}

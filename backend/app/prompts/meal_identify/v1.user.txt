@@ -1,0 +1,7 @@
+CONTEXTO DO USUÁRIO (use para calibrar porções):
+{user_context}
+
+DESCRIÇÃO DA REFEIÇÃO:
+{description}
+
+Retorne SOMENTE o array JSON com a identificação dos alimentos.

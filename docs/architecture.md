@@ -25,7 +25,7 @@ Decisões técnicas e ADRs do projeto CalorIA.
 │  services/  UserService · MealService · LogService                │
 │             DashboardService · ProfileService                     │
 │             AuthService · ReminderService · PushService           │
-│             ai/ GeminiClient · MealParser · VisionParser          │
+│             ai/ AIClient (Groq) · MealParser · VisionParser       │
 │                 InsightsGenerator · PatternAnalyzer               │
 │                 FoodLookup (pg_trgm, TACO+OFF ~19.800)           │
 │                 ContextBuilder (histórico + tipo de refeição)     │
@@ -64,17 +64,21 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ---
 
-## ADR-002 — Google Gemini 2.5 Flash como modelo de IA
+## ADR-002 — Groq (Llama) como provedor de IA
 
-**Contexto:** O Google Gemini oferece tier gratuito com suporte a texto e visão num único modelo multimodal.
+**Contexto:** Inicialmente o projeto usava Google Gemini 2.5 Flash. Após a migração de v0.7, optamos pela Groq por oferecer um free tier mais generoso, latência menor e modelos Llama de ponta tanto para texto quanto para visão.
 
-**Decisão:** Usar `models/gemini-2.5-flash` via SDK `google-genai` para análise de texto, fotos e geração de insights. Um único modelo cobre todos os casos de uso.
+**Decisão:** Usar Groq como provedor único:
+- Texto: `llama-3.3-70b-versatile`
+- Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+
+Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.py`).
 
 **Consequências:**
 - Cache Redis (7 dias, chave SHA-256) reduz chamadas redundantes para insights
 - Retry com backoff exponencial em erros 429 — até 4 tentativas, espera inicial 15s dobrada a cada tentativa
 - Análise de fotos via bytes nativos — imagens não são armazenadas permanentemente
-- `GEMINI_API_KEY` nunca exposta ao frontend
+- `GROQ_API_KEY` nunca exposta ao frontend
 
 ---
 
@@ -162,6 +166,68 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ---
 
+## ADR-009 — Topologia self-hosted em host único
+
+**Contexto:** o projeto acumulou **três** arquivos de compose e **dois** Caddyfiles, sem
+que nenhum declarasse seu propósito, e a documentação descrevia como "produção" um par
+que não era o que rodava. Havia duas topologias implícitas competindo:
+
+| topologia | arquivos | frontend | estado |
+|---|---|---|---|
+| **A — host único** | `docker-compose.yml` + `Caddyfile` | no mesmo host | documentada como "Produção" |
+| **B — dividida** | `docker-compose.backend.yml` + `Caddyfile.backend` | na Vercel | a que de fato rodava |
+
+A auditoria da Fase E.1 (2026-08-02) mediu o estado real e **refutou a premissa da
+documentação**: o backend não estava "indeterminado", estava inexistente — o host
+`caloria-gabriel.duckdns.org` não resolve sequer em DNS. O frontend na Vercel continua
+no ar, com build de ~13 dias, servindo uma tela de login sem API atrás.
+
+O `Caddyfile.backend` deixa a topologia B evidente: ele publica apenas `/api`, `/docs` e
+`/redoc` — a cara de um host que existe só para servir a API.
+
+**Decisão:** a topologia oficial é a **A — self-hosted em host único**:
+`docker-compose.yml` + `Caddyfile`, subindo Postgres, Redis, backend, frontend, os dois
+workers Celery e o proxy no mesmo lugar.
+
+Decisão do owner em 2026-08-03, com duas condições temporais explícitas:
+
+- **Agora:** roda **localmente**. Não há servidor contratado e não haverá deploy nesta
+  spec — a Fase E.4 fica adiada por decisão, não por impedimento.
+- **Futuro:** o mesmo par sobe numa VPS quando houver. Nada na topologia muda; muda o
+  host.
+
+O par da topologia B (`docker-compose.backend.yml` + `Caddyfile.backend`) **não é
+deletado aqui**: recebe cabeçalho declarando que é legado e fica marcado para a poda da
+Fase D.4. O escopo desta fase é desambiguar, não remover.
+
+**Justificativa:** um host único é a forma mais simples de um projeto pessoal ter uma
+stack reprodutível — `docker compose up` e está tudo de pé, incluindo o frontend, sem
+depender de plataforma externa nem de dois lugares para configurar. A topologia dividida
+paga o preço de coordenar dois ambientes (variáveis de API, CORS, dois deploys) em troca
+de um CDN gratuito, e esse preço só se justifica com tráfego que este projeto não tem.
+
+**Consequências:**
+- `docker-compose.yml` passa a ser a stack de produção **e** o jeito de rodar o projeto
+  inteiro localmente. O README deixa de chamá-lo de "Produção" sem qualificação.
+- O deploy na **Vercel fica órfão**: continua no ar apontando para uma API que não
+  existe. Retirá-lo (ou reapontá-lo) é ação do owner, registrada como pendência na Fase
+  E.4 — deixar uma tela de login quebrada acessível é o oposto do objetivo de vitrine
+  desta spec.
+- `docs/deploy.md` vira o **único** guia de deploy; `docs/deploy-checklist.md` foi
+  incorporado a ele. Dois documentos descrevendo o mesmo procedimento foi como o host
+  errado acabou registrado em quatro lugares.
+- O `cd.yml` do ADR-008 continua válido **como desenho de pipeline** (SSH, `concurrency`,
+  migração antes de subir), mas **implementa a topologia aposentada**: seu passo de
+  deploy sobe `docker-compose.backend.yml` (`cd.yml:38`). Trocá-lo por
+  `docker-compose.yml` é trabalho da **Fase E.4**, que já é dona da reativação do
+  gatilho. Enquanto isso ele está inerte — o `push: branches: [main]` segue comentado e
+  só resta `workflow_dispatch`, de modo que nem a promoção da D.2 dispara deploy.
+  **Consequência para a Fase D.4:** o `docker-compose.backend.yml` só pode ser removido
+  na poda **depois** que a E.4 corrigir essa referência; removê-lo antes quebra o CD por
+  um caminho difícil de associar à poda.
+
+---
+
 ## Fluxo de Registro de Refeição (Web)
 
 ```
@@ -178,7 +244,7 @@ Usuário envia descrição ou foto no dashboard
   └── injeta porções históricas e médias diárias
         │
         ▼
-  [Estágio 1] Gemini 2.5 Flash identifica alimentos
+  [Estágio 1] Groq Llama identifica alimentos
   └── retorna: food_name, quantity, unit, preparation, kcal_estimate
         │
         ▼
@@ -230,5 +296,5 @@ Todas as relações usam `CASCADE DELETE`.
 - Senhas com passlib[bcrypt]
 - JWT HS256 — access (30 min) + refresh (30 dias)
 - CORS configurável via `BACKEND_CORS_ORIGINS`
-- `GEMINI_API_KEY` nunca exposta ao frontend
+- `GROQ_API_KEY` nunca exposta ao frontend
 - Variáveis sensíveis em `.env` (nunca commitado)

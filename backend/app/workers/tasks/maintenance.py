@@ -68,7 +68,7 @@ def recalculate_tdee(self: Any) -> None:
 
 async def _recalculate_tdee_async() -> None:
     from app.models.weight_log import WeightLog
-    from app.services.nutrition.tdee import calculate_tdee
+    from app.services.nutrition.tdee import age_from_birthdate, calculate_tdee
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -106,13 +106,13 @@ async def _recalculate_tdee_async() -> None:
 
             if (
                 profile.height_cm is not None
-                and profile.age is not None
+                and profile.birth_date is not None
                 and profile.sex is not None
             ):
                 profile.tdee_calculated = calculate_tdee(
                     weight_kg=profile.current_weight,
                     height_cm=profile.height_cm,
-                    age=profile.age,
+                    age=age_from_birthdate(profile.birth_date),
                     sex=profile.sex,
                     activity_level=profile.activity_level,
                 )

@@ -1,0 +1,20 @@
+=== Backend (sem alembic, scripts, tests) ===
+  5708 total
+
+=== Frontend (sem mocks, tests, build) ===
+ 10573 total
+
+=== Tests backend ===
+ 1845 total
+
+=== Tests frontend ===
+ 1553 total
+
+=== Endpoints REST ===
+47
+
+=== Modelos SQLAlchemy ===
+12
+
+=== Migrações Alembic ===
+10

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import api from "@/lib/api";
 import type { Reminder, ReminderType } from "@/types";
 
@@ -27,6 +28,7 @@ export function useCreateReminder() {
       return data as Reminder;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+    onError: () => toast.error("Não foi possível criar o lembrete"),
   });
 }
 
@@ -38,6 +40,7 @@ export function useCreateRemindersBatch() {
       return data as Reminder[];
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+    onError: () => toast.error("Não foi possível criar os lembretes"),
   });
 }
 
@@ -49,6 +52,7 @@ export function useToggleReminder() {
       return data as Reminder;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+    onError: () => toast.error("Não foi possível alterar o lembrete"),
   });
 }
 
@@ -59,5 +63,6 @@ export function useDeleteReminder() {
       await api.delete(`/api/v1/reminders/${id}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+    onError: () => toast.error("Não foi possível remover o lembrete"),
   });
 }

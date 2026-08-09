@@ -2,12 +2,17 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import groq
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import get_current_user_id, get_db
+from app.core.rate_limit import limiter
+from app.models.ai_conversation import ConversationChannel
 from app.schemas.ai import (
+    ChatMessage,
+    ConversationResponse,
     EatingPattern,
     GoalAdjustmentSuggestion,
     InsightRequest,
@@ -19,8 +24,9 @@ from app.schemas.ai import (
     NutritionalAlertsResponse,
     PhotoAnalysisRequest,
 )
+from app.services.ai.ai_client import get_ai_client
 from app.services.ai.context_builder import build_meal_context
-from app.services.ai.gemini_client import get_gemini_client
+from app.services.ai.conversation_service import ConversationService
 from app.services.ai.insights_generator import InsightsGenerator
 from app.services.ai.meal_parser import MealParser
 from app.services.ai.pattern_analyzer import PatternAnalyzer
@@ -30,23 +36,25 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 def _require_ai() -> None:
-    """Dependência FastAPI: garante que GEMINI_API_KEY está configurada."""
-    if not settings.GEMINI_API_KEY:
+    """Dependência FastAPI: garante que GROQ_API_KEY está configurada."""
+    if not settings.GROQ_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serviço de IA não configurado. Defina GEMINI_API_KEY.",
+            detail="Serviço de IA não configurado. Defina GROQ_API_KEY.",
         )
 
 
 @router.post("/analyze-meal", response_model=MealAnalysisResponse)
+@limiter.limit(settings.RATE_LIMIT_AI)
 async def analyze_meal(
+    request: Request,
     data: MealAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa descrição de texto e retorna itens nutricionais estruturados."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         user_context = await build_meal_context(
             user_id, db, date.today(), description=data.description
@@ -60,17 +68,24 @@ async def analyze_meal(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
+    except groq.APIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de IA temporariamente indisponível. Tente novamente.",
+        ) from exc
 
 
 @router.post("/analyze-photo", response_model=MealAnalysisResponse)
+@limiter.limit(settings.RATE_LIMIT_AI)
 async def analyze_photo(
+    request: Request,
     data: PhotoAnalysisRequest,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
 ) -> MealAnalysisResponse:
     """Analisa foto de refeição (base64) e retorna itens nutricionais."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         user_context = await build_meal_context(user_id, db, date.today())
         return await VisionParser(client).parse_base64(
@@ -83,10 +98,17 @@ async def analyze_photo(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
+    except groq.APIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de IA temporariamente indisponível. Tente novamente.",
+        ) from exc
 
 
 @router.post("/insights", response_model=InsightResponse)
+@limiter.limit(settings.RATE_LIMIT_AI)
 async def generate_insight(
+    request: Request,
     data: InsightRequest,
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
@@ -100,7 +122,7 @@ async def generate_insight(
             detail="'question' é obrigatório quando type=question",
         )
 
-    client = get_gemini_client()
+    client = get_ai_client()
     gen = InsightsGenerator(client, db)
 
     try:
@@ -108,24 +130,47 @@ async def generate_insight(
             return await gen.daily_insight(user_id, today)
         elif data.type == "weekly":
             return await gen.weekly_insight(user_id, today)
-        else:
-            return await gen.answer_question(user_id, data.question or "", today)
+        question = data.question or ""
+        response = await gen.answer_question(user_id, question, today)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Erro ao consultar a IA: {exc}",
         ) from exc
 
+    # Persiste o par pergunta/resposta do chat web (fora do try de IA: um erro de
+    # banco aqui não deve ser mascarado como falha da IA). B20.
+    await ConversationService(db).append_web_exchange(
+        user_id, question, response.content
+    )
+    return response
+
+
+@router.get("/conversations", response_model=ConversationResponse)
+async def get_conversations(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationResponse:
+    """Retorna o histórico do chat web "Pergunte à IA" do usuário autenticado."""
+    conversation = await ConversationService(db).get_web_conversation(user_id)
+    messages = conversation.messages if conversation else []
+    return ConversationResponse(
+        channel=ConversationChannel.WEB.value,
+        messages=[ChatMessage(**m) for m in messages],
+    )
+
 
 @router.get("/suggest-meal", response_model=MealSuggestion)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def suggest_meal(
+    request: Request,
     today: date = Query(default_factory=date.today),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
 ) -> MealSuggestion:
     """Sugere uma refeição com base no histórico e calorias restantes do dia."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).suggest_meal(user_id, today)
     except Exception as exc:
@@ -139,14 +184,16 @@ async def suggest_meal(
 
 
 @router.get("/patterns", response_model=EatingPattern)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def eating_patterns(
+    request: Request,
     days: int = Query(default=30, ge=7, le=90),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
 ) -> EatingPattern:
     """Analisa padrões alimentares dos últimos N dias (7-90)."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await PatternAnalyzer(client, db).analyze_eating_patterns(user_id, days)
     except Exception as exc:
@@ -157,14 +204,16 @@ async def eating_patterns(
 
 
 @router.get("/nutritional-alerts", response_model=NutritionalAlertsResponse)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def nutritional_alerts(
+    request: Request,
     days: int = Query(default=14, ge=7, le=30),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
 ) -> NutritionalAlertsResponse:
     """Detecta deficiências nutricionais recorrentes nos últimos N dias."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).nutritional_alerts(user_id, days)
     except Exception as exc:
@@ -175,13 +224,15 @@ async def nutritional_alerts(
 
 
 @router.get("/goal-adjustment", response_model=GoalAdjustmentSuggestion)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def goal_adjustment(
+    request: Request,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_ai),
 ) -> GoalAdjustmentSuggestion:
     """Sugere ajuste de metas com base na tendência real de peso dos últimos 30 dias."""
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).goal_adjustment_suggestion(user_id)
     except Exception as exc:
@@ -192,7 +243,9 @@ async def goal_adjustment(
 
 
 @router.get("/monthly-report", response_model=MonthlyReport)
+@limiter.limit(settings.RATE_LIMIT_AI_LEITURA)
 async def monthly_report(
+    request: Request,
     month: int = Query(default=None, ge=1, le=12),
     year: int = Query(default=None, ge=2020),
     user_id: int = Depends(get_current_user_id),
@@ -206,7 +259,7 @@ async def monthly_report(
     today = date.today()
     report_month = month or today.month
     report_year = year or today.year
-    client = get_gemini_client()
+    client = get_ai_client()
     try:
         return await InsightsGenerator(client, db).monthly_report(
             user_id, report_month, report_year

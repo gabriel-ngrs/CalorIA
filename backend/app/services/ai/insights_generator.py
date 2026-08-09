@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 from calendar import monthrange
 from datetime import date, timedelta
 from typing import Any
@@ -18,7 +19,7 @@ from app.schemas.ai import (
     SuggestedMealItem,
     WeekSummary,
 )
-from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.ai_client import AIClient
 from app.services.dashboard_service import DashboardService
 from app.services.log_service import WeightService
 from app.services.meal_service import MealService
@@ -32,7 +33,7 @@ def _format_nutrition(calories: float, protein: float, carbs: float, fat: float)
 
 
 class InsightsGenerator:
-    def __init__(self, client: GeminiClient, db: AsyncSession) -> None:
+    def __init__(self, client: AIClient, db: AsyncSession) -> None:
         self._client = client
         self._db = db
 
@@ -75,8 +76,12 @@ Feedback deve:
 
         weight_trend = ""
         if len(weight_logs) >= 2:
+            # `list` ordena por data DESC: [0] é a pesagem mais recente e [-1] a
+            # mais antiga. Logo `diff > 0` significa que o peso SUBIU.
+            # O ternário estava invertido e a IA recebia a tendência ao contrário,
+            # gerando conselho nutricional na direção errada.
             diff = weight_logs[0].weight_kg - weight_logs[-1].weight_kg
-            direction = "perdeu" if diff > 0 else "ganhou"
+            direction = "ganhou" if diff > 0 else "perdeu"
             weight_trend = (
                 f"Tendência de peso: {direction} {abs(diff):.1f}kg recentemente"
             )
@@ -138,10 +143,25 @@ Responda em 2-3 parágrafos no máximo, de forma acessível e personalizada."""
             :15
         ]
 
+        # Variação: cada clique em "Nova sugestão" pede um foco diferente para
+        # evitar respostas idênticas (BUG 17).
+        focos = [
+            "priorize proteína magra",
+            "explore opções vegetarianas",
+            "use ingredientes acessíveis do dia a dia",
+            "traga uma combinação diferente do habitual",
+            "foque em pratos rápidos de preparar",
+            "valorize fibras e vegetais",
+            "sugira algo leve e refrescante",
+            "aposte em sabores da culinária brasileira",
+        ]
+        foco = random.choice(focos)
+
         prompt = f"""Você é um nutricionista sugerindo uma refeição equilibrada.
 
 Calorias restantes no dia: {remaining_kcal:.0f} kcal
 Alimentos que o usuário costuma comer: {", ".join(recent_foods) or "não há histórico"}
+Diretriz desta sugestão: {foco}. Evite repetir sugestões óbvias — seja criativo e varie.
 
 Sugira UMA refeição adequada. Retorne APENAS JSON válido:
 {{
@@ -155,7 +175,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
   ]
 }}"""
 
-        raw = await self._client.generate_text(prompt, use_cache=True)
+        raw = await self._client.generate_text(prompt, use_cache=False)
         raw = raw.strip()
         if raw.startswith("```json"):
             raw = raw[7:]
@@ -168,7 +188,7 @@ Sugira UMA refeição adequada. Retorne APENAS JSON válido:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
             logger.error(
-                "Gemini retornou JSON inválido para sugestão de refeição: %s", raw[:200]
+                "IA retornou JSON inválido para sugestão de refeição: %s", raw[:200]
             )
             raise ValueError("A IA não conseguiu gerar uma sugestão válida.") from exc
 
@@ -262,7 +282,7 @@ Médias diárias: {avg["calories"]:.0f} kcal, {avg["protein"]:.1f}g prot, {avg["
 Deficiências detectadas:
 {alert_lines}
 
-Em 2-3 parágrafos em português, explique as implicações e sugira alimentos concretos para corrigir cada deficiência."""
+Responda em português de forma objetiva e escaneável: use bullets curtos (no máximo 1 linha cada), sem introdução longa. Para cada deficiência, cite 2-3 alimentos concretos que a corrigem."""
 
         analysis = await self._client.generate_text(prompt, use_cache=True)
 
@@ -315,12 +335,12 @@ Meta de peso: {weight_goal or "não definida"} kg
 Tendência de peso atual: {trend_text}
 Registros de peso disponíveis: {len(weight_logs)}
 
-Com base nos dados:
-1. Avalie se a tendência atual está alinhada com a meta de peso
-2. Sugira um ajuste calórico específico (número em kcal) se necessário
-3. Explique a razão do ajuste em linguagem simples
+Com base nos dados, responda em português de forma direta — no máximo 3 frases curtas:
+1. Se a tendência está alinhada com a meta de peso
+2. O ajuste calórico específico (número em kcal), se necessário
+3. A razão do ajuste, em linguagem simples
 
-Responda em 2-3 parágrafos em português, sendo específico e motivador."""
+Seja objetivo e específico, sem enrolação."""
 
         suggestion_text = await self._client.generate_text(prompt, use_cache=True)
 
@@ -430,7 +450,7 @@ Responda em 2-3 parágrafos em português, sendo específico e motivador."""
         if weight_logs:
             weight_note = f"Peso atual: {weight_logs[0].weight_kg} kg."
 
-        prompt = f"""Você é um nutricionista escrevendo um "Mês em Revisão" para um usuário em português (3-4 parágrafos).
+        prompt = f"""Você é um nutricionista escrevendo um "Mês em Revisão" para um usuário em português, de forma objetiva e escaneável (bullets curtos, no máximo ~6 linhas no total).
 
 Mês: {month:02d}/{year}
 Dias registrados: {n}/{days_in_month}
@@ -440,11 +460,7 @@ Melhor semana: semana {best_week.week_number} ({best_week.avg_calories:.0f} kcal
 Pior semana: semana {worst_week.week_number} ({worst_week.avg_calories:.0f} kcal/dia, {worst_week.adherence_pct:.0f}% de aderência)
 {weight_note}
 
-O relatório deve:
-1. Celebrar o que foi positivo no mês
-2. Identificar o padrão da melhor e pior semana
-3. Dar 3 metas concretas para o próximo mês
-4. Ser encorajador e baseado nos dados"""
+Cubra, em bullets curtos: o que foi positivo no mês; o padrão da melhor e da pior semana; e 3 metas concretas para o próximo mês. Encorajador, mas direto e baseado nos dados."""
 
         analysis = await self._client.generate_text(prompt, use_cache=False)
 

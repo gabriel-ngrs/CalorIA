@@ -1,0 +1,4 @@
+CONTEXTO DO USUÁRIO (use para calibrar porções):
+{user_context}
+
+Analise a foto e identifique todos os alimentos visíveis. Pense internamente: 1) Identifique alimentos e método de preparo pelo aspecto visual. 2) Estime a porção em gramas usando as referências visuais. Retorne SOMENTE o array JSON com a identificação.

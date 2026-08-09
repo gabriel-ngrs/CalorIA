@@ -119,7 +119,7 @@ export function MacroCards({ nutrition, user, onCaloriesClick }: Props) {
               <div className="mt-1.5 space-y-0.5">
                 <Progress value={pct} indicatorColor={color} />
                 <p className="text-xs text-muted-foreground text-left">
-                  {pct.toFixed(0)}% · meta {goal}{unit}
+                  {pct.toFixed(0)}% · meta {goal} {unit}
                 </p>
               </div>
             </CardContent>

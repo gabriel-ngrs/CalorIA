@@ -53,6 +53,10 @@ class UserService:
             return None
         return user
 
+    async def update_password(self, user: User, new_password: str) -> None:
+        user.password_hash = hash_password(new_password)
+        await self.db.commit()
+
     async def email_exists(self, email: str) -> bool:
         result = await self.db.execute(
             select(User.id).where(User.email == email.lower())

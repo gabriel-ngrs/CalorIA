@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
@@ -28,6 +29,22 @@ def create_access_token(subject: Any) -> str:
 def create_refresh_token(subject: Any) -> str:
     expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {"sub": str(subject), "exp": expire, "type": "refresh"}
+    return cast(
+        str, jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    )
+
+
+def create_reset_token(subject: Any) -> str:
+    expire = datetime.now(UTC) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    # jti único: garante que cada emissão gere um token distinto mesmo dentro do
+    # mesmo segundo (senão dois resets seguidos colidiriam e o single-use por
+    # blacklist invalidaria o segundo token indevidamente).
+    payload = {
+        "sub": str(subject),
+        "exp": expire,
+        "type": "reset",
+        "jti": uuid.uuid4().hex,
+    }
     return cast(
         str, jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     )

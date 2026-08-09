@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { getSession, signOut } from "next-auth/react";
+import { devError, devLog } from "@/lib/dev-log";
 
 interface TimedRequestConfig extends InternalAxiosRequestConfig {
   _t0?: number;
@@ -60,7 +61,7 @@ api.interceptors.request.use(async (config) => {
   const { token, error } = await resolveToken();
 
   const authMs = (performance.now() - t0).toFixed(0);
-  console.log(`[API→] ${config.method?.toUpperCase()} ${config.url}  (auth: ${authMs}ms via ${hadCache ? "cache" : "getSession()"})`);
+  devLog(`[API→] ${config.method?.toUpperCase()} ${config.url}  (auth: ${authMs}ms via ${hadCache ? "cache" : "getSession()"})`);
 
   (config as TimedRequestConfig)._t0 = performance.now();
 
@@ -85,7 +86,7 @@ api.interceptors.response.use(
       ? (performance.now() - timedConfig._t0).toFixed(0)
       : "?";
     const slow = Number(ms) > 500 ? " ⚠️ LENTO" : "";
-    console.log(
+    devLog(
       `[API←] ${response.config.method?.toUpperCase()} ${response.config.url}  ${response.status}  ${ms}ms${slow}`
     );
     return response;
@@ -94,7 +95,7 @@ api.interceptors.response.use(
     const ms = error.config?._t0
       ? (performance.now() - error.config._t0).toFixed(0)
       : "?";
-    console.error(
+    devError(
       `[API✗] ${error.config?.method?.toUpperCase()} ${error.config?.url}  ERR  ${ms}ms  —  ${error.message}`
     );
 
@@ -110,7 +111,7 @@ api.interceptors.response.use(
       }
       if (token) {
         original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
-        console.log(`[API↺] 401 → retry com token fresco: ${original.method?.toUpperCase()} ${original.url}`);
+        devLog(`[API↺] 401 → retry com token fresco: ${original.method?.toUpperCase()} ${original.url}`);
         return api(original);
       }
     }

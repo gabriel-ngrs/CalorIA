@@ -35,7 +35,7 @@ O Celery processa tarefas assincronas e agendadas. Usa Redis como broker e backe
 2. Busca todos os usuarios ativos
 3. Para cada usuario:
    - Cria `InsightsGenerator`
-   - Chama `daily_insight(user_id, today)` → Gemini gera feedback
+   - Chama `daily_insight(user_id, today)` → IA gera feedback
    - Cria `Notification` no banco
    - Envia web push para todas as subscriptions
    - Deleta subscriptions expiradas

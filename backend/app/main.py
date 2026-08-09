@@ -4,11 +4,19 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
+
+#: Versão única da aplicação. Espelha `CHANGELOG.md`, `backend/pyproject.toml` e
+#: `frontend/package.json` — o Swagger público anunciava 0.1.0 enquanto o
+#: CHANGELOG estava em 0.7.0.
+APP_VERSION = "0.7.0"
 
 # ─── Logging config ────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -33,11 +41,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CalorIA",
     description="API do diário alimentar inteligente CalorIA",
-    version="0.1.0",
+    version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+
+
+async def rate_limit_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Traduz o estouro de limite do slowapi em 429 com mensagem em pt-BR."""
+    detail = exc.detail if isinstance(exc, RateLimitExceeded) else "Limite excedido"
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": f"Muitas requisições. Limite: {detail}."},
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,4 +93,4 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": APP_VERSION}

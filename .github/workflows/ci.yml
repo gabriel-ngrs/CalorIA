@@ -42,6 +42,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Bloqueante por desenho, e varre o histórico completo (daí o fetch-depth: 0).
+      # --redact impede que o segredo apareça no log do CI, que é tão acessível
+      # quanto o repositório. --config explícito para não depender de auto-detecção.
+      - name: Varredura de segredos — gitleaks
+        working-directory: .
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /tmp gitleaks
+          /tmp/gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --redact --no-banner --exit-code 1
+        env:
+          GITLEAKS_VERSION: 8.21.2
 
       - name: Configurar Python 3.12
         uses: actions/setup-python@v5
@@ -57,19 +74,28 @@ jobs:
         run: ruff check .
 
       - name: Type check — mypy
-        run: mypy app/
+        run: mypy app/ evals/
+
+      # Camada RÁPIDA do eval: zero rede, roda a cada PR. Falha se o payload
+      # enviado ao provedor mudar sem atualização do snapshot — a regressão de
+      # prompt que sai de graça, antes de gastar quota. A camada completa roda
+      # em agenda, em `eval.yml`.
+      - name: Eval — camada rápida (sem rede)
+        run: pytest tests/unit/test_evals_snapshot.py tests/unit/test_evals_metrics.py tests/unit/test_evals_schema.py tests/unit/test_evals_invariance.py tests/unit/test_evals_report.py -q
 
       - name: Testes
         env:
           DATABASE_URL: postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_test
+          # O conftest monta o schema de teste aplicando as migrations neste
+          # banco (ver decision de 2026-08-02). Explícito para não depender do
+          # default do conftest.
+          TEST_DATABASE_URL: postgresql+asyncpg://caloria:caloria@localhost:5432/caloria_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-test-secret-key-com-minimo-32-caracteres
-          GEMINI_API_KEY: fake-key-for-tests
-          TELEGRAM_BOT_TOKEN: 0000000000:fake-token-for-ci
-          EVOLUTION_API_URL: http://localhost:8080
-          EVOLUTION_API_KEY: fake-key
-          EVOLUTION_INSTANCE_NAME: caloria-test
-        run: pytest --cov=app --cov-report=xml -q
+          GROQ_API_KEY: fake-key-for-tests
+        # `--cov-fail-under` aplica o piso LOCALMENTE, no próprio job: o
+        # upload ao Codecov tem `continue-on-error` e não serve de gate.
+        run: pytest --cov=app --cov-report=xml --cov-fail-under=72 -q
 
       - name: Upload cobertura
         uses: codecov/codecov-action@v4

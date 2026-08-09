@@ -1,0 +1,2 @@
+174:            if summary.total_ml >= 2000:
+179:                f"Hidratação: {summary.total_ml} ml / 2000 ml hoje. "

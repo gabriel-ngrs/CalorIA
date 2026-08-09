@@ -100,7 +100,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.Re
 interface Step1Fields {
   weight: string;
   height: string;
-  age: string;
+  birthDate: string;
   sex: Sex | "";
   activity: ActivityLevel | "";
 }
@@ -138,13 +138,13 @@ function Step1({
       </div>
 
       <div className="space-y-1.5">
-        <FieldLabel htmlFor="age">Idade (anos)</FieldLabel>
+        <FieldLabel htmlFor="birth_date">Data de nascimento</FieldLabel>
         <Input
-          id="age"
-          placeholder="25"
-          inputMode="numeric"
-          value={fields.age}
-          onChange={(e) => onChange({ age: e.target.value })}
+          id="birth_date"
+          type="date"
+          max={new Date().toISOString().slice(0, 10)}
+          value={fields.birthDate}
+          onChange={(e) => onChange({ birthDate: e.target.value })}
         />
       </div>
 
@@ -383,7 +383,7 @@ export default function OnboardingPage() {
   const [step1, setStep1] = useState<Step1Fields>({
     weight: "",
     height: "",
-    age: "",
+    birthDate: "",
     sex: "",
     activity: "",
   });
@@ -401,9 +401,9 @@ export default function OnboardingPage() {
     if (profile) {
       setStep1((prev) => ({
         ...prev,
-        weight: profile.current_weight_kg != null ? String(profile.current_weight_kg) : prev.weight,
+        weight: profile.current_weight != null ? String(profile.current_weight) : prev.weight,
         height: profile.height_cm != null ? String(profile.height_cm) : prev.height,
-        age: profile.age != null ? String(profile.age) : prev.age,
+        birthDate: profile.birth_date ?? prev.birthDate,
         sex: profile.sex ?? prev.sex,
         activity: profile.activity_level ?? prev.activity,
       }));
@@ -427,17 +427,26 @@ export default function OnboardingPage() {
     try {
       if (step === 1) {
         await updateProfile.mutateAsync({
-          current_weight_kg: parseNum(step1.weight) ?? undefined,
+          current_weight: parseNum(step1.weight) ?? undefined,
           height_cm: parseNum(step1.height) ?? undefined,
-          age: parseNum(step1.age) ?? undefined,
+          birth_date: step1.birthDate || undefined,
           sex: step1.sex || undefined,
           activity_level: step1.activity || undefined,
         } as Parameters<typeof updateProfile.mutateAsync>[0]);
         toast.success("Dados físicos salvos!");
         setStep(2);
       } else if (step === 2) {
+        // O dashboard redireciona para cá sempre que `calorie_goal` for falsy.
+        // Com o campo vazio, `?? undefined` omitia a chave do PATCH: a UI dizia
+        // "Metas salvas!", o valor continuava nulo e o usuário voltava para o
+        // onboarding a cada visita ao dashboard. O mesmo fallback do "Pular
+        // esta etapa" resolve, preferindo o TDEE já calculado ao default fixo.
         await updateMe.mutateAsync({
-          calorie_goal: parseNum(step2.calorieGoal) ?? undefined,
+          calorie_goal:
+            parseNum(step2.calorieGoal) ??
+            (profile?.tdee_calculated != null
+              ? Math.round(profile.tdee_calculated)
+              : 2000),
           water_goal_ml: parseNum(step2.waterGoal) ?? undefined,
           weight_goal: parseNum(step2.weightGoal) ?? undefined,
           goal_type: step2.goalType || undefined,
@@ -456,7 +465,12 @@ export default function OnboardingPage() {
     if (step === 2) {
       // Salva meta calórica padrão para evitar loop no redirect do dashboard
       try {
-        await updateMe.mutateAsync({ calorie_goal: 2000 } as Parameters<typeof updateMe.mutateAsync>[0]);
+        await updateMe.mutateAsync({
+          calorie_goal:
+            profile?.tdee_calculated != null
+              ? Math.round(profile.tdee_calculated)
+              : 2000,
+        } as Parameters<typeof updateMe.mutateAsync>[0]);
       } catch { /* silencia — usuário pode configurar depois */ }
       setStep(3);
     } else if (step < 3) {

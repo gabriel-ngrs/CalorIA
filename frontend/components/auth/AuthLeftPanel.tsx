@@ -7,8 +7,8 @@ const FEATURES = [
     num: "01",
     accent: "#34d399",
     headline: "IA que entende o que você come",
-    body: "Foto ou texto: Gemini 2.5 Flash identifica calorias, proteínas e carbs em segundos.",
-    badge: "Gemini 2.5 Flash",
+    body: "Foto ou texto: a IA (Groq · Llama) identifica calorias, proteínas e carbs em segundos.",
+    badge: "Groq · Llama",
   },
   {
     num: "02",

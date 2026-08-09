@@ -1,0 +1,32 @@
+# Contexto de build do backend.
+#
+# O Dockerfile usa `COPY . .` na stage de runtime e não havia .dockerignore:
+# o contexto inteiro entrava na imagem, incluindo a chave privada VAPID e
+# caches locais. Segredo em camada de imagem não sai de lá — quem tiver a
+# imagem tem a chave.
+
+# Segredos — nunca entram na imagem
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Ambientes e caches locais
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Estado de runtime e artefatos de medição
+celerybeat-schedule*
+artefatos/
+
+# Testes não são necessários na imagem de runtime
+tests/

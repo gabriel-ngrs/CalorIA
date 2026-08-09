@@ -6,14 +6,23 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.food import Food
 from app.models.meal import Meal, MealType
 from app.models.meal_item import MealItem
 from app.schemas.dashboard import WeeklyMacroPoint
 from app.schemas.meal import DailySummary, MealCreate, MealResponse, MealUpdate
 
 
-class MealItemNotFound(Exception):
+class MealItemNotFoundError(Exception):
     pass
+
+
+class FoodNotFoundError(Exception):
+    """`food_id` informado não existe na tabela `foods`."""
+
+    def __init__(self, food_ids: set[int]) -> None:
+        self.food_ids = food_ids
+        super().__init__(f"alimentos inexistentes: {sorted(food_ids)}")
 
 
 class MealService:
@@ -44,7 +53,23 @@ class MealService:
         result = await self.db.execute(query)
         return result.scalars().all()  # type: ignore[return-value]
 
+    async def _validar_food_ids(self, data: MealCreate) -> None:
+        """Recusa `food_id` inexistente antes de o banco recusar.
+
+        `food_id` vem do cliente. Sem esta checagem, um id inválido só falhava
+        no INSERT, e a `IntegrityError` não tratada virava HTTP 500 — erro de
+        entrada devolvendo erro de servidor.
+        """
+        ids = {i.food_id for i in data.items if i.food_id is not None}
+        if not ids:
+            return
+        result = await self.db.execute(select(Food.id).where(Food.id.in_(ids)))
+        existentes = set(result.scalars().all())
+        if faltando := ids - existentes:
+            raise FoodNotFoundError(faltando)
+
     async def create_meal(self, user_id: int, data: MealCreate) -> Meal:
+        await self._validar_food_ids(data)
         meal = Meal(
             user_id=user_id,
             name=data.name,
@@ -92,10 +117,10 @@ class MealService:
         """Remove um MealItem verificando que pertence ao usuário."""
         meal = await self.get_meal(user_id, meal_id)
         if not meal:
-            raise MealItemNotFound
+            raise MealItemNotFoundError
         item = next((it for it in meal.items if it.id == item_id), None)
         if not item:
-            raise MealItemNotFound
+            raise MealItemNotFoundError
         await self.db.delete(item)
         await self.db.commit()
 

@@ -1,0 +1,17 @@
+backend/app/services/reminder_service.py-54-    async def delete(self, user_id: int, reminder_id: int) -> bool:
+backend/app/services/reminder_service.py-55-        result = await self.db.execute(
+--
+backend/app/workers/tasks/reminders.py-171-
+backend/app/workers/tasks/reminders.py-172-            summary = await HydrationService(db).get_day_summary(user.id, today)
+--
+backend/app/workers/tasks/maintenance.py-86-            # Busca o peso mais recente registrado
+backend/app/workers/tasks/maintenance.py-87-            wl_result = await db.execute(
+--
+backend/app/services/ai/food_lookup.py:89:    for candidate in candidates:
+backend/app/services/ai/food_lookup.py-90-        rows = await db.execute(
+--
+backend/app/services/ai/insights_generator.py-193-            d = start + timedelta(days=i)
+backend/app/services/ai/insights_generator.py-194-            summary = await MealService(self._db).get_daily_summary(user_id, d)
+--
+backend/app/services/ai/insights_generator.py-368-                break
+backend/app/services/ai/insights_generator.py-369-            summary = await MealService(self._db).get_daily_summary(user_id, d)

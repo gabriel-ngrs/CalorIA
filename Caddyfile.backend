@@ -1,3 +1,14 @@
+# =============================================================================
+# CalorIA — proxy só da API  ·  LEGADO da topologia dividida (ADR-009)
+#
+# Par do `docker-compose.backend.yml`. Publica apenas /api, /docs e /redoc,
+# porque o frontend desta topologia ficava na Vercel, fora deste host.
+#
+# NÃO é o proxy oficial — esse é o `Caddyfile` da raiz, que serve o site
+# inteiro. Mantido como referência, sem uso, e marcado para remoção na poda do
+# repositório (Fase D.4).
+# =============================================================================
+
 {$APP_DOMAIN} {
     handle /api/* {
         reverse_proxy backend:8000

@@ -11,15 +11,15 @@ from sqlalchemy.orm import selectinload
 from app.models.meal import Meal
 from app.models.mood_log import MoodLog
 from app.schemas.ai import EatingPattern
-from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.ai_client import AIClient
 
 logger = logging.getLogger(__name__)
 
 
 class PatternAnalyzer:
-    """Analisa padrões alimentares dos últimos N dias e usa Gemini para síntese."""
+    """Analisa padrões alimentares dos últimos N dias e usa a IA para síntese."""
 
-    def __init__(self, client: GeminiClient, db: AsyncSession) -> None:
+    def __init__(self, client: AIClient, db: AsyncSession) -> None:
         self._client = client
         self._db = db
 

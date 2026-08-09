@@ -109,13 +109,14 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ---
 
-## Fase 2 — Integração com IA (Gemini)
+## Fase 2 — Integração com IA (Groq)
 
 > Objetivo: IA analisando refeições via texto e foto.
 
-### 2.1 Configuração Gemini
-- [x] `services/ai/gemini_client.py` — cliente Gemini com retry e rate limit handling
-- [x] Migrado para `gemini-2.5-flash` (modelo único via SDK `google-genai`, cobre texto e visão)
+### 2.1 Configuração Groq
+- [x] `services/ai/ai_client.py` — cliente Groq com retry e rate limit handling
+- [x] Texto: `llama-3.3-70b-versatile`; Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+- [x] Migrado de Google Gemini para Groq em v0.7 (free tier mais generoso, latência menor)
 - [x] Cache Redis para respostas de alimentos frequentes (TTL 7 dias)
 - [x] Logging de tokens utilizados para monitorar free tier
 
@@ -367,7 +368,7 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ### 8.1 Testes Backend
 - [x] Testes unitários para todos os services
-- [x] Testes unitários para meal_parser e vision_parser (mock Gemini)
+- [x] Testes unitários para meal_parser e vision_parser (mock AIClient)
 - [x] Testes de integração para todos os endpoints da API
 - [x] Fixtures compartilhadas (usuário de teste, refeições de teste)
 - [x] Testes de integração para Celery tasks (mock de envio de mensagem)
@@ -404,6 +405,13 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [ ] Proteção da branch `main` no GitHub (PR obrigatório + CI obrigatório)
 
 ### 9.2 Deploy em Produção
+
+> **Adiado por decisão do owner (2026-08-03).** A topologia está decidida e registrada
+> no **ADR-009** — host único, `docker-compose.yml` + `Caddyfile` —, e por enquanto a
+> stack roda **localmente**. Nenhum servidor será contratado nesta etapa; a VPS entra
+> no futuro, e aí os itens abaixo valem sem alteração. O deploy anterior saiu do ar:
+> a auditoria da Fase E.1 mediu que o host antigo não resolve mais nem em DNS.
+
 - [ ] Provisionar servidor (Hetzner CX22 — ~R$22/mês)
 - [ ] Configurar secrets no GitHub (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`)
 - [ ] Configurar environment `production` no GitHub Actions
@@ -427,13 +435,51 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ---
 
+## Fase 10 — Precisão do Registro de Refeição
+
+Trabalho derivado do [bug 001](.codeflow/bugs/001-fluxo-cadastro-refeicao.md):
+tornar o registro determinístico e caloricamente preciso, com o banco nutricional
+como fonte de verdade e a IA restrita a identificar e normalizar.
+
+### 10.1 Medição antes de corrigir
+- [x] Instrumentar o pipeline capturando os estágios intermediários (`scripts/instrument_meal_pipeline.py`)
+- [x] Conjunto rotulado para medir estratégias e limiares de busca (`scripts/eval_food_lookup.py`)
+- [x] Conjunto dourado de 30 refeições brasileiras (`scripts/eval_golden_set.py`)
+- [x] Registrar as decisões de parâmetro com o número que as justifica
+
+### 10.2 Normalização determinística de porção
+- [x] Tabela `portions` com faixa plausível e procedência declarada por linha
+- [x] Conversor de unidade caseira, fração e número por extenso
+- [x] Substituir a constante `_PORTIONS_REF` embutida no prompt
+- [ ] Ampliar a cobertura de porções para além dos ~110 termos atuais
+
+### 10.3 Banco como fonte de verdade
+- [x] Prompt deixa de forçar decomposição: prato composto resolve pela fonte curada
+- [x] Busca insensível a acento nos dois lados (F1 0,776 → 0,857)
+- [x] Uma query em vez de N; predicado indexável (238 ms → 44 ms)
+- [x] Excluir do lookup as estimativas da IA gravadas em `foods` (erro 16,7% → 4,1%)
+- [ ] Higienizar ou reimportar as 23.398 linhas `ai_estimated` da tabela `foods`
+
+### 10.4 Transparência
+- [x] Origem do valor, porção original e confiança por item na revisão
+- [x] Persistir a procedência ao salvar e exibi-la no histórico
+- [x] Itens sem âncora de porção bloqueiam o salvamento até confirmação
+
+### 10.5 Saneamento geral
+- [x] Varredura de QA e auditoria: 81 achados inventariados ([lote](.codeflow/bug-batches/bugs-saneamento-v1.md))
+- [x] Verificação adversarial dos críticos e altos
+- [x] 19 corrigidos com teste de regressão
+- [ ] Lotes próprios para os temas em aberto (segurança/autorização, validação de entrada, infra/build)
+
+---
+
 ## Resumo das Fases
 
 | Fase | Nome | Status |
 |---|---|---|
 | 0 | Setup e Fundação | `[x]` |
 | 1 | Modelos e API Base | `[x]` |
-| 2 | Integração com IA (Gemini) | `[x]` |
+| 2 | Integração com IA (Groq) | `[x]` |
 | 3 | ~~Bot Telegram~~ *(removido em v0.4.1)* | `[x]` |
 | 4 | ~~Bot WhatsApp~~ *(removido em v0.4.1)* | `[x]` |
 | 5 | Frontend Dashboard | `[x]` |
@@ -441,3 +487,4 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 | 7 | Insights Avançados de IA | `[x]` |
 | 8 | Qualidade e Testes | `[x]` |
 | 9 | Deploy e Escala | `[~]` |
+| 10 | Precisão do Registro de Refeição | `[~]` |

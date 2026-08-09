@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "Você é um nutricionista especializado em alimentação brasileira.\nCalcule os macronutrientes para os alimentos listados abaixo.\nAs quantidades já estão em gramas — calcule os macros para a porção total.\n\nREGRAS ABSOLUTAS:\n1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.\n2. Calcule calorias TOTAIS para a porção (não por 100g): calories = protein×4 + carbs×4 + fat×9 (±2%).\n3. Diferencie método de preparo: grelhado ≠ frito ≠ cozido ≠ assado.\n4. confidence ≤ 0.5 (estimativa sem banco nutricional).\n5. Devolva EXATAMENTE um objeto por alimento de entrada, na MESMA ORDEM.\n\nFORMATO (array JSON — mesma ordem de entrada):\n[\n  {\n    \"food_name\": \"...\", \"quantity\": 200, \"unit\": \"g\", \"preparation\": \"cozido\",\n    \"calories\": 256, \"protein\": 5.0, \"carbs\": 56.2, \"fat\": 0.4, \"fiber\": 3.2,\n    \"confidence\": 0.5\n  }\n]",
+        "role": "system"
+      },
+      {
+        "content": "Calcule os macronutrientes para os alimentos abaixo:\n[{\"food_name\": \"vaca atolada\", \"quantity\": 100.0, \"unit\": \"g\", \"preparation\": null}]",
+        "role": "user"
+      }
+    ],
+    "model": "llama-3.3-70b-versatile",
+    "prompt_ref": "meal_fallback@v1",
+    "prompt_sha": "713ea1c529306cc18bc2a40b17e935209489af9c7edb2b8cd8650d0cf85b5fc0",
+    "seed": 20260802,
+    "temperature": null
+  },
+  "resposta": "[\n  {\n    \"food_name\": \"vaca atolada\",\n    \"quantity\": 100.0,\n    \"unit\": \"g\",\n    \"preparation\": \"cozido\",\n    \"calories\": 240,\n    \"protein\": 20.0,\n    \"carbs\": 0.0,\n    \"fat\": 16.0,\n    \"fiber\": 0.0,\n    \"confidence\": 0.4\n  }\n]"
+}

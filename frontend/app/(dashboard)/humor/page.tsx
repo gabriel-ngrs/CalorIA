@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useMoodLogs, useLogMood } from "@/lib/hooks/useLogs";
-import { toast } from "sonner";
 
 const LEVELS = [
   { value: 1, label: "Muito baixo" },
@@ -104,7 +103,8 @@ export default function HumorPage() {
       notes: notes || undefined,
     });
     setNotes("");
-    toast.success("Humor registrado!");
+    // O toast de sucesso é emitido pelo hook (useLogs.ts) — emitir de novo
+    // aqui mostrava dois avisos para o mesmo registro.
   }
 
   const allLogs = logs ?? [];

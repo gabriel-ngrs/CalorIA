@@ -1,0 +1,53 @@
+=== Métodos públicos de InsightsGenerator ===
+39:    async def daily_insight(self, user_id: int, today: date) -> InsightResponse:
+72:    async def weekly_insight(self, user_id: int, end_date: date) -> InsightResponse:
+100:    async def answer_question(
+128:    async def suggest_meal(self, user_id: int, today: date) -> MealSuggestion:
+185:    async def nutritional_alerts(
+275:    async def goal_adjustment_suggestion(
+353:    async def monthly_report(
+
+=== Tamanho aproximado por método (LOC entre defs) ===
+daily_insight: 33 linhas
+weekly_insight: 28 linhas
+answer_question: 28 linhas
+suggest_meal: 57 linhas
+nutritional_alerts: 90 linhas
+goal_adjustment_suggestion: 78 linhas
+monthly_report: 158 linhas
+
+=== Imports e estado interno ===
+from __future__ import annotations
+
+import json
+import logging
+from calendar import monthrange
+from datetime import date, timedelta
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.ai import (
+    GoalAdjustmentSuggestion,
+    InsightResponse,
+    MealSuggestion,
+    MonthlyReport,
+    NutritionalAlert,
+    NutritionalAlertsResponse,
+    SuggestedMealItem,
+    WeekSummary,
+)
+from app.services.ai.ai_client import AIClient
+from app.services.dashboard_service import DashboardService
+from app.services.log_service import WeightService
+from app.services.meal_service import MealService
+from app.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
+
+
+def _format_nutrition(calories: float, protein: float, carbs: float, fat: float) -> str:
+
+=== Métodos privados (helpers) ===
+35:    def __init__(self, client: AIClient, db: AsyncSession) -> None:
+466:    def _build_week_summaries(

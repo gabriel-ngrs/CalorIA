@@ -49,12 +49,15 @@ async def get_profile(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileResponse:
-    profile = await ProfileService(db).get_profile(user_id)
+    svc = ProfileService(db)
+    profile = await svc.get_profile(user_id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Perfil não encontrado"
         )
-    return ProfileResponse.model_validate(profile)
+    response = ProfileResponse.model_validate(profile)
+    response.bmr = await svc.compute_bmr(user_id, profile)
+    return response
 
 
 @router.put("/me/profile", response_model=ProfileResponse)
@@ -63,5 +66,8 @@ async def update_profile(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileResponse:
-    profile = await ProfileService(db).update_profile(user_id, data)
-    return ProfileResponse.model_validate(profile)
+    svc = ProfileService(db)
+    profile = await svc.update_profile(user_id, data)
+    response = ProfileResponse.model_validate(profile)
+    response.bmr = await svc.compute_bmr(user_id, profile)
+    return response

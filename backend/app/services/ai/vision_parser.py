@@ -5,10 +5,13 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from app.prompts import get_prompt
 from app.schemas.ai import MealAnalysisResponse, ParsedFoodItem
-from app.services.ai.food_lookup import IdentifiedFood, lookup_food
-from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.ai_client import AIClient
+from app.services.ai.food_lookup import IdentifiedFood, lookup_food, preparo_relevante
+from app.services.ai.meal_parser import _FONTES_CURADAS, _num
 from app.services.ai.utils import correct_calories, extract_json_from_ai_response
+from app.services.nutrition.portions import PortionNormalizer
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,90 +19,21 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Estágio 1 — Identificação visual (sem macros)
+# Prompts versionados — mesmo contrato do MealParser: o texto vive em
+# `app/prompts/<nome>/v<N>.txt` e o `sha256` está travado por teste.
 # ---------------------------------------------------------------------------
-_IDENTIFY_SYSTEM_PROMPT = """Você é um nutricionista analisando fotos de refeições brasileiras.
-Identifique todos os alimentos visíveis, estime as porções e as calorias totais de cada item.
-
-REGRAS ABSOLUTAS — nunca viole:
-1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. Baseie porções no que é VISÍVEL: tamanho relativo ao prato/utensílio, espessura, contexto.
-3. Diferencie método de preparo pelo aspecto: dourado/crocante = frito; marcas de grelha = grelhado; pálido/úmido = cozido.
-4. Liste cada alimento separadamente, mesmo em pratos compostos.
-5. Estime porções sempre em gramas (unit="g").
-6. NÃO calcule macros detalhados — apenas calorias totais da porção (kcal_estimate).
-7. confidence: 0.9 = claramente identificado + porção bem visível; 0.7 = identificado mas porção incerta; 0.5 = difícil de identificar.
-8. kcal_estimate: calorias totais da porção com base no seu conhecimento nutricional.
-
-FORMATO OBRIGATÓRIO (array JSON):
-[
-  {
-    "food_name": "nome do alimento em português",
-    "quantity": 150,
-    "unit": "g",
-    "preparation": "grelhado",
-    "confidence": 0.75,
-    "kcal_estimate": 245
-  }
-]
-
-=== CALIBRAÇÃO VISUAL DE PORÇÕES — REFERÊNCIA PARA FOTOS ===
-Prato raso brasileiro (26-28cm):
-  Arroz cobrindo ¼ do prato           → ~150g
-  Arroz cobrindo ⅓ do prato           → ~200g
-  Proteína cobrindo ¼ do prato        → ~130-160g
-  Feijão/caldo cobrindo ¼ do prato    → ~80-100g
-  Salada crua cobrindo metade do prato → ~80-120g
-
-Espessura de proteínas:
-  Bife/frango fino  (~1cm)     → 80-100g
-  Bife/frango médio (~1.5-2cm) → 130-160g
-  Bife/frango grosso (~2.5-3cm)→ 180-220g
-
-Recipientes comuns:
-  Tigela 300ml: sopa ~250g | cereal/granola ~60g
-  Copo americano 200ml: leite/suco = 200ml
-  Xícara de café 50ml: café + leite
-  Pão francês (1 unidade visível) = ~50g
-  Ovo inteiro médio = ~50g
-  Fatia de pão de forma = ~25g
-"""
-
-_IDENTIFY_TEMPLATE = (
-    "CONTEXTO DO USUÁRIO (use para calibrar porções):\n{user_context}\n\n"
-    "Analise a foto e identifique todos os alimentos visíveis. "
-    "Pense internamente: 1) Identifique alimentos e método de preparo pelo aspecto visual. "
-    "2) Estime a porção em gramas usando as referências visuais. "
-    "Retorne SOMENTE o array JSON com a identificação."
-)
-
-# ---------------------------------------------------------------------------
-# Estágio 2 — Estimativa de macros (fallback quando sem match no banco)
-# ---------------------------------------------------------------------------
-_FALLBACK_SYSTEM_PROMPT = """Você é um nutricionista especializado em alimentação brasileira.
-Calcule os macronutrientes para os alimentos listados abaixo.
-As quantidades já estão em gramas — calcule os macros para a porção total.
-
-REGRAS ABSOLUTAS:
-1. RETORNE APENAS JSON VÁLIDO. Zero markdown, zero texto fora do JSON.
-2. Calcule calorias TOTAIS para a porção (não por 100g): calories = protein×4 + carbs×4 + fat×9 (±2%).
-3. Diferencie método de preparo: grelhado ≠ frito ≠ cozido ≠ assado.
-4. confidence ≤ 0.5 (estimativa sem banco nutricional).
-
-FORMATO (array JSON — mesma ordem de entrada):
-[
-  {
-    "food_name": "...", "quantity": 150, "unit": "g", "preparation": "grelhado",
-    "calories": 245, "protein": 28.0, "carbs": 0.0, "fat": 14.0, "fiber": 0.0,
-    "confidence": 0.5
-  }
-]"""
+_IDENTIFY_PROMPT = get_prompt("vision_identify")  # versão ativa: v2 (bug 001)
+_FALLBACK_PROMPT = get_prompt("vision_fallback")
 
 _CONFIDENCE_THRESHOLD = 0.6
+#: Divergência tolerada entre as calorias do banco e a estimativa da IA.
+#: Mesmo valor e mesmo papel de `_SANITY_DIVERGENCE` no MealParser — inclusive
+#: a isenção das fontes curadas, importada de lá para não divergir.
+_SANITY_DIVERGENCE = 0.35
 
 
 class VisionParser:
-    def __init__(self, client: GeminiClient) -> None:
+    def __init__(self, client: AIClient) -> None:
         self._client = client
 
     async def _identify_foods(
@@ -109,12 +43,14 @@ class VisionParser:
         user_context: str,
     ) -> list[IdentifiedFood]:
         """Estágio 1: IA identifica alimentos na foto sem estimar macros."""
-        user_msg = _IDENTIFY_TEMPLATE.format(user_context=user_context)
+        user_msg = _IDENTIFY_PROMPT.render(user_context=user_context)
         raw = await self._client.generate_with_image(
             user_msg,
             image_bytes,
             mime_type,
-            system=_IDENTIFY_SYSTEM_PROMPT,
+            system=_IDENTIFY_PROMPT.system,
+            prompt_ref=_IDENTIFY_PROMPT,
+            json_object=_IDENTIFY_PROMPT.topo_objeto,
         )
         data = extract_json_from_ai_response(raw)
         return [IdentifiedFood(**item) for item in data]
@@ -128,27 +64,36 @@ class VisionParser:
         result: list[ParsedFoodItem | None] = [None] * len(items)
         to_estimate_idx: list[int] = []
 
+        normalizer = PortionNormalizer(db)
+
         for i, item in enumerate(items):
-            # Só faz lookup quando a unidade é gramas
-            if item.unit.lower() not in ("g", "gramas", "gr"):
+            # A porção é convertida para gramas pela tabela, como no texto.
+            # Antes, unidade diferente de "g" pulava o banco direto para a
+            # estimativa da IA — a foto perdia o banco por detalhe de unidade.
+            porcao = await normalizer.normalizar(
+                item.food_name, item.quantity, item.unit
+            )
+            if not porcao.ancorada:
                 to_estimate_idx.append(i)
                 continue
 
-            query = (
-                f"{item.food_name} {item.preparation}"
-                if item.preparation
-                else item.food_name
-            )
+            # `preparation` só entra na consulta quando informa algo real.
+            preparo = preparo_relevante(item.preparation)
+            query = f"{item.food_name} {preparo}" if preparo else item.food_name
             match = await lookup_food(query, db)
             if match:
                 food = match.food
-                factor = item.quantity / 100.0
+                factor = porcao.gramas / 100.0
                 db_kcal = food.calories_100g * factor
 
-                # Sanity check: compara calorias do banco com estimativa da IA
+                # Sanity check: compara calorias do banco com estimativa da IA.
+                # Fonte curada não é descartada — ver `_FONTES_CURADAS`.
                 if item.kcal_estimate and item.kcal_estimate > 0 and db_kcal > 0:
                     divergence = abs(db_kcal - item.kcal_estimate) / item.kcal_estimate
-                    if divergence > 0.35:
+                    if (
+                        divergence > _SANITY_DIVERGENCE
+                        and food.source not in _FONTES_CURADAS
+                    ):
                         logger.warning(
                             "Vision sanity check falhou para '%s': banco=%.0f kcal vs IA=%.0f kcal "
                             "(divergência=%.0f%%, source=%s) — descartando banco, usando estimativa IA",
@@ -163,8 +108,13 @@ class VisionParser:
 
                 result[i] = ParsedFoodItem(
                     food_name=item.food_name,
-                    quantity=item.quantity,
-                    unit=item.unit,
+                    quantity=round(porcao.gramas, 2),
+                    unit="g",
+                    portion_text=(
+                        f"{porcao.quantidade_original:g} {porcao.unidade_original}"
+                    ),
+                    portion_source=porcao.origem,
+                    matched_food_name=food.name,
                     calories=round(db_kcal, 1),
                     protein=round(food.protein_100g * factor, 2),
                     carbs=round(food.carbs_100g * factor, 2),
@@ -202,7 +152,10 @@ class VisionParser:
         if to_estimate_idx:
             to_estimate = [items[i] for i in to_estimate_idx]
             estimated = await self._estimate_macros_batch(to_estimate)
-            for idx, parsed in zip(to_estimate_idx, estimated, strict=False):
+            # `_estimate_macros_batch` garante uma saída por entrada, então os
+            # comprimentos casam e `strict=True` é seguro. Com `strict=False`,
+            # um descasamento futuro descartaria itens em silêncio.
+            for idx, parsed in zip(to_estimate_idx, estimated, strict=True):
                 result[idx] = parsed
 
         return [item for item in result if item is not None]
@@ -221,25 +174,51 @@ class VisionParser:
         raw = await self._client.generate_text(
             user_msg,
             use_cache=False,
-            system=_FALLBACK_SYSTEM_PROMPT,
+            system=_FALLBACK_PROMPT.system,
+            prompt_ref=_FALLBACK_PROMPT,
+            json_object=_FALLBACK_PROMPT.topo_objeto,
         )
         data = extract_json_from_ai_response(raw)
 
+        # A IA às vezes devolve um array de tamanho diferente da entrada.
+        # Casar por posição com `strict=False` descartava itens em silêncio — a
+        # foto perdia alimentos sem que ninguém soubesse. Aqui cada entrada tem
+        # saída garantida; o que faltar vira item marcado para revisão. Mesma
+        # correção já aplicada ao MealParser pelo bug 001.
         parsed: list[ParsedFoodItem] = []
-        for d, original in zip(data, items, strict=False):
+        for i, original in enumerate(items):
+            d = data[i] if i < len(data) and isinstance(data[i], dict) else {}
+            faltando = not d
+            if faltando:
+                logger.warning(
+                    "IA não devolveu macros para '%s' (posição %d de %d) — "
+                    "item preservado com zeros e marcado para revisão",
+                    original.food_name,
+                    i,
+                    len(items),
+                )
             parsed.append(
                 ParsedFoodItem(
                     food_name=original.food_name,
-                    quantity=original.quantity,
+                    # A quantidade crua da IA pode vir por extenso ("dois"), e
+                    # `ParsedFoodItem` a rejeitava com ValidationError FORA dos
+                    # blocos `except` — virava HTTP 500.
+                    quantity=_num(original.quantity),
                     unit=original.unit,
-                    calories=float(d.get("calories", 0)),  # type: ignore[arg-type]
-                    protein=float(d.get("protein", 0)),  # type: ignore[arg-type]
-                    carbs=float(d.get("carbs", 0)),  # type: ignore[arg-type]
-                    fat=float(d.get("fat", 0)),  # type: ignore[arg-type]
-                    fiber=float(d.get("fiber", 0)),  # type: ignore[arg-type]
-                    confidence=float(d.get("confidence", 0.5)),  # type: ignore[arg-type]
+                    calories=_num(d.get("calories")),
+                    protein=_num(d.get("protein")),
+                    carbs=_num(d.get("carbs")),
+                    fat=_num(d.get("fat")),
+                    fiber=_num(d.get("fiber")),
+                    confidence=min(_num(d.get("confidence"), 0.5), 1.0),
                     data_source="ai_estimated",
                     food_id=None,
+                    needs_review=faltando,
+                    review_reason=(
+                        "a IA não devolveu macros para este item"
+                        if faltando
+                        else "valores estimados pela IA (sem correspondência no banco)"
+                    ),
                 )
             )
 
@@ -276,5 +255,15 @@ class VisionParser:
             logger.error("IA retornou JSON inválido na estimativa de macros: %s", exc)
             raise ValueError("A IA não conseguiu calcular os macronutrientes.") from exc
 
-        low_confidence = any(it.confidence < _CONFIDENCE_THRESHOLD for it in items)
+        if not items:
+            # Sem itens não há refeição. Devolver uma análise vazia deixava o
+            # usuário salvar uma refeição fantasma de 0 kcal, que entrava nos
+            # agregados do dia como se fosse um registro legítimo.
+            raise ValueError(
+                "Nenhum alimento foi identificado nesta imagem. Revise e tente de novo."
+            )
+
+        low_confidence = any(
+            it.confidence < _CONFIDENCE_THRESHOLD or it.needs_review for it in items
+        )
         return MealAnalysisResponse(items=items, low_confidence=low_confidence)

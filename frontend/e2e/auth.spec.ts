@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-const BASE_URL = process.env.BASE_URL ?? "https://frontend-nine-mu-59.vercel.app";
+// Default local: rodar a suíte sem BASE_URL definido nunca pode tocar produção.
+const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const TEST_EMAIL = `playwright_test_${Date.now()}@gmail.com`;
 const TEST_PASSWORD = "Playwright@123";
 const TEST_NAME = "Teste Playwright";
@@ -33,9 +34,16 @@ test.describe("Autenticação", () => {
   });
 
   test("deve fazer login com usuário existente", async ({ page }) => {
+    const email = process.env.E2E_LOGIN_EMAIL;
+    const password = process.env.E2E_LOGIN_PASSWORD;
+    test.skip(
+      !email || !password,
+      "E2E_LOGIN_EMAIL/E2E_LOGIN_PASSWORD não definidos",
+    );
+
     await page.goto(`${BASE_URL}/login`);
-    await page.getByLabel(/e-mail/i).fill("email-redigido@example.com");
-    await page.getByLabel(/senha/i).fill("SENHA-REDIGIDA");
+    await page.getByLabel(/e-mail/i).fill(email!);
+    await page.getByLabel(/senha/i).fill(password!);
     await page.getByRole("button", { name: /entrar/i }).click();
 
     await expect(page).toHaveURL(/(dashboard|onboarding)/, { timeout: 15000 });

@@ -1,5 +1,14 @@
 # =============================================================================
-# CalorIA — Docker Compose (Produção Local)
+# CalorIA — stack COMPLETA em host único  ·  TOPOLOGIA OFICIAL (ADR-009)
+#
+# Sobe tudo no mesmo lugar: Postgres, Redis, backend, frontend, os dois workers
+# Celery e o Caddy como proxy HTTPS. Usa o `Caddyfile` da raiz.
+#
+# É este o arquivo de produção — e, hoje, roda localmente: não há servidor
+# contratado (a Fase E.4 está adiada por decisão do owner, 2026-08-03). Quando
+# houver VPS, o mesmo arquivo sobe lá sem alteração; muda o host, não a stack.
+#
+# Para desenvolver com hot reload, use `docker-compose.dev.yml`.
 # =============================================================================
 
 services:

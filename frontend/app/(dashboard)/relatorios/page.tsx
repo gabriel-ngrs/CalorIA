@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   BarChart2,
@@ -70,7 +70,17 @@ export default function RelatoriosPage() {
   const [period, setPeriod] = useState<7 | 14 | 30>(7);
 
   const { data: macros } = useMacrosChart(period);
-  const { data: weightData } = useWeightChart(period);
+  const { data: weightDataRaw } = useWeightChart(period);
+  // A API devolve as pesagens em ordem DESC (mais recente primeiro). O restante
+  // desta página — sinal da tendência e eixo X do gráfico — assume ordem
+  // cronológica, então a inversão acontece aqui, uma vez só.
+  const weightData = useMemo(
+    () =>
+      weightDataRaw
+        ? [...weightDataRaw].sort((a, b) => a.date.localeCompare(b.date))
+        : weightDataRaw,
+    [weightDataRaw]
+  );
   const { data: logs } = useMoodLogs();
   const { data: hydration } = useHydrationHistory(period);
   const { data: user } = useMe();
@@ -96,8 +106,11 @@ export default function RelatoriosPage() {
     (d) => d.total_ml >= goalMl
   ).length;
 
-  const latestWeight = weightData?.[weightData.length - 1]?.weight_kg;
+  // Com a lista em ordem crescente, [0] é a pesagem mais antiga e a última é a
+  // mais recente. Antes disso os dois estavam trocados e o card exibia "+8,0 kg"
+  // para quem tinha perdido 8 kg.
   const firstWeight = weightData?.[0]?.weight_kg;
+  const latestWeight = weightData?.[weightData.length - 1]?.weight_kg;
   const weightTrend =
     latestWeight !== undefined && firstWeight !== undefined
       ? latestWeight - firstWeight

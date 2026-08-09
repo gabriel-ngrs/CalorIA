@@ -12,7 +12,7 @@
 .PHONY: help init check-deps \
         dev dev-d infra down reset prod prod-down build build-no-cache \
         status logs logs-backend logs-frontend logs-worker \
-        migrate migration migrate-history migrate-down psql seed seed-user \
+        migrate migration migrate-history migrate-down psql seed seed-user seed-demo \
         test test-backend test-backend-cov test-frontend test-unit test-integration \
         lint lint-backend lint-frontend lint-check fmt typecheck check \
         hooks shell-backend shell-frontend ps
@@ -25,6 +25,12 @@ BLUE   := \033[0;34m
 CYAN   := \033[0;36m
 BOLD   := \033[1m
 NC     := \033[0m
+
+# Portas publicadas no host — espelham os defaults do docker-compose.dev.yml.
+# O commit 49d0b7c deslocou as portas do dev mas não propagou para cá, e o
+# health check do `dev-d` batia em :8000 enquanto o backend subia em :8010.
+BACKEND_HOST_PORT  ?= 8010
+FRONTEND_HOST_PORT ?= 3010
 
 COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose
@@ -45,7 +51,7 @@ help:
 	@echo "$(BOLD)Dia-a-dia:$(NC)"
 	@echo "  $(CYAN)make dev$(NC)               Subir serviços em modo dev (hot reload)"
 	@echo "  $(CYAN)make dev-d$(NC)             Subir em background"
-	@echo "  $(CYAN)make infra$(NC)             Subir só infra (postgres, redis, evolution_api)"
+	@echo "  $(CYAN)make infra$(NC)             Subir só infra (postgres, redis)"
 	@echo "  $(CYAN)make down$(NC)              Parar todos os serviços"
 	@echo "  $(CYAN)make reset$(NC)             Parar e apagar volumes (reseta banco)"
 	@echo "  $(CYAN)make status$(NC)            Status dos serviços + health check"
@@ -127,9 +133,9 @@ init: check-deps
 	@echo ""
 	@echo "$(BOLD)$(GREEN)Setup concluído!$(NC)"
 	@echo ""
-	@echo "  Dashboard:   http://localhost:3000"
-	@echo "  API:         http://localhost:8000"
-	@echo "  Swagger:     http://localhost:8000/docs"
+	@echo "  Dashboard:   http://localhost:$(FRONTEND_HOST_PORT)"
+	@echo "  API:         http://localhost:$(BACKEND_HOST_PORT)"
+	@echo "  Swagger:     http://localhost:$(BACKEND_HOST_PORT)/docs"
 	@echo "  Evol. API:   http://localhost:8080"
 	@echo ""
 	@echo "  Próximo passo: $(CYAN)make seed$(NC) para popular com dados de dev"
@@ -147,11 +153,11 @@ dev-d:
 	@echo "$(BLUE)Subindo serviços em background...$(NC)"
 	@$(COMPOSE_DEV) up -d
 	@$(MAKE) --no-print-directory _wait-for-backend
-	@echo "$(GREEN)Serviços rodando!$(NC)  Backend: http://localhost:8000 | Frontend: http://localhost:3000"
+	@echo "$(GREEN)Serviços rodando!$(NC)  Backend: http://localhost:$(BACKEND_HOST_PORT) | Frontend: http://localhost:$(FRONTEND_HOST_PORT)"
 
 infra:
-	@echo "$(BLUE)Subindo infra (postgres, redis, evolution_api)...$(NC)"
-	@$(COMPOSE_DEV) up postgres redis evolution_api
+	@echo "$(BLUE)Subindo infra (postgres, redis)...$(NC)"
+	@$(COMPOSE_DEV) up postgres redis
 
 down:
 	@echo "$(BLUE)Parando serviços...$(NC)"
@@ -188,7 +194,7 @@ status:
 	@$(COMPOSE_DEV) ps -a
 	@echo ""
 	@printf "$(CYAN)Health check:$(NC) "
-	@curl -sf http://localhost:8000/health 2>/dev/null && echo "" || echo "$(RED)Backend indisponível$(NC)"
+	@curl -sf http://localhost:$(BACKEND_HOST_PORT)/health 2>/dev/null && echo "" || echo "$(RED)Backend indisponível$(NC)"
 
 ps:
 	@$(COMPOSE_DEV) ps
@@ -221,6 +227,12 @@ seed:
 seed-user:
 	@echo "$(BLUE)Criando usuário de dev...$(NC)"
 	@$(COMPOSE_DEV) exec backend python scripts/seed_dev_user.py
+
+# Idempotente: é também o comando de RESET da demo. Rodar de novo devolve a
+# conta ao estado publicado, apagando o que um visitante tenha registrado.
+seed-demo:
+	@echo "$(BLUE)Semeando/resetando a conta de demonstração...$(NC)"
+	@$(COMPOSE_DEV) exec backend python scripts/seed_dev_user.py --conta demo
 
 # ==============================================================================
 # TESTES
@@ -277,13 +289,16 @@ fmt:
 
 typecheck:
 	@echo "$(BLUE)Type check backend (mypy)...$(NC)"
-	@$(COMPOSE_DEV) exec backend mypy app/
+	@$(COMPOSE_DEV) exec backend mypy app/ evals/
 	@echo "$(BLUE)Type check frontend (tsc)...$(NC)"
 	@cd frontend && npx tsc --noEmit
 
-check: lint-check typecheck test-unit test-frontend
+check: lint-check typecheck test-unit test-integration test-frontend
 	@echo ""
-	@echo "$(BOLD)$(GREEN)Tudo OK — igual ao CI.$(NC)"
+	@echo "$(BOLD)$(GREEN)Tudo OK.$(NC)"
+	@echo "$(BLUE)Cobre os gates do CI (ruff, mypy, pytest completo, eslint, jest)$(NC)"
+	@echo "$(BLUE)e ainda roda tsc e ruff format --check, que o CI nao roda.$(NC)"
+	@echo "$(BLUE)Nao cobre: 'npm run build' de producao, que so o CI executa.$(NC)"
 
 hooks:
 	@pre-commit install
@@ -318,7 +333,7 @@ shell-frontend:
 _wait-for-backend:
 	@printf "  Aguardando backend"
 	@timeout=90; while [ $$timeout -gt 0 ]; do \
-		curl -sf http://localhost:8000/health >/dev/null 2>&1 && break; \
+		curl -sf http://localhost:$(BACKEND_HOST_PORT)/health >/dev/null 2>&1 && break; \
 		printf "."; sleep 2; timeout=$$((timeout - 2)); \
 	done; echo ""; \
 	if [ $$timeout -le 0 ]; then echo "$(RED)Backend não respondeu em 90s. Verifique: make logs-backend$(NC)"; exit 1; fi

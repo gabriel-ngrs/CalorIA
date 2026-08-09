@@ -74,7 +74,9 @@ describe("useMeals", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/meals");
+    // `limit=100` é explícito de propósito: o endpoint tem default 20, e a
+    // página somava um dia truncado, divergindo do total do dashboard.
+    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/meals?limit=100");
     expect(result.current.data).toEqual([mockMeal]);
   });
 
@@ -87,7 +89,9 @@ describe("useMeals", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockedApi.get).toHaveBeenCalledWith("/api/v1/meals?date=2026-03-15");
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      "/api/v1/meals?limit=100&date=2026-03-15"
+    );
   });
 });
 

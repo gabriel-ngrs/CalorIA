@@ -9,6 +9,66 @@ Versões seguem [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Corrigido
+
+- **Sanity check calórico descartava o dado bom em prato composto** — a IA estima a porção inteira do prato (~350 kcal) para uma descrição de 100 g, o check de 35% descartava o match correto da fonte curada `taco` (110 kcal) e adotava a estimativa. Medido pelo harness de eval: estrato `composto` com **MdAPE 23,81% → 6,86%** e itens dentro de ±10% de **25% → 75%**; no agregado, dentro de ±10% de **70% → 90%** e SSPB de 1,25% → 0,00%. Fonte curada agora vence a estimativa e a divergência vira `needs_review` em vez de descarte. Fontes de importação automática (Open Food Facts, FatSecret, USDA) mantêm o comportamento do ADR-006.
+- **Gordura de passar caía na regra genérica de porção de 100 g** — a bateria de invariância mediu "1 pão francês com manteiga" = 880 kcal contra "50g pão + 10g manteiga" = 212,6 kcal (spread 4,14, o pior do conjunto). `manteiga`, `margarina`, `requeijão`, `geleia`, `cream cheese`, `azeite` e `óleo` ganharam regras próprias para `porcao`/`unidade`.
+- **Schema dos testes de integração vinha de `Base.metadata.create_all()`** e não incluía extensões, função `caloria_unaccent` nem índices GIN — o que fazia os cinco testes do conjunto dourado **pularem sempre**, inclusive no CI. Passa a vir de `alembic upgrade head`, e o gate da NFR-6 voltou a ser executado.
+- **`scripts/seed_all.py` não importava** (`ReminderChannel`, removido junto dos bots na v0.7.0) e **`scripts/seed_dev_user.py` falhava** por driver `psycopg2` ausente e pela coluna `age`, substituída por `birth_date`. A cadeia de seed documentada em `docs/setup.md` voltou a funcionar.
+
+### Adicionado
+
+- **LICENSE MIT** e versão sincronizada entre `CHANGELOG.md`, `backend/pyproject.toml`, `backend/app/main.py` e `frontend/package.json` — o Swagger público anunciava `0.1.0` enquanto o CHANGELOG estava em `0.7.0`.
+
+### Corrigido
+
+- **Cadastro de refeição não-determinístico e impreciso** ([bug 001](.codeflow/bugs/001-fluxo-cadastro-refeicao.md)) — `1 pizza grande 8 fatias de calabresa` e `8 fatias pizza calabresa` produziam 3386 e 2094 kcal (38,2% de divergência) e ambos errados. A instrumentação do pipeline mostrou que a causa **não** era aleatoriedade do modelo (3 execuções da mesma frase davam resultado idêntico), mas o pipeline aceitar a quantidade em gramas inventada pela IA, que variava conforme a frase. Correção em quatro frentes:
+  - **O prompt não força mais decomposição em ingredientes.** A regra *"Liste CADA ingrediente separadamente, mesmo em pratos compostos"* impedia o banco de ser usado — a fonte curada tem `Pizza calabresa` (270 kcal/100g), `Feijoada completa`, `Lasanha` e `Strogonoff`, e a IA nunca emitia esses nomes.
+  - **Nova tabela `portions`** converte unidade caseira em gramas de forma determinística, em código, com faixa plausível e procedência declarada por linha. Substitui a constante textual `_PORTIONS_REF` embutida no prompt, que não continha pizza nem fatia.
+  - **Consulta ao banco limpa antes de ir** — `preparation` só entra quando informa algo: `"azeite não aplicável"` pontuava 0,6364 (abaixo do limiar 0,65) enquanto `"azeite"` pontua 1,00.
+  - **Sanity check passa a checar a plausibilidade da porção**, que a divergência kcal↔kcal não enxerga: com a quantidade errada, banco e estimativa erram juntos.
+- **Busca nutricional insensível a acento** — a consulta tinha acento removido mas `search_text` não, derrubando `similarity('feijao carioca cozido','feijão carioca cozido')` de 1,00 para 0,75 em 43% das linhas `taco` (os básicos brasileiros: Feijão, Óleo, Macarrão, Pão, Açúcar). F1 do lookup medido: **0,776 → 0,829**.
+- **N+1 e Seq Scan no `food_lookup`** (AUD-006/016) — rodava uma query por n-grama, e o predicado `similarity(...) >= :min` não é indexável, levando a Seq Scan em 42 mil linhas (238 ms por n-grama). Agora é uma query só (`unnest` + `LATERAL`) com predicados indexáveis `%>>` e `%`. Latência medida do lookup completo: **44 ms**.
+- **Casamento por fragmento no lookup** — n-gramas de borda com stopword eram aceitos: a consulta `"manteiga derivado do leite"` gerava `"do leite"`, que casava com o alimento `Leite` (26,8 kcal/100g) acima do limiar. Manteiga (720 kcal/100g) virava leite, erro de 27×.
+- **`correct_calories` ignorava calorias ausentes** — item com macros reais e campo `calories` omitido pela IA era gravado com 0 kcal e sumia do total do dia.
+- **Fallback descartava alimentos em silêncio** — `zip(..., strict=False)` fazia a refeição perder itens quando a IA devolvia um array menor que a entrada. Agora cada entrada tem saída garantida, marcada para revisão.
+- **Direção invertida da tendência de peso no insight semanal** — `WeightService.list` ordena por data DESC, então `logs[0]` é a pesagem mais recente e `diff > 0` significa ganho; o ternário dizia o oposto nas duas direções. Quem perdia 6 kg recebia um relatório sobre "o ganho de peso recente", com recomendação nutricional na direção errada.
+- **`npx tsc --noEmit` falhava por dois motivos de configuração** — `playwright.prod.config.ts` não estava no `exclude` do `tsconfig.json` (só `playwright.config.ts` estava) e o `tsconfig.tsbuildinfo` da raiz, criado como root pelo container, impedia a escrita. `tsBuildInfoFile` passou a apontar para `node_modules/.cache/`.
+
+### Adicionado
+
+- **Transparência da origem do dado na revisão da refeição** — a tela rotulava tudo como "analisado por IA", inclusive itens vindos da tabela curada, e não havia como perceber uma porção mal convertida. Cada item passa a declarar a fonte do valor nutricional, a massa normalizada em gramas e a porção original que a pessoa escreveu. Itens sem âncora determinística de porção ficam destacados e bloqueiam o salvamento até confirmação. A edição de quantidade reescala os macros por proporção — o mesmo cálculo do banco — sem nova chamada à IA.
+- **`backend/scripts/eval_food_lookup.py`** — harness de medição de estratégias e limiares de busca contra um conjunto rotulado de 40 consultas, com precisão/recall/F1 por limiar. Base da decisão registrada em [`.codeflow/decisions/2026-07-26-limiares-lookup-nutricional.md`](.codeflow/decisions/2026-07-26-limiares-lookup-nutricional.md).
+- **`backend/scripts/instrument_meal_pipeline.py`** — roda pares de descrições contra o pipeline real e captura os estágios intermediários que a API não expõe (score do lookup, alimento casado, resultado do sanity check). Dumps versionados em `.codeflow/bug-batches/artefatos/`.
+- **Testes** — 65 testes de backend (normalização de porção, regressão do bug 001 com invariante de equivalência e determinismo, tendência de peso) e 10 de frontend (revisão da análise).
+
+### Documentação
+
+- **Auditoria de arquitetura, qualidade e segurança** — documentação completa em [`docs/auditoria/`](docs/auditoria/). Identifica **57 achados** (🔴 2 · 🟠 14 · 🟡 21 · 🟢 20) cobrindo 12 frentes (arquitetura, backend, IA, frontend, workers, banco, segurança, testes, qualidade, observabilidade, DX/docs). Inclui plano priorizado de correção em 4 ondas (Onda 1 — segurança + bug latente; Onda 2 — resiliência + observabilidade; Onda 3 — refator IA + cobertura; Onda 4 — hardening). Ver [`docs/auditoria/relatorio-preliminar.md`](docs/auditoria/relatorio-preliminar.md) para resumo executivo e [`docs/auditoria/achados.md`](docs/auditoria/achados.md) para lista completa.
+
+---
+
+## [0.7.0] - 2026-05-10
+
+### Alterado
+
+- **Migração de Google Gemini para Groq (Llama)** — todas as chamadas de IA agora usam Groq via SDK oficial `groq>=0.13.0`. Texto: `llama-3.3-70b-versatile`; visão: `meta-llama/llama-4-scout-17b-16e-instruct`. Free tier mais generoso, latência menor e SDK mais simples.
+- **`GeminiClient` renomeado para `AIClient`** — `services/ai/gemini_client.py` movido para `services/ai/ai_client.py`. Função `get_gemini_client()` → `get_ai_client()`. Interface pública preservada.
+- **Variável de ambiente** — `GEMINI_API_KEY` substituída por `GROQ_API_KEY`. `.env.example` e `.env.production.example` atualizados.
+
+### Removido
+
+- **Dead code dos bots Telegram/WhatsApp** — `backend/app/bots/`, `services/telegram_service.py`, `services/whatsapp_service.py`, stubs em `api/v1/telegram.py` e `api/v1/whatsapp.py` deletados. Configurações `TELEGRAM_BOT_TOKEN`, `EVOLUTION_API_*` removidas de `core/config.py`. Os bots haviam sido removidos funcionalmente em v0.4.1, mas o código residual permanecia.
+- **`google-genai` removido das dependências** — substituído por `groq`.
+- **`analise.md` movido para `docs/legacy/`** — documento histórico fora do root.
+
+### Documentação
+
+- README, CLAUDE.md, `docs/architecture.md` (ADR-002 reescrito), `docs/setup.md`, `docs/deploy.md`, `docs/deploy-checklist.md`, `docs/flow.md` e `docs/fluxos/*` atualizados para refletir Groq.
+- `Roadmap.md` Fase 2 renomeada para "Integração com IA (Groq)".
+- `Makefile` removido referências a `evolution_api` no comando `make infra`.
+- `.gitignore` agora cobre `.vercel/`, `test-results/` e `playwright-report/`.
+
 ---
 
 ## [0.6.0] - 2026-03-24

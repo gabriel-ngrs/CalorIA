@@ -13,6 +13,7 @@ from app.schemas.logs import (
     HydrationDaySummary,
     HydrationLogCreate,
     HydrationLogResponse,
+    HydrationLogUpdate,
     MoodLogCreate,
     WeightLogCreate,
 )
@@ -34,7 +35,24 @@ class WeightService:
         )
         return list(result.scalars().all())
 
+    async def get_by_date(self, user_id: int, day: date) -> WeightLog | None:
+        result = await self.db.execute(
+            select(WeightLog)
+            .where(WeightLog.user_id == user_id, WeightLog.date == day)
+            .order_by(WeightLog.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, user_id: int, data: WeightLogCreate) -> WeightLog:
+        """Upsert por (user_id, date): um único registro de peso por dia."""
+        existing = await self.get_by_date(user_id, data.date)
+        if existing is not None:
+            existing.weight_kg = data.weight_kg
+            existing.notes = data.notes
+            await self.db.commit()
+            await self.db.refresh(existing)
+            return existing
         log = WeightLog(user_id=user_id, **data.model_dump())
         self.db.add(log)
         await self.db.commit()
@@ -98,6 +116,37 @@ class HydrationService:
             current += timedelta(days=1)
         return summaries
 
+    async def get_by_id(self, user_id: int, log_id: int) -> HydrationLog | None:
+        """Busca um log filtrando por id **e** user_id (posse obrigatória)."""
+        result = await self.db.execute(
+            select(HydrationLog).where(
+                HydrationLog.id == log_id, HydrationLog.user_id == user_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def delete(self, user_id: int, log_id: int) -> bool:
+        """Remove um log do próprio usuário. Retorna False se não encontrado."""
+        log = await self.get_by_id(user_id, log_id)
+        if log is None:
+            return False
+        await self.db.delete(log)
+        await self.db.commit()
+        return True
+
+    async def update(
+        self, user_id: int, log_id: int, data: HydrationLogUpdate
+    ) -> HydrationLog | None:
+        """Edita um log do próprio usuário. Retorna None se não encontrado."""
+        log = await self.get_by_id(user_id, log_id)
+        if log is None:
+            return None
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(log, field, value)
+        await self.db.commit()
+        await self.db.refresh(log)
+        return log
+
     async def get_day_summary(self, user_id: int, day: date) -> HydrationDaySummary:
         result = await self.db.execute(
             select(HydrationLog)
@@ -127,6 +176,15 @@ class MoodService:
         return list(result.scalars().all())
 
     async def create(self, user_id: int, data: MoodLogCreate) -> MoodLog:
+        """Upsert por (user_id, date): um único registro de humor por dia."""
+        existing = await self.get_by_date(user_id, data.date)
+        if existing is not None:
+            existing.energy_level = data.energy_level
+            existing.mood_level = data.mood_level
+            existing.notes = data.notes
+            await self.db.commit()
+            await self.db.refresh(existing)
+            return existing
         log = MoodLog(user_id=user_id, **data.model_dump())
         self.db.add(log)
         await self.db.commit()

@@ -1,0 +1,944 @@
+================================================================================
+CALORIA - REGISTRO DE BUGS (Teste Manual - Primeira Versão Estável)
+================================================================================
+Objetivo: identificar bugs testando o sistema como usuário, módulo por módulo.
+Fase atual: APENAS IDENTIFICAÇÃO (correções virão depois).
+
+Legenda de Severidade:
+  CRITICO - impede uso / quebra fluxo principal / perda de dados
+  ALTO    - funcionalidade importante quebrada, mas há contorno
+  MEDIO   - incomoda mas não bloqueia
+  BAIXO   - cosmético / detalhe visual / melhoria
+
+Legenda de Status:
+  ABERTO       - identificado, aguardando correção
+  EM CORRECAO  - sendo trabalhado
+  CORRIGIDO    - resolvido e verificado
+
+================================================================================
+RESUMO
+================================================================================
+Total de bugs:      20
+Abertos:            17
+Corrigidos:         3
+Última atualização: 2026-07-01
+
+================================================================================
+TEMPLATE (referência - copiar para cada novo bug)
+================================================================================
+--------------------------------------------------------------------------------
+BUG N:
+Título:              (frase curta que resume o problema)
+Módulo/Área:         (ex: Login, Dashboard, Registro de Refeição, IA, etc.)
+Severidade:          (CRITICO / ALTO / MEDIO / BAIXO)
+Status:              ABERTO
+Data:                AAAA-MM-DD
+
+Descrição:
+  (o que está acontecendo, em detalhe)
+
+Comportamento esperado:
+  (o que deveria acontecer)
+
+Comportamento atual:
+  (o que de fato acontece)
+
+Passos para reproduzir:
+  1.
+  2.
+  3.
+
+Local:
+  (página/rota, componente, endpoint ou arquivo suspeito)
+
+Outras informações:
+  (mensagens de erro, prints, navegador/dispositivo, dados usados, etc.)
+--------------------------------------------------------------------------------
+
+================================================================================
+BUGS REGISTRADOS
+================================================================================
+
+--------------------------------------------------------------------------------
+BUG 1:
+Título:              Seed dev usa valores de enum em minúsculo (banco espera maiúsculo)
+Módulo/Área:         Scripts / Seed de desenvolvimento (backend)
+Severidade:          ALTO
+Status:              CORRIGIDO
+Data:                2026-07-01
+
+Descrição:
+  O script seed_dev_user.py insere valores de enum em minúsculo ('male',
+  'moderately_active', 'breakfast', 'lunch', 'dinner', 'snack', 'manual'),
+  mas os tipos ENUM do PostgreSQL foram criados a partir dos nomes dos enums
+  Python (maiúsculo). O banco rejeita os valores minúsculos.
+
+Comportamento esperado:
+  Rodar o seed popula o usuário de desenvolvimento sem erros.
+
+Comportamento atual:
+  O seed quebra logo no primeiro INSERT com:
+  DataError: invalid input value for enum sex: "male"
+
+Passos para reproduzir:
+  1. Ter o usuário devteste@gmail.com no banco
+  2. docker exec caloria_backend python scripts/seed_dev_user.py
+  3. Erro na atualização do perfil (enum sex)
+
+Local:
+  backend/scripts/seed_dev_user.py (perfil ~linha 1063/1072; refeições ~1089-1147)
+  Enums no banco: sex (MALE/FEMALE), activitylevel (MODERATELY_ACTIVE...),
+  mealtype (BREAKFAST/LUNCH/DINNER/SNACK...), mealsource (MANUAL...)
+
+Outras informações:
+  Corrigido em 2026-07-01 trocando os literais para maiúsculo no script.
+  Observação: o produto em si usa os enums corretos — o bug é só do utilitário
+  de seed. Relacionado ao BUG 2 (ambos travam o mesmo script).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 2:
+Título:              Seed dev: bind params do INSERT de meal_items não batem com o dict
+Módulo/Área:         Scripts / Seed de desenvolvimento (backend)
+Severidade:          ALTO
+Status:              CORRIGIDO
+Data:                2026-07-01
+
+Descrição:
+  No INSERT em meal_items, o SQL usa placeholders abreviados
+  (:fn, :qty, :cal, :pro, :carb, :fib) mas o dicionário de parâmetros passa
+  as chaves completas (food_name, quantity, calories, protein, carbs, fiber).
+  Os nomes não coincidem, então o SQLAlchemy não encontra os valores.
+
+Comportamento esperado:
+  Os itens das refeições são inseridos junto com cada refeição.
+
+Comportamento atual:
+  StatementError: A value is required for bind parameter 'fn'
+
+Passos para reproduzir:
+  1. Corrigir o BUG 1 (senão trava antes)
+  2. docker exec caloria_backend python scripts/seed_dev_user.py
+  3. Erro no primeiro INSERT de meal_items
+
+Local:
+  backend/scripts/seed_dev_user.py — 4 blocos de INSERT INTO meal_items
+  (~linhas 1097, 1116, 1135, 1155)
+
+Outras informações:
+  Corrigido em 2026-07-01 alinhando os placeholders às chaves do dict
+  (:food_name, :quantity, :unit, :calories, :protein, :carbs, :fat, :fiber).
+  Relacionado ao BUG 1.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 3:
+Título:              Seed dev não cria o usuário — apenas o busca (falha se não existir)
+Módulo/Área:         Scripts / Seed de desenvolvimento (backend)
+Severidade:          MEDIO
+Status:              CORRIGIDO
+Data:                2026-07-01
+
+Descrição:
+  O seed_dev_user.py faz get_user_id() e lança erro se o usuário
+  devteste@gmail.com não existir. Ele NÃO cria o usuário nem define a senha.
+  Num banco recém-criado, o seed não roda sem antes cadastrar o usuário
+  manualmente pela API/frontend.
+
+Comportamento esperado:
+  Rodar o seed em um banco limpo deveria criar o usuário de dev (com senha
+  conhecida) e popular os dados, sem etapa manual prévia.
+
+Comportamento atual:
+  ValueError: Usuário com email 'devteste@gmail.com' não encontrado.
+  (quando o usuário ainda não foi cadastrado)
+
+Passos para reproduzir:
+  1. Banco sem o usuário devteste@gmail.com
+  2. docker exec caloria_backend python scripts/seed_dev_user.py
+  3. Erro de usuário não encontrado
+
+Local:
+  backend/scripts/seed_dev_user.py — função get_user_id (~linha 1017) e
+  main (~linha 1226-1227)
+
+Outras informações:
+  Contorno usado em 2026-07-01: cadastrar via POST /api/v1/auth/register
+  (ou resetar o password_hash no banco) antes de rodar o seed.
+  Sugestão de correção definitiva: o script criar o usuário se não existir,
+  definindo uma senha padrão documentada (ex: DevTeste@2026).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 4:
+Título:              Erro em runtime ao criar conta: getBoundingClientRect de null (Plasma)
+Módulo/Área:         Frontend / Autenticação (tela de cadastro/login)
+Severidade:          ALTO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  Ao clicar em "Criar conta" e preencher email/senha, aparece um overlay de
+  "Unhandled Runtime Error" do Next.js. O erro vem do componente de fundo
+  animado Plasma.tsx: o listener onMouseMove é registrado no window (global),
+  então dispara mesmo quando containerRef.current é null (componente ainda não
+  montado ou já desmontado). A non-null assertion (containerRef.current!) na
+  linha 121 mascara essa possibilidade e estoura.
+
+Comportamento esperado:
+  Criar conta / navegar na tela de auth sem nenhum erro de runtime; o fundo
+  animado não deve quebrar a página em nenhum momento do ciclo de vida.
+
+Comportamento atual:
+  TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+  Overlay de erro do Next.js sobre a tela.
+
+Passos para reproduzir:
+  1. Ir para a tela de autenticação (cadastro/login)
+  2. Clicar em "Criar conta" e preencher email e senha
+  3. Mover o mouse / interagir — dispara o overlay de erro
+
+Local:
+  frontend/components/auth/Plasma.tsx — onMouseMove, linha 121:42
+  const rect = containerRef.current!.getBoundingClientRect();
+  Listener adicionado em window na linha 128.
+
+Outras informações:
+  Causa raiz provável: (a) listener em window em vez do container e/ou
+  (b) uso de "!" ignorando ref nula, sem cleanup/guard.
+  Sugestão de correção: adicionar guard `if (!containerRef.current) return;`
+  no início de onMouseMove (como já é feito em setSize na linha 131), e
+  garantir removeEventListener no cleanup do useEffect.
+  Erro capturado via screenshot durante teste manual.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 5:
+Título:              Mensagem de erro genérica/enganosa ao analisar refeição (503 vira "verifique sua conexão")
+Módulo/Área:         Frontend / Nova refeição (análise com IA)
+Severidade:          BAIXO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  Ao analisar uma refeição, quando o backend responde com erro de servidor
+  (503 Service Unavailable — no caso, GROQ_API_KEY ausente/expirada), o
+  frontend exibe "Erro ao analisar. Verifique sua conexão e tente novamente."
+  A mensagem sugere problema de conexão do usuário, mas a causa é do servidor
+  (IA indisponível / configuração). Isso confunde o diagnóstico.
+
+Comportamento esperado:
+  Mensagem condizente com a causa. Ex.: para 503/IA indisponível, algo como
+  "Serviço de IA temporariamente indisponível. Tente novamente em instantes."
+  e para falha de rede real, a mensagem de conexão. Idealmente diferenciar
+  erros de rede (sem resposta) de erros de servidor (com status HTTP).
+
+Comportamento atual:
+  Qualquer falha na análise mostra a mesma mensagem de "verifique sua conexão",
+  inclusive quando o servidor respondeu 503.
+
+Passos para reproduzir:
+  1. Backend sem GROQ_API_KEY válida (retorna 503 em /api/v1/ai/analyze-meal)
+  2. Abrir "Nova refeição", digitar uma descrição e clicar "Analisar com IA"
+  3. Aparece "Erro ao analisar. Verifique sua conexão e tente novamente."
+
+Local:
+  Frontend — modal "Nova refeição" / handler de erro da chamada a
+  POST /api/v1/ai/analyze-meal (componente de análise de refeição + mensagens
+  de erro). Arquivo exato a confirmar na correção.
+
+Outras informações:
+  Causa raiz da falha original (chave ausente) foi resolvida à parte; este bug
+  é APENAS sobre a mensagem imprecisa, que persiste para qualquer erro 5xx.
+  Sugestão: tratar o status HTTP da resposta e mapear mensagens específicas
+  (rede vs. 5xx vs. 4xx). Relacionado ao contexto do teste de IA.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 6:
+Título:              Lixeira do modal de edição exclui item na hora, ignorando Cancelar/Salvar
+Módulo/Área:         Frontend / Refeições (modal "Editar refeição")
+Severidade:          ALTO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  No modal "Editar refeição", cada alimento tem um ícone de lixeira. Ao clicar
+  na lixeira, o item é excluído IMEDIATAMENTE e de forma persistente (a chamada
+  já vai ao backend), atualizando a tela principal na hora. Os botões
+  "Cancelar" e "Salvar" não têm efeito sobre essa exclusão: mesmo clicando em
+  "Cancelar", o item permanece excluído. Há ainda inconsistência visual: o item
+  some da lista principal atrás do modal, mas continua aparecendo dentro do
+  modal (o modal não reflete o estado já alterado).
+
+Comportamento esperado:
+  As edições no modal (remover itens, mudar tipo, notas) devem ser apenas
+  locais/pendentes e só persistir quando o usuário clicar em "Salvar".
+  "Cancelar" deve descartar todas as alterações e restaurar a refeição ao
+  estado original. A tela principal só deve mudar após salvar.
+
+Comportamento atual:
+  Clicar na lixeira exclui o item de imediato no backend. "Cancelar" não
+  desfaz. A lista principal já mostra a refeição sem o item, enquanto o modal
+  ainda exibe o item removido (estado dessincronizado).
+
+Passos para reproduzir:
+  1. Tela "Refeições" > clicar no lápis (editar) de uma refeição
+  2. No modal, clicar na lixeira de um alimento (ex: "macarrão")
+  3. Observar que o item some da tela principal por trás do modal
+  4. Clicar em "Cancelar"
+  5. O item continua excluído (não foi restaurado)
+
+Local:
+  frontend/app/(dashboard)/refeicoes/page.tsx
+  - Linha ~858: onClick da lixeira chama
+    deleteMealItem.mutate({ mealId: editMeal.id, itemId: item.id })
+    -> mutation persiste no backend imediatamente
+  - Hook useDeleteMealItem (linha ~379)
+  - handleSaveEdit / botões Cancelar (~882) e Salvar (~885)
+
+Outras informações:
+  Causa raiz: a remoção de item usa uma mutation imediata em vez de alterar um
+  estado local (ex: lista de itens editável no state do modal). O modal também
+  não é recarregado a partir do dado atualizado, causando a dessincronização
+  visual.
+  Sugestão de correção: manter os itens em estado local ao abrir o modal;
+  a lixeira só remove do array local; "Salvar" envia o diff (itens removidos/
+  alterados) ao backend; "Cancelar" descarta o estado local sem persistir.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 7:
+Título:              Peso permite registro duplicado no mesmo dia e buga o gráfico (sem aviso/overwrite)
+Módulo/Área:         Frontend + Backend / Peso
+Severidade:          ALTO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  No módulo Peso, registrar um peso em um dia que já tem registro cria um
+  SEGUNDO registro para a mesma data (não sobrescreve). O histórico passa a ter
+  duas entradas com a mesma data (ex: 30/06/2026 = 79.7 kg e 30/06/2026 = 81 kg)
+  e o gráfico "Evolução" fica bugado (dois pontos na mesma data, eixo X
+  mostrando 30/06 -> 30/06).
+
+Comportamento esperado:
+  Ao tentar registrar peso em um dia que já possui registro, exibir um modal de
+  aviso informando que já existe um peso registrado para o dia (ex: "Você já
+  registrou X kg hoje") e que confirmar irá SOBRESCREVER o registro anterior.
+  Ao confirmar, o registro do dia é atualizado (um único registro por dia); ao
+  cancelar, nada muda. Um dia deve ter no máximo um registro de peso.
+
+Comportamento atual:
+  Novo registro no mesmo dia é criado sem qualquer aviso, gerando duplicata na
+  mesma data. Gráfico e histórico ficam inconsistentes.
+
+Passos para reproduzir:
+  1. Módulo "Peso"
+  2. Registrar um peso (ex: 79.7) e salvar
+  3. Registrar outro peso no mesmo dia (ex: 81) e salvar
+  4. Histórico mostra duas entradas para a mesma data; gráfico bugado
+
+Local:
+  Backend (causa raiz): backend/app/services/log_service.py
+    WeightService.create (linha ~37) faz db.add(log) sem checar registro
+    existente na mesma data -> permite duplicata.
+    Endpoint: backend/app/api/v1/weight.py POST "" (create_weight, ~linha 24)
+  Frontend: frontend/app/(dashboard)/peso/page.tsx
+    handleSave chama logWeight.mutateAsync({ weight_kg, date: today }) (~linha 43)
+    sem verificar/avisar sobre registro já existente no dia.
+    Gráfico: useWeightChart(90) + map de datas (~linha 33/49).
+
+Outras informações:
+  Correção precisa de duas frentes:
+  (a) Backend: fazer upsert por (user_id, date) — se já existe registro no dia,
+      atualizar o weight_kg em vez de inserir novo. Considerar constraint UNIQUE
+      (user_id, date) na tabela weight_logs.
+  (b) Frontend: antes de salvar, se já há registro para o dia, abrir modal de
+      confirmação de sobrescrita mostrando o valor anterior.
+  O gráfico deve consolidar 1 ponto por dia (efeito colateral resolvido pelo
+  upsert).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 8:
+Título:              Hidratação é somente-adição: não dá para editar/remover registro feito por engano
+Módulo/Área:         Frontend + Backend / Hidratação
+Severidade:          MEDIO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  O módulo de Hidratação só permite ADICIONAR água (botões +200/+300/+500/+750
+  e valor customizado). Não existe forma de reduzir, editar ou remover um
+  registro. Se o usuário clicar em um botão por engano (ex: +750 sem querer),
+  o valor entra no total do dia e não há como desfazer/corrigir.
+
+Comportamento esperado:
+  O usuário deve conseguir corrigir um erro casual — por exemplo: um botão de
+  desfazer o último registro, ou uma lista de registros do dia com opção de
+  remover/editar cada um, ou um campo que aceite valor negativo para ajuste.
+  Um módulo que só soma e nunca permite corrigir força o dado errado a
+  permanecer.
+
+Comportamento atual:
+  Só é possível somar água. Nenhum botão de editar/remover/desfazer. Erro
+  casual fica registrado permanentemente.
+
+Passos para reproduzir:
+  1. Módulo "Hidratação"
+  2. Clicar em qualquer botão de adicionar (ex: +750) por engano
+  3. Não há nenhuma forma de remover ou reduzir esse registro
+
+Local:
+  Frontend: frontend/app/(dashboard)/hidratacao/page.tsx
+    Só importa/usa useLogHydration (adicionar). Não há hook de delete/edit.
+  Backend: backend/app/api/v1/hydration.py
+    Só existe GET /today, GET /history e POST. Faltam DELETE e/ou PUT.
+    Service: HydrationService (log_service.py ~linha 54) só tem create/get.
+
+Outras informações:
+  Correção precisa de backend + frontend:
+  (a) Backend: adicionar endpoint(s) para remover/editar registro de hidratação
+      (ex: DELETE /hydration/{id} e/ou PUT). Expor os registros individuais do
+      dia (a API hoje retorna só o resumo agregado do dia).
+  (b) Frontend: listar os registros do dia com opção de remover/editar, ou ao
+      menos um "desfazer último".
+  Observação: a API de "today"/"history" retorna resumo agregado (HydrationDay
+  Summary), então para remover um registro específico será preciso expor os
+  logs individuais com id.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 9:
+Título:              Humor permite registro duplicado no mesmo dia (sem aviso/overwrite/edição)
+Módulo/Área:         Frontend + Backend / Humor
+Severidade:          ALTO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  No módulo Humor, é possível registrar energia/humor/notas mais de uma vez no
+  mesmo dia, criando vários registros para a mesma data. Igual ao BUG 7 (Peso):
+  não há aviso nem sobrescrita, e o registro é estático (o usuário não consegue
+  editar o que já colocou).
+
+Comportamento esperado:
+  Ao registrar em um dia que já tem registro, exibir modal de aviso informando
+  que já existe um registro para o dia e que confirmar irá SOBRESCREVER o
+  anterior. Além disso, permitir EDITAR o registro do dia (carregar os valores
+  atuais no formulário em vez de começar do zero). Máximo de um registro por
+  dia.
+
+Comportamento atual:
+  Registrar no mesmo dia cria um novo registro sem aviso. Não há edição do
+  registro existente. Métricas/gráfico consideram múltiplos registros do mesmo
+  dia.
+
+Passos para reproduzir:
+  1. Módulo "Humor"
+  2. Selecionar energia/humor e clicar "Registrar"
+  3. Selecionar outros valores e clicar "Registrar" de novo no mesmo dia
+  4. Dois registros são criados para a mesma data, sem aviso
+
+Local:
+  Backend (causa raiz): backend/app/services/log_service.py
+    MoodService.create (linha ~129) faz db.add(log) sem checar registro do dia.
+    OBS: já existe MoodService.get_by_date (~linha 136) que poderia ser usado
+    para detectar/atualizar o registro existente — mas create não o usa.
+    Endpoint: backend/app/api/v1/mood.py (POST)
+  Frontend: frontend/app/(dashboard)/humor/page.tsx
+    handleSave -> logMood.mutateAsync({ date: today, ... }) (~linha 100),
+    sem checar registro existente e sem carregar valores para edição.
+
+Outras informações:
+  Mesma classe do BUG 7 (Peso). Correção em duas frentes:
+  (a) Backend: upsert por (user_id, date) usando o get_by_date já existente;
+      considerar constraint UNIQUE (user_id, date) em mood_logs.
+  (b) Frontend: se já há registro do dia, pré-carregar os valores no formulário
+      (modo edição) e abrir modal de confirmação de sobrescrita ao salvar.
+  Relacionado a [BUG 7].
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 10:
+Título:              Notificações nunca são disparadas: INSERT falha por enum notificationtype (REMINDER vs reminder)
+Módulo/Área:         Backend / Notificações e Lembretes (Celery worker)
+Severidade:          ALTO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  Lembretes são criados normalmente, o Celery Beat agenda e o worker executa a
+  task dispatch_due_reminders a cada 60s, e o filtro de horário/dia funciona
+  (a task casa o lembrete no minuto certo). PORÉM, ao criar a notificação in-app
+  no banco, o INSERT falha com:
+    invalid input value for enum notificationtype: "REMINDER"
+  A task levanta exceção, tenta retry 3x, todas falham, e NENHUMA notificação é
+  criada. Ou seja, a notificação não chega nem a existir dentro do próprio app
+  (independente de Web Push / Telegram / WhatsApp). Afeta TODAS as notificações
+  in-app, não só este lembrete.
+
+Comportamento esperado:
+  Quando um lembrete "bate o horário", uma notificação in-app é criada e aparece
+  no sininho de Notificações.
+
+Comportamento atual:
+  A task casa o lembrete, mas o INSERT em notifications falha por incompatibi-
+  lidade de enum. Nada é criado. UI mostra "Nenhuma notificação".
+
+Passos para reproduzir:
+  1. Criar um lembrete ativo para daqui a 1-2 min (qualquer tipo), todos os dias
+  2. Aguardar o horário
+  3. Nada aparece no sininho. Nos logs do worker:
+     docker logs caloria_celery_worker | grep dispatch_due_reminders
+     -> ERROR ... invalid input value for enum notificationtype: "REMINDER"
+
+Local:
+  backend/app/models/notification.py
+    - NotificationType(StrEnum) valores minúsculos (REMINDER = "reminder", ...)
+    - Coluna (linha ~32-33): SAEnum(NotificationType) SEM values_callable
+  backend/app/workers/tasks/reminders.py
+    - _send_reminder_notification cria Notification(type=NotificationType.REMINDER)
+      (~linha 91-97)
+  Enum no banco (notificationtype): labels em MINÚSCULO
+    (reminder, daily_summary, weekly_report, hydration, system)
+
+Causa raiz:
+  Por padrão o SQLAlchemy persiste o NOME do membro do Enum ("REMINDER"), não o
+  seu value ("reminder"). O tipo ENUM no Postgres foi criado com os VALUES
+  (minúsculo). Logo, o SQLAlchemy envia "REMINDER" e o Postgres rejeita.
+  (É a mesma família do BUG 1, mas no código de produção. Curiosamente os demais
+  enums do banco — sex, mealtype, etc. — foram criados em MAIÚSCULO, casando com
+  o nome do membro; o notificationtype é o outlier em minúsculo.)
+
+Outras informações:
+  Correção sugerida (uma das opções):
+  (a) Preferida: configurar a coluna como
+      SAEnum(NotificationType, values_callable=lambda e: [m.value for m in e])
+      para o SQLAlchemy persistir os VALUES (minúsculo), casando com o banco.
+      Verificar também a coluna 'type' de outras tabelas que usem StrEnum com
+      values minúsculos (mesmo risco).
+  (b) Alternativa: recriar o enum notificationtype no banco com labels em
+      maiúsculo (via migração), alinhando ao comportamento padrão do SQLAlchemy.
+  Observação: a task tem retry (max_retries=3) e depois desiste; corrigido o
+  enum, o fluxo in-app deve voltar a funcionar. Web Push (VAPID) e canais
+  externos (Telegram/WhatsApp) são caminhos separados e devem ser testados à
+  parte depois. Relacionado a [BUG 1].
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 11:
+Título:              Perfil usa "Idade" fixa em vez de data de nascimento
+Módulo/Área:         Frontend + Backend / Perfil
+Severidade:          MEDIO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  O perfil pede "Idade" (número). O correto seria "Data de nascimento", pois a
+  idade se atualiza sozinha a cada aniversário. Com idade fixa, o dado envelhece
+  e passa a ficar incorreto com o tempo, afetando cálculos (TDEE/TMB).
+
+Comportamento esperado:
+  Campo de data de nascimento; a idade é derivada/calculada a partir dela sempre
+  que necessário (inclusive nos cálculos de TDEE/TMB).
+
+Comportamento atual:
+  Campo "Idade" fixo, digitado manualmente e nunca atualizado.
+
+Passos para reproduzir:
+  1. Perfil > Dados pessoais > campo "Idade"
+
+Local:
+  Frontend: frontend/app/(dashboard)/perfil/page.tsx (campo IDADE, ~linha 82/92)
+  Backend: user_profiles.age (modelo/coluna) e cálculos de TDEE que usam age.
+
+Outras informações:
+  Correção envolve: trocar coluna age por birth_date (migração), derivar idade
+  no cálculo, e ajustar o formulário. Considerar manter compatibilidade com
+  dados existentes.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 12:
+Título:              Perfil não exibe TMB/TDEE calculado nem explica o cálculo (falta transparência)
+Módulo/Área:         Frontend (+ Backend) / Perfil
+Severidade:          BAIXO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  A tela de Perfil coleta os dados necessários (altura, idade, sexo, nível de
+  atividade) e diz "Usado para calcular seu TDEE com precisão", mas NÃO mostra
+  ao usuário a Taxa Metabólica Basal (TMB) nem o TDEE resultante, e não explica
+  como o cálculo é feito. Falta transparência.
+
+Comportamento esperado:
+  Exibir a TMB e o TDEE calculados, e uma explicação (ex: fórmula usada —
+  Mifflin-St Jeor/Harris-Benedict —, fatores de atividade, etc.), para o usuário
+  entender de onde vêm suas metas.
+
+Comportamento atual:
+  Nenhum valor de TMB/TDEE é exibido; sem explicação do cálculo. No perfil de
+  teste, profile.tdee_calculated está null.
+
+Passos para reproduzir:
+  1. Perfil > preencher dados > observar que não há TMB/TDEE nem explicação
+
+Local:
+  Frontend: frontend/app/(dashboard)/perfil/page.tsx
+  Backend: lógica de cálculo em app/services/nutrition/ (TDEE) e campo
+  user_profiles.tdee_calculated (estava null no teste — verificar se/quando é
+  calculado e persistido).
+
+Outras informações:
+  Verificar também se o TDEE é recalculado ao salvar o perfil (o campo
+  tdee_calculated null sugere que pode não estar sendo populado). Relacionado a
+  [BUG 11] (idade -> data de nascimento afeta o cálculo).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 13:
+Título:              Selects do Perfil (Sexo, Atividade, Objetivo) esvaziam ao navegar (SPA) e voltar; inputs não
+Módulo/Área:         Frontend / Perfil (componente Select do shadcn/Radix)
+Severidade:          MEDIO
+Status:              ABERTO (CONFIRMADO - bug de exibição no front)
+Data:                2026-07-01
+
+Descrição:
+  Ao entrar em Perfil, os campos vêm preenchidos. Porém, ao NAVEGAR para outro
+  módulo (navegação client-side / SPA) e VOLTAR para Perfil, os três campos do
+  tipo Select — SEXO, NÍVEL DE ATIVIDADE e OBJETIVO — aparecem VAZIOS
+  ("Selecione..."). Os campos de TEXTO (Nome, Altura, Idade, Meta calórica, Meta
+  de peso, Água) permanecem preenchidos normalmente.
+  Com F5 (reload completo) tudo volta a aparecer preenchido — o problema NÃO
+  ocorre no reload, só na navegação SPA.
+
+  Diagnóstico atualizado: o dado PERSISTE no banco (confirmado via API) e é lido
+  corretamente. NÃO é bug de save nem de persistência. É um bug de EXIBIÇÃO
+  no front, específico dos componentes Select (Radix/shadcn), disparado pela
+  navegação client-side. Afeta TODOS os Selects da tela (não só atividade/
+  objetivo), enquanto os inputs nativos de texto refletem o valor sem problema.
+
+Comportamento esperado:
+  Ao voltar para Perfil via navegação SPA, os Selects exibem os valores atuais
+  (iguais ao que aparece no F5), refletindo o que está no banco.
+
+Comportamento atual:
+  Os 3 Selects esvaziam ("Selecione...") após navegar e voltar; inputs de texto
+  permanecem preenchidos. F5 corrige (volta a exibir tudo).
+
+Passos para reproduzir:
+  1. Abrir Perfil (campos preenchidos)
+  2. Clicar em outro item do menu (ex: Dashboard) — navegação SPA, sem F5
+  3. Voltar para Perfil
+  4. Sexo / Nível de atividade / Objetivo aparecem vazios; inputs seguem ok
+  (Confirmado em 2026-07-01. Valores no banco: activity_level=extra_active,
+   goal_type=lose_weight, sex=male.)
+
+Local:
+  Frontend: frontend/app/(dashboard)/perfil/page.tsx
+    - Selects: Sexo (~linha 226), Nível de atividade (~250), Objetivo (~281)
+    - useEffect de carga (~linha 69-86): seta name/height/age (inputs) e
+      sex/activity/goalType (selects) a partir de `user` e `profile`.
+  Hooks: frontend/lib/hooks/useProfile.ts
+    - useMe: staleTime 15min (serve do cache na navegação SPA)
+    - useProfile: sem staleTime
+  Componente: frontend/components/ui/select.tsx (wrapper Radix)
+
+Causa provável / linha de investigação:
+  Na navegação SPA o React Query devolve os dados do cache de forma SÍNCRONA no
+  primeiro render (diferente do F5, onde os dados chegam ASSÍNCRONOS após o
+  mount). Suspeita: o componente Select (Radix) não reflete a atualização do
+  `value` via setState quando o valor já está "disponível/estável" nesse fluxo
+  de remount, enquanto inputs nativos (controlados) refletem normalmente.
+  Sugestões de correção a investigar:
+    (a) Inicializar os estados dos Selects diretamente de user/profile (lazy
+        initializer do useState) em vez de depender só do useEffect;
+    (b) Forçar re-sincronização (ex: key no Select derivada do valor, ou usar
+        defaultValue/value corretamente);
+    (c) Revisar o wrapper components/ui/select.tsx quanto ao controle de value.
+  Nota: reprodução automatizada via Playwright não rodou (pacote ausente); bug
+  confirmado manualmente pelo usuário (screenshot 2026-07-01).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 15:
+Título:              Não há recuperação de senha (sem "esqueci a senha", sem integração de email)
+Módulo/Área:         Frontend + Backend / Autenticação
+Severidade:          MEDIO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  A tela de login não tem link/botão de "Esqueci minha senha", e o backend não
+  possui NENHUM mecanismo de recuperação: não há endpoint de reset/forgot e não
+  há integração de email/SMTP no projeto. Um usuário que esquecer a senha fica
+  permanentemente sem acesso à conta, sem qualquer forma de recuperá-la.
+
+Comportamento esperado:
+  Fluxo de recuperação de senha: link "Esqueci minha senha" na tela de login ->
+  usuário informa o email -> recebe um link/token de redefinição por email ->
+  define nova senha. (Requer integração de envio de email.)
+
+Comportamento atual:
+  Não existe recuperação. Somente register/login/refresh/logout. Esquecer a
+  senha = perder o acesso à conta.
+
+Passos para reproduzir:
+  1. Tela de login
+  2. Procurar por "Esqueci minha senha" -> não existe
+
+Local:
+  Frontend: tela de login (frontend/app/(auth)/login ou components/auth/*)
+  Backend: backend/app/api/v1/auth.py — só register/login/refresh/logout/me.
+    Sem endpoints de reset. Sem config de SMTP/email em app/core/config.py
+    (só VAPID_CLAIMS_EMAIL, não relacionado a envio).
+
+Outras informações:
+  Feature/gap de segurança e usabilidade para uma "primeira versão estável".
+  Correção envolve: (a) provedor de email (SMTP/serviço); (b) endpoints
+  forgot-password/reset-password com token expirável; (c) telas no frontend.
+  Escopo maior que um fix pontual — considerar como item de roadmap.
+  OBS relacionada (não é este bug): a copy da tela de login/landing cita
+  "Gemini 2.5 Flash" como IA, mas o projeto usa Groq (Llama 3.3 70B / Llama 4
+  Scout). Texto de marketing desatualizado — ver observação ao usuário.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 16:
+Título:              Insights IA: resultados gerados e chat somem ao sair/voltar; sem histórico
+Módulo/Área:         Frontend / Insights IA
+Severidade:          MEDIO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  Tudo que o usuário gera na tela de Insights (insight do dia, sugestão de
+  refeição, alertas, padrões, análise semanal, ajuste de metas, relatório
+  mensal e o chat "Pergunte à IA") é mantido apenas em estado local (useState /
+  mutation.data). Ao navegar para outro módulo e voltar, o componente desmonta,
+  o estado zera e a tela volta ao início — perde-se tudo que foi perguntado/
+  clicado. Também não há NENHUM histórico dos insights/registros já gerados.
+
+Comportamento esperado:
+  Os resultados gerados deveriam persistir (ao menos ao voltar à tela) e/ou ter
+  um histórico consultável dos insights anteriores.
+
+Comportamento atual:
+  Ao sair e voltar, a tela reinicia zerada; nada do que foi gerado é mantido nem
+  fica em histórico.
+
+Passos para reproduzir:
+  1. Insights IA > gerar qualquer insight (ex: "Analisar padrões")
+  2. Navegar para outro módulo (SPA) e voltar para Insights
+  3. Tudo sumiu; tela zerada
+
+Local:
+  Frontend: frontend/app/(dashboard)/insights/page.tsx
+    - Estados em useState (linhas ~62-67); resultados vivem em mutation.data das
+      várias useMutation (dailyInsight, mealSuggestion, nutritionalAlerts,
+      eatingPatterns, weeklyInsight, goalAdjustment, monthlyReport) e chatHistory
+      (~linha 63). Nada persistido (sem cache/localStorage/backend history).
+
+Outras informações:
+  Sugestões: usar React Query com queryKey estável + staleTime para os insights
+  (mantém ao voltar), e/ou persistir histórico no backend. Relacionado ao padrão
+  de perda de estado em navegação SPA visto no [BUG 13].
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 17:
+Título:              "Nova sugestão" retorna sempre a mesma refeição (suggest-meal determinístico)
+Módulo/Área:         Backend + Frontend / Insights IA (Sugestão de refeição)
+Severidade:          MEDIO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  O botão "Sugerir refeição" / "Nova sugestão" chama o endpoint corretamente,
+  mas ele retorna SEMPRE a mesma sugestão. Testado via API: 3 chamadas seguidas
+  a GET /api/v1/ai/suggest-meal retornaram sempre "Tilápia Grelhada com Salada".
+  Para o usuário parece que o botão "não funciona" (não gera nada novo).
+
+Comportamento esperado:
+  Cada clique em "Nova sugestão" gera uma sugestão diferente (ou ao menos varia).
+
+Comportamento atual:
+  Sempre a mesma sugestão, independentemente de quantas vezes clica.
+
+Passos para reproduzir:
+  1. Insights IA > "Sugerir refeição"
+  2. Clicar em "Nova sugestão" várias vezes
+  3. A sugestão não muda
+  (Confirmado via API: 3x GET /ai/suggest-meal -> mesmo resultado.)
+
+Local:
+  Backend: backend/app/api/v1/ai.py GET /suggest-meal (~linha 120) ->
+    InsightsGenerator.suggest_meal (backend/app/services/ai/insights_generator*)
+  Frontend: frontend/lib/hooks/useAI.ts (~linha 45) e insights/page.tsx (~155/162)
+
+Outras informações:
+  Causa provável: geração determinística/cacheada (ex: temperatura baixa, prompt
+  fixo, ou cache por dia). Correção: introduzir variação (temperatura/seed,
+  variar prompt, excluir última sugestão) para produzir opções diferentes a cada
+  clique.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 18:
+Título:              Texto da IA exibido com markdown cru (asteriscos ** e formatação quebrada)
+Módulo/Área:         Frontend / Insights IA (renderização de texto)
+Severidade:          MEDIO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  Os textos gerados pela IA vêm em markdown (títulos com **negrito**, listas
+  "**1)**" etc.), mas o frontend exibe o conteúdo como texto puro, sem renderizar
+  markdown. Resultado: aparecem asteriscos "**" e formatação estranha nos cards
+  Padrões alimentares, Análise semanal, Relatório mensal e Ajuste de metas.
+
+Comportamento esperado:
+  O markdown deve ser renderizado (negrito, títulos, listas) OU o prompt deve
+  pedir texto simples sem markdown. De um jeito ou de outro, sem asteriscos crus.
+
+Comportamento atual:
+  <p> com whitespace-pre-line exibindo o texto literal, incluindo os "**".
+
+Passos para reproduzir:
+  1. Insights IA > "Analisar padrões" (ou Análise semanal / Relatório mensal)
+  2. Observar "**Análise dos Hábitos Alimentares**" e "**1)**" literais no texto
+
+Local:
+  Frontend: frontend/app/(dashboard)/insights/page.tsx
+    - Componente InsightText (~linha 35): <p className="... whitespace-pre-line">
+      {content}</p>  -> sem parser de markdown
+    - Também no chat (~linha 382): <p ... whitespace-pre-line>{item.a}</p>
+
+Outras informações:
+  Correção: usar react-markdown (ou similar) para renderizar, OU ajustar os
+  prompts da IA para retornar texto sem markdown. Preferível renderizar markdown
+  para manter a estrutura (títulos/listas). Relacionado a [BUG 19] (verbosidade).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 19:
+Título:              Respostas da IA muito longas/verbosas e pouco objetivas (Alertas, Ajuste de metas, Relatório mensal)
+Módulo/Área:         Backend (prompts de IA) / Insights IA
+Severidade:          BAIXO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  Vários cards de IA geram textos longos e "corridos", prejudicando a leitura:
+   - Alertas nutricionais: parágrafo enorme e extenso.
+   - Ajuste de metas: texto prolixo, poderia ser mais direto e objetivo.
+   - Relatório mensal: também longo e pouco objetivo.
+  A experiência melhora com respostas mais curtas, escaneáveis e objetivas.
+
+Comportamento esperado:
+  Textos concisos e objetivos (bullets curtos, números-chave, recomendação
+  direta), adequados para leitura rápida.
+
+Comportamento atual:
+  Blocos longos de texto corrido em vários cards.
+
+Passos para reproduzir:
+  1. Insights IA > "Verificar alertas" / "Avaliar metas" / "Regenerar" relatório
+  2. Observar a extensão dos textos
+
+Local:
+  Backend: prompts em backend/app/services/ai/ (InsightsGenerator / PatternAnalyzer)
+  Frontend: cards em frontend/app/(dashboard)/insights/page.tsx
+
+Outras informações:
+  Correção: ajustar prompts para limitar tamanho e pedir formato objetivo
+  (ex: "responda em até N frases", bullets curtos). Melhoria de UX/qualidade.
+  OBS a verificar (possível bug à parte): no Relatório mensal aparece "0%
+  Aderência" com "1 dia registrado" — confirmar se o cálculo de aderência está
+  correto para poucos dias.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 20:
+Título:              "Pergunte à IA" sem histórico de conversas (persistência)
+Módulo/Área:         Frontend + Backend / Insights IA (chat)
+Severidade:          BAIXO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  O card "Pergunte à IA" mantém as perguntas/respostas apenas em estado local
+  (chatHistory em useState). Não há histórico persistido de conversas: ao sair e
+  voltar (ou F5), tudo some. Seria interessante ter um histórico consultável das
+  conversas com a IA.
+
+Comportamento esperado:
+  Histórico de conversas persistido e consultável (mesmo após navegar/F5).
+
+Comportamento atual:
+  Conversa vive só em memória (useState) e some ao sair/voltar.
+
+Passos para reproduzir:
+  1. Insights IA > "Pergunte à IA" > fazer uma pergunta
+  2. Navegar para outro módulo e voltar (ou F5)
+  3. A conversa sumiu; não há histórico
+
+Local:
+  Frontend: frontend/app/(dashboard)/insights/page.tsx (chatHistory ~linha 63/85,
+    render ~linha 372-382)
+  Backend: existe o modelo AIConversation (histórico de mensagens) que NÃO é
+    aproveitado aqui — verificar endpoints para salvar/listar conversas.
+
+Outras informações:
+  Feature/melhoria: persistir as mensagens (usar AIConversation) e exibir o
+  histórico. Relacionado a [BUG 16] (perda de estado na tela de Insights).
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+BUG 14:
+Título:              "Meta atingida" ignora o Objetivo (goal_type): sempre assume emagrecer
+Módulo/Área:         Frontend / Peso (integração com Objetivo do Perfil)
+Severidade:          ALTO
+Status:              ABERTO
+Data:                2026-07-01
+
+Descrição:
+  A mensagem de meta na tela de Peso usa apenas "peso_atual <= meta" para decidir
+  entre "Meta atingida!" e "Faltam X kg". Isso só faz sentido para o objetivo
+  EMAGRECER. O objetivo do usuário (goal_type) não é considerado. Ex.: objetivo
+  "Ganhar massa muscular", peso atual 81 kg, meta 90 kg -> mostra "Meta atingida!"
+  quando na verdade FALTAM 9 kg para o alvo de ganho.
+
+Comportamento esperado:
+  A lógica deve depender do goal_type:
+   - Emagrecer (lose_weight): meta atingida quando peso_atual <= meta; caso
+     contrário "Faltam X kg" (para descer).
+   - Ganhar massa (gain_muscle): meta atingida quando peso_atual >= meta; caso
+     contrário "Faltam X kg" (para subir).
+   - Manter (maintain): meta atingida quando peso está dentro de uma faixa em
+     torno da meta.
+   - Recomposição (body_recomp): definir regra adequada.
+  A barra de "Progresso para a meta" também deve respeitar a direção do objetivo.
+
+Comportamento atual:
+  latest.weight_kg <= user.weight_goal ? "Meta atingida!" : "Faltam X kg"
+  (assume sempre emagrecer; ignora goal_type).
+
+Passos para reproduzir:
+  1. Perfil > Objetivo = "Ganhar massa muscular", Meta de peso = 90
+  2. Peso atual (81) abaixo da meta
+  3. Tela Peso mostra "Meta atingida!" indevidamente
+
+Local:
+  Frontend: frontend/app/(dashboard)/peso/page.tsx (~linhas 147-150) — lógica da
+  mensagem; e goalPct/Progresso (~linha 57-59, 157-168).
+  Depende de user.goal_type (vindo de /auth/me).
+
+Outras informações:
+  goal_type NÃO é usado na página de Peso hoje. Correção: ler user.goal_type e
+  ramificar a lógica de "meta atingida"/"faltam" e o cálculo de progresso por
+  direção. Relacionado ao Objetivo do Perfil [BUG 13] e ao módulo Peso [BUG 7].
+--------------------------------------------------------------------------------

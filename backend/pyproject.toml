@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "caloria-backend"
-version = "0.1.0"
+version = "0.7.0"
 description = "Backend da CalorIA — diário alimentar inteligente"
 requires-python = ">=3.12"
 dependencies = [
@@ -27,14 +27,18 @@ dependencies = [
     "redis>=5.2.0",
     # HTTP client
     "httpx>=0.27.0",
-    # IA — Google Gemini
-    "google-genai>=1.0.0",
+    # IA — Groq (texto e visão)
+    "groq>=0.13.0",
     # Web Push
     "pywebpush>=2.0.0",
+    # E-mail transacional (SMTP)
+    "aiosmtplib>=3.0.0",
     # Imagens
     "pillow>=11.0.0",
     # Busca fuzzy para lookup TACO
     "rapidfuzz>=3.0.0",
+    # Rate limiting dos endpoints públicos e de IA
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +50,10 @@ dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "types-passlib>=1.7.7",
+    # Driver SÍNCRONO, usado só por `scripts/seed_dev_user.py`. O runtime da
+    # aplicação é 100% asyncpg; sem esta linha o script — que `make seed-user` e
+    # `docs/setup.md` mandam rodar — falhava com ModuleNotFoundError.
+    "psycopg2-binary>=2.9.9",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -82,12 +90,6 @@ ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-# Bots usam libs externas com tipagem incompleta (python-telegram-bot, httpx)
-module = ["app.bots.*"]
-disallow_untyped_defs = false
-disable_error_code = ["no-any-return", "attr-defined", "arg-type", "unused-ignore"]
-
-[[tool.mypy.overrides]]
 # Scripts utilitários não fazem parte do código de produção
 module = ["scripts.*"]
 ignore_errors = true
@@ -104,3 +106,26 @@ testpaths = ["tests"]
 [tool.coverage.run]
 source = ["app"]
 omit = ["*/tests/*", "*/alembic/*"]
+
+[tool.coverage.report]
+# PISO, não meta.
+#
+# Histórico das medições, para que subir o piso seja sempre decisão com número:
+#   2026-05-10  62%  auditoria
+#   2026-08-02  72%  fase B.4 (testes de push/reminders), piso posto em 70%
+#   2026-08-02  73%  após o schema de teste vir das migrations, que destravou
+#                    os 5 testes do golden set (medido: 73,10%)
+#
+# A margem entre medido e piso existia para absorver os testes que pulavam sem
+# o banco nutricional semeado. Esses testes **não pulam mais** (o seed entrou em
+# `tests/integration/conftest.py`), então a variação entre ambientes caiu e o
+# piso pôde subir e encostar no medido.
+fail_under = 72
+show_missing = true
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]

@@ -1,0 +1,21 @@
+// Relações metamórficas: descrições que denotam a MESMA refeição têm de dar o
+// mesmo resultado, independentemente do valor absoluto estar certo.
+//
+// Os grupos 1 a 7 migraram de `scripts/instrument_meal_pipeline.py:41-88`. O
+// grupo 1 é a reprodução oficial do bug 001 e é cidadão de primeira classe: foi
+// medido em 3486 vs 2098 kcal (spread 1.66) ANTES da correção e 2160 vs 2160
+// (spread 1.00) DEPOIS. É o caso que dá a narrativa antes/depois.
+//
+// Tolerâncias: uma reprovação é ACHADO, não defeito do teste. Não afrouxar.
+{"id":"inv-01-pizza-calabresa","relacao":"parafrase","nome":"pizza calabresa (reproducao oficial do bug 001)","descricoes":["1 pizza grande 8 fatias de calabresa","8 fatias pizza calabresa"],"tolerancia_spread":1.1,"notas":"medido 1.66 antes da correcao do bug 001 e 1.00 depois"}
+{"id":"inv-02-ovos-numeral-extenso","relacao":"parafrase","nome":"ovos mexidos (numeral vs extenso)","descricoes":["2 ovos mexidos","dois ovos mexidos"],"tolerancia_spread":1.1,"notas":"exercita interpretar_quantidade com valor por extenso"}
+{"id":"inv-03-pf-vago-vs-gramas","relacao":"unidade","nome":"prato feito (vago vs gramas explicitas)","descricoes":["1 prato de arroz feijao e frango grelhado","150g arroz, 100g feijao, 150g frango grelhado"],"tolerancia_spread":1.25,"notas":"tolerancia maior: a porcao caseira carrega incerteza real"}
+{"id":"inv-04-pao-manteiga","relacao":"unidade","nome":"pao com manteiga (unidade caseira vs gramas)","descricoes":["1 pao frances com manteiga","50g pao frances + 10g manteiga"],"tolerancia_spread":1.25,"notas":""}
+{"id":"inv-05-leite-copo-ml","relacao":"unidade","nome":"leite (copo vs ml)","descricoes":["1 copo de leite integral","200ml leite integral"],"tolerancia_spread":1.15,"notas":""}
+{"id":"inv-06-marmita-strogonoff","relacao":"parafrase","nome":"prato composto regional","descricoes":["1 marmita de strogonoff com arroz e batata palha","strogonoff de frango 200g, arroz 150g, batata palha 30g"],"tolerancia_spread":1.25,"notas":""}
+{"id":"inv-07-tacaca-ausente","relacao":"parafrase","nome":"item provavelmente ausente do banco (observa o fallback)","descricoes":["1 porcao de tacaca paraense","tacaca 300ml"],"tolerancia_spread":1.3,"notas":"esperado cair no fallback da IA nos dois lados"}
+{"id":"inv-08-determinismo","relacao":"autoconsistencia","nome":"determinismo — mesma string tres vezes","descricoes":["1 prato de arroz feijao e frango grelhado"],"repeticoes":3,"tolerancia_spread":1.02,"notas":"mede nao-determinismo puro do modelo; medido 572.3 kcal identico em 3 execucoes"}
+{"id":"inv-09-ordem-arroz-feijao","relacao":"ordem","nome":"ordem dos itens nao pode mudar o total","descricoes":["arroz e feijao","feijao e arroz"],"tolerancia_spread":1.05,"notas":"relacao nova da C.6, nao coberta pelos pares originais"}
+{"id":"inv-10-unidade-g-kg","relacao":"unidade","nome":"mesma massa em unidades diferentes","descricoes":["500 g de arroz cozido","0,5 kg de arroz cozido"],"tolerancia_spread":1.05,"notas":"relacao nova da C.6"}
+{"id":"inv-11-ruido-cortes","relacao":"ruido","nome":"sufixo cortes nao altera o resultado","descricoes":["100 g de arroz cozido","100 g de arroz cozido, por favor obrigado"],"tolerancia_spread":1.05,"notas":"relacao nova da C.6"}
+{"id":"inv-12-escala-dobro","relacao":"escala","nome":"dobrar a porcao deve dobrar as calorias","descricoes":["100 g de arroz cozido","200 g de arroz cozido"],"fator_esperado":2.0,"tolerancia_spread":1.05,"notas":"relacao nova da C.6; o segundo valor e normalizado pelo fator antes de medir"}

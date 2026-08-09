@@ -23,6 +23,23 @@ class ParsedFoodItem(BaseModel):
     sugar: float | None = None
     saturated_fat: float | None = None
 
+    # ── Transparência da porção (bug 001) ─────────────────────────────────
+    # `quantity` é sempre a massa normalizada em gramas usada no cálculo.
+    # Os campos abaixo dizem ao usuário DE ONDE esse número veio, para que o
+    # erro de porção deixe de ser silencioso.
+    #: Porção como o usuário a descreveu, ex.: "8 fatia".
+    portion_text: str | None = None
+    #: Como a massa foi obtida: "direta" (já em g) | "volume" (densidade)
+    #: | "tabela" (tabela de porções) | "sem_ancora" (a IA que estimou).
+    portion_source: str | None = None
+    #: Nome do alimento casado no banco, quando houve match.
+    matched_food_name: str | None = None
+    #: True quando a porção não teve âncora determinística ou ficou fora da
+    #: faixa plausível — o front deve pedir confirmação.
+    needs_review: bool = False
+    #: Motivo legível da baixa confiança, quando houver.
+    review_reason: str | None = None
+
 
 class MealAnalysisRequest(BaseModel):
     description: str = Field(min_length=3, max_length=2000)
@@ -34,10 +51,26 @@ class MealAnalysisResponse(BaseModel):
     low_confidence: bool  # True se algum item tiver confidence < 0.6
 
 
+#: Teto do payload de foto, em caracteres de base64.
+#
+# ~8 MB de base64 ≈ 6 MB de imagem, folgado para foto de celular comprimida.
+# Sem teto, o campo era `str` livre: o corpo da requisição, a string base64 e os
+# bytes decodificados coexistem em memória, e um payload grande multiplica o
+# consumo por requisição — barato de enviar, caro de absorver.
+MAX_IMAGE_BASE64_CHARS = 8 * 1024 * 1024
+
+#: Tipos de imagem aceitos pela análise por foto.
+ImageMimeType = Literal["image/jpeg", "image/jpg", "image/png", "image/webp"]
+
+
 class PhotoAnalysisRequest(BaseModel):
-    image_base64: str = Field(description="Imagem em base64 (JPEG ou PNG)")
-    mime_type: str = Field(default="image/jpeg")
-    meal_type: str | None = None
+    image_base64: str = Field(
+        min_length=1,
+        max_length=MAX_IMAGE_BASE64_CHARS,
+        description="Imagem em base64 (JPEG, PNG ou WebP)",
+    )
+    mime_type: ImageMimeType = Field(default="image/jpeg")
+    meal_type: str | None = Field(default=None, max_length=50)
 
 
 class InsightRequest(BaseModel):
@@ -50,6 +83,21 @@ class InsightRequest(BaseModel):
 class InsightResponse(BaseModel):
     type: str
     content: str
+
+
+class ChatMessage(BaseModel):
+    """Mensagem persistida na conversa web (formato do modelo AIConversation)."""
+
+    role: str  # "user" | "model"
+    content: str
+    timestamp: str
+
+
+class ConversationResponse(BaseModel):
+    """Histórico do chat web "Pergunte à IA" do usuário autenticado."""
+
+    channel: str
+    messages: list[ChatMessage]
 
 
 class SuggestedMealItem(BaseModel):

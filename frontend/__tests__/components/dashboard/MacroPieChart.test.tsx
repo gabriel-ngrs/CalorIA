@@ -29,12 +29,14 @@ describe("MacroPieChart", () => {
 
   it("exibe mensagem quando não há dados", () => {
     render(<MacroPieChart nutrition={emptyNutrition} />);
-    expect(screen.getByText("Sem dados hoje")).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma refeição registrada hoje")).toBeInTheDocument();
   });
 
   it("exibe gráfico quando há dados", () => {
     render(<MacroPieChart nutrition={nutritionWithData} />);
-    expect(screen.queryByText("Sem dados hoje")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhuma refeição registrada hoje")
+    ).not.toBeInTheDocument();
   });
 
   it("exibe legenda com os macros", () => {

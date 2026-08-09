@@ -1,6 +1,12 @@
 from datetime import date, datetime, time
+from typing import Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+# Aliases para uso em modelos cujos campos se chamam `date`/`time` — o nome do
+# campo sombrearia o tipo homônimo ao resolver a anotação (ver HydrationLogUpdate).
+_DateType = date
+_TimeType = time
 
 # ---------------------------------------------------------------------------
 # WeightLog
@@ -33,6 +39,25 @@ class HydrationLogCreate(BaseModel):
     amount_ml: int = Field(gt=0, le=5000)
     date: date
     time: time
+
+
+class HydrationLogUpdate(BaseModel):
+    amount_ml: int | None = Field(default=None, gt=0, le=5000)
+    date: _DateType | None = None
+    time: _TimeType | None = None
+
+    @model_validator(mode="after")
+    def _rejeita_null_explicito(self) -> Self:
+        """Campo omitido = 'manter'; `null` explícito é inválido (colunas NOT NULL).
+
+        Sem isso, um campo enviado como `null` passa por `exclude_unset` e vira
+        `setattr(log, campo, None)`, violando a constraint NOT NULL em runtime (500).
+        Rejeitar aqui devolve 422 antes de tocar o banco.
+        """
+        nulos = sorted(f for f in self.model_fields_set if getattr(self, f) is None)
+        if nulos:
+            raise ValueError(f"campos não podem ser nulos: {', '.join(nulos)}")
+        return self
 
 
 class HydrationLogResponse(BaseModel):

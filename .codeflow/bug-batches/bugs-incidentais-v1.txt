@@ -1,0 +1,39 @@
+================================================================================
+CALORIA - BUGS INCIDENTAIS (v1)
+================================================================================
+Origem: achados fora da lista original do lote bugs-teste-v1, registrados na
+seção "Observações / bugs incidentais encontrados" de
+.codeflow/bug-batches/bugs-teste-v1.md. Migrados para este lote próprio.
+
+Legenda de Status:
+  ABERTO       - identificado, aguardando correção
+  CORRIGIDO    - resolvido e verificado
+
+================================================================================
+
+BI1 - manifest.webmanifest com erro de sintaxe
+  Severidade: BAIXO
+  Repro: abrir qualquer página no navegador -> console acusa
+    "Manifest: Line: 1, column: 1, Syntax error" em TODAS as páginas.
+    O manifest do PWA não é servido como JSON válido.
+  Ref: frontend/app/manifest.ts (causa-raiz real: frontend/middleware.ts)
+
+BI2 - Testes de frontend pré-existentes quebrados
+  Severidade: MEDIO (deixa make check / CI vermelho)
+  Repro: cd frontend && npm run test -> MacroCards.test.tsx e
+    MacroPieChart.test.tsx falham (3 testes). Já falhavam antes do lote anterior.
+  Ref: frontend/__tests__/components/dashboard/MacroCards.test.tsx,
+       frontend/__tests__/components/dashboard/MacroPieChart.test.tsx
+
+BI3 - Backend mapeia falha de auth do Groq para HTTP 500 em vez de 503
+  Severidade: MEDIO
+  Repro: POST /ai/analyze-meal com GROQ_API_KEY inválida -> devolve 500 genérico.
+    Esperado: 503 (IA indisponível) de forma consistente para "IA fora".
+  Ref: backend/app/api/v1/ai.py
+
+BI4 - Recuperação de senha inacessível para usuário deslogado (regressão B15/D.3)
+  Severidade: ALTO (feature inacessível para quem esqueceu a senha)
+  Repro: deslogado, clicar em "Esqueci minha senha" -> redirect 307 -> /login.
+    O matcher do middleware só libera login|register|api/auth|_next e não inclui
+    /forgot-password nem /reset-password. Viola FR-D4/AC-D3 da spec 001.
+  Ref: frontend/middleware.ts:10-12

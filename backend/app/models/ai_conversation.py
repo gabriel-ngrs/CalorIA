@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 class ConversationChannel(StrEnum):
     TELEGRAM = "telegram"
     WHATSAPP = "whatsapp"
+    WEB = "web"
 
 
 class AIConversation(Base):

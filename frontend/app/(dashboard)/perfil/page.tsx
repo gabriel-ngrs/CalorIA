@@ -59,11 +59,17 @@ export default function PerfilPage() {
   const [calorieGoal, setCalorieGoal] = useState("");
   const [weightGoal, setWeightGoal] = useState("");
   const [waterGoal, setWaterGoal] = useState("");
-  const [goalType, setGoalType] = useState<GoalType | "">("");
+  // Selects (Radix) inicializam do cache já disponível para exibirem o valor
+  // no primeiro render — na navegação SPA os dados vêm síncronos do cache e o
+  // Radix não reflete uma atualização de value feita só depois, no useEffect
+  // (BUG 13). Os inputs de texto não sofrem disso, mas mantê-los aqui é inócuo.
+  const [goalType, setGoalType] = useState<GoalType | "">(() => user?.goal_type ?? "");
   const [height, setHeight] = useState("");
-  const [age, setAge] = useState("");
-  const [sex, setSex] = useState<Sex | "">("");
-  const [activity, setActivity] = useState<ActivityLevel | "">("");
+  const [birthDate, setBirthDate] = useState("");
+  const [sex, setSex] = useState<Sex | "">(() => profile?.sex ?? "");
+  const [activity, setActivity] = useState<ActivityLevel | "">(
+    () => profile?.activity_level ?? "",
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -79,7 +85,7 @@ export default function PerfilPage() {
   useEffect(() => {
     if (profile) {
       setHeight(profile.height_cm?.toString() ?? "");
-      setAge(profile.age?.toString() ?? "");
+      setBirthDate(profile.birth_date ?? "");
       setSex(profile.sex ?? "");
       setActivity(profile.activity_level ?? "");
     }
@@ -89,7 +95,7 @@ export default function PerfilPage() {
     e.preventDefault();
     const profilePayload: Record<string, unknown> = {};
     if (height) profilePayload.height_cm = Number(height);
-    if (age) profilePayload.age = Number(age);
+    if (birthDate) profilePayload.birth_date = birthDate;
     if (sex) profilePayload.sex = sex;
     if (activity) profilePayload.activity_level = activity;
 
@@ -122,7 +128,7 @@ export default function PerfilPage() {
         <p className="text-gray-400 text-sm">Seus dados e metas</p>
       </div>
 
-      {/* TDEE banner — destaque quando disponível */}
+      {/* Card TMB/TDEE — destaque quando disponível */}
       {profile?.tdee_calculated && (
         <Card className="border-orange-500/30 bg-orange-500/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/50">
           <CardContent className="pt-5 pb-5">
@@ -132,14 +138,20 @@ export default function PerfilPage() {
                   <span className="flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/15">
                     <Flame className="h-3.5 w-3.5 text-orange-500" />
                   </span>
-                  TDEE estimado
+                  Gasto energético estimado
                 </p>
                 <p className="text-4xl font-bold text-orange-500">
                   {profile.tdee_calculated.toFixed(0)}
-                  <span className="text-base font-normal text-muted-foreground ml-2">kcal/dia</span>
+                  <span className="text-base font-normal text-muted-foreground ml-2">kcal/dia (TDEE)</span>
                 </p>
+                {profile.bmr != null && (
+                  <p className="text-sm text-muted-foreground mt-1.5">
+                    TMB (metabolismo basal):{" "}
+                    <span className="font-semibold text-gray-700">{profile.bmr.toFixed(0)} kcal/dia</span>
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
-                  Total Daily Energy Expenditure — Harris-Benedict
+                  TMB pela fórmula {profile.formula}; TDEE = TMB × nível de atividade.
                 </p>
               </div>
               {user?.calorie_goal && (
@@ -162,6 +174,25 @@ export default function PerfilPage() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Estado sem TDEE — falta dado para o cálculo */}
+      {profile && !profile.tdee_calculated && (
+        <Card className="border-dashed">
+          <CardContent className="pt-5 pb-5">
+            <p className="text-sm font-medium flex items-center gap-1.5 mb-1">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-muted">
+                <Flame className="h-3.5 w-3.5 text-muted-foreground" />
+              </span>
+              TMB/TDEE ainda indisponível
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Preencha altura, sexo e data de nascimento e registre ao menos um peso
+              para calcularmos seu metabolismo basal (Mifflin-St Jeor) e o gasto
+              energético diário.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -208,15 +239,15 @@ export default function PerfilPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="age" className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                      <Calendar className="h-3 w-3" /> Idade
+                    <Label htmlFor="birth_date" className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> Data de nascimento
                     </Label>
                     <Input
-                      id="age"
-                      type="number"
-                      placeholder="30"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
+                      id="birth_date"
+                      type="date"
+                      max={new Date().toISOString().slice(0, 10)}
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
                     />
                   </div>
                 </div>

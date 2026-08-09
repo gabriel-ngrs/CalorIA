@@ -1,0 +1,11 @@
+backend/app/api/v1/meals.py:77:@router.delete("/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/meals.py:90:@router.delete("/{meal_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/reminders.py:65:@router.delete("/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/reminders.py:71:    deleted = await ReminderService(db).delete(user_id, reminder_id)
+backend/app/api/v1/push.py:81:        select(PushSubscription).where(PushSubscription.endpoint == payload.endpoint)
+backend/app/api/v1/push.py:105:@router.delete("/push/unsubscribe", status_code=status.HTTP_204_NO_CONTENT)
+backend/app/api/v1/push.py:113:        delete(PushSubscription).where(
+backend/app/api/v1/push.py:134:    q = select(Notification).where(Notification.user_id == user_id)
+backend/app/api/v1/push.py:152:        select(sa_func.count(Notification.id)).where(
+backend/app/api/v1/push.py:171:        select(Notification).where(
+backend/app/api/v1/push.py:196:        update(Notification)

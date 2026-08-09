@@ -27,9 +27,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { describeAnalyzeError } from "@/lib/aiErrors";
 import { useAnalyzeMeal, useAnalyzePhoto, useCreateMeal } from "@/lib/hooks/useMeals";
 import { useLogHydration, useLogMood, useLogWeight } from "@/lib/hooks/useLogs";
-import type { MealItemCreate, MealType, ParsedFoodItem } from "@/types";
+import type {MealType, ParsedFoodItem} from "@/types";
+import { toMealItemCreate } from "@/lib/mealItems";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -124,9 +126,19 @@ function LevelSelector({ value, onChange }: { value: number; onChange: (v: numbe
 
 // ── Quick Meal Modal ──────────────────────────────────────────────────────────
 
-type InputMode = "text" | "photo" | "audio";
+export type InputMode = "text" | "photo" | "audio";
 
-export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function QuickMealModal({
+  open,
+  onOpenChange,
+  initialMode = "text",
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** Modo em que o modal abre. Os três atalhos do dashboard apontavam para o
+      mesmo modal e abriam sempre em texto, ignorando o ícone clicado. */
+  initialMode?: InputMode;
+}) {
   const today = getLocalToday();
   const analyzeMeal = useAnalyzeMeal();
   const analyzePhoto = useAnalyzePhoto();
@@ -134,7 +146,7 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
 
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [parsedItems, setParsedItems] = useState<ParsedFoodItem[] | null>(null);
-  const [inputMode, setInputMode] = useState<InputMode>("text");
+  const [inputMode, setInputMode] = useState<InputMode>(initialMode);
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -154,11 +166,18 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // O modal permanece montado entre aberturas, então o estado inicial de
+  // `useState` só valeria para o primeiro atalho clicado. Sincroniza a cada
+  // abertura para que Foto, Texto e Áudio abram no modo pedido.
+  useEffect(() => {
+    if (open) setInputMode(initialMode);
+  }, [open, initialMode]);
+
   function reset() {
     setParsedItems(null);
     setDescription("");
     setMealType("lunch");
-    setInputMode("text");
+    setInputMode(initialMode);
     setImageFile(null);
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(null);
@@ -223,16 +242,7 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
     await createMeal.mutateAsync({
       meal_type: mealType,
       date: today,
-      items: parsedItems.map((it): MealItemCreate => ({
-        food_name: it.food_name,
-        quantity: it.quantity,
-        unit: it.unit,
-        calories: it.calories,
-        protein: it.protein,
-        carbs: it.carbs,
-        fat: it.fat,
-        fiber: it.fiber,
-      })),
+      items: parsedItems.map(toMealItemCreate),
     });
     onOpenChange(false);
     reset();
@@ -380,7 +390,7 @@ export function QuickMealModal({ open, onOpenChange }: { open: boolean; onOpenCh
           {(analyzeMeal.isError || analyzePhoto.isError) && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/8 border border-destructive/15 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              Erro ao analisar. Verifique sua conexão e tente novamente.
+              {describeAnalyzeError(analyzeMeal.error ?? analyzePhoto.error)}
             </div>
           )}
 

@@ -40,6 +40,7 @@ dmypy.json
 
 # Celery
 celerybeat-schedule
+celerybeat-schedule.*
 celerybeat.pid
 
 # pytest
@@ -69,6 +70,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# Vercel
+.vercel/
+
+# Playwright
+test-results/
+playwright-report/
 
 # TypeScript
 *.tsbuildinfo
@@ -113,3 +121,20 @@ logs/
 tmp/
 temp/
 vapid_private.pem
+
+# ---------------------------------------------------------------------------
+# Dados — arquivos grandes não versionados
+# ---------------------------------------------------------------------------
+data/raw/*.gz
+data/raw/*.zip
+data/raw/*.jsonl
+.codeflow/checkpoints/
+
+# Artefatos de instrumentação gerados dentro do container (bind mount backend/ -> /app)
+backend/artefatos/
+# Build de sondagem criado durante QA
+frontend/.next-probe/
+
+# Artefatos de uma execução do eval (o histórico versionado é o history.jsonl)
+backend/evals/runs/ultimo-relatorio.json
+backend/evals/runs/ultima-invariancia.json

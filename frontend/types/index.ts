@@ -19,11 +19,13 @@ export type GoalType = "lose_weight" | "gain_muscle" | "maintain" | "body_recomp
 
 export interface UserProfile {
   height_cm: number | null;
-  current_weight_kg: number | null;
-  age: number | null;
+  current_weight: number | null;
+  birth_date: string | null;
   sex: Sex | null;
   activity_level: ActivityLevel | null;
   tdee_calculated: number | null;
+  bmr: number | null;
+  formula: string;
 }
 
 export interface User {
@@ -64,6 +66,8 @@ export interface MealItem {
   carbs: number;
   fat: number;
   fiber: number | null;
+  /** Porção como o usuário descreveu, ex.: "8 fatia". */
+  raw_input: string | null;
   food_id: number | null;
   data_source: string | null; // "taco" | "openfoodfacts" | "usda" | "ai_estimated" | null
   sodium: number | null;
@@ -89,6 +93,8 @@ export interface MealItemCreate {
   carbs: number;
   fat: number;
   fiber?: number;
+  /** Porção como o usuário descreveu, ex.: "8 fatia". */
+  raw_input?: string;
   food_id?: number | null;
   data_source?: string | null;
   sodium?: number | null;
@@ -130,7 +136,7 @@ export interface HydrationLog {
 export interface HydrationDaySummary {
   date: string;
   total_ml: number;
-  entries_count: number;
+  entries: HydrationLog[];
 }
 
 export interface MoodLog {
@@ -256,6 +262,16 @@ export interface ParsedFoodItem {
   sodium: number | null;
   sugar: number | null;
   saturated_fat: number | null;
+  /** Porção como o usuário descreveu, ex.: "8 fatia". */
+  portion_text?: string | null;
+  /** Como a massa foi obtida: "direta" | "volume" | "tabela" | "sem_ancora". */
+  portion_source?: string | null;
+  /** Nome do alimento casado no banco nutricional, quando houve match. */
+  matched_food_name?: string | null;
+  /** Porção sem âncora determinística — exige confirmação do usuário. */
+  needs_review?: boolean;
+  /** Motivo legível da baixa confiança. */
+  review_reason?: string | null;
 }
 
 export interface MealAnalysisResponse {
@@ -267,6 +283,17 @@ export interface InsightResponse {
   type: string;
   content: string;
   generated_at: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "model";
+  content: string;
+  timestamp: string;
+}
+
+export interface ConversationResponse {
+  channel: string;
+  messages: ChatMessage[];
 }
 
 export interface SuggestedMealItem {

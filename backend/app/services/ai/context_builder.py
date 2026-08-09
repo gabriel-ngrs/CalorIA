@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.meal import Meal, MealType
 from app.models.meal_item import MealItem
+from app.services.nutrition.tdee import age_from_birthdate
 from app.services.user_service import UserService
 
 # ---------------------------------------------------------------------------
@@ -220,8 +221,8 @@ async def build_meal_context(
             bio: list[str] = []
             if profile.sex:
                 bio.append(f"sexo {profile.sex.value}")
-            if profile.age:
-                bio.append(f"{profile.age} anos")
+            if profile.birth_date:
+                bio.append(f"{age_from_birthdate(profile.birth_date)} anos")
             if profile.height_cm:
                 bio.append(f"{profile.height_cm:.0f} cm")
             if profile.current_weight:

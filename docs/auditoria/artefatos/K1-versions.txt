@@ -1,0 +1,13 @@
+=== Versão pyproject.toml ===
+version = "0.1.0"
+
+=== Versão app/main.py ===
+    version="0.1.0",
+
+=== Versão CHANGELOG (mais recente) ===
+## [Não lançado]
+## [0.7.0] - 2026-05-10
+## [0.6.0] - 2026-03-24
+
+=== Versão package.json frontend ===
+  "version": "0.1.0",
