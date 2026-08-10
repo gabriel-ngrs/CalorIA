@@ -2,12 +2,12 @@
 spec: 002-vitrine-eval-e-saneamento
 fase: D.3
 slug_fase: readme-vitrine
-status: executado
-tentativa: 1
-reprovacoes: 0
+status: rework
+tentativa: 2
+reprovacoes: 1
 sha_inicial: 5f137f7bc6887de33131daf36586df0c3c316507
-sha_final: 5508747394e7e0d56c2f521c657f040d3f1950af
-range: 5f137f7bc6887de33131daf36586df0c3c316507..5508747394e7e0d56c2f521c657f040d3f1950af
+sha_final: 049f6e5d1764c7dd6b04af9af16f94e2d1eb873e
+range: 5f137f7bc6887de33131daf36586df0c3c316507..049f6e5d1764c7dd6b04af9af16f94e2d1eb873e
 ---
 
 # FASE D.3 — Relatório de execução
@@ -30,6 +30,11 @@ registradas na OQ23.
 O `make init` foi executado de fato, os serviços subiram, `make seed-demo` semeou
 a conta e as capturas saíram dela; os 12 diagramas Mermaid do repositório foram
 validados com o parser oficial do Mermaid.
+
+**Tentativa 2 (rework):** os dois achados IMPORTANTES da avaliação foram
+corrigidos — a cláusula "link da demo" do AC-20 ganhou registro durável e destino
+nomeado (**OQ24**, com §3, §5 e §9 alinhados), e a contradição README × `ci.yml`
+sobre `ruff format --check` foi desfeita. Ver §8.
 
 ## 2. Arquivos CRIADOS
 
@@ -54,7 +59,7 @@ validados com o parser oficial do Mermaid.
 | `Makefile` | `make init` deixa de anunciar a "Evol. API" (removida há meses) e passa a apontar `make seed-demo`; o alvo entra no `make help` |
 | `backend/scripts/seed_dev_user.py` | Mensagem final mandava acessar `:3000`; o compose de dev publica `:3010` |
 | `frontend/components/layout/Sidebar.tsx` | Rodapé dizia "V0.1" com o projeto em `0.7.0`; o número saiu |
-| `.codeflow/specs/.../SPEC_002_*.md` | OQ23 (arquivos além dos seis declarados) e `updated_at` |
+| `.codeflow/specs/.../SPEC_002_*.md` | OQ23 (arquivos além dos seis declarados), `updated_at` e — na tentativa 2 — **OQ24** com o alinhamento de AC-20, passo 1 da D.3, AC-27, fase E.4 e §9 |
 
 ## 4. Confirmação do REUSO e decisões de design
 
@@ -205,6 +210,29 @@ $ make check
 Tudo OK.                                       (exit 0)
 ```
 
+### Revalidação após o rework (tentativa 2)
+
+O diff da tentativa 2 é markdown puro (`README.md` e a spec), mas os gates foram
+rodados de novo por inteiro:
+
+```text
+$ make check
+All checks passed!
+Success: no issues found in 81 source files
+======================== 496 passed, 3 skipped in 4.06s ========================
+================== 145 passed, 5 warnings in 68.60s (0:01:08) ==================
+Test Suites: 20 passed, 20 total
+Tests:       118 passed, 118 total
+Tudo OK.                                       (exit 0)
+
+$ run-structural.sh (após a edição de §3, §5, §8 e §9)
+✓ §5 estruturalmente válida
+EXIT=0
+
+$ varredura de links relativos
+links relativos quebrados: 0
+```
+
 ### Segredo / PII no diff
 
 ```text
@@ -237,8 +265,12 @@ renderizável e seção de decisões técnicas com números medidos e citados"*:
 - [x] **Demo com credenciais** — seção "Conta de demonstração" com
       `demo@caloria.app`, `CalorIADemo2026!` e `make seed-demo`; os três strings
       são o que `backend/tests/unit/test_seed_demo.py::TestCredenciaisPublicadas`
-      exige do README. **Ressalva declarada no próprio README:** não há demo
-      hospedada — depende da E.4 (ver §4, decisão 1).
+      exige do README — **com a ressalva** de que essa classe de teste é um dos
+      `3 skipped` sob `make test-unit`, porque o container monta só `backend/` e
+      o README da raiz não é alcançável de lá (comportamento herdado da E.3); as
+      três asserções foram conferidas à mão. A cláusula do **link** migrou para o
+      AC-27/E.4 pela **OQ24** (tentativa 2); a ausência de instância hospedada
+      segue declarada em uma linha do próprio README.
 - [x] **Diagrama Mermaid renderizável** — dois no README (arquitetura e pipeline),
       um em `docs/architecture.md`, nove em `docs/fluxos/`; os 12 passam por
       `mermaid.parse()` (§5).
@@ -269,17 +301,65 @@ renderizável e seção de decisões técnicas com números medidos e citados"*:
 
 ## 8. (Em rework) O que mudou nesta tentativa
 
-Não se aplica — primeira execução da fase.
+Avaliação da tentativa 1: **RESSALVAS**, score 9.5 / threshold 8.5, zero
+BLOQUEANTES, dois IMPORTANTES. Os dois foram corrigidos; nenhuma linha de código
+mudou.
+
+### IMP-1 — decisão de escopo do AC-20 sem registro durável
+
+**O achado:** a cláusula "link da demo" foi fechada por declaração, e a
+justificativa vivia só neste relatório — que o AC-21 manda a D.4 remover do
+versionamento. Mesmo defeito que fechou a D.2 com RESSALVAS na tentativa 1.
+
+**O que fiz:** **OQ24** na §8 da spec, no formato de OQ18/OQ20/OQ22, e — como a
+OQ21 fez — **alinhei a redação em todos os lugares onde a cláusula aparecia**, em
+vez de deixar a spec pedindo e não pedindo a mesma coisa:
+
+| Onde | O que mudou |
+|---|---|
+| §3, AC-20 | "link da demo" → "a demo com credenciais", mais nota de migração apontando OQ24 |
+| §5, passo 1 da D.3 | mesma troca, com a nota entre parênteses |
+| §3, AC-27 | **recebe** a cláusula: o link entra no README quando a instância existir |
+| §5, Fase E.4 | `README.md` entra em "Arquivos alterados"; passo 6 novo (publicar o link e remover a linha de ausência); teste do AC-27 cobre o link |
+| §9 | linhas da D.3 e da E.4 declaram a migração |
+
+O AC-27 ganhar `README.md` na lista de arquivos é o detalhe que evita repetir o
+defeito na E.4: sem isso, o executor daquela fase encontraria um AC que cobra uma
+edição num arquivo que a fase não declara tocar.
+
+### IMP-2 — README dizia que o CI roda `ruff format --check`
+
+**O achado:** `README.md:181` juntava `ruff check` e `ruff format --check` numa
+linha só, ambos atribuídos a "pre-commit e CI". O `ci.yml` tem um único passo de
+ruff (`ruff check .`), e o `Makefile:300` afirma o contrário em voz alta. É
+contradição README × repositório — a cláusula final do teste do AC-20.
+
+**O que fiz:** quebrei a linha em duas, como sugerido — `ruff check` em
+"pre-commit e CI", `ruff format --check` em "pre-commit e `make check`".
+
+### Sugestões 2 e 3 da avaliação, aplicadas por serem da mesma classe
+
+Ambas são imprecisão no mesmo bloco de README que o IMP-2 tocou, e ambas foram
+nomeadas pelo avaliador:
+
+- **Sugestão 2** — "`make check` reproduz os gates do CI" virou "reproduz a maior
+  parte dos gates do CI localmente — fora `gitleaks` e o `next build` de produção",
+  que é o que o alvo faz de fato.
+- **Sugestão 3** — o `Requested 11357` competia com o `11508` da rodada cuja linha
+  de base o próprio README publica. Virou "~11,4 mil tokens", sem número exato de
+  rodada nenhuma.
+
+**Sugestões 1 e 4 não foram aplicadas**, por decisão explícita: o avaliador as
+declarou fora do escopo da D.3 (`docs/flow.md` e a contagem de alimentos em quatro
+documentos) e endereçadas à D.4. Ampliar a fase em rework contrariaria o protocolo.
 
 ## 9. Itens em aberto / dúvidas para o avaliador
 
-1. **A cláusula "link da demo" do AC-20 foi cumprida por declaração, não por
-   link.** Não existe instância hospedada e a fase que a cria (E.4) está adiada por
-   decisão de owner (OQ16/ADR-009). O README entrega a demo local com credenciais e
-   diz por que não há URL. Se o avaliador entender que o AC exige uma URL viva, a
-   fase depende da E.4 — é o mesmo padrão de gate-que-depende-de-outra-fase já
-   corrigido em OQ18 (AC-18 → AC-19) e OQ20 (C.7 → D.2), e o destino natural seria
-   migrar a cláusula para a E.4.
+1. ~~A cláusula "link da demo" do AC-20 foi cumprida por declaração, não por
+   link.~~ **Resolvido na tentativa 2:** a cláusula migrou para o AC-27/E.4 pela
+   **OQ24**, com §3, §5 e §9 alinhados (§8 deste relatório). O que resta ao
+   avaliador conferir é se o destino é o certo — E.4 é quem publica a instância —
+   e se o passo 6 novo da E.4 é suficiente para a cláusula não se perder.
 2. **`make init` foi validado sobre volumes que já existiam.** Não rodei
    `make reset` porque isso apagaria o banco local de desenvolvimento do owner,
    incluindo as 42.168 linhas de `foods` restauradas à mão. A afirmação do README de
