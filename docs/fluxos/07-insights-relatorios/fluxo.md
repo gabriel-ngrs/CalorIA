@@ -6,6 +6,27 @@ O `InsightsGenerator` usa a IA para gerar feedback personalizado com base nos da
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart TD
+    A{Tipo de insight} -->|Diario| B[Dados de hoje]
+    A -->|Semanal| C[Resumo da semana + peso]
+    A -->|Pergunta| D[Contexto + pergunta livre]
+    A -->|Alertas| E[Macros medios N dias]
+    A -->|Mensal| F[Todas refeicoes do mes]
+
+    B --> G[Groq gera feedback]
+    C --> G
+    D --> G
+    E --> G
+    F --> G
+
+    G --> H[Exibe no frontend ou envia push]
+```
+
+---
+
 ## 1. Tipos de Insight
 
 | Metodo | Descricao | Trigger |

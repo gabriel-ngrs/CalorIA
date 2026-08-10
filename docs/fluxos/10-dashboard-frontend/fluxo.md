@@ -6,6 +6,28 @@ O frontend e uma PWA construida com Next.js 14 (App Router), Tailwind CSS, shadc
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart TD
+    A[Usuario acessa /dashboard] --> B[React Query busca dados]
+    B --> C[GET /dashboard/today]
+    B --> D[GET /dashboard/macros-chart]
+    B --> E[GET /users/me]
+
+    C & D & E --> F[Renderiza dashboard]
+    F --> G[Cards de macros]
+    F --> H[Graficos Recharts]
+    F --> I[Lista de refeicoes]
+    F --> J[Quick Add: refeicao agua peso humor]
+
+    J --> K[Mutation POST na API]
+    K --> L[Invalida cache]
+    L --> B
+```
+
+---
+
 ## 1. Estrutura de Navegacao
 
 - `/login` e `/register` — paginas de autenticacao

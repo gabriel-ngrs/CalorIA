@@ -6,6 +6,26 @@ O usuario pode registrar peso, hidratacao e humor/energia. Esses dados alimentam
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart TD
+    subgraph Registro
+        A[Peso kg] --> D[POST /weight]
+        B[Agua ml] --> E[POST /hydration]
+        C[Humor 1-5] --> F[POST /mood]
+    end
+
+    D & E & F --> G[(PostgreSQL)]
+
+    G --> H[Graficos no dashboard]
+    G --> I[Insights e relatorios IA]
+    G --> J[Lembretes de hidratacao]
+    G --> K[Recalculo mensal TDEE]
+```
+
+---
+
 ## 1. Registro de Peso
 
 **Via Dashboard:**

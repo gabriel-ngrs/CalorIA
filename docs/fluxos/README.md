@@ -1,8 +1,7 @@
 # Fluxos do Sistema CalorIA
 
-Cada subpasta contem:
-- `fluxo.md` — descricao textual
-- `diagrama.mermaid` — diagrama visual
+Cada subpasta contem um `fluxo.md` com a descricao textual e o diagrama Mermaid
+embutido em bloco ```` ```mermaid ````, logo apos a visao geral.
 
 ## Indice
 
@@ -18,8 +17,8 @@ Cada subpasta contem:
 | 10 | [Dashboard e Frontend](10-dashboard-frontend/) | Navegacao e data fetching |
 | 11 | [Logs de Saude](11-logs-saude/) | Peso, hidratacao, humor |
 
-## Visualizar `.mermaid`
+## Visualizar os diagramas
 
-- **GitHub** renderiza automaticamente
-- **VS Code** extensao "Mermaid Preview"
-- **Online** em [mermaid.live](https://mermaid.live)
+- **GitHub** renderiza blocos ```` ```mermaid ```` direto no `.md`
+- **VS Code** extensao "Markdown Preview Mermaid Support"
+- **Online** em [mermaid.live](https://mermaid.live), colando o conteudo do bloco
