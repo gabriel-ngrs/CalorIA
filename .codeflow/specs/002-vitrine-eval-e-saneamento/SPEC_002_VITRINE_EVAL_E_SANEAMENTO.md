@@ -407,8 +407,15 @@ Cada princípio rastreia a uma regra real do repositório.
   `workflow_dispatch` a partir do branch default (ver OQ20).
 - **AC-20** (FR-D3) — *Dado* o README, *quando* lido por alguém que não conhece o
   projeto, *então* ele traz comando único de execução que funciona, portas corretas,
-  link da demo com credenciais de demonstração, diagrama Mermaid renderizável e
+  **a demo com credenciais de demonstração** (hoje a local, com a ausência de
+  instância hospedada declarada no próprio README), diagrama Mermaid renderizável e
   seção de decisões técnicas com números medidos e citados.
+  > **Nota (2026-08-10).** A cláusula "**link** da demo" migrou para o **AC-27**
+  > (E.4). O link exige uma instância publicada, e a OQ16/ADR-009 deixou o deploy
+  > local com a E.4 adiada por decisão de owner — nenhuma ação da D.3 o produz, e
+  > publicar URL inexistente violaria o escopo travado da própria fase ("não
+  > prometer feature inexistente"). Mesmo defeito de modelagem já corrigido no
+  > AC-1 (A.1), no AC-18 (OQ18) e no gate de plataforma da C.7 (OQ20). Ver OQ24.
 - **AC-21** (FR-D4) — *Dado* o repositório podado, *quando* se lista os arquivos
   versionados, *então* não há artefatos `FASE-*-EXECUCAO.md`/`-AVALIACAO.md`, dumps
   brutos nem JSON de baseline; *e* `.codeflow/INDEX.md`, `constitution.md`,
@@ -432,7 +439,9 @@ Cada princípio rastreia a uma regra real do repositório.
   e humor.
 - **AC-27** (FR-E4) — *Dado* um merge em `main`, *quando* o CD executa, *então* o
   deploy ocorre automaticamente e a aplicação responde saudável; e a sincronização
-  antes da migração não depende de `sleep` fixo.
+  antes da migração não depende de `sleep` fixo; *e* o **link da demo publicada
+  entra no README**, ao lado das credenciais que a D.3 já publicou (cláusula
+  recebida do AC-20 pela OQ24 — quem publica a instância é quem pode citá-la).
 
 ## 4. Abordagem técnica
 
@@ -1157,9 +1166,10 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **Passos:**
   1. Reescrever o README com: comando único (`make init`, hoje **não mencionado uma
      única vez** no README, no CONTRIBUTING ou no `docs/setup.md`), portas corretas
-     (o README diz 3000/8000; o `docker-compose.dev.yml` usa 3010/8010), link da
-     demo com credenciais de demonstração, screenshots, diagrama Mermaid inline e
-     seção de decisões técnicas.
+     (o README diz 3000/8000; o `docker-compose.dev.yml` usa 3010/8010), a demo com
+     credenciais de demonstração, screenshots, diagrama Mermaid inline e
+     seção de decisões técnicas. *(O **link** da demo migrou para o AC-27/E.4 pela
+     OQ24: exige instância publicada, que a OQ16/ADR-009 deixou para a E.4.)*
   2. A seção de decisões usa os números medidos e citáveis: a evolução de F1 do
      lookup, a queda de latência, a queda do erro calórico ao excluir `ai_estimated`,
      e o resultado do eval vindo de `evals/runs/history.jsonl`. Cada número com sua
@@ -1367,7 +1377,7 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **slug:** `deploy-cd`
 - **Objetivo:** fechar o ciclo — merge em `main` volta a publicar sozinho.
 - **Depende de:** `E.2`, `E.3`, `D.2`.
-- **Arquivos alterados:** `.github/workflows/cd.yml`, `docs/deploy.md`.
+- **Arquivos alterados:** `.github/workflows/cd.yml`, `docs/deploy.md`, `README.md`.
 - **Passos:**
   1. Executar o deploy conforme a topologia de E.2.
   2. Reativar o gatilho de `cd.yml:7-8`.
@@ -1378,9 +1388,13 @@ que é telemetria de execução, fica o que é registro de engenharia.
   4. Adicionar ao CD a verificação de que o CI passou, e um caminho de rollback
      documentado.
   5. Atualizar `docs/deploy.md` para descrever o deploy real.
+  6. Publicar no README o **link da demo** que agora existe, ao lado das
+     credenciais que a D.3 já publicou, e remover de lá a linha que declara a
+     ausência de instância hospedada. *(Cláusula recebida do AC-20 pela OQ24.)*
 - **Testes (AC-27):** um merge em `main` dispara o CD, o deploy conclui e a
   aplicação responde saudável; uma falha simulada de migration não deixa o
-  ambiente em estado inconsistente sem aviso.
+  ambiente em estado inconsistente sem aviso; o link publicado no README abre a
+  demo e as credenciais entram.
 - **Escopo travado / violações BLOQUEANTES:** não deployar com o CI vermelho. Não
   colocar segredo em arquivo versionado — usar secrets do GitHub. Não remover o
   `concurrency: production` de `cd.yml:11-13`.
@@ -1836,6 +1850,35 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   em todos os fluxos, e o repositório perde os nove `.mermaid` avulsos —
   quem os abria por caminho direto passa a abrir o `fluxo.md` da pasta.
 
+- **OQ24 — A cláusula "link da demo" do AC-20 depende de uma instância que só a
+  E.4 publica.** **RESOLVIDO (2026-08-10).** O AC-20 pede cinco coisas do README, e
+  uma delas — *"link da demo com credenciais de demonstração"* — **nenhuma ação
+  dentro do escopo da D.3 satisfaz**: não existe instância hospedada, e não existe
+  porque a **OQ16/ADR-009** decidiu host único rodando **local**, com a E.4 adiada
+  por decisão de owner. É o quarto caso do mesmo defeito de modelagem nesta spec —
+  AC-1 → AC-2 (A.1), AC-18 → AC-19 (OQ18), gate de plataforma da C.7 → D.2
+  (OQ20) — e recebe o mesmo tratamento: a cláusula **não some, muda de dono**.
+
+  **(a) Destino.** A cláusula passa a ser cobrada no **AC-27 / Fase E.4**, que é
+  quem publica a aplicação: quando o deploy existir, a URL entra no README pela
+  mesma mão que o produz. Enquanto isso o AC-20 é satisfeito pelo que a D.3
+  controla — as quatro cláusulas restantes mais a **demo local**: `make seed-demo`,
+  credenciais publicadas (`demo@caloria.app` / `CalorIADemo2026!`) e a ausência de
+  URL **declarada em uma linha no próprio README**, não omitida.
+
+  **(b) Por que não inventar um link.** O escopo travado da D.3 nomeia *"não
+  prometer feature inexistente"* como violação BLOQUEANTE. Publicar URL de uma
+  instância que não está no ar seria exatamente isso — e o deploy órfão do frontend
+  na Vercel, que a OQ16 registrou como pendência da E.4, é o exemplo vivo do dano:
+  um link que abre uma tela de login sem API atrás é pior que nenhum link.
+
+  **(c) Por que registrar aqui.** A decisão vivia só no
+  `FASE-D.3-readme-vitrine-EXECUCAO.md`, que é o tipo de arquivo que o **AC-21
+  manda a D.4 remover do versionamento** — depois da poda, a §9 mostraria
+  `[x] D.3 — AC-20` sem nenhuma linha no repositório explicando por que a fase
+  fechou sem link. É o achado IMP-1 da avaliação da tentativa 1, e o mesmo motivo
+  que gerou a OQ22 na D.2.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1888,14 +1931,17 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
       tentativa 2: a tentativa 1 fechou com RESSALVAS por duas decisões de escopo sem
       registro durável e por `enforce_admins: false`, corrigidos com a OQ22 e com
       `enforce_admins: true`.)*
-- [ ] **D.3** — AC-20; execução limpa a partir do README validada.
+- [ ] **D.3** — AC-20; execução limpa a partir do README validada. *(A cláusula
+      "link da demo" migrou para o AC-27/E.4 pela OQ24 — a D.3 entrega a demo
+      local com credenciais e declara no README que não há instância hospedada.)*
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
 - [x] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
 - [x] **D.6** — AC-23.
 - [x] **E.1** — AC-24.
 - [x] **E.2** — AC-25; ADR-009 escrito; owner confirmou a topologia.
 - [x] **E.3** — AC-26.
-- [ ] **E.4** — AC-27; deploy automático verificado ponta a ponta.
+- [ ] **E.4** — AC-27; deploy automático verificado ponta a ponta; **link da demo
+      publicada no README** (cláusula recebida do AC-20 pela OQ24).
 
 ### Itens globais transversais
 
