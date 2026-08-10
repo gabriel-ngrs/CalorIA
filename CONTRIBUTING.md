@@ -16,30 +16,47 @@
 ```bash
 git clone https://github.com/gabriel-ngrs/CalorIA.git
 cd CalorIA
-cp .env.example .env
-# Edite o .env com suas credenciais
 ```
 
-### 2. Subir os serviços
+### 2. Subir tudo com um comando
 
 ```bash
-docker compose -f docker-compose.dev.yml up
+make init
 ```
 
-### 3. Rodar as migrações
+`make init` cria o `.env` a partir do `.env.example`, builda as imagens, sobe os
+serviços de desenvolvimento e aplica as migrações. Preencha o `GROQ_API_KEY` no
+`.env` antes de usar a análise de refeição (chave gratuita em
+[console.groq.com/keys](https://console.groq.com/keys)) e recrie os serviços com
+`make down && make dev-d`.
 
-```bash
-docker compose exec backend alembic upgrade head
-```
+Dashboard em `http://localhost:3010`, API em `http://localhost:8010`.
+`make help` lista todos os alvos.
 
-### 4. Instalar pre-commit hooks
+### 3. Instalar pre-commit hooks
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
 
-Os hooks rodam automaticamente antes de cada commit: `ruff`, `mypy`, `eslint`.
+Os hooks rodam automaticamente antes de cada commit, sobre os arquivos em staging:
+
+| Hook | O que faz |
+|---|---|
+| `ruff` (`--fix`) e `ruff-format` | Lint e formatação do backend (`^backend/`) |
+| `gitleaks` | Varredura de segredos com as regras de `.gitleaks.toml` |
+| `trailing-whitespace`, `end-of-file-fixer` | Higiene de arquivo (exceto `backend/app/prompts/`, onde espaço é conteúdo) |
+| `check-yaml`, `check-merge-conflict`, `check-added-large-files` | Sanidade de arquivos |
+| `no-commit-to-branch` | Bloqueia commit direto na `main` |
+
+`mypy` e `eslint` **não** rodam no hook — são gates do CI e do `make check`, porque
+precisam do projeto inteiro, não só dos arquivos em staging. Para reproduzi-los
+localmente antes do push:
+
+```bash
+make check
+```
 
 ---
 
@@ -50,8 +67,9 @@ Ver [`docs/git-workflow.md`](docs/git-workflow.md) para a estratégia completa d
 **Resumo:**
 1. Desenvolva na branch `dev`
 2. Quando pronto, abra um PR de `dev` → `main`
-3. CI deve estar verde antes do merge
-4. Ao mergear, o CD faz deploy automático em produção
+3. CI deve estar verde antes do merge — a `main` é protegida e os dois checks são obrigatórios
+4. O deploy é **manual** por enquanto (`workflow_dispatch` no `cd.yml`); a volta do
+   gatilho automático depende do novo deploy (spec 002, Fase E.4)
 
 ---
 

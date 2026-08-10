@@ -8,13 +8,15 @@ Estratégia de branches e fluxo de desenvolvimento adotados no projeto.
 
 | Branch | Propósito | Proteção |
 |---|---|---|
-| `main` | Código em produção — sempre estável | Protegida: PR obrigatório, CI deve passar |
+| `main` | Código publicado — sempre estável | Protegida (ver "Proteção da `main`" abaixo): os dois checks do CI são obrigatórios e valem também para administradores |
 | `dev` | Integração de features — branch de trabalho | CI roda a cada push |
 | `hotfix/*` | Correções urgentes em produção | Criada a partir da `main` |
 
 ### Regras
 
-- **Nunca commitar direto na `main`** — toda mudança passa por PR
+- **Nunca commitar direto na `main`** — toda mudança passa por PR. O hook
+  `no-commit-to-branch` bloqueia localmente e os checks obrigatórios bloqueiam no
+  GitHub, já que um push direto chega sem check verde
 - `dev` recebe o desenvolvimento do dia a dia
 - Hotfixes são criados a partir da `main`, mergeados na `main` e depois na `dev`
 
@@ -32,7 +34,7 @@ Estratégia de branches e fluxo de desenvolvimento adotados no projeto.
 2. Quando pronto para release, abrir PR: dev → main
    - CI roda automaticamente (lint + testes + build)
    - Revisar o PR conscientemente antes de mergear
-   - Ao mergear: CD faz deploy automático em produção
+   - Ao mergear: o deploy é disparado à mão (ver "CI/CD" abaixo)
 
 3. Voltar para dev e continuar desenvolvendo
    git checkout dev
@@ -53,7 +55,7 @@ Estratégia de branches e fluxo de desenvolvimento adotados no projeto.
 
 3. PR: hotfix/* → main
    - CI roda
-   - Ao mergear: deploy automático em produção
+   - Ao mergear: disparar o deploy à mão (`gh workflow run cd.yml`)
 
 4. Sincronizar dev com o hotfix
    git checkout dev
@@ -66,41 +68,50 @@ Estratégia de branches e fluxo de desenvolvimento adotados no projeto.
 
 ---
 
-## CI/CD Automático
+## CI/CD
 
 | Evento | O que acontece |
 |---|---|
-| Push na `dev` | CI: roda lint, mypy, pytest, build do frontend |
+| Push na `dev` | CI: ruff, mypy, pytest com cobertura, gitleaks, ESLint, Jest e build do frontend |
 | PR aberto para `main` | CI: mesmo que acima — obrigatório passar |
-| Merge na `main` | CD: SSH no servidor → git pull → docker compose up → alembic |
+| Merge na `main` | **Nada automático hoje.** O CD roda por `workflow_dispatch` |
+
+O `cd.yml` está em disparo manual por decisão registrada: a topologia mudou para
+host único (ADR-009) e a volta do gatilho `push: main` é trabalho da Fase E.4 da
+spec 002, junto com a troca do `sleep 10` por espera de healthcheck.
 
 Ver `.github/workflows/ci.yml` e `.github/workflows/cd.yml`.
 
 ---
 
-## Proteger a branch main no GitHub
+## Proteção da `main`
 
-1. Acesse: **GitHub → Settings → Branches → Add rule**
-2. Branch name pattern: `main`
-3. Marque:
-   - ✅ Require a pull request before merging
-   - ✅ Require status checks to pass before merging
-     - Adicione: `Backend — lint e testes` e `Frontend — lint e build`
-   - ✅ Do not allow bypassing the above settings
+Configurada em 2026-08-09. O que está ativo, verificável por
+`gh api repos/gabriel-ngrs/CalorIA/branches/main/protection`:
+
+| Regra | Estado |
+|---|---|
+| Checks obrigatórios | `Backend — lint e testes` e `Frontend — lint e build`, com a branch obrigada a estar atualizada (`strict`) |
+| Vale para administradores (`enforce_admins`) | Sim |
+| Force-push e deleção da `main` | Bloqueados |
+| Revisão de PR obrigatória | **Não** — projeto de um desenvolvedor só; o Roadmap 9.1 pede PR e CI obrigatórios, não um segundo aprovador |
+
+Para reproduzir num fork: **GitHub → Settings → Branches → Add rule**, pattern
+`main`, marcar *Require status checks to pass before merging* com os dois checks
+acima e *Do not allow bypassing the above settings*.
 
 ---
 
-## Configurar o CD (deploy automático)
+## Configurar o CD
 
-Antes do primeiro deploy automático, configure os secrets no GitHub:
-
-1. **GitHub → Settings → Environments → New environment** → nome: `production`
-2. Dentro do environment, adicione os secrets:
+O deploy roda por SSH num servidor remoto. Os secrets vivem no environment
+`production` (**GitHub → Settings → Environments**):
 
 | Secret | Valor |
 |---|---|
-| `SERVER_HOST` | IP do servidor (ex: `49.12.123.45`) |
-| `SERVER_USER` | Usuário SSH (ex: `root`) |
+| `SERVER_HOST` | IP do servidor |
+| `SERVER_USER` | Usuário SSH |
 | `SERVER_SSH_KEY` | Conteúdo da chave privada (`cat ~/.ssh/id_ed25519`) |
 
-Depois que o servidor estiver configurado (ver `docs/deploy.md`), todo merge na `main` dispara o deploy automaticamente.
+Hoje **não há servidor contratado** — a stack de produção roda localmente
+(ADR-009), então o workflow existe e só é disparado à mão. Ver `docs/deploy.md`.
