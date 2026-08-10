@@ -64,6 +64,7 @@ help:
 	@echo "  $(CYAN)make migrate-down$(NC)      Reverter última migração"
 	@echo "  $(CYAN)make psql$(NC)              Abrir console psql"
 	@echo "  $(CYAN)make seed$(NC)              Popular banco com dados de dev"
+	@echo "  $(CYAN)make seed-demo$(NC)         Semear/resetar a conta de demonstração"
 	@echo ""
 	@echo "$(BOLD)Testes:$(NC)"
 	@echo "  $(CYAN)make test$(NC)              Todos os testes (backend + frontend)"
@@ -136,9 +137,8 @@ init: check-deps
 	@echo "  Dashboard:   http://localhost:$(FRONTEND_HOST_PORT)"
 	@echo "  API:         http://localhost:$(BACKEND_HOST_PORT)"
 	@echo "  Swagger:     http://localhost:$(BACKEND_HOST_PORT)/docs"
-	@echo "  Evol. API:   http://localhost:8080"
 	@echo ""
-	@echo "  Próximo passo: $(CYAN)make seed$(NC) para popular com dados de dev"
+	@echo "  Próximo passo: $(CYAN)make seed-demo$(NC) para entrar com a conta de demonstração"
 	@echo ""
 
 # ==============================================================================
