@@ -125,10 +125,21 @@ vapid_private.pem
 # ---------------------------------------------------------------------------
 # Dados — arquivos grandes não versionados
 # ---------------------------------------------------------------------------
+# Os dois abaixo são publicados como asset da release (ver data/README.md)
+data/db/*.dump
+data/processed/alimentos_final.csv
 data/raw/*.gz
 data/raw/*.zip
 data/raw/*.jsonl
 .codeflow/checkpoints/
+
+# ---------------------------------------------------------------------------
+# Telemetria de execução do codeflow — fica em disco, não no versionamento
+# ---------------------------------------------------------------------------
+.codeflow/specs/*/artefatos/
+.codeflow/bug-batches/artefatos/
+.codeflow/bug-batches/*.origin.txt
+docs/auditoria/artefatos/
 
 # Artefatos de instrumentação gerados dentro do container (bind mount backend/ -> /app)
 backend/artefatos/
