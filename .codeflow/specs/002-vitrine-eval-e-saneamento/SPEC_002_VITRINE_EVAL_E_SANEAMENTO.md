@@ -1886,8 +1886,8 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 > `[x]` = fase **concluída** pela regra do ARTIFACTS_SPEC §2.11.3: existe
 > `FASE-<id>-*-AVALIACAO.md` com `veredito: APROVADO` na mesma `tentativa` do
 > EXECUCAO. Não é marcação a olho — deriva dos artefatos. Sincronizado em
-> 2026-08-09: 23 das 26 fases concluídas; abertas D.3, D.4 e E.4, nenhuma
-> com execução registrada.
+> 2026-08-10: 24 das 26 fases concluídas; abertas D.4 e E.4, nenhuma com
+> execução registrada.
 
 - [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
       a credencial; `make test-frontend` verde. *(Encerrada por aceite do owner em
@@ -1931,9 +1931,12 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
       tentativa 2: a tentativa 1 fechou com RESSALVAS por duas decisões de escopo sem
       registro durável e por `enforce_admins: false`, corrigidos com a OQ22 e com
       `enforce_admins: true`.)*
-- [ ] **D.3** — AC-20; execução limpa a partir do README validada. *(A cláusula
+- [x] **D.3** — AC-20; execução limpa a partir do README validada. *(A cláusula
       "link da demo" migrou para o AC-27/E.4 pela OQ24 — a D.3 entrega a demo
-      local com credenciais e declara no README que não há instância hospedada.)*
+      local com credenciais e declara no README que não há instância hospedada.
+      Aprovada na tentativa 2: a tentativa 1 fechou com RESSALVAS por essa decisão
+      de escopo sem registro durável e por o README atribuir `ruff format --check`
+      ao CI, corrigidos com a OQ24 e com a separação das duas linhas na esteira.)*
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
 - [x] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
 - [x] **D.6** — AC-23.
