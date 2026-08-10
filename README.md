@@ -178,14 +178,15 @@ O gate do eval reprova nesta linha de base, e isso é o comportamento correto: o
 
 | Gate | Onde roda |
 |---|---|
-| `ruff check` + `ruff format --check` | pre-commit e CI |
+| `ruff check` | pre-commit e CI |
+| `ruff format --check` | pre-commit e `make check` |
 | `mypy app/ evals/` em modo **strict** | CI e `make typecheck` |
 | `pytest` com piso de cobertura bloqueante | CI |
 | `gitleaks` com regras próprias (`.gitleaks.toml`) | pre-commit e CI |
 | ESLint, Jest e `next build` | CI |
 | Camada rápida do eval, sem rede | CI |
 
-`make check` reproduz os gates do CI localmente. A `main` é protegida: os dois checks são obrigatórios e valem também para administradores — ver [`docs/git-workflow.md`](docs/git-workflow.md).
+`make check` reproduz a maior parte dos gates do CI localmente — fora `gitleaks` e o `next build` de produção. A `main` é protegida: os dois checks são obrigatórios e valem também para administradores — ver [`docs/git-workflow.md`](docs/git-workflow.md).
 
 ---
 
@@ -262,7 +263,7 @@ Dois limites medidos na prática, não lidos de tabela de preço:
 
 | Limite | Valor medido | Como isso aparece no projeto |
 |---|---|---|
-| Tokens por minuto, modelo de visão | 8.000 | Os três casos de foto do eval falham com HTTP 413 (`Requested 11357`) antes de a imagem chegar — o que estoura é o `max_tokens` reservado, não o tamanho da foto (bug 003) |
+| Tokens por minuto, modelo de visão | 8.000 | Os três casos de foto do eval falham com HTTP 413 pedindo ~11,4 mil tokens antes de a imagem chegar — o que estoura é o `max_tokens` reservado, não o tamanho da foto (bug 003) |
 | Tokens por dia, conta inteira | 100.000 | Uma execução completa do eval consumiu 99.768 — daí a agenda do eval ser **semanal**, não diária |
 
 O projeto mitiga com cache Redis por 7 dias (chave `sha256` incluindo o modelo), lookup local que evita chamar a IA para alimento comum, e retry por classe de exceção com teto de tempo.
