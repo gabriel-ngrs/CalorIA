@@ -29,7 +29,7 @@ make init
 Duas coisas dependem de você depois do primeiro `make init`:
 
 1. **`GROQ_API_KEY` no `.env`** (gratuita em [console.groq.com/keys](https://console.groq.com/keys)) — sem ela o app sobe, mas a análise de refeição não funciona. Depois de preencher, `make down && make dev-d`.
-2. **Banco nutricional** — a tabela `foods` nasce vazia. O dump está em `data/db/` e o procedimento de restauração, em [`data/README.md`](data/README.md). Sem ele todo alimento cai na estimativa da IA, que é o caminho menos preciso.
+2. **Banco nutricional** — a tabela `foods` nasce vazia. O dump é asset da [release `v0.7.0`](https://github.com/gabriel-ngrs/CalorIA/releases/tag/v0.7.0) (grande demais para o git) e o procedimento de download e restauração está em [`data/README.md`](data/README.md). Sem ele todo alimento cai na estimativa da IA, que é o caminho menos preciso.
 
 `make help` lista todos os alvos.
 
