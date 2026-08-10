@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-09
+updated_at: 2026-08-10
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001, 003]
@@ -1797,6 +1797,44 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   único desenvolvedor a exigência de um segundo aprovador não teria quem a cumprisse.
   A válvula de escape do owner continua existindo e agora é explícita — desligar a
   proteção por API é um ato registrado, não uma porosidade permanente.
+
+- **OQ23 — Arquivos tocados pela D.3 além dos seis declarados.**
+  **RESOLVIDO (2026-08-10).** Os "Arquivos alterados" da D.3 listam seis
+  caminhos, mas dois dos quatro passos da própria fase não cabem neles. Quatro
+  extensões, cada uma amarrada ao passo que a exige:
+
+  **(a) Os nove `docs/fluxos/*/fluxo.md` e a remoção dos nove
+  `docs/fluxos/*/diagrama.mermaid`.** É o passo 3 literal — "converter os
+  diagramas de arquivos `.mermaid` soltos para blocos ```` ```mermaid ```` dentro
+  dos `.md`". O bloco só pode nascer dentro do `fluxo.md` de cada pasta; a lista
+  declarada só previa o `docs/fluxos/README.md`, que é o índice. Os arquivos
+  `.mermaid` saem do versionamento porque manter as duas cópias reintroduz a
+  divergência que o passo existe para eliminar. Aproveitando a conversão, três
+  diagramas que ainda diziam **"Gemini"** (04, 05 e 07) passaram a dizer "Groq" —
+  o provedor mudou na v0.7.0.
+
+  **(b) `docs/imagens/` com quatro capturas de tela.** O passo 1 pede
+  "screenshots"; sem arquivo de imagem não há onde apontar. São capturas da conta
+  de demonstração rodando local, feitas por Playwright, com o botão do React Query
+  Devtools escondido por CSS na captura — ele não existe em build de produção.
+
+  **(c) `frontend/components/layout/Sidebar.tsx`.** O rodapé da barra lateral
+  dizia **"V0.1"** enquanto o projeto está em `0.7.0` — a mesma dessincronia que o
+  AC-18 mandou a D.1 corrigir nos quatro arquivos de versão, sobrevivendo num
+  lugar que ninguém tinha olhado. Aparece **dentro das capturas de tela** que a
+  D.3 publica, então publicá-las sem corrigir seria imprimir a afirmação falsa na
+  vitrine. Corrigido removendo o número em vez de atualizá-lo: um rodapé sem
+  versão não dessincroniza de novo.
+
+  **(d) `backend/scripts/seed_dev_user.py`.** A última linha do seed manda
+  "Acesse http://localhost:3000", e o compose de desenvolvimento publica o
+  frontend em **3010** — é a mesma porta errada que o passo 1 manda corrigir no
+  README, na saída do comando que o próprio README manda rodar. Uma linha, sem
+  efeito no teste de coerência README × script da E.3.
+
+  **Consequência registrada:** a fase entrega diagramas renderizáveis no GitHub
+  em todos os fluxos, e o repositório perde os nove `.mermaid` avulsos —
+  quem os abria por caminho direto passa a abrir o `fluxo.md` da pasta.
 
 ## 9. Definition of Done (gate por etapa)
 
