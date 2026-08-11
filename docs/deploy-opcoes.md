@@ -116,19 +116,36 @@ elimina isso e deixa o KVM 1 como escolha certa.
 R$ 839,76 à vista) e o desconto não vale na renovação — os 24 meses seguintes custam
 R$ 1.439,76. A Hetzner cobra por hora, sem compromisso: ~R$ 576 nos mesmos 24 meses.
 
-### 2.4 Europeias sem região no Brasil — as mais baratas da lista
+### 2.4 Netcup VPS Lite — €4,88/mês (~R$ 26–31) · **recomendada**
 
-Nenhuma tem datacenter no Brasil, então pagam ~200 ms de latência. Em troca, são o menor
-preço por recurso.
+A Netcup mantém duas linhas, e a barata é a **VPS Lite** (preços da página oficial, com 19%
+de IVA alemão inclusos):
+
+| plano | vCores | RAM | disco | €/mês c/ IVA |
+|---|---:|---:|---|---:|
+| VPS nano G11s | 2 | 2 GB | 60 GB SSD | €3,08 |
+| **VPS Lite 1 G12s** | **2** | **4 GB** | **80 GB SSD** | **€4,88** |
+| VPS Lite 2 G12s | 4 | 8 GB | 160 GB SSD | €7,92 |
+
+O **Lite 1** é o encaixe: 2 vCPU e 4 GB comportam a stack medida na seção 1 **com folga para
+buildar no servidor**. Fora da UE o IVA normalmente não se aplica, o que levaria os €4,88 a
+~€4,10 (~R$ 26). **Sem período mínimo de contrato** — cancela quando quiser.
+
+A diferença declarada da linha Lite para os VPS G12 regulares é **banda e velocidade de
+interface reduzidas**. Para servir um dashboard a um punhado de usuários, é irrelevante.
+
+**Confirmar no checkout**, porque a página não declara nenhuma das duas: se há **taxa de
+setup** e se o **IVA cai** ao informar endereço no Brasil.
+
+**Contra:** datacenter na Alemanha/Áustria (~200 ms) e backup por sua conta.
+
+### 2.4.1 Outras europeias
 
 | provedor | plano | ~mensal | nota |
 |---|---|---:|---|
-| **Netcup** | 2 vCPU / 2 GB / 64 GB | €3,35 (~R$ 21) | mais barato que presta; **2 GB exige** a estratégia (b) — build no CI |
-| **Contabo** | VPS S: 4 vCPU / 8 GB / 200 GB NVMe | $11,31 (~R$ 61) | melhor preço por GB da lista; DC em Munique, Nuremberg, NY, Seattle, St. Louis, Londres e Singapura |
+| Contabo | VPS S: 4 vCPU / 8 GB / 200 GB NVMe | $11,31 (~R$ 61) | muito hardware, mas o dobro do preço do Lite 1 para uma folga que não é usada |
+| Netcup VPS 500 G12 | 2 vCPU / 4 GB / 128 GB NVMe | €5,91 (~R$ 37) | a linha regular: NVMe e banda cheia pelo preço da Hostinger |
 | RackNerd | entrada $22,99/**ano** | ~R$ 10 | 512 MB não serve; provedor pequeno, sem SLA — risco alto para uma vitrine |
-
-Antes de fechar com a Netcup, confirmar **taxa de setup** e **período mínimo de contrato**,
-que ela costuma cobrar — é o mesmo tipo de custo escondido da promoção da Hostinger.
 
 ### 2.5 Provedores brasileiros — cuidado com a renovação
 
@@ -139,6 +156,7 @@ que ela costuma cobrar — é o mesmo tipo de custo escondido da promoção da H
 | **Hostinger KVM 1** | R$ 34,99 | ver 2.3 |
 | Audaks | R$ 38 | NVMe + vCPU dedicada |
 | Vultr / Linode (Akamai) | ~$24 (R$ 130) para 4 GB | têm região São Paulo, mas custam 4× a Hostinger |
+| Magalu Cloud | **R$ 129,99** para 2 vCPU / 2 GB (`BV2-2-100`) | nuvem cobrada como nuvem, não VPS — 4× o preço do Netcup Lite 1 por metade do recurso; o tipo de R$ 34,99 (`BV1-1-10`) tem só 1 GB |
 
 **Padrão do mercado brasileiro:** a renovação sobe de 40% a 100% depois do período
 promocional — a KingHost mais que dobra no segundo ano, a Hostinger sobe ~71%. Comparar
@@ -170,28 +188,29 @@ novo — não é caminho para "simples".
 
 ## 3. Comparativo
 
-| opção | custo/mês | latência BR | esforço até a E.4 fechar | risco de sair do ar |
-|---|---:|---|---|---|
-| **Hostinger KVM 1** | R$ 34,99 (2 anos à vista) | **10–40 ms** | médio — build precisa sair do servidor | baixo |
-| Netcup 2 GB | ~R$ 21 | ~200 ms | médio — build **tem** que sair do servidor | baixo |
-| Hetzner CX22 | ~R$ 35–38 (por hora) | ~120–200 ms | **baixo** — guia pronto, compose e CD já servem | baixo |
-| Contabo VPS S | ~R$ 61 | ~180 ms | baixo — 8 GB comportam build no servidor | baixo |
-| Oracle Always Free | R$ 0 | ~180 ms | médio — provisionar ARM, rebuild das imagens | **alto** |
-| Railway / Render / Fly | $10–20+ | varia | **alto** — reescreve a topologia, contraria ADR-009 | médio (Render: dorme) |
+| opção | vCPU / RAM | custo/mês | trava | latência BR | backup |
+|---|---|---:|---|---|---|
+| **Netcup VPS Lite 1** | 2 / 4 GB | **~R$ 26–31** | nenhuma | ~200 ms | por sua conta |
+| Hostinger KVM 1 | 1 / 4 GB | R$ 34,99 → R$ 59,99 | **24 meses, R$ 839,76 à vista** | **10–40 ms** | **semanal incluído** |
+| Hetzner CX22 | 2 / 4 GB | ~R$ 35–38 | nenhuma (por hora) | ~120–200 ms | por sua conta |
+| Contabo VPS S | 4 / 8 GB | ~R$ 61 | mensal | ~180 ms | por sua conta |
+| Magalu Cloud `BV2-2-100` | 2 / 2 GB | R$ 129,99 | nenhuma (por hora) | **~10 ms** | por sua conta |
+| Oracle Always Free | 2 / 12 GB | R$ 0 | nenhuma | ~180 ms | por sua conta |
+| Railway / Render / Fly | varia | $10–20+ | nenhuma | varia | varia |
 
-**Recomendação: Hostinger KVM 1.** Depois do reajuste da Hetzner as duas custam o mesmo por
-mês, e no empate a opção brasileira entrega **latência de São Paulo** e **backup semanal
-incluído** — que tapa o buraco da seção 4. O que ela cobra em troca é a **trava de 2 anos**
-(R$ 839,76 à vista, renovando a R$ 59,99/mês).
+**Recomendação: Netcup VPS Lite 1 G12s.** É mais barata que a Hostinger **e** entrega o dobro
+de vCPU, 30 GB a mais de disco e nenhum contrato. Em 24 meses: **~R$ 744 na Netcup**, podendo
+sair a qualquer mês, contra **R$ 839,76 na Hostinger** pagos de uma vez e travados — e a
+renovação da Hostinger a R$ 59,99 dobra a diferença no terceiro ano.
 
-Em 4 anos: Hostinger R$ 839,76 + R$ 1.439,76 = **R$ 2.279,52**; Hetzner ~R$ 38 × 48 =
-**~R$ 1.824**, *se* não houver novo reajuste — e houve dois em 2026. A trava da Hostinger é
-custo e proteção ao mesmo tempo.
+O que a Netcup não entrega é **latência brasileira** e **backup automático**. O backup se
+resolve com cron (seção 5, e são 40 MB); a latência não se resolve — se ela for o critério
+decisivo, a Hostinger é a única da lista com São Paulo por menos de R$ 100.
 
-Alternativas conforme o critério mudar: **Netcup (~R$ 21)** se o peso for preço puro — metade
-do valor, com build no CI virando obrigação em vez de otimização; **Contabo VPS S (~R$ 61)**
-se for hardware por real; **Oracle** se for custo zero acima de tudo, sabendo que a demo pode
-estar fora do ar justamente quando importar.
+Alternativas conforme o critério mudar: **Contabo VPS S (~R$ 61)** se o peso for hardware por
+real; **Oracle** se for custo zero acima de tudo, sabendo que a demo pode estar fora do ar
+justamente quando importar. **Magalu Cloud está fora**: R$ 129,99 por 2 GB é nuvem cobrada
+como nuvem, não VPS.
 
 ---
 
