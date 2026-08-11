@@ -128,14 +128,26 @@ de IVA alemão inclusos):
 | VPS Lite 2 G12s | 4 | 8 GB | 160 GB SSD | €7,92 |
 
 O **Lite 1** é o encaixe: 2 vCPU e 4 GB comportam a stack medida na seção 1 **com folga para
-buildar no servidor**. Fora da UE o IVA normalmente não se aplica, o que levaria os €4,88 a
-~€4,10 (~R$ 26). **Sem período mínimo de contrato** — cancela quando quiser.
+buildar no servidor**.
+
+**Medido no carrinho da Netcup em 2026-08-11**, com endereço no Brasil, na variante
+`VPS Lite 1 G12s iv 6M`:
+
+| item | valor |
+|---|---|
+| preço mensal | **€4,10** (~R$ 26) — o IVA de 19% **cai** fora da UE |
+| taxa de setup | **€0,00** |
+| período de cobrança | a cada 6 meses (~€24,60, ~R$ 155 por semestre) |
+| período mínimo de contrato | **6 meses** |
+| rede | IPv4 + IPv6 inclusos, sem cobrança à parte |
+
+> A página geral da Netcup não declara contrato mínimo, e a primeira versão desta seção
+> afirmou "cancela quando quiser" com base nela. O carrinho desmente: a variante `6M` trava
+> por 6 meses. Vale checar em "Customize configuration" se há variantes `12M` (mensal menor)
+> ou `1M` (mensal maior, sem trava).
 
 A diferença declarada da linha Lite para os VPS G12 regulares é **banda e velocidade de
 interface reduzidas**. Para servir um dashboard a um punhado de usuários, é irrelevante.
-
-**Confirmar no checkout**, porque a página não declara nenhuma das duas: se há **taxa de
-setup** e se o **IVA cai** ao informar endereço no Brasil.
 
 **Contra:** datacenter na Alemanha/Áustria (~200 ms) e backup por sua conta.
 
@@ -190,7 +202,7 @@ novo — não é caminho para "simples".
 
 | opção | vCPU / RAM | custo/mês | trava | latência BR | backup |
 |---|---|---:|---|---|---|
-| **Netcup VPS Lite 1** | 2 / 4 GB | **~R$ 26–31** | nenhuma | ~200 ms | por sua conta |
+| **Netcup VPS Lite 1** | 2 / 4 GB | **~R$ 26** (€4,10) | 6 meses (~R$ 155/semestre) | ~200 ms | por sua conta |
 | Hostinger KVM 1 | 1 / 4 GB | R$ 34,99 → R$ 59,99 | **24 meses, R$ 839,76 à vista** | **10–40 ms** | **semanal incluído** |
 | Hetzner CX22 | 2 / 4 GB | ~R$ 35–38 | nenhuma (por hora) | ~120–200 ms | por sua conta |
 | Contabo VPS S | 4 / 8 GB | ~R$ 61 | mensal | ~180 ms | por sua conta |
@@ -199,9 +211,10 @@ novo — não é caminho para "simples".
 | Railway / Render / Fly | varia | $10–20+ | nenhuma | varia | varia |
 
 **Recomendação: Netcup VPS Lite 1 G12s.** É mais barata que a Hostinger **e** entrega o dobro
-de vCPU, 30 GB a mais de disco e nenhum contrato. Em 24 meses: **~R$ 744 na Netcup**, podendo
-sair a qualquer mês, contra **R$ 839,76 na Hostinger** pagos de uma vez e travados — e a
-renovação da Hostinger a R$ 59,99 dobra a diferença no terceiro ano.
+de vCPU e 30 GB a mais de disco. As duas têm trava, mas em escalas diferentes: **R$ 155 por
+semestre** contra **R$ 839,76 por dois anos**. Em 24 meses dá ~R$ 620 na Netcup contra
+R$ 839,76 na Hostinger — e a renovação da Hostinger a R$ 59,99 abre a diferença no terceiro
+ano.
 
 O que a Netcup não entrega é **latência brasileira** e **backup automático**. O backup se
 resolve com cron (seção 5, e são 40 MB); a latência não se resolve — se ela for o critério
