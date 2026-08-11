@@ -133,13 +133,18 @@ buildar no servidor**.
 **Medido no carrinho da Netcup em 2026-08-11**, com endereço no Brasil, na variante
 `VPS Lite 1 G12s iv 6M`:
 
-| item | valor |
-|---|---|
-| preço mensal | **€4,10** (~R$ 26) — o IVA de 19% **cai** fora da UE |
-| taxa de setup | **€0,00** |
-| período de cobrança | a cada 6 meses (~€24,60, ~R$ 155 por semestre) |
-| período mínimo de contrato | **6 meses** |
-| rede | IPv4 + IPv6 inclusos, sem cobrança à parte |
+| linha | valor |
+|---|---:|
+| VPS Lite 1 G12s iv 6M | €3,60/mês → €21,60 |
+| IPv4 Connectivity | €0,50/mês → €3,00 |
+| IPv6 Connectivity | €0,00 |
+| Setup costs (one-time) | **€0,00** |
+| VAT | **0%** — o IVA alemão de 19% cai com endereço no Brasil |
+| **total do primeiro recibo** | **€24,60** (6 meses) |
+
+Ou seja: **€4,10/mês** (~R$ 26), ~R$ 155 por semestre, **período mínimo de 6 meses**. O IPv4 é
+cobrado em linha própria, como na Hetzner — comparando os dois com IPv4 incluído na conta,
+Netcup €4,10 contra Hetzner CX22 €5,99.
 
 > A página geral da Netcup não declara contrato mínimo, e a primeira versão desta seção
 > afirmou "cancela quando quiser" com base nela. O carrinho desmente: a variante `6M` trava
