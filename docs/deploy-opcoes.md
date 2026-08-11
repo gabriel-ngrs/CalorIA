@@ -49,22 +49,30 @@ Duas saídas, e a segunda é melhor em qualquer provedor:
 
 ## 2. As opções
 
-### 2.1 Hetzner CX22 — ~€3,79–4,59/mês (~R$ 24) · **recomendada**
+### 2.1 Hetzner CX22 — €5,49/mês + IPv4 (~R$ 35–38)
 
 2 vCPU x86, 4 GB RAM, 40 GB NVMe, 20 TB de tráfego.
 
-É a única opção em que a E.4 fecha **sem reabrir nenhuma decisão já tomada**: o
-`docs/deploy.md` já descreve a Hetzner passo a passo, o `docker-compose.yml` sobe sem
-alteração (ADR-009), e o `cd.yml` já é SSH + compose. Os 4 GB comportam build no servidor,
-então a mudança (b) acima vira otimização, não pré-requisito.
+Tecnicamente encaixa bem: os 4 GB comportam build no servidor, o `docs/deploy.md` já descreve
+a Hetzner passo a passo, o `docker-compose.yml` sobe sem alteração (ADR-009) e o `cd.yml` já
+é SSH + compose.
+
+> **Preço corrigido em 2026-08-11.** A primeira versão deste documento citava ~€3,79–4,59
+> (~R$ 24), número vindo de comparadores de terceiros. A documentação da própria Hetzner
+> desmente: houve **dois reajustes em 2026** e, desde 15/06/2026, o CX22 está em **€5,49**
+> (era €3,99) e o CAX11 em **€5,99** (era €4,49) — valores sem IPv4 (~€0,50/mês) e sem IVA.
+> A linha **CPX (AMD)** levou um reajuste muito pior no mesmo dia: o CPX22 foi de €7,99 para
+> **€19,49** (+144%). Ao comparar na página da Hetzner, confira que está na aba
+> **Cost-Optimized (CX)**, não na **Regular Performance (CPX)**.
 
 **Contra:** sem região no Brasil (Alemanha, Finlândia, EUA, Singapura) — ~200 ms da Europa,
-~120 ms de Ashburn contra 10–40 ms de São Paulo.
+~120 ms de Ashburn contra 10–40 ms de São Paulo. E com o reajuste o preço deixou de ser
+vantagem: empata com a opção brasileira, que ainda inclui backup.
 
-> **Variante CAX11** (ARM Ampere, 2 vCPU / 4 GB, preço parecido): mais eficiente, mas exige
-> imagens `linux/arm64`. Todas as bases usadas têm arm64 (`postgres:16-alpine`,
-> `redis:7-alpine`, `caddy:2-alpine`, `node:20-alpine`, Python), então provavelmente roda —
-> mas é rebuild e teste em troca de centavos. Só Alemanha e Finlândia.
+> **Variante CAX11** (ARM Ampere, 2 vCPU / 4 GB, €5,99): mais eficiente, mas exige imagens
+> `linux/arm64`. Todas as bases usadas têm arm64 (`postgres:16-alpine`, `redis:7-alpine`,
+> `caddy:2-alpine`, `node:20-alpine`, Python), então provavelmente roda — mas é rebuild e
+> teste, agora em troca de nada, já que ficou mais cara que o CX22. Só Alemanha e Finlândia.
 
 ### 2.2 Oracle Cloud Always Free — R$ 0 · mais barata, menos confiável
 
@@ -130,15 +138,22 @@ novo — não é caminho para "simples".
 
 | opção | custo/mês | latência BR | esforço até a E.4 fechar | risco de sair do ar |
 |---|---:|---|---|---|
-| **Hetzner CX22** | ~R$ 24 | ~200 ms | **baixo** — guia pronto, compose e CD já servem | baixo |
+| **Hostinger KVM 1** | R$ 34,99 (2 anos à vista) | **10–40 ms** | médio — build precisa sair do servidor | baixo |
+| Hetzner CX22 | ~R$ 35–38 (por hora) | ~120–200 ms | **baixo** — guia pronto, compose e CD já servem | baixo |
 | Oracle Always Free | R$ 0 | ~180 ms | médio — provisionar ARM, rebuild das imagens | **alto** |
-| Hostinger KVM 1 | R$ 35 (2 anos à vista) | **10–40 ms** | médio — build precisa sair do servidor | baixo |
 | Railway / Render / Fly | $10–20+ | varia | **alto** — reescreve a topologia, contraria ADR-009 | médio (Render: dorme) |
 
-**Recomendação: Hetzner CX22.** Custo idêntico ao da opção brasileira, o dobro de vCPU, e é a
-única em que nada precisa ser redecidido. Se o critério virar latência para avaliadores
-brasileiros, Hostinger SP pelo mesmo dinheiro; se virar custo zero, Oracle — sabendo que a
-demo pode estar fora do ar quando importar.
+**Recomendação: Hostinger KVM 1.** Depois do reajuste da Hetzner as duas custam o mesmo por
+mês, e no empate a opção brasileira entrega **latência de São Paulo** e **backup semanal
+incluído** — que tapa o buraco da seção 4. O que ela cobra em troca é a **trava de 2 anos**
+(R$ 839,76 à vista, renovando a R$ 59,99/mês).
+
+Em 4 anos: Hostinger R$ 839,76 + R$ 1.439,76 = **R$ 2.279,52**; Hetzner ~R$ 38 × 48 =
+**~R$ 1.824**, *se* não houver novo reajuste — e houve dois em 2026. A trava da Hostinger é
+custo e proteção ao mesmo tempo.
+
+Se o critério virar custo zero acima de tudo, Oracle — sabendo que a demo pode estar fora do
+ar justamente quando importar.
 
 ---
 
