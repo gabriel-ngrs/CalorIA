@@ -1,9 +1,14 @@
 # Onde hospedar o CalorIA — comparativo de opções
 
 **Status:** documento de decisão, não guia de execução. O guia é [`docs/deploy.md`](deploy.md).
-**Contexto:** a Fase E.4 da spec 002 (deploy + CD automático) está parada por falta de host.
+**Contexto:** a Fase E.4 da spec 002 (deploy + CD automático) estava parada por falta de host.
 O ADR-009 fixou a topologia (host único, `docker-compose.yml` + `Caddyfile`) e deixou o
-*onde* em aberto. Este documento levanta o *onde*, com preços verificados em 2026-08-10.
+*onde* em aberto. Este documento levanta o *onde*, com preços verificados em 2026-08-10/11.
+
+**Decisão tomada (2026-08-11):** contratado o **Netcup VPS Lite 1 G12s iv 6M** (2 vCore,
+4 GB, 80 GB SSD, €4,10/mês com IPv4). Pedido em revisão manual pela Netcup, ainda não
+provisionado. A escolha e seus números estão na seção 2.4; a E.4 destrava quando o host
+estiver no ar e o ADR-010 registra a decisão.
 
 ---
 
@@ -146,6 +151,17 @@ Ou seja: **€4,10/mês** (~R$ 26), ~R$ 155 por semestre, **período mínimo de 
 cobrado em linha própria, como na Hetzner — comparando os dois com IPv4 incluído na conta,
 Netcup €4,10 contra Hetzner CX22 €5,99.
 
+**A trava de 6 meses é mais frouxa do que parece.** O e-mail de confirmação do pedido declara
+duas cláusulas que o carrinho não mostra:
+
+- ao fim do período mínimo, o contrato **passa a se renovar mensalmente** — não em novos
+  blocos de 6 meses;
+- em cancelamento antecipado, **o valor pago adiantado é reembolsado** proporcionalmente,
+  quando o período de faturamento é maior que um mês.
+
+Somando os 14 dias de direito de arrependimento da lei alemã (que caducam quando o serviço é
+integralmente prestado), o adiantamento de €24,60 é devolvível, não capital travado.
+
 > A página geral da Netcup não declara contrato mínimo, e a primeira versão desta seção
 > afirmou "cancela quando quiser" com base nela. O carrinho desmente: a variante `6M` trava
 > por 6 meses. Vale checar em "Customize configuration" se há variantes `12M` (mensal menor)
@@ -242,9 +258,10 @@ O que a Netcup não entrega é **latência brasileira** (+160 ms medidos, seçã
 cron (seção 5, e são 40 MB); a latência não se resolve — se ela for o critério decisivo, a
 Hostinger é a única da lista com São Paulo por menos de R$ 100.
 
-**O que sustenta a escolha não é a diferença mensal de ~R$ 9, é a assimetria da trava:**
-R$ 155 a cada 6 meses contra R$ 839,76 por dois anos. Se em seis meses os 220 ms incomodarem,
-a saída custa o que já foi gasto.
+**O que sustenta a escolha não é a diferença mensal de ~R$ 9, é a assimetria da trava:** na
+Hostinger, R$ 839,76 por dois anos, sem devolução; na Netcup, R$ 155 adiantados,
+**reembolsáveis proporcionalmente** em caso de saída antecipada, com renovação mensal depois
+do sexto mês. Se os 220 ms incomodarem, sair custa pouco mais que o tempo usado.
 
 Alternativas conforme o critério mudar: **Contabo VPS S (~R$ 61)** se o peso for hardware por
 real; **Oracle** se for custo zero acima de tudo, sabendo que a demo pode estar fora do ar
