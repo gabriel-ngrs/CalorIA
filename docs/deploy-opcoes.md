@@ -151,10 +151,26 @@ Netcup €4,10 contra Hetzner CX22 €5,99.
 > por 6 meses. Vale checar em "Customize configuration" se há variantes `12M` (mensal menor)
 > ou `1M` (mensal maior, sem trava).
 
-A diferença declarada da linha Lite para os VPS G12 regulares é **banda e velocidade de
-interface reduzidas**. Para servir um dashboard a um punhado de usuários, é irrelevante.
+**Limitações da linha Lite**, lidas na página do produto:
 
-**Contra:** datacenter na Alemanha/Áustria (~200 ms) e backup por sua conta.
+- **Rede de 500 Mbps, estrangulada para 100 Mbps** se a média de 24 h passar de 100 Mbps. É o
+  que a Netcup chama de "banda reduzida". Irrelevante para servir um dashboard a poucos
+  usuários — 100 Mbps sustentados estão ordens de grandeza acima deste tráfego.
+- **Localização automática**, entre Nuremberg, Viena e Amsterdam. Só Europa, e sem escolha. Os
+  três ficam na mesma faixa de latência daqui, então não altera a conta — mas é uma liberdade
+  que o produto não dá.
+
+**Riscos apontados nas avaliações** (não de hardware, de operação):
+
+- **SLA de 99,6%** de disponibilidade — o número mais fraco de toda esta comparação; permite
+  ~3 h de indisponibilidade por mês em contrato.
+- **Suporte alemão primeiro:** tickets podendo passar de 24 h, telefone só seg–sex
+  09:00–17:00 CET, linha de emergência 24/7 **paga**. Barreira de idioma é reclamação
+  recorrente.
+- **Apenas 1 snapshot externo gratuito** — insuficiente como estratégia de backup; reforça o
+  cron da seção 5.
+
+**Contra:** datacenter na Europa (~220 ms medidos, ver seção 3.1) e backup por sua conta.
 
 ### 2.4.1 Outras europeias
 
@@ -221,9 +237,14 @@ semestre** contra **R$ 839,76 por dois anos**. Em 24 meses dá ~R$ 620 na Netcup
 R$ 839,76 na Hostinger — e a renovação da Hostinger a R$ 59,99 abre a diferença no terceiro
 ano.
 
-O que a Netcup não entrega é **latência brasileira** e **backup automático**. O backup se
-resolve com cron (seção 5, e são 40 MB); a latência não se resolve — se ela for o critério
-decisivo, a Hostinger é a única da lista com São Paulo por menos de R$ 100.
+O que a Netcup não entrega é **latência brasileira** (+160 ms medidos, seção 3.1),
+**backup automático** e **suporte fora do horário comercial alemão**. O backup se resolve com
+cron (seção 5, e são 40 MB); a latência não se resolve — se ela for o critério decisivo, a
+Hostinger é a única da lista com São Paulo por menos de R$ 100.
+
+**O que sustenta a escolha não é a diferença mensal de ~R$ 9, é a assimetria da trava:**
+R$ 155 a cada 6 meses contra R$ 839,76 por dois anos. Se em seis meses os 220 ms incomodarem,
+a saída custa o que já foi gasto.
 
 Alternativas conforme o critério mudar: **Contabo VPS S (~R$ 61)** se o peso for hardware por
 real; **Oracle** se for custo zero acima de tudo, sabendo que a demo pode estar fora do ar
@@ -231,6 +252,26 @@ justamente quando importar. **Magalu Cloud está fora**: R$ 129,99 por 2 GB é n
 como nuvem, não VPS.
 
 ---
+
+### 3.1 Latência — medida, não estimada
+
+`ping -c 5` da máquina de desenvolvimento (WSL, conexão do owner) em 2026-08-11:
+
+| destino | RTT médio |
+|---|---:|
+| São Paulo (`sao-br-ping.vultr.com`) | **60 ms** |
+| Newark / US East (`nj-us-ping.vultr.com`) | 143 ms |
+| Atlanta (`speedtest.atlanta.linode.com`) | 150 ms |
+| Frankfurt (`fra-de-ping.vultr.com`) | 216 ms |
+| `netcup.com` | **222 ms** |
+| `hetzner.com` | 238 ms |
+
+O custo de hospedar na Europa é **+160 ms por requisição** frente a São Paulo — as seções
+anteriores citavam 10–40 ms para o Brasil com base em artigos; o medido desta conexão é 60 ms.
+
+**O que isso significa para este projeto:** a análise de refeição chama a Groq e leva
+**segundos**, então 160 ms ali é ruído. O efeito aparece na navegação — cada carga de página
+soma ~0,2 s, e uma tela que dispara 3–4 requisições soma ~0,5 s. Perceptível, não impeditivo.
 
 ## 4. Simplificar o deploy não é escolher outra VPS
 
