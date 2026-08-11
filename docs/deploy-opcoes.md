@@ -78,13 +78,29 @@ silencioso de junho é precedente de que os termos mudam sem aviso. É a opção
 critério for custo zero acima de tudo; é a errada se o servidor precisa estar no ar no dia
 em que alguém abrir o link do currículo.
 
-### 2.3 VPS em São Paulo (Hostinger KVM 1) — ~R$ 28/mês no anual · latência BR
+### 2.3 VPS em São Paulo (Hostinger KVM) — R$ 35–43/mês · latência BR
 
-1 vCPU, 4 GB, 50 GB NVMe, datacenter em São Paulo, suporte em português. Latência de
+Datacenter em São Paulo, suporte em português, **backup semanal incluído** — que tapa o
+buraco da seção 4 (hoje o backup é `pg_dump` manual, sem cron nem offsite). Latência de
 10–40 ms contra 150–250 ms de EUA/Europa.
 
-**Contra:** 1 vCPU aperta no build — combina com a estratégia (b) de buildar no CI. Preço só
-fecha no compromisso anual.
+Confrontando os planos com o consumo medido na seção 1 (~1 GB em repouso):
+
+| plano | vCPU / RAM / disco | promo | renovação | veredito |
+|---|---|---:|---:|---|
+| **KVM 1** | 1 / 4 GB / 50 GB | R$ 34,99 | R$ 59,99 | **suficiente** — 4× a RAM necessária |
+| KVM 2 | 2 / 8 GB / 100 GB | R$ 42,99 | R$ 77,99 | conforto: 2º núcleo para o build |
+| KVM 4 | 4 / 16 GB / 200 GB | R$ 59,99 | R$ 149,99 | desperdício |
+| KVM 8 | 8 / 32 GB / 400 GB | R$ 119,99 | R$ 259,99 | desperdício |
+
+O único ponto de aperto do KVM 1 é o **deploy**: com o `cd.yml` buildando no servidor, um
+único núcleo leva minutos no `next build` e a RAM fica justa (a stack antiga segue de pé
+enquanto a nova compila). A estratégia (b) da seção 1 — buildar no CI e publicar no GHCR —
+elimina isso e deixa o KVM 1 como escolha certa.
+
+**Contra:** a tarifa promocional exige **compromisso de 2 anos pago adiantado** (KVM 1:
+R$ 839,76 à vista) e o desconto não vale na renovação — os 24 meses seguintes custam
+R$ 1.439,76. A Hetzner cobra por hora, sem compromisso: ~R$ 576 nos mesmos 24 meses.
 
 ### 2.4 PaaS gerenciada (Railway / Render / Fly.io) — mais cara e mais trabalho
 
@@ -116,7 +132,7 @@ novo — não é caminho para "simples".
 |---|---:|---|---|---|
 | **Hetzner CX22** | ~R$ 24 | ~200 ms | **baixo** — guia pronto, compose e CD já servem | baixo |
 | Oracle Always Free | R$ 0 | ~180 ms | médio — provisionar ARM, rebuild das imagens | **alto** |
-| Hostinger SP | ~R$ 28 | **10–40 ms** | médio — build precisa sair do servidor | baixo |
+| Hostinger KVM 1 | R$ 35 (2 anos à vista) | **10–40 ms** | médio — build precisa sair do servidor | baixo |
 | Railway / Render / Fly | $10–20+ | varia | **alto** — reescreve a topologia, contraria ADR-009 | médio (Render: dorme) |
 
 **Recomendação: Hetzner CX22.** Custo idêntico ao da opção brasileira, o dobro de vCPU, e é a
