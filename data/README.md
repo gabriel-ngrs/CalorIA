@@ -94,13 +94,22 @@ Contagem por `source` em `alimentos_final.csv` (as mesmas linhas do dump):
 
 ### Por que a documentação fala em ~19.500 e aqui em 42.103
 
-São duas contagens do mesmo arquivo, e as duas estão certas:
+A tabela acima é a única contagem medida — ela vem de um `Counter` sobre a coluna
+`source` deste CSV. Dela saem os dois números que importam:
 
-- **42.103** é o número de **linhas** importadas para a tabela `foods`.
-- **18.705** delas (Open Food Facts + USDA + TACO + FatSecret) têm **nutrientes
-  medidos na fonte**; é a essa fatia que se referem os "~19.500 alimentos" citados
-  no `CLAUDE.md` e em `docs/architecture.md`. As outras 23.398 carregam estimativa
-  da IA, marcada como `ai_estimated`.
+- **42.103** linhas importadas para a tabela `foods`, no total.
+- **18.705** delas têm **nutrientes medidos na fonte** (18.195 Open Food Facts +
+  247 USDA + 228 TACO + 35 FatSecret). As outras **23.398** carregam estimativa da
+  IA, marcada como `ai_estimated`.
+
+O `CLAUDE.md` e o `docs/architecture.md` descrevem a tabela como "TACO (~307) +
+Open Food Facts (~19.500 alimentos)". **Esses dois números não conferem com a
+medição** e são arredondamento antigo, anterior a esta contagem: o Open Food Facts
+isolado tem 18.195 linhas (~1.300 a menos que os "~19.500") e a TACO tem 228
+(~79 a menos que os "~307"). A frase também não menciona USDA, FatSecret nem o
+estrato `ai_estimated`, que é o maior de todos.
+
+Em caso de dúvida, vale esta página: ela é a que se mede contra o arquivo.
 
 A distinção não é cosmética: o lookup nutricional **exclui as 23.398 linhas
 `ai_estimated`**, e foi essa exclusão que derrubou o erro calórico médio de 16,7%

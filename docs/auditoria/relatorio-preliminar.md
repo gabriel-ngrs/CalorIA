@@ -158,7 +158,7 @@ PRs menores cobrindo: AUD-001 (push.py service), AUD-003 (response_model), AUD-0
     - [`04-frontend.md`](04-frontend.md), [`05-workers.md`](05-workers.md), [`06-banco.md`](06-banco.md)
     - [`07-seguranca.md`](07-seguranca.md), [`08-testes.md`](08-testes.md), [`09-qualidade.md`](09-qualidade.md)
     - [`10-observabilidade.md`](10-observabilidade.md), [`11-dx-docs.md`](11-dx-docs.md)
-- **Artefatos brutos:** [`docs/auditoria/artefatos/`](artefatos/) — 23 arquivos `.txt`/`.xml`/`.json` com saídas das ferramentas (ruff, mypy, radon, pytest, npm audit, EXPLAIN ANALYZE, etc.).
+- **Artefatos brutos:** `docs/auditoria/artefatos/` — arquivos `.txt`/`.xml`/`.json` com saídas das ferramentas (ruff, mypy, radon, pytest, npm audit, EXPLAIN ANALYZE, etc.). Locais, fora do versionamento desde a poda da D.4.
 
 ---
 

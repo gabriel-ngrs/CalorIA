@@ -1060,4 +1060,4 @@ rg "^### AUD-016 " docs/auditoria/achados.md -A 30
     - [`04-frontend.md`](04-frontend.md), [`05-workers.md`](05-workers.md), [`06-banco.md`](06-banco.md)
     - [`07-seguranca.md`](07-seguranca.md), [`08-testes.md`](08-testes.md), [`09-qualidade.md`](09-qualidade.md)
     - [`10-observabilidade.md`](10-observabilidade.md), [`11-dx-docs.md`](11-dx-docs.md)
-- **Artefatos brutos**: [`artefatos/`](artefatos/) — 49 arquivos (baselines + EXPLAIN ANALYZE + diffs)
+- **Artefatos brutos**: `docs/auditoria/artefatos/` — 49 arquivos (baselines + EXPLAIN ANALYZE + diffs), locais, fora do versionamento desde a poda da D.4

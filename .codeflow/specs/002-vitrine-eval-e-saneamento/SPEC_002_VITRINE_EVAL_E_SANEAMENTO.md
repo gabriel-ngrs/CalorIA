@@ -1879,6 +1879,60 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   fechou sem link. É o achado IMP-1 da avaliação da tentativa 1, e o mesmo motivo
   que gerou a OQ22 na D.2.
 
+- **OQ25 — As decisões de escopo da Fase D.4, numa fase em que o relatório de
+  execução já nasce fora do git.** **RESOLVIDO (2026-08-10).** É a terceira vez
+  nesta spec que uma decisão de escopo fica presa num `FASE-*-EXECUCAO.md`
+  (OQ22 na D.2, OQ24 na D.3), e desta vez o arquivo **nunca esteve versionado**:
+  o passo 2 da própria D.4 manda ignorar `.codeflow/specs/*/artefatos/`. Depois
+  desta fase, a §8 é o único registro durável do pipeline — o que torna esta
+  entrada requisito, não formalidade. Achado IMP-1 da avaliação da tentativa 1.
+
+  **(a) A poda alcançou também os 49 artefatos da própria spec 002, não só os 28
+  da 001.** O passo 1 nomeia apenas `.codeflow/specs/001-*/`, mas o **AC-21 é
+  categórico** ("não há artefatos `FASE-*-EXECUCAO.md`/`-AVALIACAO.md`"), e as
+  OQ22(c) e OQ24(c) migraram decisões da D.2 e da D.3 para cá justificando-se
+  em que "o AC-21 manda a D.4 remover do versionamento" aqueles arquivos — que
+  são da 002. A leitura restrita deixaria o AC-21 falhando por 49 arquivos.
+  **Consequência registrada:** a spec 002 perde o rastro versionado das próprias
+  avaliações; o que precisar sobreviver vem para a §8.
+
+  **(b) O `README.md` foi alterado (uma linha), fora dos "Arquivos alterados" da
+  fase.** Ele dizia *"o dump está em `data/db/`"*, e a fase tirou o dump do
+  versionamento — a frase passaria a ser falsa para quem clona. A D.3 fechou sob
+  o AC-20, que exige que "nenhuma afirmação do README contradiz o estado do
+  repositório". A linha nova aponta para o asset da release. **Consequência:** o
+  README depende agora de a release `v0.7.0` continuar publicada com os assets.
+
+  **(c) Os dois arquivos grandes viraram asset da `v0.7.0`, não de uma tag nova.**
+  `v0.7.0` é a única tag publicada e a OQ22(a) já registrou que o próximo corte
+  será `v0.8.0`. Cortar tag só para hospedar 8,7 MB inventaria uma release sem
+  conteúdo de software. **Consequência:** `dump_alimentos.dump` (1,7 MB) e
+  `alimentos_final.csv` (7,0 MB) são assets de uma tag cuja semântica é "primeira
+  tag publicada"; o procedimento de download está em `data/README.md`.
+
+  **(d) Quatro documentos preservados tiveram links convertidos em menção de
+  texto** — `.codeflow/bugs/001-fluxo-cadastro-refeicao.md:128`,
+  `docs/auditoria/relatorio-preliminar.md:161`,
+  `docs/auditoria/plano-correcao.md:1063` e
+  `.codeflow/bug-batches/bugs-saneamento-v1.md:164` apontavam com link markdown
+  para caminhos que a poda tirou do git, e dois deles são os documentos que o
+  escopo travado da D.4 nomeia como melhor evidência de método. Como o
+  repositório é público desde a D.2, eram quatro 404 na vitrine. O tratamento é
+  o mesmo que os capítulos de auditoria já davam: citar o caminho em `código`, com
+  a nota de que é local. É o achado IMP-3 da tentativa 1, e toca arquivos fora
+  dos "Arquivos alterados" da fase. **Consequência:** nenhum link markdown do
+  repositório aponta para caminho não versionado (varredura na §5 do relatório).
+
+  **(e) O que ficou deliberadamente de fora:** corrigir `docs/architecture.md:109`
+  e `CLAUDE.md:97`, que descrevem a tabela `foods` como "TACO (~307) + Open Food
+  Facts (~19.500)" quando o medido é 228 e 18.195. `CLAUDE.md` é proibido pela
+  constitution universal, e `architecture.md` é um ADR fora do escopo da fase. Em
+  vez de reenunciar a equivalência, o `data/README.md` passou a declarar
+  explicitamente que aqueles dois números **não conferem com a medição** e que a
+  contagem válida é a dele (IMP-2 da tentativa 1). **Consequência:** fica uma
+  imprecisão conhecida em dois documentos, com o desmentido versionado ao lado
+  do dado.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase

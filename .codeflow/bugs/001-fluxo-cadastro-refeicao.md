@@ -124,8 +124,9 @@ Tratado em [`melhorias/004`](../melhorias/004-contexto-de-refeicao.md).
 
 Rodado `backend/scripts/instrument_meal_pipeline.py` contra o pipeline real (Groq
 real + banco real), capturando por item a identificação do Estágio 1, o ranking
-completo do lookup, o motivo de rejeição e o item final. Dump bruto versionado em
-[`bug-batches/artefatos/baseline-antes.json`](../bug-batches/artefatos/baseline-antes.json).
+completo do lookup, o motivo de rejeição e o item final. Dump bruto em
+`.codeflow/bug-batches/artefatos/baseline-antes.json` — local, fora do
+versionamento desde a poda da D.4.
 
 ### Resultado dos pares
 
