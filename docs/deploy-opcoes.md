@@ -31,6 +31,12 @@ confirmá-lo antes de escolher uma máquina de 2 GB.
 tags, `caloria-frontend`, `postgres:16-alpine` 419 MB, `redis` 57 MB, `caddy` 88 MB). **20 GB
 sobra; 40 GB é confortável.**
 
+**Concorrência não é o critério de compra.** Para a ordem de grandeza de usuários simultâneos
+que este projeto tem (2–5), nenhuma máquina de 2 vCPU / 4 GB chega perto de saturar: o
+trabalho pesado da análise de refeição acontece nos servidores da Groq, não neste host. O teto
+real é a **quota do free tier da Groq** — limite diário de 100.000 tokens, do qual a Fase C.7
+mediu uma única rodada de eval consumindo **99.768**. Comprar CPU não move esse teto.
+
 ### O gargalo não é rodar — é buildar
 
 O `cd.yml` faz `docker compose up -d --build` **no servidor**. O `npm ci` + `next build` do
@@ -110,7 +116,35 @@ elimina isso e deixa o KVM 1 como escolha certa.
 R$ 839,76 à vista) e o desconto não vale na renovação — os 24 meses seguintes custam
 R$ 1.439,76. A Hetzner cobra por hora, sem compromisso: ~R$ 576 nos mesmos 24 meses.
 
-### 2.4 PaaS gerenciada (Railway / Render / Fly.io) — mais cara e mais trabalho
+### 2.4 Europeias sem região no Brasil — as mais baratas da lista
+
+Nenhuma tem datacenter no Brasil, então pagam ~200 ms de latência. Em troca, são o menor
+preço por recurso.
+
+| provedor | plano | ~mensal | nota |
+|---|---|---:|---|
+| **Netcup** | 2 vCPU / 2 GB / 64 GB | €3,35 (~R$ 21) | mais barato que presta; **2 GB exige** a estratégia (b) — build no CI |
+| **Contabo** | VPS S: 4 vCPU / 8 GB / 200 GB NVMe | $11,31 (~R$ 61) | melhor preço por GB da lista; DC em Munique, Nuremberg, NY, Seattle, St. Louis, Londres e Singapura |
+| RackNerd | entrada $22,99/**ano** | ~R$ 10 | 512 MB não serve; provedor pequeno, sem SLA — risco alto para uma vitrine |
+
+Antes de fechar com a Netcup, confirmar **taxa de setup** e **período mínimo de contrato**,
+que ela costuma cobrar — é o mesmo tipo de custo escondido da promoção da Hostinger.
+
+### 2.5 Provedores brasileiros — cuidado com a renovação
+
+| provedor | entrada | nota |
+|---|---:|---|
+| Locaweb | R$ 15,90 | 512 MB — **não serve**, a stack precisa de ~1 GB |
+| KingHost | R$ 22,90 | 1 GB — no limite, sem folga |
+| **Hostinger KVM 1** | R$ 34,99 | ver 2.3 |
+| Audaks | R$ 38 | NVMe + vCPU dedicada |
+| Vultr / Linode (Akamai) | ~$24 (R$ 130) para 4 GB | têm região São Paulo, mas custam 4× a Hostinger |
+
+**Padrão do mercado brasileiro:** a renovação sobe de 40% a 100% depois do período
+promocional — a KingHost mais que dobra no segundo ano, a Hostinger sobe ~71%. Comparar
+sempre pelo preço de renovação, não pelo da vitrine.
+
+### 2.6 PaaS gerenciada (Railway / Render / Fly.io) — mais cara e mais trabalho
 
 Todas descartam o `docker-compose.yml`: cada serviço vira uma unidade cobrada, e esta stack
 tem **seis** (postgres, redis, backend, frontend, worker, beat).
@@ -125,7 +159,7 @@ tem **seis** (postgres, redis, backend, frontend, worker, beat).
 Além do custo, migrar para PaaS **contraria o ADR-009**, que acabou de eleger o host único
 como topologia oficial. Exigiria ADR novo.
 
-### 2.5 Split frontend na Vercel + backend em VPS — decisão já aposentada
+### 2.7 Split frontend na Vercel + backend em VPS — decisão já aposentada
 
 É a topologia B que o ADR-009 aposentou em 2026-08-03 (e o deploy órfão do frontend na Vercel
 é a consequência registrada lá). A Vercel hospedaria o Next com SSR de graça e resolveria a
@@ -139,7 +173,9 @@ novo — não é caminho para "simples".
 | opção | custo/mês | latência BR | esforço até a E.4 fechar | risco de sair do ar |
 |---|---:|---|---|---|
 | **Hostinger KVM 1** | R$ 34,99 (2 anos à vista) | **10–40 ms** | médio — build precisa sair do servidor | baixo |
+| Netcup 2 GB | ~R$ 21 | ~200 ms | médio — build **tem** que sair do servidor | baixo |
 | Hetzner CX22 | ~R$ 35–38 (por hora) | ~120–200 ms | **baixo** — guia pronto, compose e CD já servem | baixo |
+| Contabo VPS S | ~R$ 61 | ~180 ms | baixo — 8 GB comportam build no servidor | baixo |
 | Oracle Always Free | R$ 0 | ~180 ms | médio — provisionar ARM, rebuild das imagens | **alto** |
 | Railway / Render / Fly | $10–20+ | varia | **alto** — reescreve a topologia, contraria ADR-009 | médio (Render: dorme) |
 
@@ -152,12 +188,35 @@ Em 4 anos: Hostinger R$ 839,76 + R$ 1.439,76 = **R$ 2.279,52**; Hetzner ~R$ 38 �
 **~R$ 1.824**, *se* não houver novo reajuste — e houve dois em 2026. A trava da Hostinger é
 custo e proteção ao mesmo tempo.
 
-Se o critério virar custo zero acima de tudo, Oracle — sabendo que a demo pode estar fora do
-ar justamente quando importar.
+Alternativas conforme o critério mudar: **Netcup (~R$ 21)** se o peso for preço puro — metade
+do valor, com build no CI virando obrigação em vez de otimização; **Contabo VPS S (~R$ 61)**
+se for hardware por real; **Oracle** se for custo zero acima de tudo, sabendo que a demo pode
+estar fora do ar justamente quando importar.
 
 ---
 
-## 4. Custos que não aparecem no preço da máquina
+## 4. Simplificar o deploy não é escolher outra VPS
+
+Trocar de provedor não muda em nada o `cd.yml`, que hoje é um script SSH com `git pull` +
+`--build` + `sleep 10`. Quem simplifica o deploy é um **PaaS self-hosted instalado sobre a
+VPS**:
+
+| | Dokploy | Coolify |
+|---|---|---|
+| RAM ociosa do painel | ~350 MB | 1,2 GB (mínimo de 2 cores / 2 GB só para o painel) |
+| `docker-compose.yml` | **nativo** — deploya o arquivo como está | suportado, mas **sem zero-downtime** via compose |
+| catálogo / recursos | menor | 280+ serviços de um clique, multi-servidor |
+
+Para este projeto o encaixe é o **Dokploy**: ele roda o `docker-compose.yml` sem embrulhá-lo
+em abstração própria, que é exatamente a topologia que o ADR-009 fixou, e o webhook de deploy
+satisfaz o "merge em `main` publica sozinho" do AC-27 com muito menos script que o `cd.yml`
+atual. Em máquina de 2 GB (Netcup), os 350 MB do painel ainda cabem; o 1,2 GB do Coolify não.
+
+**Ressalva:** adotar qualquer um dos dois é mudança de arquitetura — pede um ADR próprio e
+redefine o escopo da Fase E.4, que hoje declara alterar `cd.yml`, `docs/deploy.md` e
+`README.md`. É decisão de owner, não detalhe de execução.
+
+## 5. Custos que não aparecem no preço da máquina
 
 - **Domínio:** DuckDNS é gratuito e o Caddy tira o HTTPS do Let's Encrypt sozinho — já coberto
   em `docs/deploy.md`. Um `.com.br` no registro.br custa ~R$ 40/ano.
@@ -170,7 +229,7 @@ ar justamente quando importar.
 
 ---
 
-## 5. O que isto não decide
+## 6. O que isto não decide
 
 Nada aqui altera a topologia: o ADR-009 continua valendo, e qualquer das opções 2.1–2.3 sobe
 o mesmo `docker-compose.yml` sem mudança. Escolher provedor é decisão de owner; quando ela
