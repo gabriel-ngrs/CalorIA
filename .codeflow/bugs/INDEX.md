@@ -2,7 +2,7 @@
 versão: 1.0
 status: estável
 atualizado: 2026-08-08
-proximo_numero: 004
+proximo_numero: 005
 ---
 
 # Registro de bugs (ordem cronológica)
@@ -16,6 +16,7 @@ prefixo do arquivo e como campo `id` no frontmatter.
 | 001 | [001-fluxo-cadastro-refeicao.md](001-fluxo-cadastro-refeicao.md) | Cadastro de refeição não-determinístico e impreciso; banco nutricional subutilizado | alto | backend/ai | corrigido | 2026-07-09 |
 | 002 | [002-varredura-saneamento.md](002-varredura-saneamento.md) | Varredura de saneamento: 81 achados de QA manual + auditoria de código | alto | transversal | em-lote | 2026-07-26 |
 | 003 | [003-http-413-no-estrato-de-foto.md](003-http-413-no-estrato-de-foto.md) | Análise por foto quebrada em produção: HTTP 413 por `max_tokens` reservado | alto | backend/ai + frontend | aberto | 2026-08-08 |
+| 004 | [004-servicos-expostos-no-host-em-producao.md](004-servicos-expostos-no-host-em-producao.md) | Compose de produção publica backend e frontend no host, contornando o Caddy | alto | infra/deploy | corrigido | 2026-08-15 |
 
 ## Convenção de enumeração (LER ANTES DE REGISTRAR UM BUG)
 
