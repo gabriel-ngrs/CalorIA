@@ -280,11 +280,15 @@ como nuvem, não VPS.
 | Newark / US East (`nj-us-ping.vultr.com`) | 143 ms |
 | Atlanta (`speedtest.atlanta.linode.com`) | 150 ms |
 | Frankfurt (`fra-de-ping.vultr.com`) | 216 ms |
-| `netcup.com` | **222 ms** |
+| `netcup.com` | 222 ms |
 | `hetzner.com` | 238 ms |
+| **servidor contratado** (`152.53.18.52`, medido em 2026-08-15) | **252 ms** |
 
-O custo de hospedar na Europa é **+160 ms por requisição** frente a São Paulo — as seções
+O custo de hospedar na Europa é **+190 ms por requisição** frente a São Paulo — as seções
 anteriores citavam 10–40 ms para o Brasil com base em artigos; o medido desta conexão é 60 ms.
+
+> O servidor entregue mede **252 ms**, 30 ms acima do que `netcup.com` sugeria. O site
+> institucional não é bom proxy da rede do datacenter; vale a medição direta.
 
 **O que isso significa para este projeto:** a análise de refeição chama a Groq e leva
 **segundos**, então 160 ms ali é ruído. O efeito aparece na navegação — cada carga de página
