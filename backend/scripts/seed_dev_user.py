@@ -1377,7 +1377,7 @@ def main() -> None:
         print(f"  Dias com refeições:  {days}")
         print(f"  Registros de peso:   {weight_reported_days}")
         print(f"  Peso inicial: 84.5 kg  →  final: ~{round(weight, 1)} kg")
-        print(f"\n  Acesse http://localhost:3000 e logue como {conta.email}")
+        print(f"\n  Acesse http://localhost:3010 e logue como {conta.email}")
     print("=" * 55)
 
 

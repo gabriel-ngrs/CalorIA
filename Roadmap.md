@@ -402,7 +402,10 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 - [x] GitHub Actions — CD: deploy automático via SSH ao mergear na `main`
 - [x] Estratégia de branches: `main` (produção), `dev` (integração), `hotfix/*`
 - [x] Documentação do workflow em `docs/git-workflow.md`
-- [ ] Proteção da branch `main` no GitHub (PR obrigatório + CI obrigatório)
+- [x] Proteção da branch `main` no GitHub (PR obrigatório + CI obrigatório) — os dois
+      checks do `ci.yml` são obrigatórios com `strict: true`, `enforce_admins: true`,
+      sem force-push nem deleção. Revisor obrigatório fica de fora por decisão
+      (projeto de um desenvolvedor) — spec 002, OQ22 (c)
 
 ### 9.2 Deploy em Produção
 

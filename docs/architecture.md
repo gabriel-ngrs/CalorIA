@@ -6,47 +6,27 @@ Decisões técnicas e ADRs do projeto CalorIA.
 
 ## Visão Geral
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Canal de entrada                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │    Dashboard Web (Next.js 14)                                │   │
-│  │    JWT próprio · TanStack Query · shadcn/ui · Web Push       │   │
-│  └──────────────────────────────┬───────────────────────────────┘   │
-└─────────────────────────────────┼───────────────────────────────────┘
-                                  │  HTTP REST
-                                  ▼
-┌────────────────────────────────────────────────────────────────────┐
-│  Backend — FastAPI (Python 3.12)                                   │
-│                                                                    │
-│  api/v1/  auth · users · meals · weight · hydration · mood        │
-│           dashboard · ai · reminders · push                       │
-│                                                                    │
-│  services/  UserService · MealService · LogService                │
-│             DashboardService · ProfileService                     │
-│             AuthService · ReminderService · PushService           │
-│             ai/ AIClient (Groq) · MealParser · VisionParser       │
-│                 InsightsGenerator · PatternAnalyzer               │
-│                 FoodLookup (pg_trgm, TACO+OFF ~19.800)           │
-│                 ContextBuilder (histórico + tipo de refeição)     │
-│             nutrition/ TDEE (Harris-Benedict)                     │
-│                                                                    │
-│  workers/  Celery Beat:                                            │
-│    - dispatch_due_reminders (a cada minuto)                       │
-│    - send_hydration_reminders (horários configurados)             │
-│    - send_daily_summaries (22h)                                   │
-│    - send_weekly_reports (domingo 20h)                            │
-│    - cleanup_old_conversations (domingo 3h, >90 dias)            │
-│    - recalculate_tdee (dia 1 de cada mês, 4h)                    │
-└─────────────────────────┬──────────────────────────────────────────┘
-                          │
-              ┌───────────┴──────────┐
-              ▼                      ▼
-     ┌─────────────────┐   ┌──────────────────┐
-     │  PostgreSQL 16  │   │    Redis 7        │
-     │  Dados primários│   │  Cache · Filas   │
-     │  Alembic migrate│   │  JWT blacklist   │
-     └─────────────────┘   └──────────────────┘
+```mermaid
+flowchart TD
+    WEB["Dashboard Web — Next.js 14<br/>JWT próprio · TanStack Query · shadcn/ui · Web Push"]
+
+    WEB -->|HTTP REST| API
+
+    subgraph BACKEND["Backend — FastAPI (Python 3.12)"]
+        API["api/v1/<br/>auth · users · meals · weight · hydration<br/>mood · dashboard · ai · reminders · push"]
+        SERV["services/<br/>UserService · MealService · LogService<br/>DashboardService · ProfileService · AuthService<br/>ReminderService · PushService<br/>nutrition/ TDEE (Harris-Benedict)"]
+        AI["services/ai/<br/>AIClient (Groq) · MealParser · VisionParser<br/>FoodLookup (pg_trgm) · PortionNormalizer<br/>InsightsGenerator · PatternAnalyzer · ContextBuilder"]
+        WORK["workers/ — Celery Beat<br/>lembretes (1 min) · hidratação · resumo diário (22h)<br/>relatório semanal (dom 20h) · limpeza de conversas<br/>recálculo de TDEE (dia 1)"]
+        API --> SERV
+        SERV --> AI
+    end
+
+    AI -->|"identifica alimentos"| GROQ["Groq — Llama 3.3 70B (texto)<br/>modelo de visão (foto)"]
+    SERV --> PG[("PostgreSQL 16<br/>dados primários · foods · Alembic")]
+    AI --> PG
+    WORK --> PG
+    SERV --> REDIS[("Redis 7<br/>cache · filas Celery · blacklist de JWT")]
+    WORK --> REDIS
 ```
 
 ---
@@ -135,7 +115,7 @@ Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.
 - Dados TACO recebem boost 1.40× para prevalecerem sobre Open Food Facts em desempates
 - `MealItem` registra `food_id` (FK→foods) e `data_source` para rastreabilidade
 - Sanity check evita que valores incorretos do Open Food Facts (ex: feijão carioca 40 kcal vs TACO 76 kcal) contaminem resultados
-- Latência de lookup < 20ms com 19.800 registros
+- Latência medida do lookup completo: **44 ms**, depois de a busca virar uma única query com predicados indexáveis (`docs/fluxos/06-lookup-nutricional/fluxo.md`)
 
 ---
 
@@ -147,7 +127,7 @@ Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.
 
 **Consequências:**
 - Classes utilitárias: `.glass`, `.glass-card`, `.glass-neu`, `.neu-raised`, `.neu-inset`, `.glow-primary`
-- Dark mode como padrão (`html.dark` fixo)
+- Dois temas, claro por padrão; a escolha vive em `localStorage` (`caloria-theme`) e é aplicada por script inline antes do primeiro paint, para não piscar
 - Todos os módulos do dashboard seguem o mesmo sistema visual
 
 ---
@@ -163,6 +143,9 @@ Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.
 - Deploy automático sem acesso manual ao servidor
 - Secrets de SSH armazenados no GitHub Environment `production`
 - Ver `docs/git-workflow.md` para o fluxo de branches
+- **Estado atual:** o `ci.yml` roda como descrito; o `cd.yml` está em
+  `workflow_dispatch` e implementa a topologia aposentada — ver as consequências do
+  ADR-009 e a Fase E.4 da spec 002
 
 ---
 

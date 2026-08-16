@@ -6,6 +6,26 @@ O frontend permite registrar refeicoes de duas formas: analisando texto ou foto 
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart TD
+    A[Usuario digita descricao ou envia foto] --> B[POST /ai/analyze-meal ou analyze-photo]
+    B --> C[MealParser ou VisionParser]
+    C --> D[Groq identifica alimentos]
+    D --> E[Busca macros no banco de alimentos]
+    E --> F{Encontrou?}
+    F -->|Sim| G[Escala macros por quantidade]
+    F -->|Nao| H[Groq estima macros]
+    G --> I[Exibe resultado no frontend]
+    H --> I
+    I --> J[Usuario confirma e salva]
+    J --> K[POST /meals]
+    K --> L[(PostgreSQL)]
+```
+
+---
+
 ## 1. Analise de Texto
 
 1. Usuario digita descricao no modal (ex: "200g arroz com frango")

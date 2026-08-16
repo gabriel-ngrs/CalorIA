@@ -161,4 +161,4 @@ Os achados abertos estão agrupados por tema para virarem lotes próprios:
 
 - Bug de origem do trabalho: [`bugs/001-fluxo-cadastro-refeicao.md`](../bugs/001-fluxo-cadastro-refeicao.md)
 - Decisão de limiares: [`decisions/2026-07-26-limiares-lookup-nutricional.md`](../decisions/2026-07-26-limiares-lookup-nutricional.md)
-- Artefatos de medição: [`artefatos/`](artefatos/)
+- Artefatos de medição: `.codeflow/bug-batches/artefatos/` — locais, fora do versionamento desde a poda da D.4

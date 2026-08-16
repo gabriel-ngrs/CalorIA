@@ -6,6 +6,20 @@ O sistema de lembretes permite ao usuario configurar notificacoes recorrentes (r
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart TD
+    A[Celery Beat a cada 60s] --> B[Busca lembretes ativos]
+    B --> C{Hora e dia batem?}
+    C -->|Sim| D[Cria notificacao in-app]
+    D --> E[Envia Web Push via pywebpush]
+    E --> F[Service Worker exibe notificacao]
+    C -->|Nao| G[Pula]
+```
+
+---
+
 ## 1. Criacao de Lembrete
 
 **Via Dashboard:**

@@ -6,6 +6,25 @@ O CalorIA usa JWT (JSON Web Tokens) para autenticacao. O frontend usa NextAuth c
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart LR
+    A[Usuario] -->|email + senha| B[NextAuth]
+    B -->|POST /auth/login| C[FastAPI]
+    C -->|valida bcrypt| D[(PostgreSQL)]
+    D --> C
+    C -->|access + refresh token| B
+    B -->|session JWT| A
+
+    E[Token expirando] -->|POST /auth/refresh| C
+    C -->|novo token| E
+
+    F[Logout] -->|blacklist token| G[(Redis)]
+```
+
+---
+
 ## 1. Login
 
 1. Usuario informa email + senha no frontend (`/login`)

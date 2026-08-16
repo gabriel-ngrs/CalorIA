@@ -6,6 +6,19 @@ O sistema possui um banco de alimentos com dados nutricionais de varias fontes. 
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart LR
+    A[food_name] --> B[Normaliza e gera n-gramas]
+    B --> C[Busca fuzzy pg_trgm]
+    C --> D[(foods)]
+    D --> E[Aplica boost: TACO x1.4]
+    E --> F[Melhor match com macros/100g]
+```
+
+---
+
 ## 1. Pipeline de Busca
 
 1. Recebe `food_name` (ex: "frango grelhado"), ja limpo de preparo irrelevante

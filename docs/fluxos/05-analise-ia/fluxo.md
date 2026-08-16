@@ -13,6 +13,23 @@ Tanto o `MealParser` (texto) quanto o `VisionParser` (foto) seguem os mesmos est
 
 ---
 
+## Diagrama
+
+```mermaid
+flowchart TD
+    A[Texto ou Foto] --> B["Estagio 1: Groq identifica alimentos"]
+    B --> C[Lista de alimentos com quantidades]
+    C --> D["Estagio 2: Busca cada alimento no banco"]
+    D --> E{Encontrou?}
+    E -->|Sim| F[Macros do banco x quantidade/100]
+    E -->|Nao| G[Groq estima macros]
+    F --> H[Correcao Atwater: P*4 + C*4 + G*9]
+    G --> H
+    H --> I[MealAnalysisResponse]
+```
+
+---
+
 ## 1. Estagio 1 — Identificacao (Texto)
 
 1. `MealParser.parse()` recebe descricao + contexto + db

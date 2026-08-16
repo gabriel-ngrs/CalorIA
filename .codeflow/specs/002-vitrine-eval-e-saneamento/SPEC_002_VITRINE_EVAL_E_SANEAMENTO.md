@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-09
+updated_at: 2026-08-10
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001, 003]
@@ -407,8 +407,15 @@ Cada princípio rastreia a uma regra real do repositório.
   `workflow_dispatch` a partir do branch default (ver OQ20).
 - **AC-20** (FR-D3) — *Dado* o README, *quando* lido por alguém que não conhece o
   projeto, *então* ele traz comando único de execução que funciona, portas corretas,
-  link da demo com credenciais de demonstração, diagrama Mermaid renderizável e
+  **a demo com credenciais de demonstração** (hoje a local, com a ausência de
+  instância hospedada declarada no próprio README), diagrama Mermaid renderizável e
   seção de decisões técnicas com números medidos e citados.
+  > **Nota (2026-08-10).** A cláusula "**link** da demo" migrou para o **AC-27**
+  > (E.4). O link exige uma instância publicada, e a OQ16/ADR-009 deixou o deploy
+  > local com a E.4 adiada por decisão de owner — nenhuma ação da D.3 o produz, e
+  > publicar URL inexistente violaria o escopo travado da própria fase ("não
+  > prometer feature inexistente"). Mesmo defeito de modelagem já corrigido no
+  > AC-1 (A.1), no AC-18 (OQ18) e no gate de plataforma da C.7 (OQ20). Ver OQ24.
 - **AC-21** (FR-D4) — *Dado* o repositório podado, *quando* se lista os arquivos
   versionados, *então* não há artefatos `FASE-*-EXECUCAO.md`/`-AVALIACAO.md`, dumps
   brutos nem JSON de baseline; *e* `.codeflow/INDEX.md`, `constitution.md`,
@@ -432,7 +439,9 @@ Cada princípio rastreia a uma regra real do repositório.
   e humor.
 - **AC-27** (FR-E4) — *Dado* um merge em `main`, *quando* o CD executa, *então* o
   deploy ocorre automaticamente e a aplicação responde saudável; e a sincronização
-  antes da migração não depende de `sleep` fixo.
+  antes da migração não depende de `sleep` fixo; *e* o **link da demo publicada
+  entra no README**, ao lado das credenciais que a D.3 já publicou (cláusula
+  recebida do AC-20 pela OQ24 — quem publica a instância é quem pode citá-la).
 
 ## 4. Abordagem técnica
 
@@ -1157,9 +1166,10 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **Passos:**
   1. Reescrever o README com: comando único (`make init`, hoje **não mencionado uma
      única vez** no README, no CONTRIBUTING ou no `docs/setup.md`), portas corretas
-     (o README diz 3000/8000; o `docker-compose.dev.yml` usa 3010/8010), link da
-     demo com credenciais de demonstração, screenshots, diagrama Mermaid inline e
-     seção de decisões técnicas.
+     (o README diz 3000/8000; o `docker-compose.dev.yml` usa 3010/8010), a demo com
+     credenciais de demonstração, screenshots, diagrama Mermaid inline e
+     seção de decisões técnicas. *(O **link** da demo migrou para o AC-27/E.4 pela
+     OQ24: exige instância publicada, que a OQ16/ADR-009 deixou para a E.4.)*
   2. A seção de decisões usa os números medidos e citáveis: a evolução de F1 do
      lookup, a queda de latência, a queda do erro calórico ao excluir `ai_estimated`,
      e o resultado do eval vindo de `evals/runs/history.jsonl`. Cada número com sua
@@ -1367,7 +1377,7 @@ que é telemetria de execução, fica o que é registro de engenharia.
 - **slug:** `deploy-cd`
 - **Objetivo:** fechar o ciclo — merge em `main` volta a publicar sozinho.
 - **Depende de:** `E.2`, `E.3`, `D.2`.
-- **Arquivos alterados:** `.github/workflows/cd.yml`, `docs/deploy.md`.
+- **Arquivos alterados:** `.github/workflows/cd.yml`, `docs/deploy.md`, `README.md`.
 - **Passos:**
   1. Executar o deploy conforme a topologia de E.2.
   2. Reativar o gatilho de `cd.yml:7-8`.
@@ -1378,9 +1388,13 @@ que é telemetria de execução, fica o que é registro de engenharia.
   4. Adicionar ao CD a verificação de que o CI passou, e um caminho de rollback
      documentado.
   5. Atualizar `docs/deploy.md` para descrever o deploy real.
+  6. Publicar no README o **link da demo** que agora existe, ao lado das
+     credenciais que a D.3 já publicou, e remover de lá a linha que declara a
+     ausência de instância hospedada. *(Cláusula recebida do AC-20 pela OQ24.)*
 - **Testes (AC-27):** um merge em `main` dispara o CD, o deploy conclui e a
   aplicação responde saudável; uma falha simulada de migration não deixa o
-  ambiente em estado inconsistente sem aviso.
+  ambiente em estado inconsistente sem aviso; o link publicado no README abre a
+  demo e as credenciais entram.
 - **Escopo travado / violações BLOQUEANTES:** não deployar com o CI vermelho. Não
   colocar segredo em arquivo versionado — usar secrets do GitHub. Não remover o
   `concurrency: production` de `cd.yml:11-13`.
@@ -1749,6 +1763,176 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   Ver `.codeflow/decisions/2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md`
   e `.codeflow/decisions/2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md`.
 
+- **OQ22 — As três decisões de escopo da Fase D.2, que viviam só num artefato que a
+  D.4 apaga.** **RESOLVIDO (2026-08-09).** A D.2 tomou três decisões que o item
+  global da DoD manda registrar aqui ou numa decision, e nenhuma tinha ido para
+  lugar nenhum: elas existiam apenas no `FASE-D.2-release-v070-EXECUCAO.md`, que é
+  exatamente o tipo de arquivo que o **AC-21 manda a D.4 remover do
+  versionamento**. O achado é da avaliação da tentativa 1 (IMP-1). O que motiva o
+  registro não é forma: a tag `v0.7.0` é pública e permanente, e a explicação dela
+  desapareceria na poda. `gera_decision: no` impede o executor de criar decision,
+  não de abrir OQ — caminho já usado pela B.5 (OQ19) e pela C.7 (OQ21).
+
+  **(a) A tag `v0.7.0` cobre mais do que a entrada de 0.7.0 do CHANGELOG promete.**
+  Ela aponta para `defe1dc`, que contém tanto `## [0.7.0] - 2026-05-10` (a migração
+  para Groq) quanto **toda a seção `[Não lançado]`** — as 22 fases desta spec. A
+  alternativa era cortar `v0.8.0`, e o custo foi apresentado ao owner antes da
+  escolha: editar o `CHANGELOG.md` e os quatro arquivos de versão, o que contraria
+  o `Arquivos alterados: nenhum` da própria §5 da D.2 e desfaz a sincronização em
+  `0.7.0` que a **D.1 acabara de fazer e que o AC-18 cobra**. Decisão do owner:
+  manter `v0.7.0`. **Mitigação aplicada e verificável:** as notas do release trazem
+  seção própria — *"Também incluído nesta tag (seção [Não lançado] do CHANGELOG)"* —
+  declarando o conteúdo extra item a item, de modo que o leitor da release não
+  precisa do artefato de execução para entender o que a tag carrega. **Consequência
+  registrada:** o próximo corte de versão deve ser `v0.8.0` com o CHANGELOG
+  fechando `[Não lançado]`, e a `v0.7.0` fica com a semântica de *"primeira tag
+  publicada do projeto"*, não de *"conteúdo da entrada 0.7.0"*.
+
+  **(b) Os passos 3 e 5 da D.2 estão marcados "Ação do owner" e foram executados
+  pelo agente.** Merge do PR #27, configuração da proteção de branch e virada para
+  público. Autorização perguntada e dada explicitamente antes de cada ato; o owner
+  revisou o PR pela descrição e pelo CI verde. A leitura adotada é **funcional** —
+  "ação do owner" designa de quem é a *decisão*, não de quem são as mãos —, e ela
+  vale para esta spec inteira daqui em diante, incluindo o que restar de ação do
+  owner na D.3, D.4 e E.4. **Salvaguarda que acompanha a leitura:** o ato
+  irreversível (privado → público) foi precedido de varredura de segredos sobre
+  todo o histórico, e é essa varredura, não a identidade de quem digita, que
+  protege o repositório.
+
+  **(c) A proteção da `main` não exige revisor, e `enforce_admins` estava desligado
+  — o segundo virou.** O `enforce_admins: false` foi corrigido para **`true`** no
+  rework da tentativa 2, e a justificativa que o sustentava era **falsa**: alegava
+  que a `main` ficaria "inadministrável", quando sem `required_pull_request_reviews`
+  o owner segue abrindo e mergeando o próprio PR com o CI verde — foi o que
+  aconteceu no PR #27. O que `enforce_admins: true` retira é o push direto e o
+  force-push na `main`, que é o objeto da proteção. **O que fica deliberadamente de
+  fora é a revisão obrigatória de PR**, e essa sim é defensável: o Roadmap 9.1 pede
+  "PR obrigatório + CI obrigatório", não revisor obrigatório, e num projeto de um
+  único desenvolvedor a exigência de um segundo aprovador não teria quem a cumprisse.
+  A válvula de escape do owner continua existindo e agora é explícita — desligar a
+  proteção por API é um ato registrado, não uma porosidade permanente.
+
+- **OQ23 — Arquivos tocados pela D.3 além dos seis declarados.**
+  **RESOLVIDO (2026-08-10).** Os "Arquivos alterados" da D.3 listam seis
+  caminhos, mas dois dos quatro passos da própria fase não cabem neles. Quatro
+  extensões, cada uma amarrada ao passo que a exige:
+
+  **(a) Os nove `docs/fluxos/*/fluxo.md` e a remoção dos nove
+  `docs/fluxos/*/diagrama.mermaid`.** É o passo 3 literal — "converter os
+  diagramas de arquivos `.mermaid` soltos para blocos ```` ```mermaid ```` dentro
+  dos `.md`". O bloco só pode nascer dentro do `fluxo.md` de cada pasta; a lista
+  declarada só previa o `docs/fluxos/README.md`, que é o índice. Os arquivos
+  `.mermaid` saem do versionamento porque manter as duas cópias reintroduz a
+  divergência que o passo existe para eliminar. Aproveitando a conversão, três
+  diagramas que ainda diziam **"Gemini"** (04, 05 e 07) passaram a dizer "Groq" —
+  o provedor mudou na v0.7.0.
+
+  **(b) `docs/imagens/` com quatro capturas de tela.** O passo 1 pede
+  "screenshots"; sem arquivo de imagem não há onde apontar. São capturas da conta
+  de demonstração rodando local, feitas por Playwright, com o botão do React Query
+  Devtools escondido por CSS na captura — ele não existe em build de produção.
+
+  **(c) `frontend/components/layout/Sidebar.tsx`.** O rodapé da barra lateral
+  dizia **"V0.1"** enquanto o projeto está em `0.7.0` — a mesma dessincronia que o
+  AC-18 mandou a D.1 corrigir nos quatro arquivos de versão, sobrevivendo num
+  lugar que ninguém tinha olhado. Aparece **dentro das capturas de tela** que a
+  D.3 publica, então publicá-las sem corrigir seria imprimir a afirmação falsa na
+  vitrine. Corrigido removendo o número em vez de atualizá-lo: um rodapé sem
+  versão não dessincroniza de novo.
+
+  **(d) `backend/scripts/seed_dev_user.py`.** A última linha do seed manda
+  "Acesse http://localhost:3000", e o compose de desenvolvimento publica o
+  frontend em **3010** — é a mesma porta errada que o passo 1 manda corrigir no
+  README, na saída do comando que o próprio README manda rodar. Uma linha, sem
+  efeito no teste de coerência README × script da E.3.
+
+  **Consequência registrada:** a fase entrega diagramas renderizáveis no GitHub
+  em todos os fluxos, e o repositório perde os nove `.mermaid` avulsos —
+  quem os abria por caminho direto passa a abrir o `fluxo.md` da pasta.
+
+- **OQ24 — A cláusula "link da demo" do AC-20 depende de uma instância que só a
+  E.4 publica.** **RESOLVIDO (2026-08-10).** O AC-20 pede cinco coisas do README, e
+  uma delas — *"link da demo com credenciais de demonstração"* — **nenhuma ação
+  dentro do escopo da D.3 satisfaz**: não existe instância hospedada, e não existe
+  porque a **OQ16/ADR-009** decidiu host único rodando **local**, com a E.4 adiada
+  por decisão de owner. É o quarto caso do mesmo defeito de modelagem nesta spec —
+  AC-1 → AC-2 (A.1), AC-18 → AC-19 (OQ18), gate de plataforma da C.7 → D.2
+  (OQ20) — e recebe o mesmo tratamento: a cláusula **não some, muda de dono**.
+
+  **(a) Destino.** A cláusula passa a ser cobrada no **AC-27 / Fase E.4**, que é
+  quem publica a aplicação: quando o deploy existir, a URL entra no README pela
+  mesma mão que o produz. Enquanto isso o AC-20 é satisfeito pelo que a D.3
+  controla — as quatro cláusulas restantes mais a **demo local**: `make seed-demo`,
+  credenciais publicadas (`demo@caloria.app` / `CalorIADemo2026!`) e a ausência de
+  URL **declarada em uma linha no próprio README**, não omitida.
+
+  **(b) Por que não inventar um link.** O escopo travado da D.3 nomeia *"não
+  prometer feature inexistente"* como violação BLOQUEANTE. Publicar URL de uma
+  instância que não está no ar seria exatamente isso — e o deploy órfão do frontend
+  na Vercel, que a OQ16 registrou como pendência da E.4, é o exemplo vivo do dano:
+  um link que abre uma tela de login sem API atrás é pior que nenhum link.
+
+  **(c) Por que registrar aqui.** A decisão vivia só no
+  `FASE-D.3-readme-vitrine-EXECUCAO.md`, que é o tipo de arquivo que o **AC-21
+  manda a D.4 remover do versionamento** — depois da poda, a §9 mostraria
+  `[x] D.3 — AC-20` sem nenhuma linha no repositório explicando por que a fase
+  fechou sem link. É o achado IMP-1 da avaliação da tentativa 1, e o mesmo motivo
+  que gerou a OQ22 na D.2.
+
+- **OQ25 — As decisões de escopo da Fase D.4, numa fase em que o relatório de
+  execução já nasce fora do git.** **RESOLVIDO (2026-08-10).** É a terceira vez
+  nesta spec que uma decisão de escopo fica presa num `FASE-*-EXECUCAO.md`
+  (OQ22 na D.2, OQ24 na D.3), e desta vez o arquivo **nunca esteve versionado**:
+  o passo 2 da própria D.4 manda ignorar `.codeflow/specs/*/artefatos/`. Depois
+  desta fase, a §8 é o único registro durável do pipeline — o que torna esta
+  entrada requisito, não formalidade. Achado IMP-1 da avaliação da tentativa 1.
+
+  **(a) A poda alcançou também os 49 artefatos da própria spec 002, não só os 28
+  da 001.** O passo 1 nomeia apenas `.codeflow/specs/001-*/`, mas o **AC-21 é
+  categórico** ("não há artefatos `FASE-*-EXECUCAO.md`/`-AVALIACAO.md`"), e as
+  OQ22(c) e OQ24(c) migraram decisões da D.2 e da D.3 para cá justificando-se
+  em que "o AC-21 manda a D.4 remover do versionamento" aqueles arquivos — que
+  são da 002. A leitura restrita deixaria o AC-21 falhando por 49 arquivos.
+  **Consequência registrada:** a spec 002 perde o rastro versionado das próprias
+  avaliações; o que precisar sobreviver vem para a §8.
+
+  **(b) O `README.md` foi alterado (uma linha), fora dos "Arquivos alterados" da
+  fase.** Ele dizia *"o dump está em `data/db/`"*, e a fase tirou o dump do
+  versionamento — a frase passaria a ser falsa para quem clona. A D.3 fechou sob
+  o AC-20, que exige que "nenhuma afirmação do README contradiz o estado do
+  repositório". A linha nova aponta para o asset da release. **Consequência:** o
+  README depende agora de a release `v0.7.0` continuar publicada com os assets.
+
+  **(c) Os dois arquivos grandes viraram asset da `v0.7.0`, não de uma tag nova.**
+  `v0.7.0` é a única tag publicada e a OQ22(a) já registrou que o próximo corte
+  será `v0.8.0`. Cortar tag só para hospedar 8,7 MB inventaria uma release sem
+  conteúdo de software. **Consequência:** `dump_alimentos.dump` (1,7 MB) e
+  `alimentos_final.csv` (7,0 MB) são assets de uma tag cuja semântica é "primeira
+  tag publicada"; o procedimento de download está em `data/README.md`.
+
+  **(d) Quatro documentos preservados tiveram links convertidos em menção de
+  texto** — `.codeflow/bugs/001-fluxo-cadastro-refeicao.md:128`,
+  `docs/auditoria/relatorio-preliminar.md:161`,
+  `docs/auditoria/plano-correcao.md:1063` e
+  `.codeflow/bug-batches/bugs-saneamento-v1.md:164` apontavam com link markdown
+  para caminhos que a poda tirou do git, e dois deles são os documentos que o
+  escopo travado da D.4 nomeia como melhor evidência de método. Como o
+  repositório é público desde a D.2, eram quatro 404 na vitrine. O tratamento é
+  o mesmo que os capítulos de auditoria já davam: citar o caminho em `código`, com
+  a nota de que é local. É o achado IMP-3 da tentativa 1, e toca arquivos fora
+  dos "Arquivos alterados" da fase. **Consequência:** nenhum link markdown do
+  repositório aponta para caminho não versionado (varredura na §5 do relatório).
+
+  **(e) O que ficou deliberadamente de fora:** corrigir `docs/architecture.md:109`
+  e `CLAUDE.md:97`, que descrevem a tabela `foods` como "TACO (~307) + Open Food
+  Facts (~19.500)" quando o medido é 228 e 18.195. `CLAUDE.md` é proibido pela
+  constitution universal, e `architecture.md` é um ADR fora do escopo da fase. Em
+  vez de reenunciar a equivalência, o `data/README.md` passou a declarar
+  explicitamente que aqueles dois números **não conferem com a medição** e que a
+  contagem válida é a dele (IMP-2 da tentativa 1). **Consequência:** fica uma
+  imprecisão conhecida em dois documentos, com o desmentido versionado ao lado
+  do dado.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1756,8 +1940,8 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 > `[x]` = fase **concluída** pela regra do ARTIFACTS_SPEC §2.11.3: existe
 > `FASE-<id>-*-AVALIACAO.md` com `veredito: APROVADO` na mesma `tentativa` do
 > EXECUCAO. Não é marcação a olho — deriva dos artefatos. Sincronizado em
-> 2026-08-09: 22 das 26 fases concluídas; abertas D.2, D.3, D.4 e E.4, nenhuma
-> com execução registrada.
+> 2026-08-10: 24 das 26 fases concluídas; abertas D.4 e E.4, nenhuma com
+> execução registrada.
 
 - [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
       a credencial; `make test-frontend` verde. *(Encerrada por aceite do owner em
@@ -1796,16 +1980,25 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [x] **D.1** — AC-18 (description, topics, `LICENSE` versionado e versão
       sincronizada). A detecção de licença pela API migrou para o AC-19, que é
       da D.2 — ver OQ18.
-- [ ] **D.2** — AC-19 (incl. licença detectada pela API); proteção de `main`
-      configurada. *(Executada por último, por decisão do owner — OQ15.)*
-- [ ] **D.3** — AC-20; execução limpa a partir do README validada.
+- [x] **D.2** — AC-19 (incl. licença detectada pela API); proteção de `main`
+      configurada. *(Executada por último, por decisão do owner — OQ15. Aprovada na
+      tentativa 2: a tentativa 1 fechou com RESSALVAS por duas decisões de escopo sem
+      registro durável e por `enforce_admins: false`, corrigidos com a OQ22 e com
+      `enforce_admins: true`.)*
+- [x] **D.3** — AC-20; execução limpa a partir do README validada. *(A cláusula
+      "link da demo" migrou para o AC-27/E.4 pela OQ24 — a D.3 entrega a demo
+      local com credenciais e declara no README que não há instância hospedada.
+      Aprovada na tentativa 2: a tentativa 1 fechou com RESSALVAS por essa decisão
+      de escopo sem registro durável e por o README atribuir `ruff format --check`
+      ao CI, corrigidos com a OQ24 e com a separação das duas linhas na esteira.)*
 - [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
 - [x] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
 - [x] **D.6** — AC-23.
 - [x] **E.1** — AC-24.
 - [x] **E.2** — AC-25; ADR-009 escrito; owner confirmou a topologia.
 - [x] **E.3** — AC-26.
-- [ ] **E.4** — AC-27; deploy automático verificado ponta a ponta.
+- [ ] **E.4** — AC-27; deploy automático verificado ponta a ponta; **link da demo
+      publicada no README** (cláusula recebida do AC-20 pela OQ24).
 
 ### Itens globais transversais
 

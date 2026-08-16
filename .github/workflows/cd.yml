@@ -1,12 +1,11 @@
 name: CD — Deploy em Produção
 
-# Deploy manual por decisão explícita, não por pendência de conserto: a topologia de
-# produção ainda não foi decidida (spec 002, Fase E.2). A reativação do gatilho
-# automático abaixo é responsabilidade da Fase E.4, junto com a troca do `sleep 10`
-# por espera baseada em healthcheck.
-#   push:
-#     branches: [main]
+# Deploy automático a cada merge em `main`, na topologia de host único do ADR-009
+# (`docker-compose.yml` + `Caddyfile`). O `workflow_dispatch` fica ao lado do
+# gatilho automático para permitir redeploy manual e rollback sem novo commit.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 # Garante que apenas um deploy rode por vez
@@ -15,8 +14,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Portão: só deploya o que o CI aprovou.
+  #
+  # O `ci.yml` roda em `pull_request` para main, não em `push`, então a conclusão
+  # fica associada ao head do PR e não ao commit de merge. Este job procura nos
+  # dois lugares, nessa ordem, e falha se não encontrar aprovação em nenhum.
+  # ---------------------------------------------------------------------------
+  verificar-ci:
+    name: Confirma que o CI passou
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: read
+    steps:
+      - name: Checar conclusão do CI para o commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          conclusoes() {
+            gh api "repos/$REPO/commits/$1/check-runs" \
+              --jq '[.check_runs[] | select(.name | test("backend|frontend"; "i"))]
+                    | map(.conclusion) | join(",")' 2>/dev/null || true
+          }
+
+          CONC="$(conclusoes "$SHA")"
+
+          if [ -z "$CONC" ]; then
+            echo "Sem check-runs no commit de merge; procurando o PR de origem..."
+            PR="$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty' 2>/dev/null || true)"
+            if [ -n "$PR" ]; then
+              HEAD_SHA="$(gh api "repos/$REPO/pulls/$PR" --jq '.head.sha')"
+              echo "PR #$PR, head $HEAD_SHA"
+              CONC="$(conclusoes "$HEAD_SHA")"
+            fi
+          fi
+
+          echo "Conclusões do CI: ${CONC:-nenhuma}"
+
+          case ",${CONC}," in
+            ,,)                 echo "::error::Nenhuma execução de CI encontrada para este commit — deploy abortado."; exit 1 ;;
+            *failure*|*cancelled*|*timed_out*|*action_required*)
+                                echo "::error::CI não passou (${CONC}) — deploy abortado."; exit 1 ;;
+          esac
+
+          echo "CI aprovado. Liberando o deploy."
+
   deploy:
     name: Deploy no servidor
+    needs: verificar-ci
     runs-on: ubuntu-latest
     environment: production
 
@@ -31,38 +82,87 @@ jobs:
             set -e
             cd /opt/caloria
 
-            echo "==> Atualizando código..."
-            git pull origin main
+            echo "==> Sincronizando com origin/main..."
+            # Determinístico: o servidor fica exatamente no estado de origin/main,
+            # independente da branch em que estivesse. `.env`, `secrets/` e os
+            # dumps são ignorados pelo git, então o reset não os toca.
+            git fetch --prune origin
+            git checkout -f main 2>/dev/null || git checkout -f -b main origin/main
+            git reset --hard origin/main
+            echo "    commit: $(git rev-parse --short HEAD)"
 
-            echo "==> Subindo containers..."
-            docker compose -f docker-compose.backend.yml up -d --build
+            echo "==> Subindo containers (docker-compose.yml — ADR-009)..."
+            docker compose -f docker-compose.yml up -d --build
 
-            echo "==> Aguardando backend inicializar..."
-            sleep 10
+            echo "==> Aguardando o banco aceitar conexões..."
+            # Substitui o antigo `sleep 10`: espera por prontidão real, com teto.
+            # Modelado no alvo `_wait-for-backend` do Makefile.
+            restante=120
+            until docker exec caloria_postgres pg_isready -U caloria -d caloria_db >/dev/null 2>&1; do
+              if [ "$restante" -le 0 ]; then
+                echo "::error::Postgres não ficou pronto em 120s. Deploy abortado antes da migração."
+                exit 1
+              fi
+              sleep 3; restante=$((restante - 3))
+            done
+            echo "    postgres pronto"
 
             echo "==> Rodando migrações..."
             docker exec caloria_backend alembic upgrade head
 
+            echo "==> Verificando a saúde do backend..."
+            restante=90
+            until curl -sf http://127.0.0.1:8000/health >/dev/null 2>&1; do
+              if [ "$restante" -le 0 ]; then
+                echo "::error::Backend não respondeu ao /health em 90s. Verifique: docker compose logs backend"
+                exit 1
+              fi
+              sleep 3; restante=$((restante - 3))
+            done
+            echo "    backend saudável"
+
             echo "==> Limpando imagens antigas..."
             docker image prune -f
 
-            echo "==> Deploy concluído."
+            echo "==> Deploy concluído em $(git rev-parse --short HEAD)."
 
 # ─────────────────────────────────────────────────────────────────────
-# CONFIGURAÇÃO NECESSÁRIA (fazer uma vez, antes do primeiro deploy):
+# ROLLBACK
 #
-# 1. No GitHub → Settings → Environments → criar "production"
+# O deploy é sempre `origin/main` inteiro, então voltar é mover a `main` e
+# deixar este workflow rodar de novo. Duas rotas, da mais segura para a mais
+# rápida:
 #
-# 2. Adicionar os Secrets no environment "production":
-#    SERVER_HOST  → IP do servidor (ex: 49.12.123.45)
-#    SERVER_USER  → usuário SSH (ex: root)
-#    SERVER_SSH_KEY → conteúdo da chave privada SSH (~/.ssh/id_ed25519)
+# 1. REVERTER PELO GIT (preferida — mantém o histórico auditável)
+#      git revert --no-edit <sha-ruim>
+#      git push origin main
+#    O push dispara este CD, que redeploya o estado revertido.
 #
-# 3. No servidor, garantir que /opt/caloria existe e o repo está clonado:
-#    git clone -b main https://github.com/SEU_USUARIO/CalorIA.git /opt/caloria
-#    cp .env.production.example .env && nano .env   # preencher variáveis
-#    docker compose up -d --build
-#    docker exec caloria_backend alembic upgrade head
+# 2. REDEPLOY MANUAL DE UM COMMIT ANTERIOR (quando a `main` já está correta e
+#    o servidor é que ficou em estado ruim)
+#      Actions → "CD — Deploy em Produção" → Run workflow
+#    O `workflow_dispatch` acima existe para isso.
 #
-# Depois disso, todo push na main faz deploy automático.
+# 3. NO SERVIDOR, EM EMERGÊNCIA (sem esperar o CI)
+#      cd /opt/caloria
+#      git reset --hard <sha-bom>
+#      docker compose -f docker-compose.yml up -d --build
+#    Deixa o servidor divergente de `main` — corrija a `main` em seguida.
+#
+# MIGRAÇÕES NÃO SÃO REVERTIDAS AUTOMATICAMENTE. Se o commit ruim trouxe uma
+# migration, reverter o código não desfaz o schema:
+#      docker exec caloria_backend alembic downgrade -1
+# Rode o downgrade ANTES de redeployar a versão anterior, e confira o
+# `alembic history` para saber quantos passos voltar.
+#
+# ─────────────────────────────────────────────────────────────────────
+# CONFIGURAÇÃO (uma vez, já feita em 2026-08-16)
+#
+# Secrets do environment "production":
+#   SERVER_HOST     → 152.53.18.52
+#   SERVER_USER     → root
+#   SERVER_SSH_KEY  → chave privada SSH com acesso ao servidor
+#
+# No servidor: /opt/caloria com o repo clonado, `.env` preenchido e
+# `secrets/vapid_private.pem` presente. Procedimento em docs/deploy.md.
 # ─────────────────────────────────────────────────────────────────────
