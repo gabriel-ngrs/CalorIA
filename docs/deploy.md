@@ -1,19 +1,30 @@
 # Deploy — CalorIA em host único
 
-Guia completo para hospedar o CalorIA em produção: um servidor com Docker Compose + Caddy (HTTPS automático). O provedor usado como exemplo é a Hetzner Cloud, mas qualquer VPS com Docker serve.
+Guia para hospedar o CalorIA em produção: um servidor com Docker Compose + Caddy (HTTPS automático). Qualquer VPS com Docker serve; as partes 1 a 12 usam a Hetzner como exemplo de provedor e continuam válidas para qualquer um.
 
 **Topologia:** host único — Postgres, Redis, backend, frontend, workers e proxy no mesmo lugar, via `docker-compose.yml` + `Caddyfile`. Ver **ADR-009** em `docs/architecture.md`.
 
-**Custo:** ~€3.92/mês (≈ R$22) no exemplo da Hetzner
 **Tempo estimado:** 30–45 minutos na primeira vez
 
-> **Estado em 2026-08-03 — não há servidor no ar.**
-> O deploy anterior saiu do ar: a Fase E.1 mediu que o host que a versão antiga deste
-> guia citava não resolve mais nem em DNS. Por decisão do owner, o projeto **roda
-> localmente** por enquanto (`docker compose up -d --build` na raiz, mesmo arquivo),
-> e uma VPS entra no futuro. Este guia é o procedimento para quando isso acontecer —
-> não a descrição de algo que está funcionando agora.
->
+## Instância em produção
+
+Publicada em **2026-08-16** pela Fase E.4. O que está no ar hoje:
+
+| item | valor |
+|---|---|
+| URL | **https://caloria-app.duckdns.org** |
+| Provedor | netcup — VPS Lite 1 G12s (2 vCore, 4 GB RAM, 80 GB SSD), datacenter em Viena |
+| Custo | €4,10/mês (VPS + IPv4), sem taxa de setup |
+| Diretório | `/opt/caloria` |
+| Acesso | SSH **só por chave** — senha e login de root por senha desabilitados |
+| Endurecimento | `ufw` liberando apenas 22, 80 e 443 · `fail2ban` · `unattended-upgrades` · swap de 2 GB |
+| TLS | Let's Encrypt, renovado sozinho pelo Caddy |
+| Deploy | automático a cada merge em `main` (`.github/workflows/cd.yml`) |
+| Latência medida do Brasil | ~252 ms |
+
+A escolha do provedor, com comparativo medido de dez alternativas, está em
+[`deploy-opcoes.md`](deploy-opcoes.md).
+
 > Onde você ler `caloria.exemplo.com`, troque pelo seu domínio.
 
 ---
@@ -336,16 +347,29 @@ ls -lh /opt/caloria/backup_*.sql
 
 ## Fluxo de desenvolvimento → produção
 
-Com CI/CD ativo, o deploy acontece **automaticamente** ao mergear na `main`.
+O deploy acontece **automaticamente** ao mergear na `main`.
 
 ```
-dev  →  PR para main  →  CI passa  →  merge  →  CD faz deploy automático
+dev  →  PR para main  →  CI passa  →  merge  →  CD verifica o CI  →  deploy
 ```
 
-Você não precisa fazer mais nada no servidor. O GitHub Actions cuida do:
-1. `git pull origin main`
-2. `docker compose up -d --build`
-3. `docker exec caloria_backend alembic upgrade head`
+Você não precisa fazer nada no servidor. O `.github/workflows/cd.yml` executa, nesta ordem:
+
+1. **Portão de CI** — job `verificar-ci`: consulta os check-runs do commit e, se o CI
+   tiver rodado no PR de origem (que é o caso, porque o `ci.yml` dispara em
+   `pull_request`), consulta os do head do PR. Sem aprovação, o deploy nem começa.
+2. `git fetch` + `checkout -f main` + `reset --hard origin/main` — deixa o servidor
+   exatamente no estado de `origin/main`, independente de como estivesse. `.env`,
+   `secrets/` e os dumps são ignorados pelo git e não são tocados.
+3. `docker compose -f docker-compose.yml up -d --build`
+4. **Espera o Postgres aceitar conexões** (`pg_isready`, teto de 120s) — não há
+   `sleep` fixo; se o banco não subir, o deploy aborta **antes** da migração, em vez
+   de falhar no meio dela.
+5. `alembic upgrade head`
+6. **Verifica o `/health` do backend** (teto de 90s) e falha o job se não responder.
+7. `docker image prune -f`
+
+O `concurrency: production` garante que dois deploys nunca se atropelem.
 
 Ver [`docs/git-workflow.md`](git-workflow.md) para a estratégia completa de branches.
 
@@ -353,10 +377,45 @@ Ver [`docs/git-workflow.md`](git-workflow.md) para a estratégia completa de bra
 
 ```bash
 cd /opt/caloria
-git pull origin main
-docker compose up -d --build
+git fetch origin && git reset --hard origin/main
+docker compose -f docker-compose.yml up -d --build
 docker exec caloria_backend alembic upgrade head
 ```
+
+---
+
+## Rollback
+
+O deploy é sempre `origin/main` por inteiro, então voltar significa mover a `main` e
+deixar o CD rodar de novo. Três rotas, da mais segura para a mais rápida:
+
+**1. Reverter pelo git (preferida).** Mantém o histórico auditável e passa pelo CI.
+
+```bash
+git revert --no-edit <sha-ruim>
+git push origin main      # o push dispara o CD, que redeploya o estado revertido
+```
+
+**2. Redeploy manual.** Quando a `main` já está correta e o problema foi no servidor:
+*Actions → "CD — Deploy em Produção" → Run workflow*. O `workflow_dispatch` existe
+para isso.
+
+**3. Direto no servidor, em emergência.** Não passa pelo CI e deixa o servidor
+divergente de `main` — corrija a `main` logo em seguida:
+
+```bash
+cd /opt/caloria
+git reset --hard <sha-bom>
+docker compose -f docker-compose.yml up -d --build
+```
+
+> **Migrações não voltam sozinhas.** Reverter o código não desfaz o schema. Se o
+> commit ruim trouxe uma migration, rode o downgrade **antes** de redeployar a versão
+> anterior:
+> ```bash
+> docker exec caloria_backend alembic history      # quantos passos voltar
+> docker exec caloria_backend alembic downgrade -1
+> ```
 
 ---
 

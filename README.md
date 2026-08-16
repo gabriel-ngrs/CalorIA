@@ -37,24 +37,27 @@ Duas coisas dependem de você depois do primeiro `make init`:
 
 ## Conta de demonstração
 
-Para ver o dashboard com 30 dias de dados sem registrar nada à mão:
+**Instância pública: [caloria-app.duckdns.org](https://caloria-app.duckdns.org)** — dashboard com 30 dias de dados, sem instalar nada.
+
+| Campo | Valor |
+|---|---|
+| URL | **https://caloria-app.duckdns.org** |
+| E-mail | `demo@caloria.app` |
+| Senha | `CalorIADemo2026!` |
+
+Para rodar a mesma demo localmente, com o projeto já de pé:
 
 ```bash
 make seed-demo
 ```
 
-| Campo | Valor |
-|---|---|
-| E-mail | `demo@caloria.app` |
-| Senha | `CalorIADemo2026!` |
-
 A conta traz refeições, evolução de peso, hidratação e humor dos últimos 30 dias.
 
 **Estas credenciais são públicas de propósito.** Elas abrem **apenas** esta conta, que carrega dados sintéticos, não tem privilégio administrativo e não enxerga dados de nenhum outro usuário — a API deriva o `user_id` do token em toda rota autenticada. Não são reusadas em serviço nenhum.
 
-**Reset.** `make seed-demo` é idempotente e é também o comando de reset: rodá-lo de novo devolve a conta ao estado publicado e apaga o que um visitante tenha registrado.
+**Reset.** `make seed-demo` é idempotente e é também o comando de reset: rodá-lo de novo devolve a conta ao estado publicado e apaga o que um visitante tenha registrado. Na instância hospedada o reset ainda é manual — o script depende de um driver que não vem na imagem de produção, defeito rastreado em `.codeflow/bugs/005-seed-demo-nao-roda-em-producao.md`.
 
-**Ainda não há demo hospedada.** A topologia oficial é host único e hoje roda localmente (ADR-009); publicar a instância é a Fase E.4 do plano em `.codeflow/specs/`. Enquanto isso, a demo é a de cima — local, em três comandos.
+**Onde ela roda.** Host único self-hosted (ADR-009), numa VPS de 2 vCore e 4 GB: Postgres, Redis, backend, frontend, os dois workers Celery e o Caddy no mesmo lugar, subindo do mesmo `docker-compose.yml` que você roda na sua máquina. HTTPS por Let's Encrypt, deploy automático a cada merge em `main`. O procedimento completo está em [`docs/deploy.md`](docs/deploy.md).
 
 ---
 
