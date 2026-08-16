@@ -1933,6 +1933,33 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
   imprecisão conhecida em dois documentos, com o desmentido versionado ao lado
   do dado.
 
+- **OQ26 — Duas pendências que a E.4 herdou do ADR-009 e que ficariam sem dono, por
+  ela ser a última fase da spec.** **RESOLVIDO (2026-08-16).** É a quinta vez que uma
+  cláusula precisa de herdeiro (OQ21, OQ22, OQ24, OQ25), e desta vez o agravante é
+  terminal: depois da E.4 não há fase seguinte para receber nada. Achado IMP-2 da
+  avaliação da tentativa 1.
+
+  **(a) O frontend órfão na Vercel.** O ADR-009 registrou, nas Consequências, que
+  retirá-lo ou reapontá-lo é "ação do owner, registrada como pendência na Fase E.4".
+  A E.4 **não a executou** — é ação no painel da Vercel, fora do repositório. Medido
+  em 2026-08-16: `https://frontend-nine-mu-59.vercel.app/` responde **HTTP 200** com
+  build de abril, apontando `NEXT_PUBLIC_API_URL` para `caloria-gabriel.duckdns.org`,
+  que **não resolve**. Com a instância oficial no ar desde a mesma data, o projeto
+  passou a ter **dois endereços públicos**, e um deles serve login quebrado — o
+  exemplo que a própria OQ24 usou para justificar não publicar link inexistente
+  ("um link que abre uma tela de login sem API atrás é pior que nenhum link").
+  **Destino nomeado:** `.codeflow/bugs/006-frontend-orfao-na-vercel.md`, com as duas
+  saídas possíveis (remover o projeto — preferida — ou reapontar as variáveis).
+  Nenhuma exige mudança de código.
+
+  **(b) O par legado `docker-compose.backend.yml` + `Caddyfile.backend`.** O ADR-009
+  condicionou a remoção deles a "**depois** que a E.4 corrigir essa referência", e a
+  E.4 corrigiu — o `cd.yml` agora usa `docker-compose.yml`. Só que a poda (D.4) já
+  tinha rodado antes, então os dois arquivos ficaram no repositório sem nada que os
+  aponte. **Consequência registrada:** são código morto declarado, com cabeçalho de
+  legado, seguros de remover a qualquer momento; a remoção não pertence a nenhuma
+  fase desta spec e fica para a próxima poda ou para uma spec futura.
+
 ## 9. Definition of Done (gate por etapa)
 
 ### Gate por fase
@@ -1940,8 +1967,8 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 > `[x]` = fase **concluída** pela regra do ARTIFACTS_SPEC §2.11.3: existe
 > `FASE-<id>-*-AVALIACAO.md` com `veredito: APROVADO` na mesma `tentativa` do
 > EXECUCAO. Não é marcação a olho — deriva dos artefatos. Sincronizado em
-> 2026-08-10: 24 das 26 fases concluídas; abertas D.4 e E.4, nenhuma com
-> execução registrada.
+> 2026-08-16: **25 das 26 fases concluídas**; aberta apenas a E.4, executada e em
+> rework na tentativa 2.
 
 - [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
       a credencial; `make test-frontend` verde. *(Encerrada por aceite do owner em
@@ -1991,7 +2018,9 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
       Aprovada na tentativa 2: a tentativa 1 fechou com RESSALVAS por essa decisão
       de escopo sem registro durável e por o README atribuir `ruff format --check`
       ao CI, corrigidos com a OQ24 e com a separação das duas linhas na esteira.)*
-- [ ] **D.4** — AC-21; framework `.codeflow` operando após a poda.
+- [x] **D.4** — AC-21; framework `.codeflow` operando após a poda. *(Aprovada na
+      tentativa 2, score 9,9. A marcação estava desatualizada e foi corrigida no
+      rework da E.4, com a divergência confirmada pelo avaliador da E.4.)*
 - [x] **D.5** — AC-22; `npm run build` sem warning de `metadataBase`.
 - [x] **D.6** — AC-23.
 - [x] **E.1** — AC-24.

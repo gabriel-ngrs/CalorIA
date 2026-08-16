@@ -387,21 +387,31 @@ docker exec caloria_backend alembic upgrade head
 ## Rollback
 
 O deploy é sempre `origin/main` por inteiro, então voltar significa mover a `main` e
-deixar o CD rodar de novo. Três rotas, da mais segura para a mais rápida:
+deixar o CD rodar de novo.
 
-**1. Reverter pelo git (preferida).** Mantém o histórico auditável e passa pelo CI.
+> **`git push origin main` não funciona — e é de propósito.** A `main` é protegida com
+> `required_status_checks` (`strict: true`) e `enforce_admins: true`, instalados pela
+> Fase D.2. Como o `ci.yml` dispara em `push:[dev]` e `pull_request:[main]`, e **nunca
+> em `push` para `main`**, um push direto é rejeitado e os contextos exigidos jamais
+> reportam. **Toda volta passa por PR.**
+
+**1. Reverter por PR (preferida).** Auditável e validada pelo CI.
 
 ```bash
+git checkout dev && git pull
 git revert --no-edit <sha-ruim>
-git push origin main      # o push dispara o CD, que redeploya o estado revertido
+git push origin dev
+gh pr create --base main --head dev --title "revert: <o quê>"
+# CI verde → merge → o CD redeploya o estado revertido
 ```
 
 **2. Redeploy manual.** Quando a `main` já está correta e o problema foi no servidor:
 *Actions → "CD — Deploy em Produção" → Run workflow*. O `workflow_dispatch` existe
 para isso.
 
-**3. Direto no servidor, em emergência.** Não passa pelo CI e deixa o servidor
-divergente de `main` — corrija a `main` logo em seguida:
+**3. Direto no servidor, em emergência.** Não passa pelo CI; use quando o site está
+fora e cada minuto conta. Deixa o servidor divergente de `main` — corrija a `main` pela
+rota 1 em seguida, senão o próximo deploy automático traz o defeito de volta:
 
 ```bash
 cd /opt/caloria
@@ -409,13 +419,20 @@ git reset --hard <sha-bom>
 docker compose -f docker-compose.yml up -d --build
 ```
 
-> **Migrações não voltam sozinhas.** Reverter o código não desfaz o schema. Se o
-> commit ruim trouxe uma migration, rode o downgrade **antes** de redeployar a versão
-> anterior:
-> ```bash
-> docker exec caloria_backend alembic history      # quantos passos voltar
-> docker exec caloria_backend alembic downgrade -1
-> ```
+### Quando a migração falha
+
+O passo de migração do CD **falha alto**: imprime `::error::` dizendo que os containers
+estão no ar com o código novo e o schema antigo, imprime a revisão aplicada
+(`alembic current`) e aborta o job. O ambiente fica inconsistente — mas nunca em
+silêncio, e você sabe de qual revisão partir.
+
+```bash
+docker exec caloria_backend alembic history      # quantos passos voltar
+docker exec caloria_backend alembic downgrade -1
+```
+
+**Rode o downgrade antes de redeployar a versão anterior.** Reverter o código não
+desfaz o schema.
 
 ---
 

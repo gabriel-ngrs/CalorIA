@@ -37,33 +37,42 @@ jobs:
         run: |
           set -euo pipefail
 
-          conclusoes() {
+          # Devolve os check-runs relevantes como JSON, com status E conclusão.
+          # Olhar só a conclusão não basta: um check ainda rodando tem
+          # `conclusion: null`, e tratar isso como "não reprovou" abriria o portão
+          # para um CI pendente.
+          checks() {
             gh api "repos/$REPO/commits/$1/check-runs" \
-              --jq '[.check_runs[] | select(.name | test("backend|frontend"; "i"))]
-                    | map(.conclusion) | join(",")' 2>/dev/null || true
+              --jq '[.check_runs[] | select(.name | test("backend|frontend"; "i"))
+                     | {name, status, conclusion}]' 2>/dev/null || echo '[]'
           }
 
-          CONC="$(conclusoes "$SHA")"
+          RUNS="$(checks "$SHA")"
 
-          if [ -z "$CONC" ]; then
+          if [ "$(echo "$RUNS" | jq 'length')" -eq 0 ]; then
             echo "Sem check-runs no commit de merge; procurando o PR de origem..."
             PR="$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty' 2>/dev/null || true)"
             if [ -n "$PR" ]; then
               HEAD_SHA="$(gh api "repos/$REPO/pulls/$PR" --jq '.head.sha')"
               echo "PR #$PR, head $HEAD_SHA"
-              CONC="$(conclusoes "$HEAD_SHA")"
+              RUNS="$(checks "$HEAD_SHA")"
             fi
           fi
 
-          echo "Conclusões do CI: ${CONC:-nenhuma}"
+          echo "$RUNS" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion // "—")"'
 
-          case ",${CONC}," in
-            ,,)                 echo "::error::Nenhuma execução de CI encontrada para este commit — deploy abortado."; exit 1 ;;
-            *failure*|*cancelled*|*timed_out*|*action_required*)
-                                echo "::error::CI não passou (${CONC}) — deploy abortado."; exit 1 ;;
+          VEREDITO="$(echo "$RUNS" | jq -r '
+            if   length == 0                  then "vazio"
+            elif any(.status != "completed")  then "pendente"
+            elif all(.conclusion == "success") then "ok"
+            else "reprovado" end')"
+
+          case "$VEREDITO" in
+            ok)        echo "CI aprovado. Liberando o deploy." ;;
+            vazio)     echo "::error::Nenhuma execução de CI encontrada para este commit — deploy abortado."; exit 1 ;;
+            pendente)  echo "::error::CI ainda em execução — deploy abortado. Reexecute quando os checks concluírem."; exit 1 ;;
+            *)         echo "::error::CI não passou — deploy abortado."; exit 1 ;;
           esac
-
-          echo "CI aprovado. Liberando o deploy."
 
   deploy:
     name: Deploy no servidor
@@ -96,9 +105,12 @@ jobs:
 
             echo "==> Aguardando o banco aceitar conexões..."
             # Substitui o antigo `sleep 10`: espera por prontidão real, com teto.
-            # Modelado no alvo `_wait-for-backend` do Makefile.
+            # Modelado no alvo `_wait-for-backend` do Makefile. Usuário e banco vêm
+            # do .env do servidor — não são fixados aqui.
+            PGUSER="$(grep -E '^POSTGRES_USER=' .env | cut -d= -f2- || echo caloria)"
+            PGDB="$(grep -E '^POSTGRES_DB=' .env | cut -d= -f2- || echo caloria_db)"
             restante=120
-            until docker exec caloria_postgres pg_isready -U caloria -d caloria_db >/dev/null 2>&1; do
+            until docker exec caloria_postgres pg_isready -U "$PGUSER" -d "$PGDB" >/dev/null 2>&1; do
               if [ "$restante" -le 0 ]; then
                 echo "::error::Postgres não ficou pronto em 120s. Deploy abortado antes da migração."
                 exit 1
@@ -108,7 +120,17 @@ jobs:
             echo "    postgres pronto"
 
             echo "==> Rodando migrações..."
-            docker exec caloria_backend alembic upgrade head
+            # Falha de migration não pode passar silenciosa: neste ponto os
+            # containers já estão no ar com o código novo, e um schema antigo é
+            # estado inconsistente. O `set -e` abortaria, mas sem dizer o que ficou
+            # inconsistente nem por onde sair.
+            if ! docker exec caloria_backend alembic upgrade head; then
+              echo "::error::Migração FALHOU. Os containers estão no ar com o código novo e o schema ANTIGO — ambiente inconsistente."
+              echo "Revisão de schema atualmente aplicada:"
+              docker exec caloria_backend alembic current 2>&1 || true
+              echo "Saída documentada: seção 'Rollback' de docs/deploy.md — o downgrade precede o redeploy."
+              exit 1
+            fi
 
             echo "==> Verificando a saúde do backend..."
             restante=90
@@ -130,38 +152,44 @@ jobs:
 # ROLLBACK
 #
 # O deploy é sempre `origin/main` inteiro, então voltar é mover a `main` e
-# deixar este workflow rodar de novo. Duas rotas, da mais segura para a mais
-# rápida:
+# deixar este workflow rodar de novo.
 #
-# 1. REVERTER PELO GIT (preferida — mantém o histórico auditável)
+# ATENÇÃO: `git push origin main` NÃO funciona. A `main` é protegida com
+# `required_status_checks` (strict) e `enforce_admins: true`, e o `ci.yml` roda
+# em `push:[dev]` e `pull_request:[main]` — nunca em `push` para `main`. Um push
+# direto é rejeitado e os contextos exigidos nunca reportam. Toda volta passa
+# por PR.
+#
+# 1. REVERTER POR PR (preferida — auditável e passa pelo CI)
+#      git checkout dev && git pull
 #      git revert --no-edit <sha-ruim>
-#      git push origin main
-#    O push dispara este CD, que redeploya o estado revertido.
+#      git push origin dev
+#      gh pr create --base main --head dev --title "revert: <o quê>"
+#      # CI verde → merge → este CD redeploya o estado revertido
 #
-# 2. REDEPLOY MANUAL DE UM COMMIT ANTERIOR (quando a `main` já está correta e
-#    o servidor é que ficou em estado ruim)
+# 2. REDEPLOY MANUAL (a `main` já está correta; quem ficou ruim foi o servidor)
 #      Actions → "CD — Deploy em Produção" → Run workflow
 #    O `workflow_dispatch` acima existe para isso.
 #
-# 3. NO SERVIDOR, EM EMERGÊNCIA (sem esperar o CI)
+# 3. NO SERVIDOR, EM EMERGÊNCIA (não passa pelo CI; use quando o site está fora)
 #      cd /opt/caloria
 #      git reset --hard <sha-bom>
 #      docker compose -f docker-compose.yml up -d --build
-#    Deixa o servidor divergente de `main` — corrija a `main` em seguida.
+#    Deixa o servidor divergente de `main` — corrija a `main` pela rota 1 em
+#    seguida, senão o próximo deploy automático traz o defeito de volta.
 #
 # MIGRAÇÕES NÃO SÃO REVERTIDAS AUTOMATICAMENTE. Se o commit ruim trouxe uma
 # migration, reverter o código não desfaz o schema:
+#      docker exec caloria_backend alembic history    # quantos passos voltar
 #      docker exec caloria_backend alembic downgrade -1
-# Rode o downgrade ANTES de redeployar a versão anterior, e confira o
-# `alembic history` para saber quantos passos voltar.
+# Rode o downgrade ANTES de redeployar a versão anterior. O passo de migração
+# acima falha alto e imprime a revisão aplicada justamente para isso.
 #
 # ─────────────────────────────────────────────────────────────────────
-# CONFIGURAÇÃO (uma vez, já feita em 2026-08-16)
+# CONFIGURAÇÃO (uma vez)
 #
-# Secrets do environment "production":
-#   SERVER_HOST     → 152.53.18.52
-#   SERVER_USER     → root
-#   SERVER_SSH_KEY  → chave privada SSH com acesso ao servidor
+# Secrets do environment "production": SERVER_HOST, SERVER_USER e
+# SERVER_SSH_KEY. Os valores ficam só no GitHub — ver docs/deploy.md.
 #
 # No servidor: /opt/caloria com o repo clonado, `.env` preenchido e
 # `secrets/vapid_private.pem` presente. Procedimento em docs/deploy.md.
