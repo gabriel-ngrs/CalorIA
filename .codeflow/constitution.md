@@ -15,7 +15,7 @@ projeto: CalorIA
 - **Filas/agendamento:** Celery + Redis (broker, backend, cache, blacklist de token)
 - **Validação:** Pydantic v2 + pydantic-settings
 - **Auth backend:** JWT HS256 (python-jose) + bcrypt (uso direto, sem passlib para hashing)
-- **IA:** Groq — texto `llama-3.3-70b-versatile`, visão `meta-llama/llama-4-scout-17b-16e-instruct`
+- **IA:** Groq — texto `openai/gpt-oss-120b`, visão `qwen/qwen3.6-27b` (nomes vêm de `GROQ_TEXT_MODEL`/`GROQ_VISION_MODEL`, nunca fixos no código)
 - **Outros:** httpx, pywebpush (VAPID), pillow, rapidfuzz
 - **Banco:** PostgreSQL 16 (tabela `foods` unificada TACO+Open Food Facts+USDA, índice GIN pg_trgm) + Redis 7
 - **Frontend:** Next.js 14 (App Router) + TypeScript 5 + React 18

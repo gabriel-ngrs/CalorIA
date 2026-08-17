@@ -261,9 +261,30 @@ docker exec caloria_backend python scripts/seed_taco.py
 # 2. Importar Open Food Facts — ~19.500 produtos brasileiros (opcional, recomendado)
 #    Faz download da API do OFF — leva ~5-10 minutos dependendo da conexão
 docker exec caloria_backend python scripts/import_off.py
+
+# 3. Seed da tabela `portions` — OBRIGATÓRIO, ~125 linhas, instantâneo
+docker exec caloria_backend python scripts/seed_portions.py
 ```
 
 > Só é necessário rodar uma vez. Os dados ficam no volume `postgres_data` e persistem entre reinicializações e deploys.
+
+⚠️ **`seed_portions.py` não é opcional, e esquecê-lo não quebra nada de forma
+visível — é pior que isso: o registro responde `200` com números errados.** A
+tabela `portions` converte medida caseira em gramas ("2 fatias" → 200 g). Vazia,
+toda unidade caseira cai em `portion_source: "sem_ancora"` e o item sai com uma
+fração da caloria real — em produção, "2 fatias de pizza de calabresa" devolveu
+**5,4 kcal** em vez de 540. Os itens vêm marcados com `needs_review: true`, mas o
+valor já foi mostrado ao usuário. Depois do seed, o mesmo pedido devolve 200 g e
+540 kcal, com `portion_source: "tabela"`.
+
+Confira que as três povoações existem antes de considerar o deploy pronto:
+
+```bash
+docker compose exec -T postgres psql -U caloria -d caloria_db \
+  -c "SELECT count(*) AS foods FROM foods;" \
+  -c "SELECT count(*) AS portions FROM portions;"
+# Esperado: foods > 40000 (ver data/README.md) e portions = 125
+```
 
 ---
 
@@ -495,6 +516,7 @@ lugares foi exatamente como um host desatualizado acabou documentado em quatro.
 - [ ] `docker compose up -d --build` e todos os serviços em `Up` (Parte 9)
 - [ ] `alembic upgrade head` aplicado (Parte 10)
 - [ ] Seed do banco nutricional rodado — sem ele a IA cai sempre no fallback (Parte 10)
+- [ ] `seed_portions.py` rodado e `SELECT count(*) FROM portions` = 125 — sem ele o registro responde 200 com calorias erradas (Parte 10)
 - [ ] `/health` respondendo pelo domínio, com HTTPS (Parte 11)
 
 Para o deploy automático a cada merge na `main`, configure também o environment

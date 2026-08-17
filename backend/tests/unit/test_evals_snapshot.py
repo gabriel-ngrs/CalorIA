@@ -39,11 +39,16 @@ from evals.schema import carregar_casos
 #: O teste de `sha` do registry (C.1) pega mudança de *texto de prompt*; este
 #: pega mudança de qualquer coisa que vá no envelope — modelo, `temperature`,
 #: `max_tokens`, `seed`, formato da mensagem. São defeitos diferentes.
+# Regravado em 2026-08-17: a Groq aposentou `llama-3.3-70b-versatile` e o teto de
+# tokens caiu de 8192 para 2048 (o free tier reserva `max_tokens` contra o limite
+# de 8000 TPM). Os quatro hashes mudaram só por isso — verificado restaurando os
+# dois valores antigos, que reproduzem exatamente os hashes anteriores. Nenhum
+# texto de prompt foi tocado, e por isso nenhuma versão de prompt foi promovida.
 SNAPSHOT_DE_PAYLOAD = {
-    "meal_identify": "ee413e7a6a322f841c34e94574e1eff0408492ee4470ac26a2b1e98d640d7995",
-    "meal_fallback": "237cd3db2dfc79fd9628373e57f3ec1c5cf52f0c5a38b6c51d90d70eefd2f52f",
-    "vision_identify": "3c774d4c02ffcae36ed937189bc2715d4fad2372efddd2f4b0b41c7f3d756417",
-    "vision_fallback": "7adc5e0b4d86da069f369febb688591f7e561b293f7836120b028be4f592964b",
+    "meal_identify": "b5a56fb93828e644942b6523aca8e496b92007a05dde55da80733352f235807d",
+    "meal_fallback": "81c497754be294253e71579025b22f201cd83d4a337dd4aa87828e279c25b62c",
+    "vision_identify": "6a4e8f3dba70f67877d5a156511554f6730efb9e8a839c3a46db9ac8c040fea6",
+    "vision_fallback": "d454ff29b18e220842c9922578e999d6ded5288cdc646f80178337736d310ea1",
 }
 
 _DESCRICAO_FIXA = "1 prato de arroz feijão e frango grelhado"

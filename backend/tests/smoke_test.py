@@ -34,6 +34,11 @@ def _load_env() -> None:
 _load_env()
 
 GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
+# Modelo de texto vem do ambiente. Fixo, este smoke test passou a falhar com 404
+# quando a Groq aposentou `llama-3.3-70b-versatile` — e um smoke test que morre
+# por nome de modelo velho não avisa nada sobre o sistema.
+GROQ_TEXT_MODEL = os.environ.get("GROQ_TEXT_MODEL", "openai/gpt-oss-120b")
+GROQ_VISION_MODEL = os.environ.get("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
 DB_URL = "postgresql://caloria:caloria@localhost:5432/caloria_db"
 
 # Pré-condição do módulo: uma chave real da Groq. O CI define
@@ -65,14 +70,14 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 # Testes Groq — Texto
 # --------------------------------------------------------------------------
 async def test_groq_texto() -> None:
-    print("\n[1] Groq — Texto (llama-3.3-70b-versatile)")
+    print(f"\n[1] Groq — Texto ({GROQ_TEXT_MODEL})")
     from groq import AsyncGroq
 
     client = AsyncGroq(api_key=GROQ_KEY)
 
     # Teste básico
     resp = await client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=GROQ_TEXT_MODEL,
         messages=[{"role": "user", "content": "Responda apenas: OK"}],
         temperature=0,
         max_tokens=5,
@@ -82,7 +87,7 @@ async def test_groq_texto() -> None:
 
     # Teste de análise de refeição (simula MealParser)
     resp2 = await client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=GROQ_TEXT_MODEL,
         messages=[
             {
                 "role": "user",
@@ -134,7 +139,7 @@ def _make_png(width: int = 100, height: int = 100) -> bytes:
 
 
 async def test_groq_visao() -> None:
-    print("\n[2] Groq — Visão (llama-4-scout-17b)")
+    print(f"\n[2] Groq — Visão ({GROQ_VISION_MODEL})")
 
     img_bytes = _make_png(100, 100)
     b64 = base64.b64encode(img_bytes).decode()
@@ -145,7 +150,7 @@ async def test_groq_visao() -> None:
 
     try:
         resp = await client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model=GROQ_VISION_MODEL,
             messages=[
                 {
                     "role": "user",

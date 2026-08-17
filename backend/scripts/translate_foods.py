@@ -39,7 +39,10 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 BATCH_SIZE = 200
-MODEL = "llama-3.3-70b-versatile"
+# Lê do ambiente, como o resto do script: fixo, o nome apodrece junto com o
+# catálogo da Groq — este ficou preso em `llama-3.3-70b-versatile` até o modelo
+# ser aposentado em 2026-08-17.
+MODEL = os.environ.get("GROQ_TEXT_MODEL", "openai/gpt-oss-120b")
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # segundos entre tentativas
 

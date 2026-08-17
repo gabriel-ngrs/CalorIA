@@ -49,10 +49,23 @@ flowchart TD
 **Contexto:** Inicialmente o projeto usava Google Gemini 2.5 Flash. Após a migração de v0.7, optamos pela Groq por oferecer um free tier mais generoso, latência menor e modelos Llama de ponta tanto para texto quanto para visão.
 
 **Decisão:** Usar Groq como provedor único:
-- Texto: `llama-3.3-70b-versatile`
-- Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+- Texto: `openai/gpt-oss-120b`
+- Visão: `qwen/qwen3.6-27b`
 
 Acessados pelo SDK oficial `groq` via classe `AIClient` (`services/ai/ai_client.py`).
+
+**Revisão (2026-08-17) — modelo é configuração, não decisão de arquitetura.** Os
+dois modelos Llama escolhidos aqui já foram aposentados pela Groq: o de visão em
+2026-07 e `llama-3.3-70b-versatile` em 2026-08-17, cada um derrubando um caminho
+de registro com 404 `model_not_found`. A decisão que sobrevive é *Groq como
+provedor único*; o modelo específico vive em `GROQ_TEXT_MODEL` /
+`GROQ_VISION_MODEL` e é trocável por `.env` + restart, sem deploy.
+
+Consequência prática ao escolher um substituto: o modelo precisa devolver
+`content` com JSON limpo. Modelos que expõem raciocínio **dentro** do conteúdo
+(caso do `qwen`, que emite `<think>`) quebram o parse e exigem
+`GROQ_VISION_REASONING=none`; `openai/gpt-oss-120b` põe o raciocínio em campo
+`reasoning` separado e não sofre disso.
 
 **Consequências:**
 - Cache Redis (7 dias, chave SHA-256) reduz chamadas redundantes para insights

@@ -247,8 +247,8 @@ A tabela `foods` alimenta o lookup em [4]:
 
 | Tipo | Modelo | Cache |
 |---|---|---|
-| Texto | `llama-3.3-70b-versatile` (Groq) | Redis 7 dias (SHA-256) para insights; sem cache para análise de refeição |
-| Visão | `meta-llama/llama-4-scout-17b-16e-instruct` (Groq) | Sem cache |
+| Texto | `openai/gpt-oss-120b` (Groq, via `GROQ_TEXT_MODEL`) | Redis 7 dias (SHA-256) para insights; sem cache para análise de refeição |
+| Visão | `qwen/qwen3.6-27b` (Groq, via `GROQ_VISION_MODEL`) | Sem cache |
 
 Retry em 429: espera 15s → 30s → 60s → 120s (4 tentativas total).
 

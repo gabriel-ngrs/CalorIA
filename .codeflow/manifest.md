@@ -17,7 +17,7 @@ validation_hash: ee90aedeb90f5c109085cb7f6e3c9d79e8ebe6ab7ccdd5effa16fe740e0ff46
 - **Pydantic[email]** >=2.9.0, pydantic-settings >=2.6.0
 - **Auth:** python-jose[cryptography] >=3.3.0, passlib[bcrypt] >=1.7.4 (hashing usa `bcrypt` direto)
 - **Celery[redis]** >=5.4.0, redis >=5.2.0
-- **IA:** groq >=0.13.0 (texto `llama-3.3-70b-versatile`, visão `meta-llama/llama-4-scout-17b-16e-instruct`)
+- **IA:** groq >=0.13.0 (texto `openai/gpt-oss-120b`, visão `qwen/qwen3.6-27b` — ambos por `.env`, ver `core/config.py`)
 - **httpx** >=0.27.0, pywebpush >=2.0.0, pillow >=11.0.0, rapidfuzz >=3.0.0
 - **Qualidade backend:** ruff >=0.8.0 (line-length 88, regras E/F/W/I/N/B/UP), mypy >=1.13.0 (strict, plugin pydantic)
 - **Testes backend:** pytest >=8.0.0, pytest-asyncio, pytest-cov

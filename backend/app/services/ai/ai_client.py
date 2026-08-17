@@ -39,10 +39,12 @@ ObservadorDeUso = Callable[[UsoDaChamada], None]
 _CACHE_TTL = 7 * 24 * 3600  # 7 dias
 _CACHE_PREFIX = "ai:"
 
-#: Modelos vêm da configuração, não de constantes de módulo. O modelo de visão
-#: anterior (`meta-llama/llama-4-scout-17b-16e-instruct`) foi descontinuado pela
-#: Groq: a API passou a responder 404 `model_not_found` e o registro por foto
-#: ficou 100% quebrado, sem forma de trocar o modelo sem novo deploy.
+#: Modelos vêm da configuração, não de constantes de módulo — já aconteceu duas
+#: vezes de a Groq aposentar um modelo em uso e a API passar a responder 404
+#: `model_not_found`, quebrando 100% de um caminho de registro: visão em
+#: `meta-llama/llama-4-scout-17b-16e-instruct`, e texto em
+#: `llama-3.3-70b-versatile` (2026-08-17). Configuráveis, a troca é hotfix de
+#: `.env` e restart, sem esperar deploy.
 _TEXT_MODEL = settings.GROQ_TEXT_MODEL
 _VISION_MODEL = settings.GROQ_VISION_MODEL
 
@@ -330,6 +332,21 @@ class AIClient:
                     response.usage.completion_tokens if response.usage else 0,
                 )
                 return content
+            except NotFoundError as exc:
+                # Mesmo tratamento do caminho de visão. Sem ele, a descontinuação
+                # do modelo de texto em 2026-08-17 chegou ao usuário como
+                # "Serviço de IA temporariamente indisponível" e ao log como um
+                # `404` cru do httpx, sem dizer QUAL modelo não existe mais —
+                # repetir não ajuda, então falha rápido e nomeia a causa.
+                logger.error(
+                    "Modelo de texto %r indisponível na Groq. "
+                    "Ajuste GROQ_TEXT_MODEL para um modelo de chat ativo.",
+                    model,
+                )
+                raise RuntimeError(
+                    f"Modelo de texto '{model}' não está disponível. "
+                    "Configure GROQ_TEXT_MODEL."
+                ) from exc
             except RateLimitError:
                 espera = self._espera_do_backoff(attempt, gasto_no_backoff)
                 if espera is None or attempt == 3:
