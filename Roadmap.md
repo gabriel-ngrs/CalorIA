@@ -409,19 +409,21 @@ Todas as etapas de desenvolvimento do projeto, organizadas em fases progressivas
 
 ### 9.2 Deploy em Produção
 
-> **Adiado por decisão do owner (2026-08-03).** A topologia está decidida e registrada
-> no **ADR-009** — host único, `docker-compose.yml` + `Caddyfile` —, e por enquanto a
-> stack roda **localmente**. Nenhum servidor será contratado nesta etapa; a VPS entra
-> no futuro, e aí os itens abaixo valem sem alteração. O deploy anterior saiu do ar:
-> a auditoria da Fase E.1 mediu que o host antigo não resolve mais nem em DNS.
+> **No ar desde 2026-08-16**, pela Fase E.4 da spec 002. A topologia é a do **ADR-009**
+> — host único, `docker-compose.yml` + `Caddyfile` — numa VPS netcup (2 vCore, 4 GB,
+> Viena), em **https://caloria-app.duckdns.org**. O adiamento decidido em 2026-08-03
+> caiu com a contratação do servidor. Procedimento e valores reais em `docs/deploy.md`.
 
-- [ ] Provisionar servidor (Hetzner CX22 — ~R$22/mês)
-- [ ] Configurar secrets no GitHub (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`)
-- [ ] Configurar environment `production` no GitHub Actions
-- [ ] Primeiro deploy manual (ver `docs/deploy.md`)
-- [ ] HTTPS com Let's Encrypt via Caddy
-- [ ] Backups automáticos do PostgreSQL (cron diário)
-- [ ] Configurar VAPID keys e Web Push no servidor de produção
+- [x] Provisionar servidor (netcup VPS Lite 1 G12s — €4,10/mês; a Hetzner do plano
+      original saiu no comparativo de dez opções em `docs/deploy-opcoes.md`)
+- [x] Configurar secrets no GitHub (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`)
+- [x] Configurar environment `production` no GitHub Actions
+- [x] Primeiro deploy manual (ver `docs/deploy.md`)
+- [x] HTTPS com Let's Encrypt via Caddy
+- [ ] Backups automáticos do PostgreSQL (cron diário) — o procedimento está em
+      `docs/deploy.md`, mas o cron ainda não foi confirmado no servidor
+- [ ] Configurar VAPID keys e Web Push no servidor de produção — a chave está montada
+      e a stack sobe, mas o envio ponta a ponta não foi verificado em produção
 
 ### 9.3 Observabilidade
 - [ ] Sentry para erros em produção (backend + frontend)
