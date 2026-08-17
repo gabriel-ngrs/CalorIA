@@ -63,7 +63,14 @@ class Settings(BaseSettings):
     # Ficavam fixos como constantes de módulo em `services/ai/ai_client.py`, e
     # quando o modelo de visão foi descontinuado pela Groq a análise por foto
     # passou a responder 404 model_not_found — sem forma de trocar sem deploy.
-    GROQ_TEXT_MODEL: str = "llama-3.3-70b-versatile"
+    #
+    # 2026-08-17: `llama-3.3-70b-versatile` seguiu o mesmo caminho — a família
+    # Llama inteira saiu do catálogo de chat da Groq e o registro por TEXTO
+    # passou a responder 404. Substituído por `openai/gpt-oss-120b`, que expõe o
+    # raciocínio em campo `reasoning` separado e por isso devolve `content` com
+    # JSON limpo (o `qwen` de visão vaza `<think>` no conteúdo — ver
+    # GROQ_VISION_REASONING abaixo).
+    GROQ_TEXT_MODEL: str = "openai/gpt-oss-120b"
     GROQ_VISION_MODEL: str = "qwen/qwen3.6-27b"
     # `reasoning_effort` da chamada de visão. Vazio = não envia o parâmetro.
     # Modelos com raciocínio exposto gastam o orçamento de tokens no bloco
@@ -82,7 +89,15 @@ class Settings(BaseSettings):
     GROQ_TEMPERATURE_SEM_SYSTEM: float = 0.3
     # Teto de tokens de saída. Generoso o bastante para os arrays JSON do
     # pipeline; existe para limitar custo, não para moldar a resposta.
-    GROQ_MAX_TOKENS: int = 8192
+    #
+    # NÃO é só teto de custo: a Groq RESERVA `max_tokens` na conta do limite de
+    # tokens por minuto. Com 8192, o valor anterior, toda chamada do free tier
+    # (8000 TPM) era recusada com 413 Payload Too Large antes de sair do chão —
+    # 799 de prompt + 8192 = 8991 pedidos contra um teto de 8000. 2048 cobre com
+    # folga a maior saída observada no pipeline (~340 tokens) e deixa ~5900 de
+    # espaço para o prompt, sendo que a maior entrada medida é a de visão, com
+    # 3204 (constante: a Groq redimensiona a imagem do lado dela).
+    GROQ_MAX_TOKENS: int = 2048
     # Semente de amostragem. `-1` = não enviar o parâmetro (comportamento atual).
     GROQ_SEED: int = -1
     # Timeout de uma requisição ao provedor.

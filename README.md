@@ -131,7 +131,7 @@ flowchart LR
 | API | Python 3.12 · FastAPI · Pydantic v2 |
 | Dados | PostgreSQL 16 (pg_trgm) · SQLAlchemy 2 async · Alembic |
 | Assíncrono | Celery + Celery Beat · Redis 7 |
-| IA | Groq — `llama-3.3-70b-versatile` (texto) e modelo de visão (foto) |
+| IA | Groq — `openai/gpt-oss-120b` (texto) e `qwen/qwen3.6-27b` (visão) |
 | Frontend | Next.js 14 (App Router) · TypeScript · Tailwind · shadcn/ui · Recharts · TanStack Query |
 | Notificações | Web Push VAPID (pywebpush) |
 | Qualidade | ruff · mypy strict · pytest · ESLint · Jest · Playwright · gitleaks |
@@ -163,7 +163,7 @@ O harness em [`backend/evals/`](backend/evals/README.md) responde a isso com qua
 - **Camada rápida no CI**, por cassettes gravados: roda sem rede e falha se o payload enviado ao provedor mudar sem atualização do snapshot.
 - **Camada completa semanal** contra o provedor real, com cada execução emitindo uma linha em `evals/runs/history.jsonl` que amarra métricas a commit, versão e `sha` de cada prompt, modelo, parâmetros de amostragem e `sha` do dataset.
 
-**Linha de base medida** (commit `e1d39b0`, `llama-3.3-70b-versatile`, 43 casos, 57 chamadas, 42.932 tokens, mediana de 4,7 s por caso):
+**Linha de base medida** (commit `e1d39b0`, `llama-3.3-70b-versatile`, 43 casos, 57 chamadas, 42.932 tokens, mediana de 4,7 s por caso). ⚠️ Medida sobre um modelo que a Groq aposentou em 2026-08-17; o texto roda hoje em `openai/gpt-oss-120b` e **esta linha de base ainda não foi refeita** — os números abaixo valem como registro histórico, não como estado atual:
 
 | Estrato | `n` | MdAPE | IC95 | Dentro de ±10% |
 |---|---:|---:|---|---:|

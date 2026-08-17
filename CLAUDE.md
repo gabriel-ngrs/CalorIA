@@ -88,8 +88,15 @@ CalorIA/
 
 ### IA
 - **Groq** — `groq>=0.13.0`
-  - Texto: `llama-3.3-70b-versatile`
-  - Visão: `meta-llama/llama-4-scout-17b-16e-instruct`
+  - Texto: `openai/gpt-oss-120b`
+  - Visão: `qwen/qwen3.6-27b`
+- Ambos vêm de `GROQ_TEXT_MODEL` / `GROQ_VISION_MODEL`, nunca fixos no código: a
+  Groq já aposentou dois modelos em uso (visão em 2026-07, texto em 2026-08-17),
+  e nos dois casos a API respondeu 404 `model_not_found` derrubando um caminho
+  inteiro de registro. Trocar é hotfix de `.env` + restart.
+- `GROQ_MAX_TOKENS` entra na conta do limite de tokens por minuto da Groq (a API
+  **reserva** o teto): no free tier, de 8000 TPM, um valor alto faz toda chamada
+  ser recusada com 413 antes de sair. Ver o comentário em `core/config.py`.
 - Chave: `GROQ_API_KEY` (free tier em [console.groq.com/keys](https://console.groq.com/keys))
 - Pipeline dois estágios: IA identifica alimentos → lookup pg_trgm no banco com sanity check → fallback estimativa IA agrupada
 
