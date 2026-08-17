@@ -3,7 +3,7 @@ id: 002
 slug: 002-vitrine-eval-e-saneamento
 title: "Vitrine técnica: eval do pipeline de IA, esteira de qualidade reativada, saneamento do histórico e replanejamento do deploy"
 type: infra
-status: active
+status: done
 priority: P0
 size: XL
 risk_level: RED
@@ -13,7 +13,7 @@ domain: fullstack
 bounded_context: multi
 cross_context: [seguranca, ci-cd, ai-eval, documentacao, deploy, frontend]
 created_at: 2026-07-29
-updated_at: 2026-08-10
+updated_at: 2026-08-17
 owner: Gabriel
 linked_adr: [ADR-002, ADR-006, ADR-008]
 related_bugs: [001, 003]
@@ -1967,8 +1967,7 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 > `[x]` = fase **concluída** pela regra do ARTIFACTS_SPEC §2.11.3: existe
 > `FASE-<id>-*-AVALIACAO.md` com `veredito: APROVADO` na mesma `tentativa` do
 > EXECUCAO. Não é marcação a olho — deriva dos artefatos. Sincronizado em
-> 2026-08-16: **25 das 26 fases concluídas**; aberta apenas a E.4, executada e em
-> rework na tentativa 2.
+> 2026-08-17: **26 das 26 fases concluídas**. Nenhuma fase em aberto.
 
 - [x] **A.1** — rotação confirmada pelo owner; repositório privado; working tree sem
       a credencial; `make test-frontend` verde. *(Encerrada por aceite do owner em
@@ -2026,21 +2025,54 @@ revelar necessária, é violação de escopo — parar e reportar (NFR-7).
 - [x] **E.1** — AC-24.
 - [x] **E.2** — AC-25; ADR-009 escrito; owner confirmou a topologia.
 - [x] **E.3** — AC-26.
-- [ ] **E.4** — AC-27; deploy automático verificado ponta a ponta; **link da demo
-      publicada no README** (cláusula recebida do AC-20 pela OQ24).
+- [x] **E.4** — AC-27; deploy automático verificado ponta a ponta; **link da demo
+      publicada no README** (cláusula recebida do AC-20 pela OQ24). *(Aprovada na
+      tentativa 2, score 9,8. A tentativa 1 fechou com RESSALVAS por três achados: a
+      rota de rollback "preferida" era rejeitada pela proteção da `main` instalada na
+      D.2, a pendência do ADR-009 fecharia sem dono por esta ser a última fase, e a
+      cláusula de falha de migration não fora exercitada. Os três foram medidos antes
+      de corrigidos e fechados no rework — o último com a OQ26. O AC-27 tem duas
+      execuções reais de CD, a segunda com o código final: run `31988416705` em
+      `3378e9b`.)*
 
 ### Itens globais transversais
 
-- [ ] `ruff check .` e `ruff format --check .` sem erros (NFR-1).
-- [ ] `mypy app/` em modo strict sem erros (NFR-1, princípio 2).
-- [ ] `npm run lint` e `npx tsc --noEmit` sem erros (NFR-1).
-- [ ] `make test-unit`, `make test-integration` e `make test-frontend` verdes.
-- [ ] Os limiares de `backend/tests/integration/test_golden_set.py` não regridem
-      (NFR-6).
-- [ ] Nenhum artefato versionado contém credencial, PII, e-mail pessoal ou conteúdo
-      de `.env` (NFR-4, princípio 4).
-- [ ] Nenhuma migration criada ou alterada (NFR-7, princípio 6).
-- [ ] Todo commit em Conventional Commits em português, sem menção a autor, IA ou
-      agente e sem `Co-Authored-By` (princípio 5).
-- [ ] Toda decisão de escopo tomada durante a execução está registrada aqui em §8 ou
-      numa decision do framework.
+> Verificados em **2026-08-17**, no fechamento da spec, com execução real de cada
+> gate — não por herança das fases. As saídas estão citadas item a item. O `docker`
+> não está disponível nesta máquina (WSL sem integração do Docker Desktop), então os
+> alvos do `Makefile` que entram no container foram rodados direto pela `.venv` do
+> backend, e a suíte de integração — a única que exige Postgres e Redis — vem do CI.
+
+- [x] `ruff check .` e `ruff format --check .` sem erros (NFR-1).
+      *(`All checks passed!` · `146 files already formatted`.)*
+- [x] `mypy app/` em modo strict sem erros (NFR-1, princípio 2).
+      *(`mypy app/ evals/` → `Success: no issues found in 81 source files`.)*
+- [x] `npm run lint` e `npx tsc --noEmit` sem erros (NFR-1). *(Ambos exit 0. O
+      ESLint emite um **warning** pré-existente de `react-hooks/exhaustive-deps` em
+      `components/auth/Plasma.tsx:156`; o critério é "sem erros", e warning não
+      reprova nem aqui nem no CI.)*
+- [x] `make test-unit`, `make test-integration` e `make test-frontend` verdes.
+      *(Unit: `pytest tests/unit/ -q` → **499 passed**. Frontend: `npm test` → **20
+      suites, 118 tests passed**. Integração: sem Docker local, a evidência é a run
+      de CI `31988256410` sobre `55c9fe9`, que roda `pytest --cov-fail-under=72` com
+      os serviços Postgres 16 e Redis 7 → `success`.)*
+- [x] Os limiares de `backend/tests/integration/test_golden_set.py` não regridem
+      (NFR-6). *(Dentro da suíte de integração da run de CI acima.)*
+- [x] Nenhum artefato versionado contém credencial, PII, e-mail pessoal ou conteúdo
+      de `.env` (NFR-4, princípio 4). *(`pre-commit run gitleaks --all-files` →
+      `Detect hardcoded secrets ... Passed`, varredura sobre o repositório inteiro.)*
+- [x] Nenhuma migration criada ou alterada (NFR-7, princípio 6). *(Nenhuma migration
+      criada. **Uma ressalva registrada por honestidade:** o commit `7497e63` da Fase
+      A.3, ao aplicar os hooks de higiene em todos os arquivos, tocou
+      `20260224_505ed23f9c33_schema_inicial.py` — a mudança é **um espaço em branco
+      ao fim da linha `Revises:` dentro da docstring**, sem efeito sobre o grafo de
+      revisões, sobre `down_revision` ou sobre o schema. A letra de "migrations já
+      aplicadas são imutáveis" foi arranhada; a intenção — não reescrever lógica de
+      schema já aplicada — está intacta.)*
+- [x] Todo commit em Conventional Commits em português, sem menção a autor, IA ou
+      agente e sem `Co-Authored-By` (princípio 5). *(Varredura de todos os assuntos
+      desde 2026-07-29 contra o padrão: zero fora de conformidade. Os `merge(dev):`
+      de abril são anteriores à spec.)*
+- [x] Toda decisão de escopo tomada durante a execução está registrada aqui em §8 ou
+      numa decision do framework. *(OQ26, no rework da E.4, fechou a última — as
+      duas pendências que a E.4 herdou do ADR-009.)*
