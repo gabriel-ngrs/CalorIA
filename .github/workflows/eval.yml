@@ -140,7 +140,7 @@ jobs:
 
       - name: Publicar relatório como artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eval-${{ github.sha }}
           path: |
