@@ -10,6 +10,7 @@ Filtrar por tag antes de carregar decisions individuais.
 
 | data | título | status | tags |
 |------|--------|--------|------|
+| 2026-09-17 | [Primeira passada do /security-sweep no CalorIA — risco está em dependência, não em código](2026-09-17-primeira-passada-security-sweep-caloria.md) | ativa | seguranca, security-sweep, dependencias, gitleaks, osv-scanner, idor, codeflow |
 | 2026-08-08 | [A cláusula "sem casos vazios" do AC-15 migra da C.7 para o bug 003](2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md) | ativa | eval, modelagem-de-ac, spec-002, fase-c7, fase-c2, bug-003, vision, rate-limit |
 | 2026-08-08 | [Owner autoriza a 4ª tentativa da C.7 no teto do §2.11.4](2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md) | ativa | processo, spec-002, fase-c7, teto-de-tentativas, codeflow |
 | 2026-08-04 | [A senha da conta de demonstração é pública por desenho, e isenta nominalmente no gitleaks](2026-08-04-conta-demo-senha-publica-e-isencao-no-gitleaks.md) | ativa | seguranca, gitleaks, demo, vitrine, spec-002, fase-e3, fase-a3 |
