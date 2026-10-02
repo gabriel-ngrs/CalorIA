@@ -1,8 +1,8 @@
 ---
 versão: 1.0
 status: estável
-atualizado: 2026-08-08
-proximo_numero: 007
+atualizado: 2026-10-02
+proximo_numero: 008
 ---
 
 # Registro de bugs (ordem cronológica)
@@ -19,6 +19,7 @@ prefixo do arquivo e como campo `id` no frontmatter.
 | 004 | [004-servicos-expostos-no-host-em-producao.md](004-servicos-expostos-no-host-em-producao.md) | Compose de produção publica backend e frontend no host, contornando o Caddy | alto | infra/deploy | corrigido | 2026-08-15 |
 | 005 | [005-seed-demo-nao-roda-em-producao.md](005-seed-demo-nao-roda-em-producao.md) | Seed da conta de demonstração não roda na imagem de produção (psycopg2 só no extra `dev`) | alto | backend/scripts + infra | aberto | 2026-08-16 |
 | 006 | [006-frontend-orfao-na-vercel.md](006-frontend-orfao-na-vercel.md) | Frontend órfão na Vercel serve tela de login quebrada num segundo endereço público | médio | deploy/vitrine | aberto | 2026-08-16 |
+| 007 | [007-ci-backend-sem-psycopg.md](007-ci-backend-sem-psycopg.md) | CI do backend vermelho: SQLAlchemy 2.1 resolve `postgresql://` para psycopg 3, ausente | alto | backend/scripts + ci | aberto | 2026-10-02 |
 
 ## Convenção de enumeração (LER ANTES DE REGISTRAR UM BUG)
 
