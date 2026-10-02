@@ -115,6 +115,16 @@ class TestPrivilegio:
         assert not colunas & {"is_admin", "role", "is_superuser", "is_staff"}
 
 
+class TestDriver:
+    def test_a_engine_usa_o_driver_sincrono_que_o_projeto_instala(self) -> None:
+        """BUG 007: o SQLAlchemy 2.1 resolve `postgresql://` para o psycopg 3.
+
+        O extra `dev` instala o `psycopg2-binary`; sem o driver explícito na URL,
+        o import do script — e a coleta deste módulo — morria no CI.
+        """
+        assert seed.engine.dialect.driver == "psycopg2"
+
+
 @pytest.mark.parametrize("conta", ["dev", "demo"])
 def test_toda_conta_declarada_tem_email_e_nome(conta: str) -> None:
     assert seed.CONTAS[conta].email and seed.CONTAS[conta].nome
