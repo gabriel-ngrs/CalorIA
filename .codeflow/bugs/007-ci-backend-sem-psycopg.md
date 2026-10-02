@@ -5,7 +5,7 @@ slug: 007-ci-backend-sem-psycopg
 título: "CI do backend vermelho: SQLAlchemy 2.1 resolve `postgresql://` para psycopg 3, que não está instalado"
 severidade: alto
 área: backend/scripts + ci
-status: aberto
+status: corrigido
 criado: 2026-10-02
 atualizado: 2026-10-02
 reportado_por: CI do push na dev (cbfd1c7) e do PR #38
@@ -65,3 +65,8 @@ trocar o extra `dev` para psycopg 3 (muda dependência para corrigir uma URL).
 
 Regressão: `TestDriver` em `backend/tests/unit/test_seed_demo.py` confere que a engine
 do script usa `psycopg2`. Antes da correção, o módulo nem coletava.
+
+## Fechamento
+
+- Correção: commit 17b71ca, PR #39 (merge a59df6c na `dev`).
+- Prova de CI: run 37076532111 do PR #38, verde, sobre os mesmos commits.
