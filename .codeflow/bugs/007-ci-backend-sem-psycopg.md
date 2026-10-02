@@ -46,3 +46,22 @@ aceita qualquer versão (`sqlalchemy[asyncio]>=2.0.0`): o CI instalou a 2.1.2.
 `tests/unit/test_seed_demo.py` importa o script, e a coleta morre.
 
 Relacionado: o BUG 005 (o mesmo script, o driver síncrono só no extra `dev`).
+
+## Causa confirmada
+
+Hipótese inicial confirmada no código (`backend/scripts/seed_dev_user.py:36-45`) e no
+venv da worktree: com `sqlalchemy 2.1.2`, `create_engine("postgresql://…")` levanta
+`ModuleNotFoundError: psycopg`, e `create_engine("postgresql+psycopg2://…")` resolve
+para `psycopg2`. O teste não importa `psycopg` diretamente; quem o pede é o dialeto
+padrão do SQLAlchemy, acionado pelo import do script.
+
+## Correção
+
+`seed_dev_user.py` monta a URL com `make_url(...).set(drivername="postgresql+psycopg2")`,
+que vale tanto para a URL assíncrona do `.env` (`postgresql+asyncpg://`) quanto para a
+URL sem driver do default, e independe do driver padrão da versão do SQLAlchemy.
+Descartadas: travar `sqlalchemy<2.1` (esconde o defeito e segura a atualização) e
+trocar o extra `dev` para psycopg 3 (muda dependência para corrigir uma URL).
+
+Regressão: `TestDriver` em `backend/tests/unit/test_seed_demo.py` confere que a engine
+do script usa `psycopg2`. Antes da correção, o módulo nem coletava.

@@ -28,19 +28,19 @@ from datetime import date, time, timedelta
 # Adiciona o diretório raiz ao path para importar os módulos do app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, make_url, text
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 
-DATABASE_URL = (
+# Driver explícito: o SQLAlchemy 2.1 resolve `postgresql://` para o psycopg 3, e o
+# driver síncrono que o projeto instala é o psycopg2 (BUG 007).
+DATABASE_URL = make_url(
     os.getenv(
         "DATABASE_URL",
         "postgresql://caloria:caloria@localhost:5432/caloria_db",
     )
-    .replace("postgresql+asyncpg://", "postgresql://")
-    .replace("+asyncpg", "")
-)
+).set(drivername="postgresql+psycopg2")
 
 engine = create_engine(DATABASE_URL, echo=False)
 
