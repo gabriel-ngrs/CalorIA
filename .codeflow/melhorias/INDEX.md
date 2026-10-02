@@ -1,7 +1,7 @@
 ---
 versão: 1.0
 status: estável
-atualizado: 2026-07-09
+atualizado: 2026-10-02
 proximo_numero: 005
 ---
 
@@ -25,8 +25,14 @@ virarem spec. Cada melhoria recebe um número sequencial de 3 dígitos (`NNN`).
 3. **Registrar a linha** na tabela acima e **incrementar `proximo_numero`**.
 4. O número **nunca é reusado nem reordenado**.
 
+Vocabulário de `tipo`: `evolução` (muda o que já existe — melhoria), `feature`
+(capacidade nova dentro de uma área existente), `módulo novo` (área nova inteira —
+em geral vira spec). Melhoria e feature seguem o mesmo caminho; o tipo muda o
+registro, não o processo.
+
 Vocabulário de `status`: `a fatiar`, `spec: <slug>` (já virou spec),
-`adiada`, `descartada`.
+`em andamento: feat/NNN-<slug>` (no ciclo de mudança, com o ramo da tarefa),
+`entregue: <sha>` (merge do PR na `dev`), `adiada`, `descartada`.
 
 ## Relação com `specs/`
 
