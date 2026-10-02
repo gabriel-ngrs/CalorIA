@@ -1,7 +1,7 @@
 ---
 versão: 1.0
 status: estável
-atualizado: 2026-08-08
+atualizado: 2026-10-02
 ---
 
 # Índice de decisões
@@ -10,16 +10,19 @@ Filtrar por tag antes de carregar decisions individuais.
 
 | data | título | status | tags |
 |------|--------|--------|------|
+| 2026-10-02 | [O CalorIA passa a ser operado por trilhas no Maestri, com merge autônomo no dev](2026-10-02-operacao-por-trilhas-no-maestri.md) | ativa | processo, git, ci-cd, maestri, trilhas, worktrees, codeflow, validacao |
 | 2026-09-17 | [Primeira passada do /security-sweep no CalorIA — risco está em dependência, não em código](2026-09-17-primeira-passada-security-sweep-caloria.md) | ativa | seguranca, security-sweep, dependencias, gitleaks, osv-scanner, idor, codeflow |
 | 2026-08-08 | [A cláusula "sem casos vazios" do AC-15 migra da C.7 para o bug 003](2026-08-08-clausula-sem-casos-vazios-migra-da-c7-para-o-bug-003.md) | ativa | eval, modelagem-de-ac, spec-002, fase-c7, fase-c2, bug-003, vision, rate-limit |
 | 2026-08-08 | [Owner autoriza a 4ª tentativa da C.7 no teto do §2.11.4](2026-08-08-quarta-tentativa-da-c7-autorizada-no-teto.md) | ativa | processo, spec-002, fase-c7, teto-de-tentativas, codeflow |
 | 2026-08-04 | [A senha da conta de demonstração é pública por desenho, e isenta nominalmente no gitleaks](2026-08-04-conta-demo-senha-publica-e-isencao-no-gitleaks.md) | ativa | seguranca, gitleaks, demo, vitrine, spec-002, fase-e3, fase-a3 |
 | 2026-08-04 | [Owner autoriza a 4ª tentativa da D.1 no teto do §2.11.4, e encerra a A.1](2026-08-04-quarta-tentativa-da-d1-autorizada-no-teto.md) | ativa | processo, spec-002, fase-a1, fase-d1, teto-de-tentativas, codeflow |
 | 2026-08-04 | [Estrato de foto entra no runner do eval, e o teto de tokens da visão estoura o TPM](2026-08-04-estrato-de-foto-no-runner-e-teto-de-tokens-da-visao.md) | ativa | eval, vision, runner, groq, rate-limit, spec-002, fase-b5, fase-c2, fase-c5 |
+| 2026-08-03 | [JSON mode entra por versão nova de prompt, e produção só troca com medição](2026-08-03-json-mode-com-versoes-de-prompt-em-objeto.md) | ativa | ai, prompts, json-mode, eval, spec-002, fase-c2 |
 | 2026-08-03 | ["Licença detectada pela API" migra do AC-18 (D.1) para o AC-19 (D.2)](2026-08-03-licenca-detectada-migra-do-ac18-para-o-ac19.md) | ativa | vitrine, licenca, github, spec-002, fase-d1, fase-d2 |
 | 2026-08-03 | [Dataset da C.4 — terceira fonte para o que a TACO não cobre, imagens versionadas e testes da C.3 atualizados](2026-08-03-dataset-c4-fontes-e-arquivos-alem-do-declarado.md) | ativa | eval, dataset, ground-truth, taco, ibge-pof, spec-002, fase-c4 |
 | 2026-08-03 | [A main só é tocada no fim da spec, não na posição declarada da D.2](2026-08-03-promocao-da-main-fica-para-o-fim-da-spec.md) | ativa | git, release, deploy, spec-002, fase-d2, ordem-de-execucao |
 | 2026-08-03 | [Regras próprias de porção para gordura de passar e acompanhamentos](2026-08-03-regras-de-porcao-para-gordura-de-passar.md) | ativa | nutricao, portions, eval, spec-002, fase-c6 |
+| 2026-08-02 | [A conta do CalorIA nunca foi produção real e será destruída com o ambiente](2026-08-02-senha-conta-caloria-producao.md) | ativa | seguranca, deploy, spec-002, fase-a1, risco-residual |
 | 2026-08-02 | [Rate limiting nos cinco GET de IA que gastam token do provedor](2026-08-02-rate-limit-em-get-de-ia.md) | ativa | seguranca, rate-limiting, api, spec-002, fase-b3 |
 | 2026-08-02 | [Sanity check calórico não descarta match de fonte curada](2026-08-02-sanity-check-nao-descarta-fonte-curada.md) | ativa | ai, sanity-check, food-lookup, eval, spec-002, adr-006 |
 | 2026-08-02 | [Schema dos testes de integração passa a vir das migrations](2026-08-02-schema-de-teste-por-migrations.md) | ativa | testes, alembic, ci, nfr-6, spec-002 |
