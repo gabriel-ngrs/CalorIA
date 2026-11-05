@@ -157,6 +157,10 @@ composição real a cada execução, para que nenhum relatório esconda um estra
 
 #### Medição de 2026-08-04 — por que a agenda é semanal
 
+> **2026-11-05:** a agenda semanal foi desligada; o `eval.yml` roda só por disparo
+> manual (`gh workflow run eval.yml`). De 31/08 a 02/11 a rodada agendada falhou
+> 9 vezes seguidas na bateria de invariância, pelo limite de TPD descrito abaixo.
+
 A periodicidade do `eval.yml` foi dimensionada por medição, não por estimativa.
 Uma execução completa contra a Groq, com o dataset de 43 casos:
 
