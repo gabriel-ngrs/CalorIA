@@ -13,9 +13,13 @@ name: Eval do pipeline de IA
 # sequência morreu com `429` de TPD (99.768 usados). Uma rodada completa não cabe
 # num dia junto de qualquer outro uso. Detalhe em `backend/evals/README.md`,
 # seção "Consumo de quota".
+#
+# Agenda desligada em 2026-11-05: a rodada semanal falhou todas as segundas desde
+# 31/08 (9 seguidas) na bateria de invariância, pelo mesmo limite de TPD, gastando
+# cota da Groq sem produzir resultado. Fica só o disparo manual até a bateria
+# caber no dia (ou rodar em dia separado); para religar, volte o bloco `schedule`
+# com o cron "0 6 * * 1".
 on:
-  schedule:
-    - cron: "0 6 * * 1" # segunda-feira, 06:00 UTC (03:00 America/Sao_Paulo)
   workflow_dispatch:
     inputs:
       estrato:
