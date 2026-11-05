@@ -391,7 +391,7 @@ class AIClient:
 
     async def _get_cached(self, key: str) -> str | None:
         try:
-            async with aioredis.from_url(  # type: ignore[no-untyped-call]
+            async with aioredis.from_url(
                 settings.REDIS_URL, decode_responses=True
             ) as r:
                 return cast("str | None", await r.get(key))
@@ -401,7 +401,7 @@ class AIClient:
 
     async def _set_cached(self, key: str, value: str) -> None:
         try:
-            async with aioredis.from_url(  # type: ignore[no-untyped-call]
+            async with aioredis.from_url(
                 settings.REDIS_URL, decode_responses=True
             ) as r:
                 await r.setex(key, _CACHE_TTL, value)
